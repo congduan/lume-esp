@@ -638,15 +638,38 @@ static JSValue js_imu_on_motion(JSContext *ctx, JSValueConst this_val,
  * get(key): a value (string/number/bool/ArrayBuffer), JS_NULL when the key
  * is absent, or a negative error code as a NUMBER on failure. keys() returns
  * a string[] (empty array when the namespace is empty) or a negative error
- * code as a NUMBER. The value/error-code NUMBER overlap in get()/keys() is
- * documented in lume.d.ts; note a failed NVS means there are no stored
- * values to collide with anyway.
+ * code as a NUMBER. The value/error-code NUMBER overlap in get() is a known
+ * tradeoff: a stored number can legally be -1/-2/-3, so a negative get()
+ * result is ambiguous when NVS is available (documented in lume.d.ts and
+ * docs/KNOWN-SIMPLIFICATIONS.md r10 -- do NOT treat `r < 0` as an error
+ * discriminator for get()).
  *
  * lume_kv_init() runs from register_bindings() on every fresh runtime; a
  * successful init is latched (idempotent across hot-reload runtime resets)
  * and a failed one retries on the next pass. No board is needed: NVS is in
  * main flash, so unlike lume.pmic/lume.imu there is no "no board" path --
  * only a missing/broken NVS partition, which degrades to -3. */
+
+/* Convert a JS key argument to a validated C string. Uses JS_ToCStringLen
+ * (not JS_ToCString) so the real byte length is known, and rejects keys with
+ * an embedded NUL: NVS keys are C strings, so "a\0b" would silently shorten
+ * to "a" and read/erase the wrong entry (r10 review finding). Returns NULL
+ * with a pending exception on failure; caller frees with JS_FreeCString. */
+static const char *kv_key_from_js(JSContext *ctx, JSValueConst v)
+{
+    size_t klen = 0;
+    const char *key = JS_ToCStringLen(ctx, &klen, v);
+    if (key == NULL) {
+        return NULL;
+    }
+    if (memchr(key, '\0', klen) != NULL) {
+        JS_FreeCString(ctx, key);
+        JS_ThrowTypeError(ctx,
+            "lume.storage.kv: key must not contain an embedded NUL");
+        return NULL;
+    }
+    return key;
+}
 
 static JSValue js_kv_set(JSContext *ctx, JSValueConst this_val,
                          int argc, JSValueConst *argv)
@@ -656,7 +679,7 @@ static JSValue js_kv_set(JSContext *ctx, JSValueConst this_val,
         return JS_ThrowTypeError(ctx,
             "lume.storage.kv.set: expected 2 arguments (key, value)");
     }
-    const char *key = JS_ToCString(ctx, argv[0]);
+    const char *key = kv_key_from_js(ctx, argv[0]);
     if (key == NULL) {
         return JS_EXCEPTION;
     }
@@ -701,7 +724,7 @@ static JSValue js_kv_get(JSContext *ctx, JSValueConst this_val,
         return JS_ThrowTypeError(ctx,
             "lume.storage.kv.get: expected 1 argument (key)");
     }
-    const char *key = JS_ToCString(ctx, argv[0]);
+    const char *key = kv_key_from_js(ctx, argv[0]);
     if (key == NULL) {
         return JS_EXCEPTION;
     }
@@ -736,7 +759,7 @@ static JSValue js_kv_remove(JSContext *ctx, JSValueConst this_val,
         return JS_ThrowTypeError(ctx,
             "lume.storage.kv.remove: expected 1 argument (key)");
     }
-    const char *key = JS_ToCString(ctx, argv[0]);
+    const char *key = kv_key_from_js(ctx, argv[0]);
     if (key == NULL) {
         return JS_EXCEPTION;
     }
@@ -751,13 +774,23 @@ typedef struct {
     JSContext *ctx;
     JSValue    arr;
     uint32_t   idx;
+    bool       failed;   /* an append failed; exception is pending in ctx */
 } kv_keys_ctx_t;
 
 static void kv_keys_emit(void *arg, const char *key)
 {
     kv_keys_ctx_t *c = (kv_keys_ctx_t *)arg;
-    JS_SetPropertyUint32(c->ctx, c->arr, c->idx++,
-                         JS_NewString(c->ctx, key));
+    if (c->failed) {
+        return;                 /* a previous append failed: stop appending */
+    }
+    JSValue s = JS_NewString(c->ctx, key);
+    if (JS_IsException(s)) {
+        c->failed = true;       /* propagates via the pending exception */
+        return;
+    }
+    if (JS_SetPropertyUint32(c->ctx, c->arr, c->idx++, s) < 0) {
+        c->failed = true;       /* property store failed (s is consumed) */
+    }
 }
 
 static JSValue js_kv_keys(JSContext *ctx, JSValueConst this_val,
@@ -766,10 +799,18 @@ static JSValue js_kv_keys(JSContext *ctx, JSValueConst this_val,
     (void)this_val;
     (void)argc;
     (void)argv;
-    kv_keys_ctx_t c = { ctx, JS_NewArray(ctx), 0 };
+    kv_keys_ctx_t c = { ctx, JS_NewArray(ctx), 0, false };
+    /* JS_NewArray failure leaves a pending exception; bail out before the
+     * native iterator runs (r10 review finding). */
+    if (JS_IsException(c.arr)) {
+        return JS_EXCEPTION;
+    }
     int r = lume_kv_keys(kv_keys_emit, &c);
-    if (r < 0) {
+    if (r < 0 || c.failed) {
         JS_FreeValue(ctx, c.arr);
+        if (c.failed) {
+            return JS_EXCEPTION;   /* propagate the append error */
+        }
         return JS_NewInt32(ctx, r);
     }
     return c.arr;

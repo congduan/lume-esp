@@ -67,9 +67,16 @@ static int require_ready(void)
     return LUME_KV_OK;
 }
 
-/* Map any non-OK esp_err_t from a nvs_* call to -2 with a WARN line. */
+/* Map an esp_err_t from a nvs_* call to a LUME_KV result. ESP_OK passes
+ * through as success: the write/remove/clear paths funnel their
+ * nvs_commit() through here, so treating ESP_OK as an error would report
+ * every successful write as failed (r10 review finding). Anything else
+ * logs a WARN and maps to -2. */
 static int map_err(esp_err_t err, const char *what)
 {
+    if (err == ESP_OK) {
+        return LUME_KV_OK;
+    }
     ESP_LOGW(TAG, "%s failed: %s", what, esp_err_to_name(err));
     return LUME_KV_ERR_DRIVER;
 }
@@ -252,9 +259,16 @@ int lume_kv_get(const char *key, lume_kv_value_t *out)
         if (err != ESP_OK) {
             return map_err(err, "nvs_get_str/blob(size)");
         }
-        /* Defend the read side too: a blob written by other firmware could
-         * exceed our cap; never malloc an unbounded scratch buffer. */
-        if (need == 0 || need >= LUME_KV_VALUE_MAX) {
+        /* Defend the read side too: a value written by other firmware could
+         * exceed our caps; never malloc an unbounded scratch buffer. The
+         * length semantics differ per type: STR need includes the NUL and
+         * our write side admits payload 0..3999 => need 1..4000; BLOB need
+         * is payload bytes, admitted 1..3999. (r10 review finding: a single
+         * `need >= VALUE_MAX` check wrongly rejected a 3999-char string,
+         * whose length query returns 4000 with the NUL.) */
+        size_t need_max = (t == NVS_TYPE_STR) ? LUME_KV_VALUE_MAX
+                                              : LUME_KV_VALUE_MAX - 1;
+        if (need == 0 || need > need_max) {
             ESP_LOGW(TAG, "get: stored value size %u B out of range",
                      (unsigned)need);
             return LUME_KV_ERR_DRIVER;
