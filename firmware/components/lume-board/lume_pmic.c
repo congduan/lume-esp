@@ -99,17 +99,13 @@ esp_err_t lume_pmic_display_power_on(i2c_master_bus_handle_t bus)
     }
     ESP_LOGI(TAG, "AXP2101 detected (chip id 0x%02x)", (unsigned)chip_id);
 
-    /* TODO(M1 / hardware verify): confirm against the schematic which rails
-     * actually feed the CO5300 + CST9220 and at what voltage, then fix the
-     * three lines below. Schematic net names hint BLDO1=VL_1.2V,
-     * BLDO2=VL_2.08V, ALDO3=VL_3.0V — the generic 3.3V values from the
-     * vendor example may NOT match this board. Keep this isolated. */
-    ESP_RETURN_ON_ERROR(axp_set_voltage(dev, AXP2101_ALDO3_VOL, RAIL_3300MV_STEP),
-                        TAG, "set ALDO3 voltage");
-    ESP_RETURN_ON_ERROR(axp_set_voltage(dev, AXP2101_BLDO1_VOL, RAIL_3300MV_STEP),
-                        TAG, "set BLDO1 voltage");
-    ESP_RETURN_ON_ERROR(axp_set_voltage(dev, AXP2101_BLDO2_VOL, RAIL_3300MV_STEP),
-                        TAG, "set BLDO2 voltage");
+    /* Voltage policy (Codex review P0 fix, 2026-11-13): schematic nets show
+     * BLDO1=VL_1.2V, BLDO2=VL_2.8V, ALDO3=VL_3.0V — the rails feed different
+     * domains, so blanket-writing 3.3V is wrong. The vendor BSP does NOT set
+     * voltages at runtime: the AXP2101 ships with OTP defaults matching this
+     * board. We therefore only ENABLE the rails and leave voltages at OTP
+     * defaults, exactly like the vendor example. Revisit per-rail voltages
+     * only with on-board measurement evidence. */
 
     /* 0x90: ALDO3=bit2, BLDO1=bit4, BLDO2=bit5. */
     ESP_RETURN_ON_ERROR(axp_set_bits(dev, AXP2101_ONOFF_CTRL0, (1u << 2) | (1u << 4) | (1u << 5)),
