@@ -1,15 +1,256 @@
 /**
- * Declarative UI → LVGL bridge (M1 stub).
+ * Declarative UI -> LVGL bridge (M1 real implementation).
  *
- * M1 target: JS side diffs its virtual tree (View/Text/Button) and posts
- * attribute messages; this component maps them onto lv_obj/lv_label/lv_button
- * calls. LVGL is vendored in M1 next step.
+ * Thread discipline: every lv_* call in this file runs on the LVGL task, via
+ * the drain timer created in lume_ui_bridge_init() (processed by the board's
+ * lv_timer_handler loop). The only cross-thread entry points are post() and
+ * the press sink, both of which are pure FreeRTOS queue operations.
+ *
+ * The node table (id -> lv_obj*) and the kinds[] table are written and read
+ * ONLY by the LVGL task, so no mutex is needed. node_ids are allocated by the
+ * engine task (a monotonic counter) and carried in each message; FIFO queue
+ * ordering guarantees a CREATE is applied before any SET_ATTR for that id.
  */
-#include <stdio.h>
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "esp_log.h"
+#include "lvgl.h"
 #include "lume_ui_bridge.h"
 
-void lume_ui_bridge_apply(const lume_attr_msg_t *msg)
+static const char *TAG = "lume-ui-bridge";
+#define UI_QUEUE_LEN 32
+#define DRAIN_PERIOD_MS 5
+
+static QueueHandle_t s_ui_queue;                  /* Queue A */
+static lv_obj_t *s_nodes[LUME_MAX_NODES];         /* id -> lv_obj* (LVGL task) */
+static uint8_t s_kinds[LUME_MAX_NODES];           /* id -> kind   (LVGL task) */
+static lume_press_sink_fn s_press_sink;           /* set once by engine task */
+
+static lv_align_t map_align(int32_t v)
 {
-    /* TODO(M1): node table lookup + lv_obj_set_* mapping */
-    (void)msg;
+    switch (v) {
+        case LUME_ALIGN_TOP_LEFT:     return LV_ALIGN_TOP_LEFT;
+        case LUME_ALIGN_TOP_MID:      return LV_ALIGN_TOP_MID;
+        case LUME_ALIGN_TOP_RIGHT:    return LV_ALIGN_TOP_RIGHT;
+        case LUME_ALIGN_BOTTOM_MID:   return LV_ALIGN_BOTTOM_MID;
+        case LUME_ALIGN_BOTTOM_LEFT:  return LV_ALIGN_BOTTOM_LEFT;
+        case LUME_ALIGN_BOTTOM_RIGHT: return LV_ALIGN_BOTTOM_RIGHT;
+        case LUME_ALIGN_LEFT_MID:     return LV_ALIGN_LEFT_MID;
+        case LUME_ALIGN_RIGHT_MID:    return LV_ALIGN_RIGHT_MID;
+        case LUME_ALIGN_CENTER:
+        default:                      return LV_ALIGN_CENTER;
+    }
+}
+
+static lv_obj_t *get_node(uint16_t id)
+{
+    if (id == 0 || id >= LUME_MAX_NODES) {
+        return NULL;
+    }
+    return s_nodes[id];
+}
+
+/* ------------------------------------------------------------------ */
+/* Queue A apply functions — LVGL task context only                    */
+/* ------------------------------------------------------------------ */
+
+static void apply_create(const lume_ui_msg_t *m)
+{
+    if (m->node_id == 0 || m->node_id >= LUME_MAX_NODES) {
+        ESP_LOGE(TAG, "create: invalid node_id %u", (unsigned)m->node_id);
+        return;
+    }
+    lv_obj_t *parent = (m->parent_id == 0)
+                           ? lv_screen_active()
+                           : get_node(m->parent_id);
+    if (parent == NULL) {
+        parent = lv_screen_active();
+    }
+
+    lv_obj_t *obj = NULL;
+    switch (m->kind) {
+        case LUME_NODE_VIEW:
+            obj = lv_obj_create(parent);
+            break;
+        case LUME_NODE_TEXT:
+            obj = lv_label_create(parent);
+            /* Centered text uses LVGL's default font. Typography (big font)
+             * is intentionally deferred: M1 real-device visuals are out of
+             * scope, and referencing Montserrat-32 pulls ~45KB of glyph data. */
+            lv_obj_set_style_text_color(obj, lv_color_white(), 0);
+            break;
+        case LUME_NODE_BUTTON: {
+            obj = lv_button_create(parent);
+            lv_obj_t *label = lv_label_create(obj);
+            lv_label_set_text(label, "");
+            lv_obj_set_style_text_color(label, lv_color_white(), 0);
+            lv_obj_center(label);
+            break;
+        }
+        default:
+            ESP_LOGE(TAG, "create: unknown kind %u", (unsigned)m->kind);
+            return;
+    }
+
+    s_nodes[m->node_id] = obj;
+    s_kinds[m->node_id] = m->kind;
+    lv_obj_set_user_data(obj, (void *)(uintptr_t)m->node_id);
+    ESP_LOGI(TAG, "create id=%u kind=%u parent=%u",
+             (unsigned)m->node_id, (unsigned)m->kind, (unsigned)m->parent_id);
+}
+
+static void apply_set_attr(const lume_ui_msg_t *m)
+{
+    lv_obj_t *obj = get_node(m->node_id);
+    if (obj == NULL) {
+        ESP_LOGW(TAG, "set-attr: unknown node_id %u", (unsigned)m->node_id);
+        return;
+    }
+    switch (m->attr) {
+        case LUME_ATTR_TEXT: {
+            /* A BUTTON renders its text in a child label; TEXT is the label. */
+            lv_obj_t *target = obj;
+            if (s_kinds[m->node_id] == LUME_NODE_BUTTON) {
+                lv_obj_t *label = lv_obj_get_child(obj, 0);
+                if (label != NULL) {
+                    target = label;
+                }
+            }
+            lv_label_set_text(target, m->text);
+            break;
+        }
+        case LUME_ATTR_BG_COLOR:
+            lv_obj_set_style_bg_color(obj, lv_color_hex((uint32_t)m->value), 0);
+            lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+            break;
+        case LUME_ATTR_WIDTH:
+            lv_obj_set_width(obj, m->value);
+            break;
+        case LUME_ATTR_HEIGHT:
+            lv_obj_set_height(obj, m->value);
+            break;
+        case LUME_ATTR_ALIGN:
+            lv_obj_align(obj, map_align(m->value), 0, 0);
+            break;
+        case LUME_ATTR_VISIBLE:
+            if (m->value) {
+                lv_obj_remove_flag(obj, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+            }
+            break;
+        case LUME_ATTR_PARENT: {
+            lv_obj_t *p = get_node((uint16_t)m->value);
+            if (p != NULL) {
+                lv_obj_set_parent(obj, p);   /* append child into parent */
+            }
+            break;
+        }
+        default:
+            ESP_LOGW(TAG, "set-attr: unknown attr %u", (unsigned)m->attr);
+            break;
+    }
+}
+
+static void apply_remove(const lume_ui_msg_t *m)
+{
+    lv_obj_t *obj = get_node(m->node_id);
+    if (obj == NULL) {
+        return;
+    }
+    lv_obj_delete(obj);       /* deletes the whole LVGL subtree */
+    s_nodes[m->node_id] = NULL;
+    s_kinds[m->node_id] = 0;
+    ESP_LOGI(TAG, "remove id=%u", (unsigned)m->node_id);
+}
+
+/* LV_EVENT_CLICKED callback — runs on the LVGL task. Reverse channel: post
+ * the node id back to the engine event queue through the registered sink. */
+static void press_cb(lv_event_t *e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
+        return;
+    }
+    uint16_t node_id = (uint16_t)(uintptr_t)lv_event_get_user_data(e);
+    ESP_LOGI(TAG, "LVGL CLICKED id=%u -> post to engine queue", (unsigned)node_id);
+    if (s_press_sink != NULL) {
+        s_press_sink(node_id);
+    } else {
+        ESP_LOGW(TAG, "press id=%u dropped: no engine sink", (unsigned)node_id);
+    }
+}
+
+static void apply_set_press(const lume_ui_msg_t *m)
+{
+    lv_obj_t *obj = get_node(m->node_id);
+    if (obj == NULL) {
+        ESP_LOGW(TAG, "set-press: unknown node_id %u", (unsigned)m->node_id);
+        return;
+    }
+    /* One-shot tap: CLICKED fires once per press/release. (PRESSING would
+     * repeat continuously and would inflate a counter on every frame.) */
+    lv_obj_add_event_cb(obj, press_cb, LV_EVENT_CLICKED,
+                        (void *)(uintptr_t)m->node_id);
+    ESP_LOGI(TAG, "press registered id=%u", (unsigned)m->node_id);
+}
+
+void lume_ui_bridge_drain(void)
+{
+    lume_ui_msg_t m;
+    while (s_ui_queue != NULL &&
+           xQueueReceive(s_ui_queue, &m, 0) == pdTRUE) {
+        /* Defensive hard truncate: text is always a bounded 64-byte field. */
+        m.text[LUME_TEXT_MAX - 1] = '\0';
+        switch (m.op) {
+            case LUME_OP_CREATE:    apply_create(&m);    break;
+            case LUME_OP_SET_ATTR:  apply_set_attr(&m);  break;
+            case LUME_OP_REMOVE:    apply_remove(&m);    break;
+            case LUME_OP_SET_PRESS: apply_set_press(&m); break;
+            default:
+                ESP_LOGW(TAG, "drain: unknown op %u", (unsigned)m.op);
+                break;
+        }
+    }
+}
+
+static void drain_timer_cb(lv_timer_t *timer)
+{
+    (void)timer;
+    /* Runs from lv_timer_handler() on the LVGL task. */
+    lume_ui_bridge_drain();
+}
+
+/* ------------------------------------------------------------------ */
+/* Cross-thread entry points                                          */
+/* ------------------------------------------------------------------ */
+
+void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn)
+{
+    s_press_sink = fn;
+}
+
+int lume_ui_bridge_post(const lume_ui_msg_t *msg)
+{
+    if (s_ui_queue == NULL) {
+        return -1;
+    }
+    return xQueueSend(s_ui_queue, msg, 0) == pdTRUE ? 0 : -1;
+}
+
+void lume_ui_bridge_init(void)
+{
+    if (s_ui_queue != NULL) {
+        return;   /* idempotent */
+    }
+    s_ui_queue = xQueueCreate(UI_QUEUE_LEN, sizeof(lume_ui_msg_t));
+    memset(s_nodes, 0, sizeof(s_nodes));
+    memset(s_kinds, 0, sizeof(s_kinds));
+
+    /* Called from board init (main task) before the LVGL task is created:
+     * lv_timer_create() has no concurrent lv_timer_handler() to race with.
+     * The timer callback is the drain point inside the lv_timer_handler loop. */
+    lv_timer_create(drain_timer_cb, DRAIN_PERIOD_MS, NULL);
+    ESP_LOGI(TAG, "init: queue=%u msgs, drain timer=%ums",
+             UI_QUEUE_LEN, DRAIN_PERIOD_MS);
 }

@@ -23,9 +23,16 @@
 
 static const char *TAG = "lume-board";
 
-/* Minimal pure-LVGL proof that the render + flush pipeline is alive. */
+/* M1: the JS demo owns the screen by default. Set LUME_BOARD_LEGACY_DEMO=1
+ * to restore the original pure-LVGL proof screen (no JS handoff). */
+#ifndef LUME_BOARD_LEGACY_DEMO
+#define LUME_BOARD_LEGACY_DEMO 0
+#endif
+
 static void create_demo_ui(void)
 {
+#if LUME_BOARD_LEGACY_DEMO
+    /* Legacy proof that the render + flush pipeline is alive. */
     lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, lv_color_hex(0x0B1E3F), 0);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
@@ -42,6 +49,21 @@ static void create_demo_ui(void)
     lv_label_set_text(label, "Lume M1\nLVGL + QSPI OK");
     lv_obj_set_style_text_color(label, lv_color_white(), 0);
     lv_obj_center(label);
+#else
+    /* Block-scope extern: the ui-bridge component is linked via PRIV_REQUIRES.
+     * Keeping the declaration here makes create_demo_ui the only edit point in
+     * this frozen board file. */
+    extern void lume_ui_bridge_init(void);
+
+    lv_obj_t *scr = lv_screen_active();
+    lv_obj_set_style_bg_color(scr, lv_color_hex(0x0B1E3F), 0);
+    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+
+    /* Yield the screen to the declarative JS demo. This also creates the LVGL
+     * drain timer here, on the main task BEFORE lvgl_task starts -> no race
+     * with a running lv_timer_handler (LV_USE_OS == LV_OS_NONE). */
+    lume_ui_bridge_init();
+#endif
 }
 
 /* LVGL super-loop. M1: all LVGL calls are confined to this task + the ISR
