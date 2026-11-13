@@ -1,0 +1,9 @@
+.direnv
+.vscode/
+build/
+sdkconfig.old
+node_modules/
+dist/
+*.lumepak
+managed_components/
+dependencies.lock
