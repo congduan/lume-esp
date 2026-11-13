@@ -299,6 +299,71 @@ void lume_engine_post_press(uint16_t node_id)
     }
 }
 
+/* __lume_dispatchPress: press event -> JS handler.
+ * __lume_dispatchRemove (r4 P2): after lv_obj_delete() purges the node table,
+ * notify JS to dispose the press handler and any signal-bound effects owned
+ * by that node, so a removed subtree stops posting updates / retaining
+ * closures. Failures are logged, never fatal (removal must not wedge JS). */
+static void dispatch_remove(uint16_t node_id)
+{
+    JSValue global = JS_GetGlobalObject(s_ctx);
+    JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_dispatchRemove");
+    if (JS_IsFunction(s_ctx, fn)) {
+        JSValue arg = JS_NewInt32(s_ctx, node_id);
+        JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 1, &arg);
+        if (JS_IsException(ret)) {
+            dump_js_exception(s_ctx, "__lume_dispatchRemove");
+        }
+        JS_FreeValue(s_ctx, ret);
+        JS_FreeValue(s_ctx, arg);
+    } else {
+        ESP_LOGW(TAG, "remove id=%u: no __lume_dispatchRemove hook",
+                 (unsigned)node_id);
+    }
+    JS_FreeValue(s_ctx, fn);
+    JS_FreeValue(s_ctx, global);
+}
+
+/* r4 P2: LVGL task -> engine task removal latch. Bit latched under a
+ * spinlock; the engine task polls + clears it every loop pass (20ms tick),
+ * so a notice cannot be lost to queue capacity and any subtree size is
+ * covered. Multiple sets of the same id before the poll collapse into one
+ * dispatch — safe, __dispose is idempotent. */
+#define LUME_RM_WORDS ((LUME_MAX_NODES + 31u) / 32u)
+static portMUX_TYPE s_rm_mux = portMUX_INITIALIZER_UNLOCKED;
+static uint32_t s_rm_pending[LUME_RM_WORDS];   /* bits: node ids to dispose */
+
+void lume_engine_mark_removed(uint16_t node_id)
+{
+    if (node_id == 0 || node_id >= LUME_MAX_NODES) {
+        return;
+    }
+    portENTER_CRITICAL(&s_rm_mux);
+    s_rm_pending[node_id / 32u] |= 1u << (node_id % 32u);
+    portEXIT_CRITICAL(&s_rm_mux);
+}
+
+/* Engine-task side: snapshot + clear the latch in one critical section,
+ * then run __lume_dispatchRemove for each latched id. */
+static void drain_removals(void)
+{
+    uint32_t snap[LUME_RM_WORDS];
+    portENTER_CRITICAL(&s_rm_mux);
+    for (unsigned i = 0; i < LUME_RM_WORDS; i++) {
+        snap[i] = s_rm_pending[i];
+        s_rm_pending[i] = 0;
+    }
+    portEXIT_CRITICAL(&s_rm_mux);
+    for (unsigned w = 0; w < LUME_RM_WORDS; w++) {
+        uint32_t bits = snap[w];
+        while (bits) {
+            unsigned bit = __builtin_ctz(bits);
+            bits &= bits - 1;
+            dispatch_remove((uint16_t)(w * 32u + bit));
+        }
+    }
+}
+
 static void dispatch_press(uint16_t node_id)
 {
     JSValue global = JS_GetGlobalObject(s_ctx);
@@ -361,13 +426,16 @@ static void engine_task(void *arg)
 
     for (;;) {
         lume_engine_evt_t evt;
-        if (xQueueReceive(s_evt_queue, &evt, portMAX_DELAY) == pdTRUE) {
+        /* Bounded wait instead of portMAX_DELAY (r4 P2): the timeout is the
+         * poll tick for latched removal notifications (drain_removals). */
+        if (xQueueReceive(s_evt_queue, &evt, pdMS_TO_TICKS(20)) == pdTRUE) {
             ESP_LOGI(TAG, "engine recv evt type=%u id=%u",
                      (unsigned)evt.type, (unsigned)evt.node_id);
             if (evt.type == LUME_EVT_PRESS) {
                 dispatch_press(evt.node_id);
             }
         }
+        drain_removals();
     }
 }
 

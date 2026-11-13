@@ -18,6 +18,7 @@
 #include "esp_log.h"
 #include "lvgl.h"
 #include "lume_ui_bridge.h"
+#include "lume_engine.h"     /* r4 P2: lume_engine_notify_removed() */
 
 static const char *TAG = "lume-ui-bridge";
 #define UI_QUEUE_LEN 32
@@ -177,15 +178,48 @@ static void clear_subtree(lv_obj_t *obj)
     }
 }
 
+/* r4 P2: same subtree walk as clear_subtree(), but recording the node ids
+ * (caller must invoke BEFORE lv_obj_delete() frees the objects). Bounded by
+ * the caller's table; deeper nodes beyond the cap are skipped (M1 UI trees
+ * are tiny; a hard cap keeps the LVGL-task stack flat). */
+static void collect_subtree_ids(lv_obj_t *obj, uint16_t *out, int *count,
+                                int cap)
+{
+    if (obj == NULL || *count >= cap) {
+        return;
+    }
+    uint32_t n = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < n; i++) {
+        collect_subtree_ids(lv_obj_get_child(obj, (int32_t)i), out, count, cap);
+    }
+    uint16_t id = (uint16_t)(uintptr_t)lv_obj_get_user_data(obj);
+    if (id > 0 && id < LUME_MAX_NODES && *count < cap) {
+        out[(*count)++] = id;
+    }
+}
+
 static void apply_remove(const lume_ui_msg_t *m)
 {
     lv_obj_t *obj = get_node(m->node_id);
     if (obj == NULL) {
         return;
     }
+    /* r4 P2: collect the purged subtree's node ids BEFORE deletion (after
+     * lv_obj_delete() the objects are freed and unreadable), then latch each
+     * id into the engine's pending-removal bitmap. The latch covers ALL node
+     * ids (full LUME_MAX_NODES) and can never drop a notice (no queue), so
+     * every removed node gets its JS-side dispose. No JS runs here. */
+    uint16_t purged[LUME_MAX_NODES];
+    int n_purged = 0;
+    collect_subtree_ids(obj, purged, &n_purged, LUME_MAX_NODES);
+
     clear_subtree(obj);   /* purge this node AND every descendant table entry */
     lv_obj_delete(obj);   /* deletes the whole LVGL subtree */
-    ESP_LOGI(TAG, "remove id=%u (subtree purged)", (unsigned)m->node_id);
+    ESP_LOGI(TAG, "remove id=%u (subtree purged, %d js owners)",
+             (unsigned)m->node_id, n_purged);
+    for (int i = 0; i < n_purged; i++) {
+        lume_engine_mark_removed(purged[i]);
+    }
 }
 
 /* LV_EVENT_CLICKED callback — runs on the LVGL task. Reverse channel: post
