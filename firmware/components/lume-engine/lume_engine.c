@@ -15,6 +15,7 @@
  * capped at ~8MB with JS_SetMemoryLimit(); usage accounting relies on
  * js_malloc_usable_size -> heap_caps_get_allocated_size().
  */
+#include <stdlib.h>          /* abort(): boot-stage fail-fast on OOM */
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -30,11 +31,13 @@ static const char *TAG = "lume-engine";
 #define LUME_JS_HEAP_LIMIT (8u * 1024u * 1024u)
 #define ENGINE_TASK_STACK 24576
 #define EVT_QUEUE_LEN 16
+#define EVT_DROP_LOG_EVERY 16   /* one warning per N dropped press events */
 
 static QueueHandle_t s_evt_queue;   /* Queue B: LVGL -> engine */
 static JSRuntime *s_rt;
 static JSContext *s_ctx;
 static uint16_t s_next_node_id;     /* engine-task-only id allocator */
+static uint32_t s_evt_dropped;      /* LVGL-task-only reverse-drop counter */
 
 /* ------------------------------------------------------------------ */
 /* PSRAM-backed allocator for QuickJS-NG (JSMallocFunctions)            */
@@ -123,6 +126,25 @@ static void msg_init(lume_ui_msg_t *m)
     memset(m, 0, sizeof(*m));
 }
 
+/* JS-visible logger (QuickJS-NG's console lives in quickjs-libc, which is not
+ * linked into the firmware). Used by the prelude's drain guard and by M1
+ * self-tests so those events are visible via ESP_LOGI. */
+static JSValue js_log(JSContext *ctx, JSValueConst this_val,
+                      int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) {
+        return JS_UNDEFINED;
+    }
+    const char *s = JS_ToCString(ctx, argv[0]);
+    if (s == NULL) {
+        return JS_EXCEPTION;
+    }
+    ESP_LOGI(TAG, "js: %s", s);
+    JS_FreeCString(ctx, s);
+    return JS_UNDEFINED;
+}
+
 static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
                               int argc, JSValueConst *argv)
 {
@@ -144,7 +166,8 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
     m.node_id = id;
     m.parent_id = (uint16_t)parent;
     if (lume_ui_bridge_post(&m) != 0) {
-        ESP_LOGE(TAG, "createNode: ui queue full (id=%u)", (unsigned)id);
+        ESP_LOGE(TAG, "createNode: ui queue full after retries (id=%u); "
+                      "JS/UI state may diverge", (unsigned)id);
         return JS_ThrowInternalError(ctx, "lume: ui queue full");
     }
     return JS_NewInt32(ctx, id);
@@ -189,7 +212,8 @@ static JSValue js_set_attr(JSContext *ctx, JSValueConst this_val,
     }
 
     if (lume_ui_bridge_post(&m) != 0) {
-        ESP_LOGE(TAG, "setAttr: ui queue full (id=%u)", (unsigned)node_id);
+        ESP_LOGE(TAG, "setAttr: ui queue full after retries (id=%u); "
+                      "JS/UI state may diverge", (unsigned)node_id);
         return JS_ThrowInternalError(ctx, "lume: ui queue full");
     }
     return JS_UNDEFINED;
@@ -208,6 +232,8 @@ static JSValue js_set_press_event(JSContext *ctx, JSValueConst this_val,
     m.op = LUME_OP_SET_PRESS;
     m.node_id = (uint16_t)node_id;
     if (lume_ui_bridge_post(&m) != 0) {
+        ESP_LOGE(TAG, "setPressEvent: ui queue full after retries (id=%u); "
+                      "JS/UI state may diverge", (unsigned)node_id);
         return JS_ThrowInternalError(ctx, "lume: ui queue full");
     }
     return JS_UNDEFINED;
@@ -226,6 +252,8 @@ static JSValue js_remove_child(JSContext *ctx, JSValueConst this_val,
     m.op = LUME_OP_REMOVE;
     m.node_id = (uint16_t)node_id;
     if (lume_ui_bridge_post(&m) != 0) {
+        ESP_LOGE(TAG, "removeChild: ui queue full after retries (id=%u); "
+                      "JS/UI state may diverge", (unsigned)node_id);
         return JS_ThrowInternalError(ctx, "lume: ui queue full");
     }
     return JS_UNDEFINED;
@@ -244,6 +272,8 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_set_press_event, "setPressEvent", 1));
     JS_SetPropertyStr(ctx, lume, "removeChild",
                       JS_NewCFunction(ctx, js_remove_child, "removeChild", 1));
+    JS_SetPropertyStr(ctx, lume, "log",
+                      JS_NewCFunction(ctx, js_log, "log", 1));
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }
@@ -254,8 +284,18 @@ static void register_bindings(JSContext *ctx)
 void lume_engine_post_press(uint16_t node_id)
 {
     lume_engine_evt_t evt = { .type = LUME_EVT_PRESS, .node_id = node_id };
-    if (s_evt_queue != NULL) {
-        xQueueSend(s_evt_queue, &evt, 0);
+    BaseType_t ok = (s_evt_queue != NULL)
+                        ? xQueueSend(s_evt_queue, &evt, 0)
+                        : pdFALSE;
+    if (ok != pdTRUE) {
+        /* Never silently lose a click: count the drop and surface it in the
+         * log periodically so a saturated Queue B is visible on device. */
+        s_evt_dropped++;
+        if (s_evt_dropped == 1 ||
+            (s_evt_dropped % EVT_DROP_LOG_EVERY) == 0) {
+            ESP_LOGW(TAG, "press id=%u dropped: evt queue full (%u total drops)",
+                     (unsigned)node_id, (unsigned)s_evt_dropped);
+        }
     }
 }
 
@@ -291,8 +331,7 @@ static void engine_task(void *arg)
     s_rt = JS_NewRuntime2(&s_psram_mf, NULL);
     if (s_rt == NULL) {
         ESP_LOGE(TAG, "JS_NewRuntime2 (PSRAM allocator) failed");
-        vTaskDelete(NULL);
-        return;
+        abort();                 /* fail-fast: boot abort beats a dead engine */
     }
     JS_SetMemoryLimit(s_rt, LUME_JS_HEAP_LIMIT);
     ESP_LOGI(TAG, "QuickJS heap: PSRAM (MALLOC_CAP_SPIRAM), limit=%u bytes",
@@ -301,9 +340,7 @@ static void engine_task(void *arg)
     s_ctx = JS_NewContext(s_rt);
     if (s_ctx == NULL) {
         ESP_LOGE(TAG, "JS_NewContext failed");
-        JS_FreeRuntime(s_rt);
-        vTaskDelete(NULL);
-        return;
+        abort();
     }
     register_bindings(s_ctx);
     lume_ui_bridge_set_press_sink(lume_engine_post_press);
@@ -337,6 +374,18 @@ static void engine_task(void *arg)
 void lume_engine_start(void)
 {
     s_evt_queue = xQueueCreate(EVT_QUEUE_LEN, sizeof(lume_engine_evt_t));
-    xTaskCreatePinnedToCore(engine_task, "lume-js", ENGINE_TASK_STACK,
-                            NULL, 5, NULL, 1);
+    if (s_evt_queue == NULL) {
+        /* Without this queue the engine task would call xQueueReceive(NULL).
+         * Abort at boot rather than run a silently broken engine. */
+        ESP_LOGE(TAG, "engine_start: evt queue create failed (OOM)");
+        abort();
+    }
+    BaseType_t ok = xTaskCreatePinnedToCore(engine_task, "lume-js",
+                                            ENGINE_TASK_STACK, NULL, 5,
+                                            NULL, 1);
+    if (ok != pdPASS) {
+        ESP_LOGE(TAG, "engine_start: engine task create failed (%d)", (int)ok);
+        abort();
+    }
+    ESP_LOGI(TAG, "engine_start: evt queue=%u, task lume-js up", EVT_QUEUE_LEN);
 }
