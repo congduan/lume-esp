@@ -21,8 +21,11 @@
  * The board's touch IC is a CST9220; the vendor driver is named "cst9217" but
  * the register map is the same family — the chip reports its own project ID.
  *
- * M1: events are fed to LVGL ONLY via the indev read callback. M3 will also
- * post them to the QuickJS engine event queue.
+ * M1: events are fed to LVGL ONLY via the indev read callback (which produces
+ * LV_EVENT_CLICKED -> ui-bridge press_cb -> engine Queue B -> __lume_dispatchPress
+ * -> JS onPress, i.e. real touch already reaches the JS event loop). M3 will
+ * also post raw touch points to the QuickJS engine event queue. The read_cb
+ * emits a throttled (~2 Hz) point log for bring-up observability.
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -46,11 +49,13 @@
 #define TP_ACK             0xAB
 #define TP_FRAME_LEN       10       /* CST9217_MAX_TOUCH_POINTS*5 + 5 */
 #define TP_STATUS_PRESS    0x06
+#define TP_LOG_INTERVAL_MS 500      /* throttled point log: <=1 line / 500ms */
 
 static const char *TAG = "lume-touch";
 static i2c_master_dev_handle_t s_tp;
 static lv_point_t s_last_point = {0};
 static bool s_was_pressed = false;
+static uint32_t s_last_point_log_ms = 0;   /* last throttled point-log tick */
 
 /* Consecutive-read failure budget (esp_lcd_touch.c:315-329 uses the same
  * pattern: a transient bus glitch must not kill an ongoing press, and a
@@ -184,6 +189,18 @@ static void indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
     data->state = LV_INDEV_STATE_PRESSED;
     s_last_point = data->point;
     s_was_pressed = true;
+
+    /* Throttled point log: at most one line per TP_LOG_INTERVAL_MS while the
+     * finger is down, so touch movement is observable without flooding UART on
+     * every indev read (LV_DEF_REFR_PERIOD=33ms). Raw + transformed coords are
+     * both emitted so the mirror_y/swap_xy mapping can be checked on a panel.
+     * CLICKED keeps its own one-shot log in the ui-bridge press_cb. */
+    uint32_t now_ms = lv_tick_get();
+    if ((uint32_t)(now_ms - s_last_point_log_ms) >= TP_LOG_INTERVAL_MS) {
+        s_last_point_log_ms = now_ms;
+        ESP_LOGI(TAG, "touch p=(%d,%d) raw=(%u,%u)",
+                 (int)px, (int)py, (unsigned)tx, (unsigned)ty);
+    }
 }
 
 esp_err_t lume_touch_init(i2c_master_bus_handle_t bus, lv_display_t *disp)
