@@ -114,11 +114,14 @@ static const char *TAG = "lume-pmic-hw";
 #define BAT_DET_ENABLE     (1u << 0)
 #define SHUTDOWN_BIT       (1u << 0)  /* COMMON_CONFIG: soft PWROFF */
 
-/* NULL until init() fully succeeds. s_init_attempted latches one add_device()
- * per process lifetime, so hot-reload runtime resets never re-register the
- * device (register_bindings() calls init() on every fresh runtime). */
+/* NULL until init() fully succeeds. Retry policy (Codex r8 review): a FAILED
+ * init does NOT latch — the next call retries from scratch, so a transient
+ * I2C failure never poisons the PMIC bindings until reboot. A SUCCESSFUL init
+ * latches for the process lifetime: hot-reload runtime resets re-call init()
+ * from register_bindings() and return the already-registered handle without
+ * ever calling add_device() twice. */
 static i2c_master_dev_handle_t s_dev = NULL;
-static bool s_init_attempted = false;
+static bool s_init_ok = false;
 
 /* One-byte register read / write, mirroring lume-board/lume_pmic.c:45-54 and
  * XPowersCommon.tpp:286-326 / :328-372. */
@@ -223,10 +226,9 @@ static int vbus_in(int *out)
 
 int lume_pmic_hw_init(void)
 {
-    if (s_init_attempted) {
+    if (s_init_ok) {
         return s_dev != NULL ? LUME_PMIC_OK : LUME_PMIC_ERR_STATE;
     }
-    s_init_attempted = true;
 
     i2c_master_bus_handle_t bus = lume_board_get_i2c_bus();
     if (bus == NULL) {
@@ -249,14 +251,16 @@ int lume_pmic_hw_init(void)
     uint8_t chip_id = 0;
     int r = axp_read_byte(dev, AXP_IC_TYPE_REG, &chip_id);
     if (r != LUME_PMIC_OK) {
-        /* axp_read_byte already logged the driver failure. The dev handle is
-         * intentionally kept registered, cf. lume-board/lume_pmic.c:85-86. */
+        /* Transient I2C failure: drop the handle so the next init() retry
+         * starts clean (Codex r8 review: no handle leak on partial init). */
+        i2c_master_bus_rm_device(dev);
         return r;
     }
     if (chip_id != AXP_CHIP_ID) {
         ESP_LOGW(TAG, "init: AXP2101 not detected (id=0x%02x, expected 0x%02x); "
                       "telemetry disabled", (unsigned)chip_id,
                       (unsigned)AXP_CHIP_ID);
+        i2c_master_bus_rm_device(dev);
         return LUME_PMIC_ERR_STATE;
     }
 
@@ -266,16 +270,19 @@ int lume_pmic_hw_init(void)
     r = axp_set_bits(dev, AXP_BAT_DET_CTRL, BAT_DET_ENABLE);
     if (r != LUME_PMIC_OK) {
         ESP_LOGW(TAG, "init: enable battery detection (0x68 bit0) failed");
+        i2c_master_bus_rm_device(dev);
         return r;
     }
     r = axp_set_bits(dev, AXP_ADC_CH_CTRL,
                      (uint8_t)(ADC_CH_VBAT | ADC_CH_VBUS | ADC_CH_TDIE));
     if (r != LUME_PMIC_OK) {
         ESP_LOGW(TAG, "init: enable ADC channels (0x30 bits 0/2/4) failed");
+        i2c_master_bus_rm_device(dev);
         return r;
     }
 
-    s_dev = dev;   /* publish only after full success */
+    s_dev = dev;        /* publish only after full success */
+    s_init_ok = true;   /* latch success for the process lifetime */
     ESP_LOGI(TAG, "AXP2101 telemetry ready (chip id 0x%02x)", (unsigned)chip_id);
     return LUME_PMIC_OK;
 }
