@@ -29,6 +29,7 @@
 #include "lume_gpio.h"
 #include "lume_adc.h"
 #include "lume_pmic_hw.h"
+#include "lume_imu_hw.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -569,6 +570,51 @@ static JSValue js_pmic_power_off(JSContext *ctx, JSValueConst this_val,
     return JS_NewInt32(ctx, lume_pmic_hw_power_off());
 }
 
+/* ------------------------------------------------------------------ */
+/* lume.imu natives (M2 / r9): QMI8658 accel+gyro, hw in lume-imu     */
+/* ------------------------------------------------------------------ */
+/* Same thread discipline as lume.pmic above: both run ONLY on the engine
+ * task, no lv_*, no new locks, no large buffers. Unlike the int-status
+ * lume.gpio/adc/pmic APIs, read()'s contract is an OBJECT
+ * {ax,ay,az,gx,gy,gz}; the native hardware layer does the raw->physical
+ * conversion (m/s^2, deg/s) and returns an int status. A NON-OK status is
+ * mapped to JS null here (lume-imu already logged an ESP_LOGW) so semantic
+ * failures never abort or throw, consistent with the rest of the lume.*
+ * family. JS_SetPropertyStr consumes each JS_NewFloat64 value.
+ * onMotion() is the exception: it keeps the int-status contract and always
+ * returns -4 (LUME_IMU_ERR_NO_INT) because the board-level INT pin is not
+ * defined this round -- see docs/KNOWN-SIMPLIFICATIONS.md (r9 section). */
+
+static JSValue js_imu_read(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    lume_imu_sample_t s = { 0 };
+    int r = lume_imu_hw_read(&s);
+    if (r != LUME_IMU_OK) {
+        return JS_NULL;
+    }
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "ax", JS_NewFloat64(ctx, (double)s.ax));
+    JS_SetPropertyStr(ctx, obj, "ay", JS_NewFloat64(ctx, (double)s.ay));
+    JS_SetPropertyStr(ctx, obj, "az", JS_NewFloat64(ctx, (double)s.az));
+    JS_SetPropertyStr(ctx, obj, "gx", JS_NewFloat64(ctx, (double)s.gx));
+    JS_SetPropertyStr(ctx, obj, "gy", JS_NewFloat64(ctx, (double)s.gy));
+    JS_SetPropertyStr(ctx, obj, "gz", JS_NewFloat64(ctx, (double)s.gz));
+    return obj;
+}
+
+static JSValue js_imu_on_motion(JSContext *ctx, JSValueConst this_val,
+                                int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_imu_hw_on_motion());
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -638,6 +684,18 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, pmic, "powerOff",
                       JS_NewCFunction(ctx, js_pmic_power_off, "powerOff", 0));
     JS_SetPropertyStr(ctx, lume, "pmic", pmic);
+    /* lume.imu: built inline on the `lume` object, mirroring lume.pmic above
+     * (natives self-register, so the prelude needs no change). One-time
+     * QMI8658 init is idempotent across hot-reload runtime resets and
+     * non-fatal: with no board / undetected IMU, read() returns null and
+     * onMotion() returns -4. JS_SetPropertyStr consumes `imu`. */
+    lume_imu_hw_init();
+    JSValue imu = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, imu, "read",
+                      JS_NewCFunction(ctx, js_imu_read, "read", 0));
+    JS_SetPropertyStr(ctx, imu, "onMotion",
+                      JS_NewCFunction(ctx, js_imu_on_motion, "onMotion", 1));
+    JS_SetPropertyStr(ctx, lume, "imu", imu);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }
