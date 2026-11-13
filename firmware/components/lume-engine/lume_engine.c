@@ -31,6 +31,7 @@
 #include "lume_pmic_hw.h"
 #include "lume_imu_hw.h"
 #include "lume_kv.h"
+#include "lume_net.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -841,6 +842,156 @@ static JSValue js_kv_clear(JSContext *ctx, JSValueConst this_val,
     return JS_NewInt32(ctx, lume_kv_clear());
 }
 
+/* lume.net / lume.net.http natives (M2 / r11): WiFi station + HTTP client,
+ * hardware/net layer in lume-net. Same thread discipline as the lume.* natives
+ * above: all run ONLY on the engine task; lume-net is QuickJS-free and returns
+ * an int status (0 = OK, negative = error code, see lume_net.h); the natives
+ * marshal JS args/values. lume_net_init() runs from register_bindings() on
+ * every fresh runtime; a successful init latches, a failed init is non-fatal
+ * and makes every net API return -3 (lume.pmic/lume.storage.kv-style
+ * degradation). No board is needed for the compile-level path (WiFi lives in
+ * the ESP32-S3 radio); real association is verified by the on-board round.
+ *
+ * status()/httpGet() return OBJECTS on success and a NEGATIVE NUMBER (the
+ * error code) on failure. connect()/disconnect()/init()/deinit() return the
+ * int status directly. Credentials (password) and the http url are NEVER
+ * logged by the native or the lume-net layer. */
+static JSValue js_net_init(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_net_init());
+}
+
+static JSValue js_net_deinit(JSContext *ctx, JSValueConst this_val,
+                             int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_net_deinit());
+}
+
+static JSValue js_net_connect(JSContext *ctx, JSValueConst this_val,
+                              int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 2) {
+        return JS_ThrowTypeError(ctx,
+            "lume.net.connect: expected 2 arguments (ssid, password)");
+    }
+    /* Real byte lengths (JS strings may contain an embedded NUL, which the
+     * lume-net layer rejects as -1). Both C strings are freed immediately. */
+    size_t slen = 0, plen = 0;
+    const char *ssid = JS_ToCStringLen(ctx, &slen, argv[0]);
+    if (ssid == NULL) {
+        return JS_EXCEPTION;
+    }
+    const char *pass = JS_ToCStringLen(ctx, &plen, argv[1]);
+    if (pass == NULL) {
+        JS_FreeCString(ctx, ssid);
+        return JS_EXCEPTION;
+    }
+    int r = lume_net_connect(ssid, slen, pass, plen);
+    JS_FreeCString(ctx, ssid);
+    JS_FreeCString(ctx, pass);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue js_net_disconnect(JSContext *ctx, JSValueConst this_val,
+                                 int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_net_disconnect());
+}
+
+static JSValue js_net_status(JSContext *ctx, JSValueConst this_val,
+                             int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    lume_net_status_t st;
+    int r = lume_net_status(&st);
+    if (r < 0) {
+        return JS_NewInt32(ctx, r);
+    }
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "state", JS_NewInt32(ctx, (int32_t)st.state));
+    JS_SetPropertyStr(ctx, obj, "ip",
+        st.ip[0] ? JS_NewStringLen(ctx, st.ip, strlen(st.ip)) : JS_NULL);
+    return obj;
+}
+
+/* lume.net.httpGet(url, options?) / lume.net.http.get(url, options?).
+ * options: { timeoutMs?: number, responseType?: 'text'|'arraybuffer' }.
+ * Returns { status, body, contentLength, truncated } on a completed transfer,
+ * or a negative error code (number). body is a JS string by default, or an
+ * ArrayBuffer when responseType === 'arraybuffer'. */
+static JSValue js_net_http_get(JSContext *ctx, JSValueConst this_val,
+                               int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.net.httpGet: expected at least 1 argument (url)");
+    }
+    size_t ulen = 0;
+    const char *url = JS_ToCStringLen(ctx, &ulen, argv[0]);
+    if (url == NULL) {
+        return JS_EXCEPTION;
+    }
+    if (memchr(url, '\0', ulen) != NULL) {
+        JS_FreeCString(ctx, url);
+        return JS_NewInt32(ctx, LUME_NET_ERR_ARG);
+    }
+
+    int timeout_ms = LUME_HTTP_TIMEOUT_DEFAULT_MS;
+    bool as_arraybuffer = false;
+    if (argc >= 2 && JS_IsObject(argv[1])) {
+        JSValue t = JS_GetPropertyStr(ctx, argv[1], "timeoutMs");
+        if (!JS_IsUndefined(t) && !JS_IsNull(t)) {
+            int32_t v = 0;
+            if (JS_ToInt32(ctx, &v, t) < 0) {
+                JS_FreeValue(ctx, t);
+                JS_FreeCString(ctx, url);
+                return JS_EXCEPTION;
+            }
+            timeout_ms = v;                 /* lume-net clamps to a safe range */
+        }
+        JS_FreeValue(ctx, t);
+
+        JSValue rt = JS_GetPropertyStr(ctx, argv[1], "responseType");
+        if (JS_IsString(rt)) {
+            const char *s = JS_ToCString(ctx, rt);
+            if (s != NULL) {
+                as_arraybuffer = (strcmp(s, "arraybuffer") == 0);
+                JS_FreeCString(ctx, s);
+            }
+        }
+        JS_FreeValue(ctx, rt);
+    }
+
+    lume_net_http_response_t resp;
+    int r = lume_net_http_get(url, timeout_ms, &resp);
+    JS_FreeCString(ctx, url);
+    if (r < 0) {
+        return JS_NewInt32(ctx, r);
+    }
+
+    /* JS_NewStringLen / JS_NewArrayBufferCopy COPY the bytes, so the native
+     * heap body can be freed right after building the JS value. A zero-length
+     * body still needs a non-NULL source pointer. */
+    const uint8_t *body = resp.body != NULL ? resp.body : (const uint8_t *)"";
+    JSValue body_val = as_arraybuffer
+        ? JS_NewArrayBufferCopy(ctx, body, resp.body_len)
+        : JS_NewStringLen(ctx, (const char *)body, resp.body_len);
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "status", JS_NewInt32(ctx, resp.status));
+    JS_SetPropertyStr(ctx, obj, "body", body_val);
+    JS_SetPropertyStr(ctx, obj, "contentLength",
+                      JS_NewInt64(ctx, resp.content_length));
+    JS_SetPropertyStr(ctx, obj, "truncated", JS_NewBool(ctx, resp.truncated));
+    lume_net_http_free(&resp);
+    return obj;
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -945,6 +1096,43 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_kv_clear, "clear", 0));
     JS_SetPropertyStr(ctx, storage, "kv", kv);
     JS_SetPropertyStr(ctx, lume, "storage", storage);
+    /* lume.net + lume.net.http (M2 / r11): WiFi station + HTTP client, hw in
+     * lume-net. Natives self-register, so the prelude needs no change.
+     * One-time lume_net_init() is idempotent across hot-reload runtime resets
+     * (a successful init latches; a failed init is non-fatal and makes every
+     * net API return -3, like lume.storage.kv). `httpGet` on lume.net is the
+     * primary shape from the brief; lume.net.http.get is the SAME native under
+     * the reserved `http` sub-namespace (brief task 3). JS_SetPropertyStr
+     * consumes `net` and `http`. */
+    lume_net_init();
+    JSValue net = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, net, "init",
+                      JS_NewCFunction(ctx, js_net_init, "init", 0));
+    JS_SetPropertyStr(ctx, net, "deinit",
+                      JS_NewCFunction(ctx, js_net_deinit, "deinit", 0));
+    JS_SetPropertyStr(ctx, net, "connect",
+                      JS_NewCFunction(ctx, js_net_connect, "connect", 2));
+    JS_SetPropertyStr(ctx, net, "disconnect",
+                      JS_NewCFunction(ctx, js_net_disconnect, "disconnect", 0));
+    JS_SetPropertyStr(ctx, net, "status",
+                      JS_NewCFunction(ctx, js_net_status, "status", 0));
+    JS_SetPropertyStr(ctx, net, "httpGet",
+                      JS_NewCFunction(ctx, js_net_http_get, "httpGet", 1));
+    /* The status() state enum, exposed as named numeric constants (mirrors
+     * lume_net.h lume_net_state_t) so JS never hard-codes 0..3. */
+    JS_SetPropertyStr(ctx, net, "DISCONNECTED",
+                      JS_NewInt32(ctx, LUME_NET_DISCONNECTED));
+    JS_SetPropertyStr(ctx, net, "CONNECTING",
+                      JS_NewInt32(ctx, LUME_NET_CONNECTING));
+    JS_SetPropertyStr(ctx, net, "CONNECTED",
+                      JS_NewInt32(ctx, LUME_NET_CONNECTED));
+    JS_SetPropertyStr(ctx, net, "GOT_IP",
+                      JS_NewInt32(ctx, LUME_NET_GOT_IP));
+    JSValue http = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, http, "get",
+                      JS_NewCFunction(ctx, js_net_http_get, "get", 1));
+    JS_SetPropertyStr(ctx, net, "http", http);
+    JS_SetPropertyStr(ctx, lume, "net", net);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }

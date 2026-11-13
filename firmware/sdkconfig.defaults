@@ -35,3 +35,13 @@ CONFIG_LV_COLOR_DEPTH_16=y
 # TF card (SPI mode) support
 CONFIG_FATFS_LFN_STACK=y
 CONFIG_FATFS_MAX_LFN=128
+
+# WiFi station IRAM mitigation (r11): the 16 KB IRAM is 100% full at the r10
+# baseline (16384/16384, Remain 0). esp_wifi's IRAM_OPT/RX_IRAM_OPT place the
+# hot-path functions (libpp.a / libnet80211.a .wifi0iram/.wifirxiram sections)
+# into iram0_text via components/esp_wifi/linker.lf, which would overflow IRAM
+# the moment the WiFi library is linked by lume-net. Disabling both keeps those
+# functions in flash (supported: esp_wifi/Kconfig:274-299, >10K + >17K IRAM
+# saved) at the cost of WiFi throughput. EXTRA_IRAM_OPT / SLP_IRAM_OPT stay off.
+CONFIG_ESP_WIFI_IRAM_OPT=n
+CONFIG_ESP_WIFI_RX_IRAM_OPT=n
