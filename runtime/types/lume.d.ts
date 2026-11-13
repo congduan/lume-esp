@@ -209,6 +209,67 @@ declare namespace lume.imu {
   function onMotion(cb: () => void): number;
 }
 
+/**
+ * NVS-backed persistent key-value store (M2 / r10). Kv ONLY this round;
+ * lume.storage.Fs (LittleFS partition) is a LATER round -- the module layout
+ * reserves the `storage` namespace for both, but only `kv` is implemented.
+ * Natives self-register under lume.storage.kv, so the prelude is unchanged.
+ *
+ * Status contract (returned as a NUMBER): 0 = success, negative = error code
+ * (lume_kv.h: -1 invalid key/value, -2 ESP-IDF nvs_* driver failure, -3 NVS
+ * not available). Semantic failures are logged via ESP_LOGW and returned as
+ * the negative status; they never abort or throw. Calling with too few
+ * arguments throws a TypeError (a QuickJS contract: JS_EXCEPTION always
+ * implies a pending exception).
+ *
+ * DEGRADATION: nvs_flash_init() failure (e.g. the partition table has no NVS
+ * partition) is NON-FATAL and makes ALL five APIs return -3. Init is
+ * idempotent across hot-reload runtime resets and retries on failure. No
+ * board is needed: NVS lives in main flash, so unlike lume.pmic/lume.imu
+ * there is no "no board" path.
+ *
+ * Keys: NVS keys are at most 15 characters (NVS_KEY_NAME_MAX_SIZE 16 incl.
+ * the NUL); empty or longer keys return -1. A single FIXED default namespace
+ * "lume" is used (NVS namespace names are also <= 15 chars); namespace is not
+ * JS-specifiable this round -- see docs/KNOWN-SIMPLIFICATIONS.md (r10).
+ *
+ * Values: one distinct NVS type per JS type so get() can reconstruct it --
+ *   string      -> nvs_set_str  -> NVS_TYPE_STR
+ *   number(int) -> nvs_set_i32  -> NVS_TYPE_I32   (JS_ToInt32 truncation/wrap)
+ *   boolean     -> nvs_set_u8   -> NVS_TYPE_U8
+ *   ArrayBuffer -> nvs_set_blob -> NVS_TYPE_BLOB  (small binary blob)
+ * set() overwriting a key with a different type is handled by NVS. get()
+ * recovers the type with nvs_find_key(). Strings/values are capped at < 4000
+ * bytes (a string of 3999 B + NUL = the NVS single-page string limit; a blob
+ * ~one NVS page in the 24 KB partition). Zero-length blobs, embedded-NUL
+ * strings and unsupported value types (e.g. null/objects) return -1.
+ * remove() of a missing key is idempotent (0); every write is nvs_commit()-ed
+ * so values survive a power cycle (real power-cycle persistence is verified
+ * by the main controller's on-board round, not here).
+ *
+ * NOTE the get()/keys() return unions: on failure they return a NEGATIVE
+ * NUMBER (the error code) rather than a value/array. A stored number can be
+ * negative too, but when NVS is unavailable there are no stored values to
+ * collide with. Callers can distinguish with
+ * `typeof r === 'number' && r < 0` (and keys() with `Array.isArray`).
+ */
+declare namespace lume.storage.kv {
+  /** string | number(int) | boolean | ArrayBuffer (small blob). */
+  type KvValue = string | number | boolean | ArrayBuffer;
+  /** persist a value; 0 on success, negative error code on failure. */
+  function set(key: string, value: KvValue): number;
+  /** the stored value (type preserved), null if the key is absent, or a
+    * negative error code (as a number) on failure. */
+  function get(key: string): KvValue | null | number;
+  /** erase one key (idempotent: a missing key is 0); 0 or negative error. */
+  function remove(key: string): number;
+  /** all keys in the namespace; string[] (empty when none) or a negative
+    * error code (as a number) on failure. */
+  function keys(): string[] | number;
+  /** erase ALL keys in the namespace; 0 or negative error. */
+  function clear(): number;
+}
+
 declare namespace lume {
   const ui: typeof lume.ui;
   const system: typeof lume.system;
@@ -216,5 +277,6 @@ declare namespace lume {
   const adc: typeof lume.adc;
   const pmic: typeof lume.pmic;
   const imu: typeof lume.imu;
+  const storage: typeof lume.storage;
   function start(root: lume.ui.Node): void;
 }
