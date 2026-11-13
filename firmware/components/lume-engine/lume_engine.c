@@ -30,6 +30,7 @@
 #include "lume_adc.h"
 #include "lume_pmic_hw.h"
 #include "lume_imu_hw.h"
+#include "lume_kv.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -615,6 +616,174 @@ static JSValue js_imu_on_motion(JSContext *ctx, JSValueConst this_val,
     return JS_NewInt32(ctx, lume_imu_hw_on_motion());
 }
 
+/* ------------------------------------------------------------------ */
+/* lume.storage.kv natives (M2 / r10): NVS KV store, hw in lume-storage */
+/* ------------------------------------------------------------------ */
+/* Same discipline as the lume.* natives above: all five run ONLY on the
+ * engine task, no lv_*, no new locks (NVS has its own internal lock). The
+ * lume-storage layer is QuickJS-free and returns an int status (0 = OK,
+ * negative = error code, see lume_kv.h); the natives marshal JS args/values.
+ *
+ * Arity errors throw a TypeError (a bare JS_EXCEPTION with no pending
+ * exception is a QuickJS contract violation). Semantic failures (bad key,
+ * over-length value, NVS driver error, NVS unavailable) are returned as a
+ * NEGATIVE NUMBER, never thrown, so the rest of the engine is never aborted
+ * -- consistent with lume.gpio/adc/pmic. When NVS is unavailable every one
+ * of these returns -3 (LUME_KV_ERR_STATE), the lume.pmic-style degradation.
+ *
+ * set(key, value): value string -> nvs_set_str, number -> nvs_set_i32,
+ * boolean -> nvs_set_u8, ArrayBuffer -> nvs_set_blob. JS_IsBool is checked
+ * before JS_IsNumber (booleans are a distinct QuickJS tag). Numbers are
+ * converted with JS_ToInt32 (truncation/wrap, matching the other natives).
+ * get(key): a value (string/number/bool/ArrayBuffer), JS_NULL when the key
+ * is absent, or a negative error code as a NUMBER on failure. keys() returns
+ * a string[] (empty array when the namespace is empty) or a negative error
+ * code as a NUMBER. The value/error-code NUMBER overlap in get()/keys() is
+ * documented in lume.d.ts; note a failed NVS means there are no stored
+ * values to collide with anyway.
+ *
+ * lume_kv_init() runs from register_bindings() on every fresh runtime; a
+ * successful init is latched (idempotent across hot-reload runtime resets)
+ * and a failed one retries on the next pass. No board is needed: NVS is in
+ * main flash, so unlike lume.pmic/lume.imu there is no "no board" path --
+ * only a missing/broken NVS partition, which degrades to -3. */
+
+static JSValue js_kv_set(JSContext *ctx, JSValueConst this_val,
+                         int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 2) {
+        return JS_ThrowTypeError(ctx,
+            "lume.storage.kv.set: expected 2 arguments (key, value)");
+    }
+    const char *key = JS_ToCString(ctx, argv[0]);
+    if (key == NULL) {
+        return JS_EXCEPTION;
+    }
+
+    int r;
+    if (JS_IsString(argv[1])) {
+        size_t len = 0;
+        const char *s = JS_ToCStringLen(ctx, &len, argv[1]);
+        if (s == NULL) {
+            JS_FreeCString(ctx, key);
+            return JS_EXCEPTION;
+        }
+        r = lume_kv_set_str(key, s, len);
+        JS_FreeCString(ctx, s);
+    } else if (JS_IsBool(argv[1])) {
+        int b = JS_ToBool(ctx, argv[1]);
+        r = (b < 0) ? LUME_KV_ERR_ARG
+                    : lume_kv_set_bool(key, b != 0);
+    } else if (JS_IsNumber(argv[1])) {
+        int32_t n = 0;
+        if (JS_ToInt32(ctx, &n, argv[1]) < 0) {
+            JS_FreeCString(ctx, key);
+            return JS_EXCEPTION;
+        }
+        r = lume_kv_set_int(key, n);
+    } else if (JS_IsArrayBuffer(argv[1])) {
+        size_t len = 0;
+        uint8_t *data = JS_GetArrayBuffer(ctx, &len, argv[1]);
+        r = lume_kv_set_blob(key, data, len);
+    } else {
+        r = LUME_KV_ERR_ARG;    /* unsupported value type (null/object/...) */
+    }
+    JS_FreeCString(ctx, key);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue js_kv_get(JSContext *ctx, JSValueConst this_val,
+                         int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.storage.kv.get: expected 1 argument (key)");
+    }
+    const char *key = JS_ToCString(ctx, argv[0]);
+    if (key == NULL) {
+        return JS_EXCEPTION;
+    }
+
+    lume_kv_value_t v;
+    int r = lume_kv_get(key, &v);
+    JS_FreeCString(ctx, key);
+    if (r < 0) {
+        return JS_NewInt32(ctx, r);
+    }
+
+    JSValue ret;
+    switch (v.type) {
+    case LUME_KV_T_NONE: ret = JS_NULL; break;
+    case LUME_KV_T_INT:  ret = JS_NewInt32(ctx, v.i); break;
+    case LUME_KV_T_BOOL: ret = JS_NewBool(ctx, v.i != 0); break;
+    case LUME_KV_T_STR:  ret = JS_NewStringLen(ctx, (const char *)v.buf, v.len); break;
+    case LUME_KV_T_BLOB: ret = JS_NewArrayBufferCopy(ctx, v.buf, v.len); break;
+    default:             ret = JS_NewInt32(ctx, LUME_KV_ERR_DRIVER); break;
+    }
+    /* STR/BLOB buffers are heap-owned by the native; JS_NewStringLen /
+     * JS_NewArrayBufferCopy copy the bytes, so it is safe to free now. */
+    lume_kv_value_free(&v);
+    return ret;
+}
+
+static JSValue js_kv_remove(JSContext *ctx, JSValueConst this_val,
+                            int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.storage.kv.remove: expected 1 argument (key)");
+    }
+    const char *key = JS_ToCString(ctx, argv[0]);
+    if (key == NULL) {
+        return JS_EXCEPTION;
+    }
+    int r = lume_kv_remove(key);
+    JS_FreeCString(ctx, key);
+    return JS_NewInt32(ctx, r);
+}
+
+/* keys() builds a JS array via a callback: lume_kv_keys() owns the NVS
+ * iterator and calls this once per key (engine-task-only, so no reentrancy). */
+typedef struct {
+    JSContext *ctx;
+    JSValue    arr;
+    uint32_t   idx;
+} kv_keys_ctx_t;
+
+static void kv_keys_emit(void *arg, const char *key)
+{
+    kv_keys_ctx_t *c = (kv_keys_ctx_t *)arg;
+    JS_SetPropertyUint32(c->ctx, c->arr, c->idx++,
+                         JS_NewString(c->ctx, key));
+}
+
+static JSValue js_kv_keys(JSContext *ctx, JSValueConst this_val,
+                          int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    kv_keys_ctx_t c = { ctx, JS_NewArray(ctx), 0 };
+    int r = lume_kv_keys(kv_keys_emit, &c);
+    if (r < 0) {
+        JS_FreeValue(ctx, c.arr);
+        return JS_NewInt32(ctx, r);
+    }
+    return c.arr;
+}
+
+static JSValue js_kv_clear(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_kv_clear());
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -696,6 +865,29 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, imu, "onMotion",
                       JS_NewCFunction(ctx, js_imu_on_motion, "onMotion", 1));
     JS_SetPropertyStr(ctx, lume, "imu", imu);
+    /* lume.storage.kv (M2 / r10): NVS-backed persistent KV store, hw in
+     * lume-storage. Nested one level deeper than gpio/adc/pmic/imu: the
+     * module layout reserves lume.storage for Kv (this round) and Fs
+     * (LittleFS, a LATER round). Natives self-register, so the prelude needs
+     * no change. One-time nvs_flash_init + nvs_open is idempotent across
+     * hot-reload runtime resets and non-fatal: with no NVS partition (or a
+     * failed init) every kv call returns -3. JS_SetPropertyStr consumes both
+     * `kv` and `storage`. */
+    lume_kv_init();
+    JSValue storage = JS_NewObject(ctx);
+    JSValue kv = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, kv, "set",
+                      JS_NewCFunction(ctx, js_kv_set, "set", 2));
+    JS_SetPropertyStr(ctx, kv, "get",
+                      JS_NewCFunction(ctx, js_kv_get, "get", 1));
+    JS_SetPropertyStr(ctx, kv, "remove",
+                      JS_NewCFunction(ctx, js_kv_remove, "remove", 1));
+    JS_SetPropertyStr(ctx, kv, "keys",
+                      JS_NewCFunction(ctx, js_kv_keys, "keys", 0));
+    JS_SetPropertyStr(ctx, kv, "clear",
+                      JS_NewCFunction(ctx, js_kv_clear, "clear", 0));
+    JS_SetPropertyStr(ctx, storage, "kv", kv);
+    JS_SetPropertyStr(ctx, lume, "storage", storage);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }
