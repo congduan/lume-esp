@@ -108,4 +108,59 @@ Owner：主控接板后跑，M1 不据此验收。
 - **roadmap 不勾选**：M2 第一行「GPIO / PWM / ADC bindings」**保持未勾选**，
   等下轮把 GPIO/PWM/ADC 合并 review 后再一起勾，不在本轮单独勾。
 
+## r8 / M2 AXP2101 电源绑定（lume.pmic）取舍
+
+本轮补上 M2 第二行「AXP2101 power bindings (battery telemetry, power off/reboot)」的
+遥测 + powerOff 部分。以下按 M1/M2 口径从简，真机电池读数 / powerOff 行为验收留主控接板轮
+（本轮无板，验收 = 编译绿 + size 达标 + 寄存器事实逐条对照 XPowersLib 自查）。
+
+- **温度通道：纳入，但只暴露原始 ADC 值**。先实证 `XPowersAXP2101.tpp:2216-2219`
+  `enableTemperatureMeasure()`（0x30 bit4）与 `:2226-2230` `getTemperature()`
+  （0x3C/0x3D 的 H6L8），确认后纳入。但绑定返回 **14-bit raw**（`dieTempRaw()`），
+  不套 `XPOWERS_AXP2101_CONVERSION(raw) = 22.0 + (7274 - raw)/20.0 [°C]`
+  （`AXP2101Constants.h:241`）：一是该线性拟合是库级经验式，绝对精度必须接板实测；
+  二是换算成 °C×10 后在 0°C 以下会得到负值，与「负数 = 错误码」契约冲突。换算公式
+  写在 `runtime/types/lume.d.ts` 交给 JS 侧，接板验证后再决定是否下沉到 C。
+- **充电参数一律不写**：不给 0x61/0x62/0x63/0x64（预充/恒流/截止/目标电压）、
+  0x18/0xA2（充电 / fuel gauge 开关）等寄存器拍脑袋写值——板子电池策略未知，乱写会
+  烧充电配置。init 只做两处**测量使能**写（OR-only、幂等、一次）：`BAT_DET_CTRL`
+  (0x68) bit0 与 `ADC_CHANNEL_CTRL` (0x30) bit0/2/4（VBAT/VBUS/die temp）。
+  `powerOff()` 只写 `COMMON_CONFIG` (0x10) bit0（soft PWROFF，`tpp:393-396`），
+  且是 OR-only 保留其它位（含 bit1「Restart the SoC」）。**本轮不做 reboot**：
+  `esp_restart` 属 `lume.system` 命名空间，下一刀再说（已查 `lume.system` 目前只有
+  `log()`，无 reboot/restart 绑定）。
+- **I2C 并发结论：驱动自带锁，无需本层加锁**。引擎任务读 PMIC 时 LVGL 任务正在同一
+  bus 上轮询触摸。实证 ESP-IDF v5.5.5：`docs/en/api-reference/peripherals/i2c.rst:652-663`
+  明确「I2C master operation functions are also guaranteed to be thread safe by bus
+  operation semaphore」，列表含 `i2c_master_transmit` / `i2c_master_transmit_receive`；
+  `components/esp_driver_i2c/i2c_master.c:1007-1039` 的
+  `s_i2c_synchronous_transaction()` 在触碰共享 bus 状态前 take `bus_lock_mux`
+  （`:1097-1099` 创建），成功 `:1031` / 失败 `:1037` 归还；`:1200-1202`
+  `i2c_master_bus_add_device()` 插设备链表也持同一把锁。故硬件层无锁，
+  `lume_board_get_i2c_bus()` 返回的是 board 持有的**同一个**句柄（不是
+  `i2c_master_get_bus_handle()` 那种同端口另取句柄，`i2c_master.h:349` 的
+  「can't be used concurrently」警告不适用）。共享 bus 句柄导出 = lume-board 最小 diff：
+  只加 static 句柄 + getter，不动初始化顺序、不动 `lume_pmic.c` 显示上电逻辑。
+- **简报硬件事实的一处纠正（已实证）**：简报写「STATUS1 (0x00) bit4 = VBUS in」是错的。
+  `tpp:256-259` `getBatfetState()` 才是 STATUS1 bit4（BATFET state）；VBUS 在位是
+  STATUS1 **bit5** `VBUS_GOOD`（`tpp:251-254`）且 `!STATUS2 bit3` VINDPM
+  （`isVbusIn()` `tpp:307-310`），AXP2101 datasheet REG00/REG01 位表
+  （6.13.2.1 / 6.13.2.2）一致。电池在位 = STATUS1 bit3（`tpp:262-265`）。
+  `chargingStatus()` 取 `STATUS2[2:0]`（`tpp:312-318`，0..5 充电态枚举 `tpp:81-87`），
+  不是 `isCharging()` 的 `[6:5]` 电流方向位。
+- **无板不验证项（接板后由主控轮实测）**：① VBAT 读数按库用 `readRegisterH5L8`
+  （`XPowersCommon.tpp:426-432`，13-bit 有效），而 datasheet REG34 描述的是 14-bit
+  `vbat[13:8]` + `vbat[7:0]`，库自身丢弃了最高位——单节锂电 3~4.2V 范围内无影响，
+  但口径差异留档；② REG A4 电量百分比依赖 OTP 默认的 fuel gauge 是否使能，本轮不使能
+  也不校验其有效性位；③ die temp 线性拟合的绝对精度；④ `isVbusIn()` 里 VINDPM
+  条件对「USB 插入」判定的影响；⑤ `powerOff()` 后 PMIC 实际断电行为与所需延时。
+  真实读数（mV / % / 充电态 / 温度）精度一律留接板验收。
+- **单一 dev handle + 一次 init**：`lume_pmic_hw_init()` 由 `register_bindings()`
+  调用（引擎任务、每轮 runtime 都调），用 `s_init_attempted` 闩锁保证进程生命周期内
+  只 `add_device()` 一次（热更新 runtime 重置不会重复挂设备），状态像 lume-adc 一样
+  跨重载常驻。init 失败（无板 / CHIP_ID≠0x4A）**非 fatal**，只 WARN，`s_dev` 保持
+  NULL，所有 `lume.pmic.*` 调用返回 `-3`。
+- **roadmap 不勾选**：M2 第二行「AXP2101 power bindings」**保持未勾选**，等 review
+  通过合并后再勾（与本轮 r7 的处理一致）。
+
 其余架构取舍见 `docs/reactivity-design.md` §3。
