@@ -27,6 +27,7 @@
 #include "lume_ui_bridge.h"
 #include "lume_scripts.h"
 #include "lume_gpio.h"
+#include "lume_adc.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -417,6 +418,77 @@ static JSValue js_gpio_pwm_free(JSContext *ctx, JSValueConst this_val,
     return JS_NewInt32(ctx, lume_gpio_pwm_free(pin));
 }
 
+/* ------------------------------------------------------------------ */
+/* lume.adc natives (M2): ADC1 oneshot, hardware in lume-adc          */
+/* ------------------------------------------------------------------ */
+/* Same discipline as lume.gpio above: all four run ONLY on the engine task,
+ * arity errors throw a TypeError, semantic range / driver / state checks live
+ * in lume-adc which returns an int status (0 = OK, negative = error code, see
+ * lume_adc.h). That status is returned to JS as a NUMBER, so semantic
+ * failures never abort or throw. readRaw()/readMv() return a non-negative
+ * measurement on success; negatives are errors. */
+
+static JSValue js_adc_config(JSContext *ctx, JSValueConst this_val,
+                             int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin, atten;
+    if (argc < 2) {
+        return JS_ThrowTypeError(ctx,
+            "lume.adc.config: expected 2 arguments (pin, atten)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &atten, argv[1]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_adc_config(pin, atten));
+}
+
+static JSValue js_adc_read_raw(JSContext *ctx, JSValueConst this_val,
+                               int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin;
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.adc.readRaw: expected 1 argument (pin)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_adc_read_raw(pin));
+}
+
+static JSValue js_adc_read_mv(JSContext *ctx, JSValueConst this_val,
+                              int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin;
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.adc.readMv: expected 1 argument (pin)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_adc_read_mv(pin));
+}
+
+static JSValue js_adc_free(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin;
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.adc.free: expected 1 argument (pin)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_adc_free(pin));
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -451,6 +523,19 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, gpio, "pwmFree",
                       JS_NewCFunction(ctx, js_gpio_pwm_free, "pwmFree", 1));
     JS_SetPropertyStr(ctx, lume, "gpio", gpio);
+    /* lume.adc: built inline on the `lume` object, mirroring lume.gpio above
+     * (natives self-register, so the prelude needs no change).
+     * JS_SetPropertyStr consumes `adc`. */
+    JSValue adc = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, adc, "config",
+                      JS_NewCFunction(ctx, js_adc_config, "config", 2));
+    JS_SetPropertyStr(ctx, adc, "readRaw",
+                      JS_NewCFunction(ctx, js_adc_read_raw, "readRaw", 1));
+    JS_SetPropertyStr(ctx, adc, "readMv",
+                      JS_NewCFunction(ctx, js_adc_read_mv, "readMv", 1));
+    JS_SetPropertyStr(ctx, adc, "free",
+                      JS_NewCFunction(ctx, js_adc_free, "free", 1));
+    JS_SetPropertyStr(ctx, lume, "adc", adc);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }
