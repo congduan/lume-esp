@@ -273,6 +273,96 @@ declare namespace lume.storage.kv {
   function clear(): number;
 }
 
+/**
+ * WiFi station + basic HTTP client bindings (M2 / r11). Station-only,
+ * WPA2-PSK only, http:// this round; smartconfig / softAP / BLE coexistence /
+ * WPA3-Enterprise are NOT exposed. Natives self-register under lume.net and
+ * lume.net.http (prelude unchanged).
+ *
+ * Status contract (returned as a NUMBER for the int-style APIs), mirrors
+ * lume.storage.kv (r10) / lume.pmic: 0 = success, negative = error code
+ * (lume_net.h: -1 invalid ssid/password/url/options, -2 ESP-IDF wifi/netif/
+ * event/http_client driver failure, -3 WiFi not initialized / not connected
+ * with an IP -- the UNIFORM degradation path). Semantic failures are logged
+ * via ESP_LOGW and returned as the negative status; they never abort or throw.
+ * Calling with too few arguments throws a TypeError (QuickJS contract).
+ *
+ * DEGRADATION: lume_net_init() runs from register_bindings() on every fresh
+ * runtime; it is idempotent (a successful init latches for the process
+ * lifetime, a failed init does NOT latch and retries on the next runtime reset)
+ * and non-fatal. With a missing NVS partition / failed WiFi init, EVERY net
+ * API (except init) returns -3 and never crashes. httpGet additionally needs
+ * state GOT_IP (a usable IPv4), else -3.
+ *
+ * Credentials (password) are NEVER logged; the url is never logged either
+ * (query strings may carry secrets). SSID <= 32 bytes, password 8..63 bytes
+ * (WPA2-PSK), embedded NUL rejected with -1.
+ *
+ * THREAD NOTE (verified against ESP-IDF v5.5.5 source): WIFI_EVENT/IP_EVENT
+ * handlers run on the dedicated "sys_evt" task (core 0), NOT the engine task
+ * (core 1); the shared connection state is guarded by a portMUX spinlock
+ * critical section. httpGet is SYNCHRONOUS and blocks the engine task for up
+ * to timeoutMs (hot-reload/touch events stall meanwhile) -- an async/callback
+ * version is a LATER round (docs/KNOWN-SIMPLIFICATIONS.md r11).
+ *
+ * Real WiFi association / HTTP transfer is NOT verified this round (compile +
+ * size + ESP-IDF API self-check only); on-board acceptance is deferred to the
+ * main controller's board round.
+ */
+declare namespace lume.net {
+  /** status().state enum values, also exposed as lume.net.DISCONNECTED etc. */
+  const DISCONNECTED: 0;
+  const CONNECTING: 1;
+  const CONNECTED: 2;   /* associated, DHCP pending (no IP yet) */
+  const GOT_IP: 3;      /* has an IPv4 address, usable for httpGet */
+  type NetState = 0 | 1 | 2 | 3;
+
+  interface NetStatus {
+    state: NetState;
+    /** dotted IPv4 string, or null when the station has no IP yet. */
+    ip: string | null;
+  }
+
+  type HttpBody = string | ArrayBuffer;
+  interface HttpGetOptions {
+    /** network timeout in ms; <=0 -> 5000, clamped to 30000. */
+    timeoutMs?: number;
+    /** 'text' (default) -> string body; 'arraybuffer' -> ArrayBuffer body. */
+    responseType?: 'text' | 'arraybuffer';
+  }
+  interface HttpResponse {
+    /** HTTP status code (200/404/...). A 404 is a SUCCESS result, not an error. */
+    status: number;
+    /** response body; string by default, ArrayBuffer when requested. Capped
+      * at 32 KB; if longer, `truncated` is true and body is truncated. */
+    body: HttpBody;
+    /** Content-Length from the server (may be -1 / larger than body). */
+    contentLength: number;
+    /** true when the body exceeded the 32 KB native cap. */
+    truncated: boolean;
+  }
+
+  /** One-time WiFi station setup (idempotent, latches on success). 0 or -2/-3. */
+  function init(): number;
+  /** Tear down the station and allow a later re-init. 0 or -3 when not up. */
+  function deinit(): number;
+  /** Non-blocking WPA2-PSK connect. Returns 0 immediately; poll status() for
+    * DISCONNECTED -> CONNECTING -> CONNECTED -> GOT_IP. 0 or negative error. */
+  function connect(ssid: string, password: string): number;
+  /** Disconnect (non-blocking; the DISCONNECTED event clears state/IP). */
+  function disconnect(): number;
+  /** Snapshot state + IP; negative error code (number) when WiFi is not up. */
+  function status(): NetStatus | number;
+  /** Synchronous oneshot HTTP GET, primary shape. Object on a completed
+    * transfer, negative error code (number) on failure / WiFi down. */
+  function httpGet(url: string, options?: HttpGetOptions): HttpResponse | number;
+
+  /** Reserved `http` sub-namespace: get() is the SAME native as httpGet(). */
+  namespace http {
+    function get(url: string, options?: HttpGetOptions): HttpResponse | number;
+  }
+}
+
 declare namespace lume {
   const ui: typeof lume.ui;
   const system: typeof lume.system;
@@ -281,5 +371,6 @@ declare namespace lume {
   const pmic: typeof lume.pmic;
   const imu: typeof lume.imu;
   const storage: typeof lume.storage;
+  const net: typeof lume.net;
   function start(root: lume.ui.Node): void;
 }
