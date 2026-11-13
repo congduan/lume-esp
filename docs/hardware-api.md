@@ -39,6 +39,27 @@ partition) is a **later round**; the "NVS KV store + LittleFS partition" roadmap
 line stays unchecked. See `docs/KNOWN-SIMPLIFICATIONS.md` (r10 section) for the
 namespace/key/blob tradeoffs and the NVS partition evidence.
 
+r11 implementation note: `lume/net` is now implemented as the **WiFi station +
+basic HTTP client** part of the `lume/net` row (Wifi + Http; Ble remains a
+design-only entry). New component `firmware/components/lume-net/`, natives
+self-register under `lume.net` (`init/deinit/connect/disconnect/status`,
+`DISCONNECTED/CONNECTING/CONNECTED/GOT_IP`, `httpGet`) and `lume.net.http.get`
+(alias of `httpGet`); prelude unchanged. Station-only / WPA2-PSK only,
+`connect()` is non-blocking and `status()` polls the event-driven state
+(`{state, ip}`). `httpGet()` is a **synchronous** oneshot GET returning
+`{status, body, contentLength, truncated}` (body = string or ArrayBuffer),
+with a timeout and a 32 KB body cap. All APIs degrade to the r10-style
+negative error codes (`-1` arg, `-2` driver, `-3` state) when WiFi is not up /
+has no IP. Verified facts before coding: NVS init timing (register_bindings),
+WIFI/IP event handlers run on the dedicated `sys_evt` task (core 0), not the
+engine task (core 1) — state is guarded by a portMUX critical section. WiFi's
+IRAM speed optimizations are disabled in sdkconfig so the 16 KB IRAM stays at
+16384 bytes (100% full at the r10 baseline). Credentials (password) and urls
+are never logged. Real association / HTTP transfer is **not** verified this
+round (compile + size + ESP-IDF v5.5.5 header/example self-check only); the
+roadmap line stays unchecked for the on-board round. See
+`docs/KNOWN-SIMPLIFICATIONS.md` (r11 section) for the full tradeoff list.
+
 ## Conventions
 
 - Pin numbers are board constants exported from `lume/board` (e.g. `Pins.I2C_SDA`),

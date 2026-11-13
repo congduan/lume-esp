@@ -324,3 +324,125 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   处理一致）。
 
 其余架构取舍见 `docs/reactivity-design.md` §3。
+
+## r11 / M2 WiFi station + HTTP client 绑定（lume.net）取舍
+
+本轮补上 M2「WiFi + HTTP client bindings」行的**代码部分**（新组件
+`lume-net` + `lume.net` / `lume.net.http` 绑定）。自包含、不依赖真机即可编译
+验收：WiFi 在 ESP32-S3 片内射频、不需要外部外设，故与 lume.pmic/lume.imu
+不同，没有「无板」降级路径；唯一失败模式是 NVS 分区缺失 / WiFi 驱动初始化
+失败（收敛到 `-3`）。以下按 M1/M2 口径从简，**真机连 WiFi / HTTP 实测验收
+留主控接板轮**（本轮验收 = 编译绿 + size 达标 + 逐条对照 ESP-IDF v5.5.5
+头文件与官方 `examples/wifi/getting_started/station`、
+`examples/protocols/esp_http_client` 自查）。API 逐条证据见
+`firmware/components/lume-net/include/lume_net.h` 文件头证据表。
+
+- **只做 station / 只做 WPA2-PSK / 不做 smartconfig、softAP、BLE 共存、
+  WPS、enterprise、主动扫描**。这是简报明确允许的简化。`lume_net_connect()`
+  把 `wifi_sta_config_t.threshold.authmode` 写死为 `WIFI_AUTH_WPA2_PSK`
+  （`esp_wifi_types_generic.h:90,370-376`），扫到的 AP 安全级别低于 WPA2
+  不会连；SSID ≤ 32 字节（`MAX_SSID_LEN`，`:1196`，对应 `.ssid[32]`，
+  `:559`）、密码 8..63 字符（WPA2 口径，`.password[64]` `:560` 留 NUL，
+  `MAX_PASSPHRASE_LEN 64` `:1197`），内嵌 NUL / 空 / 超长一律 `-1`。
+  **注意**：sdkconfig 里 `ESP_WIFI_ENABLE_WPA3_SAE / ENTERPRISE_SUPPORT /
+  SOFTAP_SUPPORT` 等仍为 `y`（沿用板厂 BSP 默认值，**没有改**），这些能力
+  编译进了库但 JS 层不暴露、不使用；把这些 config 关掉以砍 Flash 是后续
+  轮的可选优化，本轮为减小 sdkconfig 改动面刻意保留。同理不做断线自动重连
+  （官方 example 的 retry 逻辑未搬）、不做事件回调到 JS（见下）。
+- **NVS 初始化时序（实证，不是猜）**：`lume_net_init()` 由
+  `register_bindings()` 调用（`lume_engine.c` 引擎任务、`engine_task()` 外层
+  循环每次 runtime 都跑，`:1202`）。同一函数里 `lume_kv_init()`（内含
+  `nvs_flash_init()`）在它前面几行先跑（`:933`），故 WiFi 启动时 NVS 已就绪。
+  WiFi 仍需要 NVS（`CONFIG_ESP_WIFI_NVS_ENABLED=y`，存 PHY 校准 / 凭证），
+  因此 `lume_net_init()` **再调一次幂等的 `nvs_flash_init()`**（`nvs_flash.h:78`，
+  `nvs_partition_manager.cpp:41-44` 已注册分区直接 `ESP_OK`）以自包含：即使
+  KV init 失败也不影响。照搬 r10 政策——**成功闩锁进程生命周期、失败不闩锁
+  并在下一次 `register_bindings()` 重试**，且**绝不自动擦除 NVS 分区**（静默
+  擦掉用户数据是数据丢失隐患）。每个 init 步骤都用 `s_*` 闩锁守卫，失败后
+  下一轮「断点续做」，不会重复创建 netif / event loop、不会泄漏。
+- **event handler 任务归属（实证）+ 轻量锁**：`esp_event_loop_create_default()`
+  会 `xTaskCreatePinnedToCore` 一个名为 **`sys_evt`**、绑 **core 0** 的专用任务
+  （`default_event_loop.c:98-104` → `esp_event.c:576-579`），handler 在该任务
+  的 `esp_event_loop_run()` → `handler_execute()` 里被派发（`esp_event.c:676/
+  686/696`）；而引擎任务是 `lume-js`、绑 **core 1**（`lume_engine.c:1327-1329`）。
+  **两者不同任务、不同核**：WIFI_EVENT/IP_EVENT handler（写者）与 `status()` /
+  `httpGet()`（读者）并发访问连接状态。故状态（`s_state` 枚举 + `s_ip4` 原始
+  IPv4）用 `portMUX_TYPE` 自旋锁临界区保护（与 `lume_engine.c` 的 `s_rm_mux`
+  同一轻量模式）；临界区内**只做整数/标志赋值**，IP 字符串在读者侧
+  `esp_ip4addr_ntoa()`（`esp_netif.h:879`）格式化、日志在临界区外打印，杜绝
+  在关中断的临界区里调 libc/ESP_LOG。事件流：`connect()` 设 CONNECTING →
+  `WIFI_EVENT_STA_CONNECTED` 设 CONNECTED（已关联、等 DHCP）→
+  `IP_EVENT_STA_GOT_IP` 设 GOT_IP 并存 IP → `WIFI_EVENT_STA_DISCONNECTED`
+  设 DISCONNECTED 并清 IP。`httpGet()` 仅在 GOT_IP 下放行。
+- **IRAM 16384 硬红线 + sdkconfig 手段（实证）**：r10 基线 IRAM 恰好
+  `16384/16384`（100%，Remain 0，`.text 15356 + .vectors 1028`）。一旦 lume-net
+  引用 `esp_wifi_*`，链接器把 WiFi 库拉进来；`CONFIG_ESP_WIFI_IRAM_OPT=y`、
+  `CONFIG_ESP_WIFI_RX_IRAM_OPT=y`（r10 sdkconfig 默认）会经
+  `components/esp_wifi/linker.lf:25-31,108-151` 把 `libpp.a` / `libnet80211.a`
+  的 `.wifi0iram` / `.wifirxiram` 段塞进 `iram0_text`，必然溢出。故本轮在
+  `firmware/sdkconfig` 与 `firmware/sdkconfig.defaults` 把两者设为 `n`（Kconfig
+  `:274-299` 明示「关掉省 >10K / >17K IRAM，代价是 WiFi 吞吐下降」），
+  `EXTRA_IRAM_OPT` / `SLP_IRAM_OPT` 保持默认关；`ESP_PHY_IRAM_OPT=y` 依
+  `esp_phy/Kconfig:205` 只影响 esp32c2，与本板 esp32s3 无关，不动。构建实测
+  **IRAM 仍为 16384 / 100% / Remain 0，零增量**（若不开这两个 config 链接会
+  因 IRAM 溢出直接失败）。取舍：牺牲 WiFi 吞吐换取不越硬红线，写入 docs。
+- **Flash/DIRAM 增量归因（超出 250KB，按要求解释）**：r10 基线（简报值）
+  Flash Code 844742 / DIRAM 155535 / IRAM 16384 / Total 1154209；开工前实测
+  基线为 844742 / 155535 / 16384 / **1154285**（Total 与简报差 76 B，构建
+  可复现性微差）。r11 实测 Flash Code 1398890 / Flash Data 289920 / DIRAM
+  189523 / IRAM 16384 / Total 1810125 → **Flash Code +554148、DIRAM +33988、
+  IRAM +0、Total +655916**（对实测基线 Total 为 +655840）。简报预估的
+  「+80~150KB」只算了 `libesp_wifi.a` 自身，实际一旦引用 WiFi+HTTP，链接器
+  会把 r10 里被 `--gc-sections` 丢弃的 **整张传递依赖图**拉回来
+  （`idf.py size-components`，Flash Code 列）：
+  `libnet80211.a` 121134、`liblwip.a` 96845、`libmbedcrypto.a` 74339、
+  `libwpa_supplicant.a` 65946、`libpp.a` 56287、`libmbedtls.a` 27345、
+  `libhttp_parser.a` 13832、`libnvs_flash.a` 15531、`libesp_http_client.a`
+  9207、`libesp_netif.a` 6448、`libesp-tls.a` 6424、`libesp_wifi.a` 3753、
+  `libtcp_transport.a` 3683、`liblume-net.a` **2411**。其中 `libnet80211.a`
+  / `libpp.a` 是闭源预编译 WiFi MAC 二进制（≈177KB，不可由 Kconfig 削减），
+  `liblwip.a`（TCP/IP+DHCP，≈97KB）与 WPA2 握手需要的 `libwpa_supplicant.a`
+  / mbedcrypto 也是刚需；故即便关掉 WPA3/enterprise/softAP/HTTPS 也压不到
+  250KB 以内——增量属于「首次链接 WiFi 栈」的一次性固定成本，判定为合理。
+  `liblume-net.a` 自身仅 2411 B。后续轮若真要省 Flash，可关 WPA3/
+  enterprise/softAP 与 ESP_HTTP_CLIENT_ENABLE_HTTPS，但本轮不为省几十 KB
+  去动板厂已验证的 WiFi config（见第一条）。
+- **HTTP 同步、http:// 为主、能力从简**：`httpGet()` 是**同步 oneshot GET**
+  （`esp_http_client_init` → `perform` → `get_status_code` → `cleanup`，
+  `esp_http_client.h:296/327/688/738`），body 经 `HTTP_EVENT_ON_DATA`
+  （`:42,51-59`）累积到一次性 `malloc` 的 32KB 缓冲，超出**截断**并置
+  `truncated:true`（不做无界分配、不返回 chunk 流）。`timeoutMs` 默认 5000、
+  钳到 30000；`responseType:'arraybuffer'` 时 body 为 ArrayBuffer，默认 string。
+  **同步会阻塞引擎任务**：`esp_http_client_perform()` 在超时前不返回，
+  期间热更新 RELOAD / 触摸 PRESS 事件卡在内层事件循环外——本轮按简报允许
+  「先做同步版」，**异步 / 带回调版列后续轮**。HTTP 级状态码（404/500…）是
+  **成功结果**（`out.status`），不是 C 错误码；`headers?` 本轮不解析返回。
+- **HTTPS 未正确配置、http:// 为主**：`CONFIG_ESP_HTTP_CLIENT_ENABLE_HTTPS=y`
+  仍编译进库，但本轮**不挂 `crt_bundle_attach` / `cert_pem`、不开
+  `skip_cert_common_name_check`**，故 https:// 因无 CA 做服务器校验通常握手
+  失败（URL 语法接受 `https://`，但不保证可用）。URL 仅接受
+  `http://`/`https://` 前缀、≤512 字节。真机 HTTPS 能力（cert bundle 或
+  skip CN 等简化）留后续轮。
+- **错误码契约与统一降级（照搬 r10 -1/-2/-3）**：`lume_net.h` 定义
+  `0 OK / -1 ARG / -2 DRIVER / -3 STATE`，与 `lume_kv.h` / `lume.pmic` 同风格。
+  `require_ready()` 把所有入口（init 除外）收敛到 `-3`：WiFi 未初始化 / 驱动
+  init 失败 / 无 IP 时 `connect/status/disconnect/httpGet/deinit` 一律 `-3`，
+  **不 crash、不 abort、不抛异常**；`init()` 失败非 fatal（WARN）、失败不闩锁
+  下轮重试。`status()`/`httpGet()` 成功返回对象、失败返回负数（与
+  `kv.get()`/`keys()` 的对象/负数联合返回值同构）；`init/deinit/connect/
+  disconnect` 直接返回 int 状态码。
+- **凭证与 URL 的日志纪律**：SSID/password 只做校验、拷进**栈上**
+  `wifi_config_t`、`esp_wifi_set_config()` 后立即 `memset` 清零，**绝不进
+  ESP_LOG**（官方 station example 结尾 `ESP_LOGI("SSID:%s password:%s")` 的
+  反模式刻意不抄）；handler 只打状态跃迁与分配到的 IP。**URL 全串不进日志**
+  （query 可能含 token）；docs 提一句：URL 里的敏感 query 参数本层不强制
+  擦洗/脱敏，调用方自行避免在 url 中拼接密钥。
+- **无板不验证项（接板后由主控轮实测）**：① 真实 AP 关联 / DHCP 拿 IP /
+  `status()` 状态机时序；② `httpGet()` 对真实 http:// 服务器的响应、
+  超时、32KB 截断行为；③ 关闭 WiFi IRAM 优化后的实际吞吐；④ https:// 行为
+  与未来 cert bundle 接入；⑤ `connect()` 在 `esp_wifi_start()` 后、STA_START
+  事件已派发的前提下直连的时序（init 在 boot 期 start、app JS 远晚于
+  STA_START 才调 connect；最坏情况 `esp_wifi_connect()` 返回 -2，不 crash）。
+- **roadmap 不勾选**：M2「WiFi + HTTP client bindings」**保持未勾选**，仅追加
+  r11 风格进度注记「r11 代码完成 + 编译绿 + size 达标 + ESP-IDF 自查，真机
+  连网验收留接板轮」——与 r7/r8/r9/r10 处理一致，等主控接板实测通过再勾。
