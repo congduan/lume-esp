@@ -6,6 +6,8 @@
 
 *Declarative UI · Hot reload · Full hardware access — powered by QuickJS-NG + LVGL under the hood*
 
+> **Mission**: bring the most modern frontend technology (declarative components, virtual-DOM diffing, hot reload, TypeScript tooling) to ESP32 — using the *least* possible device resources (QuickJS bytecode, dirty-rect LVGL rendering, PSRAM-managed heaps) — to deliver the *best* embedded development experience (seconds to see a change, zero C toolchain on the app developer's machine).
+
 </div>
 
 ---
