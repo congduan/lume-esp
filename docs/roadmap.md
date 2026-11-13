@@ -7,7 +7,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [ ] QuickJS-NG as IDF component, engine task with PSRAM heap
 - [ ] LVGL integrated as render backend (hidden from JS)
 - [ ] Native bridge: minimal declarative View/Text/Button → lv_obj ops
-- [ ] CST9220 touch events → QuickJS event loop → JS callback
+- [x] CST9220 touch events → QuickJS event loop → JS callback
 - [ ] Hot reload over USB CDC (bytecode push + engine reset)
 - [ ] Demo app: interactive button counter,全程 JS
 
