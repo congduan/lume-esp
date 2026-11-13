@@ -159,11 +159,61 @@ declare namespace lume.pmic {
   function powerOff(): number;
 }
 
+/**
+ * QMI8658 accelerometer + gyroscope bindings (M2 / r9). POLLED-ONLY this
+ * round: lume_pins.h defines no IMU INT pin and the Waveshare official example
+ * for this board polls getDataReady(), so there is no interrupt/event path.
+ *
+ * read() returns an OBJECT (unlike the int-status lume.gpio/adc/pmic APIs):
+ *   {ax, ay, az}  m/s^2  (linear acceleration incl. gravity: ~9.81 on +Z at
+ *                         rest; g -> m/s^2 with the standard 9.80665)
+ *   {gx, gy, gz}  deg/s  (angular rate, the sensor's native dps unit)
+ * The raw->physical scaling is done in NATIVE C (lume-imu), not JS. Config
+ * mirrors the Waveshare SensorQMI8658 GetDataExample: accel +/-4g @ 1000Hz,
+ * gyro +/-64dps @ 896.8Hz, both LPFs on.
+ *
+ * On failure (no board, QMI8658 not detected, I2C error) read() returns null;
+ * the native layer logs an ESP_LOGW. Semantic failures never abort/throw.
+ * read() is deliberately NOT gated on the STATUS0 "new data since last read"
+ * bits, so back-to-back reads always return the latest sample.
+ *
+ * NO BOARD: lume_imu_hw_init() (run from the engine's binding registrar on
+ * every fresh runtime) cannot confirm WHO_AM_I, so read() returns null and
+ * onMotion() returns -4. Init failure is non-fatal (WARN only) and retries on
+ * the next runtime reset; only a successful init latches (r8 lume-pmic policy).
+ *
+ * onMotion(cb) is present for API-shape completeness but UNSUPPORTED this
+ * round: it ALWAYS returns -4 (LUME_IMU_ERR_NO_INT) and never fires cb. The
+ * schematic routes QMI_INT1 -> GPIO17 / QMI_INT2 -> GPIO21, but lume_pins.h
+ * has no board-level IMU INT definition and the INT path cannot be validated
+ * without a board -- deferred to the main controller's on-board round.
+ * See docs/KNOWN-SIMPLIFICATIONS.md (r9 section).
+ *
+ * WHO_AM_I: the bundled Waveshare QMI8658A datasheet + SensorQMI8658 driver
+ * say 0x05; the QMI8658C used on other Waveshare boards says 0xFD (the value
+ * in the brief). init ACCEPTS BOTH (a single 0xFD check would fail on an
+ * A-die board); the two variants share this register map. The detected ID is
+ * logged at init.
+ */
+declare namespace lume.imu {
+  interface ImuSample {
+    /** linear acceleration in m/s^2 (gravity included). */
+    ax: number; ay: number; az: number;
+    /** angular rate in deg/s. */
+    gx: number; gy: number; gz: number;
+  }
+  /** latest 6-axis sample, or null on no board / IMU not initialised / I2C error. */
+  function read(): ImuSample | null;
+  /** UNSUPPORTED (polled-only): always returns -4, cb is never called. */
+  function onMotion(cb: () => void): number;
+}
+
 declare namespace lume {
   const ui: typeof lume.ui;
   const system: typeof lume.system;
   const gpio: typeof lume.gpio;
   const adc: typeof lume.adc;
   const pmic: typeof lume.pmic;
+  const imu: typeof lume.imu;
   function start(root: lume.ui.Node): void;
 }
