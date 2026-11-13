@@ -13,7 +13,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 
 ## M2 — hardware API surface
 - [x] GPIO / PWM / ADC bindings（r6/r7 代码完成 + Codex review 通过；实机采样精度/驱动能力验收待接板）
-- [ ] AXP2101 power bindings (battery telemetry, power off/reboot)
+- [x] AXP2101 power bindings (battery telemetry, power off/reboot)（r8 代码完成 + Codex review P-with-fixes，两条 follow-up 已修并复测；实机电池读数/powerOff 验收待接板。reboot 绑定归 lume.system，后续轮）
 - [ ] QMI8658 IMU bindings (poll + motion interrupt)
 - [ ] WiFi + HTTP client bindings
 - [ ] NVS KV store + LittleFS partition
