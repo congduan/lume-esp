@@ -165,4 +165,81 @@ Owner：主控接板后跑，M1 不据此验收。
 - **roadmap 不勾选**：M2 第二行「AXP2101 power bindings」**保持未勾选**，等 review
   通过合并后再勾（与本轮 r7 的处理一致）。
 
+## r9 / M2 QMI8658 IMU 绑定（lume.imu）取舍
+
+本轮补上 M2 第三行「QMI8658 IMU bindings」的 **polled read** 部分（新组件
+`lume-imu` + `lume.imu` 绑定）。以下按 M1/M2 口径从简，真机 IMU 读数 /
+INT 中断触发验收留主控接板轮（本轮无板，验收 = 编译绿 + size 达标 + 寄存器
+事实逐条对照 Waveshare 官方例程 / QMI8658A datasheet 自查）。寄存器逐条证据
+见 `firmware/components/lume-imu/lume_imu_hw.c` 文件头注释。
+
+- **简报硬件事实的一处纠正（已实证）：WHO_AM_I 不是单值 0xFD**。简报写
+  「WHO_AM_I 校验 0xFD」；但本板随包 Waveshare SensorLib 的
+  `QMI8658Constants.h:43` 定义 `WHOAMI_DEFAULT = 0x05`、
+  `SensorQMI8658.hpp:2000-2004` 的 `initImpl()` 校验 `whoAmI() == 0x05`，
+  随包 `QMI8658A Datasheet Rev A.pdf` Table 21（p.29）明写
+  「Device identifier 0x05」。0xFD 是 **QMI8658C**（schematic 网表页眉写的
+  那个 die，Waveshare 其它板如 ESP32-S3-LCD-1.9 的 `qmi8658c_example`
+  用的就是它）；而 schematic 的料号 U5 标的是 **QMI8658A**，随包手册 /
+  驱动也是 A 版。两种 die 寄存器映射相同、板子实际贴哪片无法在无板条件下
+  判定，故 init **同时接受 0x05 与 0xFD** 并打印实测 ID——只认一个值会在
+  另一片 die 上把绑定判死。这是按「假设可能错先实证」对简报做的纠正，
+  与 r8 纠正 VBUS 在位的处理一致。
+- **本轮 polled-only，不做 onMotion 中断**。schematic 确实把
+  `QMI_INT1 -> GPIO17`、`QMI_INT2 -> GPIO21` 引到了 ESP32-S3，但
+  `lume_pins.h`（简报指定的板级 INT 脚权威来源）**没有定义任何 IMU INT 脚**，
+  Waveshare 随板 `Mylibrary/pin_config.h` 同样没有；本板官方例程
+  `04_LVGL_QMI8658_ui.ino` 是纯 polled（`loop()` 里 `getDataReady()`，从不
+  `enableINT`），带 INT 的 `InterruptExample.ino` 用的是 `IMU_IRQ=33`（属于
+  T-Beam S3 Supreme，不是本板）。按简报「若板卡未引出或定义不明，退化为
+  纯 polled 模式」的取舍，本轮：不写 GPIO17/21 的猜测定义、不装 ISR、
+  不做 ISR->JS 回调派发（无板无法验证 IRQ 极性 / 触发 / 抖动）。
+  `lume.imu.onMotion(cb)` 保留 API 形状但**恒返回 `-4`**
+  （`LUME_IMU_ERR_NO_INT`）+ 一条 WARN，cb 永不触发；d.ts 与 roadmap 均注明
+  其 unsupported。INT 接线 + 事件派发留主控接板轮。
+- **初始化序列对照官方例程，写定值而非读改写**。`SensorQMI8658.hpp` 的
+  `configAccelerometer(ACC_RANGE_4G, ACC_ODR_1000Hz, LPF_MODE_0)` /
+  `configGyroscope(GYR_RANGE_64DPS, GYR_ODR_896_8Hz, LPF_MODE_3)` 拆成最终
+  整字节值，逐位对照 datasheet Table 22 复核后一次性写入：
+  `CTRL1=0x60`（ADDR_AI + BE 默认，INT 脚 high-Z）、`CTRL2=0x13`
+  （±4g / 1000Hz）、`CTRL3=0x23`（±64dps / 896.8Hz）、`CTRL5=0x71`
+  （accel LPF mode0 + gyro LPF mode3，两个 LPF 使能）、`CTRL7=0x03`
+  （aEN+gEN，async，DRDY_DIS 默认 0）。**CTRL7 最后写**（datasheet 9.4/10.4
+  要求配寄存器时传感器须关闭）；**CTRL4/CTRL6 是保留寄存器，不写**。
+  `CTRL8`（CTRL9 handshake）与 `CTRL9`（COPY_USID / USID 读取）是官方
+  `initImpl()` 里可选的 FW 版本日志，本轮不发任何 CTRL9 命令，故一并跳过。
+- **软复位用固定 20ms 延时，不用 0x4D 轮询**。官方 `reset()` 写
+  `RESET(0x60)=0xB0` 后轮询 `0x4D == 0x80`；datasheet Table 27 确认 0xB0
+  （7.4 正文写「0x0B」是笔误，Table 27 + 驱动常量 `RESET_DEFAULT=0xB0`
+  一致），且 3.3.1/7.4 规定复位最多 15ms、期间禁止任何寄存器写，7.4 还提醒
+  `0x4D` 可能已因 POR 呈现 0x80 —— 轮询可能提前退出。故改为
+  `vTaskDelay(20ms)` 的 datasheet 口径等待，再做 WHO_AM_I 校验。
+- **read() 不门控 STATUS0**。`STATUS0(0x2E)` 的 aDA/gDA 位是「自上次读后有
+  新数据」（datasheet Table 24），官方例程在 tight loop 里用 `getDataReady()`
+  避免重复读同一帧；按需调用的 JS `read()` 若门控会让连续两次 read 第二次
+  失败。故直接一次 burst 读 `AX_L..GZ_H` 共 12 字节（ADDR_AI=1，低字节在前、
+  16-bit 补码，datasheet 5.6 / 8.9），输出寄存器始终持有最近一次转换结果。
+  代价：使能后约 150ms 的 gyro turn-on 窗口内数据寄存器可能仍为 0 —— 属
+  「接板后实测」项，不在无板条件下拍脑袋补状态判断。
+- **物理单位换算在 native 完成**：`raw * (range/32768)` 得 g / dps
+  （±4g → 8192 LSB/g、±64dps → 512 LSB/dps，datasheet Table 7/8），再乘
+  标准重力 `9.80665` 把 g 转 m/s²；deg/s 即传感器原生单位，不再换算。
+  ESP32-S3 带 FPU，直接用 `float`，不做 soft-float 假设或定点优化。
+- **read() 的失败契约与其它 lume.\* 不同**：`lume.gpio/adc/pmic` 返回 int
+  状态码；`read()` 按简报必须返回对象，故失败（无板 / 未初始化 / I2C 错误）
+  统一映射到 JS `null`（native 侧已打 WARN，不抛异常、不 abort）。`onMotion()`
+  仍按 int 状态码返回 -4。
+- **单一 dev handle + init 闩锁语义照搬 r8 lume-pmic**：`lume_imu_hw_init()`
+  由 `register_bindings()` 每轮 runtime 调用；**成功**闩锁进程生命周期、
+  **失败**（含 add_device 之后的部分失败）在每条路径
+  `i2c_master_bus_rm_device()` 释放且不闩锁，下一轮重试。init 失败非 fatal，
+  只 WARN；I2C 并发同理依赖 ESP-IDF v5.5.5 的 bus 操作信号量，本层不加锁。
+- **无板不验证项（接板后由主控轮实测）**：① 板上实际 die 是 A(0x05) 还是
+  C(0xFD)；② CTRL1.BE=1 下 12 字节的字节序 / 符号位是否正确；③ 静止时 az
+  是否 ≈ 9.81 m/s²、量程/ODR/LPF 实际效果；④ gyro 150ms turn-on 内首次
+  read 的读数；⑤ INT1/INT2 极性、DRDY 触发与 ISR->JS 派发（本轮未实现）。
+- **roadmap 不勾选**：M2 第三行「QMI8658 IMU bindings」**保持未勾选**，仅追加
+  r8 风格进度注记「r9 代码完成 + Codex review 通过后由主控勾选」，等 review
+  通过合并后再勾（与本轮 r7/r8 的处理一致）。
+
 其余架构取舍见 `docs/reactivity-design.md` §3。

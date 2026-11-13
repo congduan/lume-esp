@@ -23,6 +23,8 @@ lume/gpio       DigitalIn, DigitalOut, Pwm, Adc
 lume/i2c        I2c bus + generic register access
 lume/board      Power (AXP2101), Imu (QMI8658), Audio (ES8311/ES7210),
                 Touch, Display
+lume/imu        QMI8658 accel + gyro: read() polled; motion / data-ready INT
+                deferred until an INT pin is defined in lume_pins.h (r9)
 lume/net        Wifi, Http, Ble
 lume/storage    Kv (NVS), Fs (LittleFS partition)
 lume/system     sleep, reboot, time, timers, log
