@@ -302,9 +302,11 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   返回 null，但**失败时返回负状态码（number）**，`kv.keys()` 成功返回
   string[]、失败返回负状态码（number），以满足简报「所有 kv API 返回统一错误
   码」的降级要求。代价是 get() 的 number 与错误码在类型上重叠（存的 number
-  也可能是负数）——但 NVS 不可用时根本没有已存值可撞，调用方可用
-  `typeof r === 'number' && r < 0` 判别，d.ts 已写明。`remove()` 对缺失键
-  幂等返回 0。
+  也可能是 -1/-2/-3 这些合法负值，NVS 可用时同样会撞码）——**调用方无法可靠
+  区分 get() 的负返回值是存值还是错误码**，这是本契约的已知取舍而非可判别
+  行为：后续轮若需要严格判别，改 get() 失败时抛 JS 异常或返回 `{ok, value}`
+  包装。keys() 无歧义（`Array.isArray` 判别）。`remove()` 对缺失键幂等返回
+  0。
 - **keys() 用 NVS 迭代器 + 回调**，不自建固定容量数组：`nvs_entry_find_in_handle`
   → `nvs_entry_next` → `nvs_entry_info` → `nvs_release_iterator`
   （`nvs.h:757/775/789/799`），引擎侧回调把每个 key 追加进 JS 数组。空

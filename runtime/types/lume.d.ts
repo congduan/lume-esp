@@ -248,10 +248,13 @@ declare namespace lume.imu {
  * by the main controller's on-board round, not here).
  *
  * NOTE the get()/keys() return unions: on failure they return a NEGATIVE
- * NUMBER (the error code) rather than a value/array. A stored number can be
- * negative too, but when NVS is unavailable there are no stored values to
- * collide with. Callers can distinguish with
- * `typeof r === 'number' && r < 0` (and keys() with `Array.isArray`).
+ * NUMBER (the error code) rather than a value/array. A stored number can
+ * also be negative (-1/-2/-3 are legal stored values), so a negative result
+ * from get() is AMBIGUOUS when NVS is available -- it is either a stored
+ * number or an error code, and callers cannot reliably tell them apart.
+ * Treat this as a known tradeoff (see docs/KNOWN-SIMPLIFICATIONS.md r10);
+ * do NOT use `r < 0` as an error discriminator for get(). keys() has no
+ * ambiguity: use `Array.isArray(r)` to detect failure there.
  */
 declare namespace lume.storage.kv {
   /** string | number(int) | boolean | ArrayBuffer (small blob). */
