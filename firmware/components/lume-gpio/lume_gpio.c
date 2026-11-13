@@ -50,6 +50,14 @@ typedef struct {
 } pwm_slot_t;
 static pwm_slot_t s_pwm[LEDC_TIMER_MAX];
 
+/* Last written output level per pin, for toggle() on output-only pads.
+ * gpio_get_level() returns 0 when the pad's input buffer is disabled (which
+ * setPin(pin, OUTPUT, ...) does), so a read-modify-write toggle would stick
+ * at 1 forever. We track the level we last wrote instead; -1 = untracked
+ * (input mode or never written), where falling back to gpio_get_level() is
+ * valid. Engine-task-only state, no locking. */
+static int8_t s_out_level[GPIO_PIN_COUNT];
+
 /* 8-bit resolution: ledc.h states duty range [0, (2**duty_resolution)] i.e.
  * [0, 256]; 256 is the full-duty value. pct ∈ [0,100]. */
 #define PWM_DUTY_MAX (1u << 8)
@@ -100,6 +108,18 @@ int lume_gpio_set_pin(int pin, int mode, int pull)
         return LUME_GPIO_ERR_ARG;
     }
 
+    /* A pad actively driven by LEDC must not be reconfigured behind the
+     * driver's back (gpio_config() would overwrite the IO config while s_pwm
+     * still marks the attachment active). Check BEFORE touching the pad —
+     * the caller must pwmFree() first. */
+    for (int ch = 0; ch < LEDC_TIMER_MAX; ch++) {
+        if (s_pwm[ch].active && s_pwm[ch].pin == pin) {
+            ESP_LOGW(TAG, "setPin: pin %d is PWM-attached on channel %d; "
+                          "call pwmFree first", pin, ch);
+            return LUME_GPIO_ERR_STATE;
+        }
+    }
+
     gpio_config_t io = { 0 };   /* zero-init covers conditional hys_ctrl_mode */
     io.pin_bit_mask  = 1ULL << pin;
     io.mode          = gmode;
@@ -112,6 +132,9 @@ int lume_gpio_set_pin(int pin, int mode, int pull)
                  pin, esp_err_to_name(err));
         return LUME_GPIO_ERR_DRIVER;
     }
+    /* The pad was fully reconfigured: any previously tracked output level is
+     * stale (and unknown for INPUT mode), so drop the cache. */
+    s_out_level[pin] = -1;
     return LUME_GPIO_OK;
 }
 
@@ -131,6 +154,7 @@ int lume_gpio_write(int pin, int level)
                  pin, esp_err_to_name(err));
         return LUME_GPIO_ERR_DRIVER;
     }
+    s_out_level[pin] = (int8_t)level;
     return LUME_GPIO_OK;
 }
 
@@ -149,13 +173,20 @@ int lume_gpio_toggle(int pin)
     if (r != LUME_GPIO_OK) {
         return r;
     }
-    int level = gpio_get_level((gpio_num_t)pin);
+    /* Do NOT read the pad to learn the current level: gpio_get_level()
+     * returns 0 whenever the input buffer is disabled (setPin OUTPUT does
+     * exactly that), so a read-modify-write toggle sticks at 1. Use the
+     * tracked level written by write()/toggle(); fall back to the pad only
+     * if we never wrote it (best-effort). */
+    int level = (s_out_level[pin] >= 0) ? s_out_level[pin]
+                                        : gpio_get_level((gpio_num_t)pin);
     esp_err_t err = gpio_set_level((gpio_num_t)pin, level ? 0u : 1u);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "toggle: gpio_set_level(pin=%d) failed: %s",
                  pin, esp_err_to_name(err));
         return LUME_GPIO_ERR_DRIVER;
     }
+    s_out_level[pin] = level ? 0 : 1;
     return LUME_GPIO_OK;
 }
 
@@ -217,7 +248,20 @@ int lume_gpio_pwm_attach(int pin, int freq_hz, int duty_pct, int channel)
     if (s_pwm[channel].active) {
         ESP_LOGW(TAG, "pwmAttach: re-attach channel %d (pin %d -> %d)",
                  channel, s_pwm[channel].pin, pin);
-        ledc_stop(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
+        /* ledc_stop() only disables the channel's signal output; the OLD pin
+         * stays routed to the LEDC signal in the GPIO matrix (the driver
+         * explicitly allows one channel signal on several pads), so without
+         * a reset the old pad would keep toggling alongside the new one.
+         * gpio_reset_pin() selects the plain GPIO function and disconnects
+         * the matrix route. */
+        esp_err_t stop_err = ledc_stop(LEDC_LOW_SPEED_MODE,
+                                       (ledc_channel_t)channel, 0);
+        if (stop_err != ESP_OK) {
+            ESP_LOGW(TAG, "pwmAttach: ledc_stop(ch=%d) failed: %s",
+                     channel, esp_err_to_name(stop_err));
+            return LUME_GPIO_ERR_DRIVER;
+        }
+        gpio_reset_pin((gpio_num_t)s_pwm[channel].pin);
         s_pwm[channel].active = false;
     }
 
@@ -289,5 +333,31 @@ int lume_gpio_pwm_duty(int pin, int duty_pct)
                  channel, esp_err_to_name(err));
         return LUME_GPIO_ERR_DRIVER;
     }
+    return LUME_GPIO_OK;
+}
+
+int lume_gpio_pwm_free(int pin)
+{
+    int r = check_pin(pin, true);
+    if (r != LUME_GPIO_OK) {
+        return r;
+    }
+    int channel;
+    r = find_channel(pin, &channel);
+    if (r != LUME_GPIO_OK) {
+        return r;
+    }
+    /* Same detach discipline as the re-attach path: ledc_stop() silences the
+     * channel, gpio_reset_pin() un-routes the pad from the LEDC signal so the
+     * pin is a plain (floating, default pull-up) GPIO again. */
+    esp_err_t err = ledc_stop(LEDC_LOW_SPEED_MODE, (ledc_channel_t)channel, 0);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "pwmFree: ledc_stop(ch=%d) failed: %s",
+                 channel, esp_err_to_name(err));
+        return LUME_GPIO_ERR_DRIVER;
+    }
+    gpio_reset_pin((gpio_num_t)pin);
+    s_pwm[channel].active = false;
+    s_out_level[pin] = -1;
     return LUME_GPIO_OK;
 }

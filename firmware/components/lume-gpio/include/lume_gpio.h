@@ -38,6 +38,9 @@ int lume_gpio_toggle(int pin);
 /* LEDC PWM (low-speed mode, 8-bit duty resolution).
  * pwm_attach binds pin -> channel (channel ∈ [0, LEDC_TIMER_MAX-1]) with the
  * given frequency and initial duty percentage (0..100). pwm_duty updates the
- * duty of an already-attached pin at runtime. */
+ * duty of an already-attached pin at runtime. pwm_free releases the pin and
+ * channel (ledc_stop + pad reset, slot marked free). Re-attaching a channel
+ * that was driving a different pin also resets the old pad before reconfig. */
 int lume_gpio_pwm_attach(int pin, int freq_hz, int duty_pct, int channel);
 int lume_gpio_pwm_duty(int pin, int duty_pct);
+int lume_gpio_pwm_free(int pin);

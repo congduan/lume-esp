@@ -293,20 +293,26 @@ static JSValue js_remove_child(JSContext *ctx, JSValueConst this_val,
 /* ------------------------------------------------------------------ */
 /* lume.gpio natives (M2): GPIO + LEDC PWM, hardware in lume-gpio      */
 /* ------------------------------------------------------------------ */
-/* All six run ONLY on the engine task, exactly like the lume.* UI setters
- * above: no lv_*, no new locks, no large buffers. Argument arity/type is
- * validated here with JS_ToInt32 (JS_EXCEPTION on a non-int, mirroring
- * js_set_attr); semantic range checks, the LEDC channel/pin conflict policy,
+/* All seven run ONLY on the engine task, exactly like the lume.* UI setters
+ * above: no lv_*, no new locks, no large buffers. Arity errors throw a
+ * TypeError (a bare JS_EXCEPTION with no pending exception is a contract
+ * violation inside QuickJS); non-numeric args surface the JS_ToInt32 error
+ * as usual. Semantic range checks, the LEDC channel/pin conflict policy,
  * ESP-IDF driver calls and ESP_LOGW logging live in lume-gpio, which returns
  * an int status (0 = OK, negative = error code, see lume_gpio.h). That status
- * is returned to JS as a NUMBER, so a failure never aborts/crashes and never
- * throws. read() returns the 0/1 level on success; negatives are errors. */
+ * is returned to JS as a NUMBER, so semantic failures never abort or throw.
+ * read() returns the 0/1 level on success; negatives are errors. */
+
 static JSValue js_gpio_set_pin(JSContext *ctx, JSValueConst this_val,
                                int argc, JSValueConst *argv)
 {
     (void)this_val;
     int32_t pin, mode, pull;
-    if (argc < 3 || JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+    if (argc < 3) {
+        return JS_ThrowTypeError(ctx,
+            "lume.gpio.setPin: expected 3 arguments (pin, mode, pull)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
         JS_ToInt32(ctx, &mode, argv[1]) < 0 ||
         JS_ToInt32(ctx, &pull, argv[2]) < 0) {
         return JS_EXCEPTION;
@@ -319,7 +325,11 @@ static JSValue js_gpio_write(JSContext *ctx, JSValueConst this_val,
 {
     (void)this_val;
     int32_t pin, level;
-    if (argc < 2 || JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+    if (argc < 2) {
+        return JS_ThrowTypeError(ctx,
+            "lume.gpio.write: expected 2 arguments (pin, level)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
         JS_ToInt32(ctx, &level, argv[1]) < 0) {
         return JS_EXCEPTION;
     }
@@ -331,7 +341,11 @@ static JSValue js_gpio_read(JSContext *ctx, JSValueConst this_val,
 {
     (void)this_val;
     int32_t pin;
-    if (argc < 1 || JS_ToInt32(ctx, &pin, argv[0]) < 0) {
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.gpio.read: expected 1 argument (pin)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0) {
         return JS_EXCEPTION;
     }
     return JS_NewInt32(ctx, lume_gpio_read(pin));
@@ -342,7 +356,11 @@ static JSValue js_gpio_toggle(JSContext *ctx, JSValueConst this_val,
 {
     (void)this_val;
     int32_t pin;
-    if (argc < 1 || JS_ToInt32(ctx, &pin, argv[0]) < 0) {
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.gpio.toggle: expected 1 argument (pin)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0) {
         return JS_EXCEPTION;
     }
     return JS_NewInt32(ctx, lume_gpio_toggle(pin));
@@ -353,7 +371,12 @@ static JSValue js_gpio_pwm_attach(JSContext *ctx, JSValueConst this_val,
 {
     (void)this_val;
     int32_t pin, freq_hz, duty_pct, channel;
-    if (argc < 4 || JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+    if (argc < 4) {
+        return JS_ThrowTypeError(ctx,
+            "lume.gpio.pwmAttach: expected 4 arguments "
+            "(pin, freqHz, dutyPct, channel)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
         JS_ToInt32(ctx, &freq_hz, argv[1]) < 0 ||
         JS_ToInt32(ctx, &duty_pct, argv[2]) < 0 ||
         JS_ToInt32(ctx, &channel, argv[3]) < 0) {
@@ -368,11 +391,30 @@ static JSValue js_gpio_pwm_duty(JSContext *ctx, JSValueConst this_val,
 {
     (void)this_val;
     int32_t pin, duty_pct;
-    if (argc < 2 || JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+    if (argc < 2) {
+        return JS_ThrowTypeError(ctx,
+            "lume.gpio.pwmDuty: expected 2 arguments (pin, dutyPct)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
         JS_ToInt32(ctx, &duty_pct, argv[1]) < 0) {
         return JS_EXCEPTION;
     }
     return JS_NewInt32(ctx, lume_gpio_pwm_duty(pin, duty_pct));
+}
+
+static JSValue js_gpio_pwm_free(JSContext *ctx, JSValueConst this_val,
+                                int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin;
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx,
+            "lume.gpio.pwmFree: expected 1 argument (pin)");
+    }
+    if (JS_ToInt32(ctx, &pin, argv[0]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_gpio_pwm_free(pin));
 }
 
 static void register_bindings(JSContext *ctx)
@@ -406,6 +448,8 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_gpio_pwm_attach, "pwmAttach", 4));
     JS_SetPropertyStr(ctx, gpio, "pwmDuty",
                       JS_NewCFunction(ctx, js_gpio_pwm_duty, "pwmDuty", 2));
+    JS_SetPropertyStr(ctx, gpio, "pwmFree",
+                      JS_NewCFunction(ctx, js_gpio_pwm_free, "pwmFree", 1));
     JS_SetPropertyStr(ctx, lume, "gpio", gpio);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
