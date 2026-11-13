@@ -31,6 +31,14 @@ lume/system     sleep, reboot, time, timers, log
 lume/ui         App, View, Text, Button, Image, List, ... (declarative)
 ```
 
+r10 implementation note: only `lume.storage.kv` (the NVS KV store) is implemented
+this round — `set/get/remove/keys/clear` over string / int / boolean / small
+ArrayBuffer, backed by the `nvs` partition (24 KB @ 0x9000) with a fixed
+namespace `lume` and 15-char keys. `lume.storage.Fs` (LittleFS on the `storage`
+partition) is a **later round**; the "NVS KV store + LittleFS partition" roadmap
+line stays unchecked. See `docs/KNOWN-SIMPLIFICATIONS.md` (r10 section) for the
+namespace/key/blob tradeoffs and the NVS partition evidence.
+
 ## Conventions
 
 - Pin numbers are board constants exported from `lume/board` (e.g. `Pins.I2C_SDA`),

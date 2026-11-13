@@ -242,4 +242,83 @@ INT 中断触发验收留主控接板轮（本轮无板，验收 = 编译绿 + s
   r8 风格进度注记「r9 代码完成 + Codex review 通过后由主控勾选」，等 review
   通过合并后再勾（与本轮 r7/r8 的处理一致）。
 
+## r10 / M2 NVS KV store 绑定（lume.storage.kv）取舍
+
+本轮补上 M2「NVS KV store + LittleFS partition」行的 **Kv 部分**（新组件
+`lume-storage` + 嵌套命名空间 `lume.storage.kv` 绑定）。自包含、不依赖真机：
+NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同，没有「无板」
+降级路径，唯一失败模式是 NVS 分区缺失/初始化失败。以下按 M1/M2 口径从简，
+真机掉电重启后的 kv 持久性验收留主控接板轮（本轮验收 = 编译绿 + size 达标 +
+逐条对照 ESP-IDF v5.5.5 nvs API 自查）。API 逐条证据见
+`firmware/components/lume-storage/include/lume_kv.h` 文件头与 `lume_kv.c` 注释。
+
+- **分区表实证：NVS 分区已存在，无需新增**（按「假设可能错先实证」）。先查
+  `firmware/partitions.csv:2` 再跑 `idf.py partition-table`，输出含
+  `nvs,data,nvs,0x9000,24K` —— 默认 NVS 分区（`NVS_DEFAULT_PART_NAME "nvs"`，
+  `nvs.h:58`）存在且 24 KB，故本轮**不改分区表**。降级路径仍是必需的：
+  `nvs_flash_init()` 可能返回 `ESP_ERR_NVS_PART_NOT_FOUND`（分区被裁掉 /
+  未烧）等错误，此时所有 kv API 统一返回 `-3`。分区表里另有
+  `storage,data,fat,0x750000,1M`，那是留给后续 LittleFS / `lume.storage.Fs`
+  的分区，**本轮不碰、不挂载、不读写**。
+- **固定默认 namespace "lume"，不做 JS 可指定 namespace**。NVS namespace 名
+  与 key 名一样受 `NVS_NS_NAME_MAX_SIZE == NVS_KEY_NAME_MAX_SIZE == 16`（含
+  NUL，即 15 字符，`nvs.h:61-62`）限制。做成 JS 可指定会引入第二个需校验
+  长度的参数，且 `keys()` / `clear()` 的作用域、`nvs_open` 句柄管理都要按
+  namespace 分裂，超出「自包含一刀」的范围；单一固定 namespace 让所有
+  `lume.storage.kv` 键同处一室、`keys()/clear()` 语义无歧义，与
+  `lume.storage.Fs` 的分区级存储也自然分层。留后续轮按需扩展。
+- **key ≤ 15 字符、value < 4000 字节的 native 防御**。key 用
+  `NVS_KEY_NAME_MAX_SIZE(16)-1=15` 实证值卡死，空/超长返回 `-1`；value：
+  `nvs_set_str` 的单页上限是 4000 字节（含 NUL，`nvs.h:294-296`），
+  `nvs_set_blob` 对 24 KB 分区的理论上限约 19 KB（`nvs.h:327-329` 的
+  97.6%×24576−4000），但那远超单页容量、实际会 `NOT_ENOUGH_SPACE`。故本层
+  统一把 string/blob payload 卡在 `< 4000` 字节（string 3999 B + NUL = 4000、
+  blob ≈ 一页），既贴 NVS 文档又防一个条目吃光小分区；`get()` 读侧也复查
+  长度再 malloc，杜绝无界分配。零长 blob、含内嵌 NUL 的 string、不支持的
+  value 类型（null/对象等）一律 `-1`。numbers 经 `JS_ToInt32` 截断/回绕存
+  `i32`（与其它 lume.* 一致）。
+- **每种 JS 类型对应一个独立的 NVS 类型，get() 才能还原类型**：string→
+  `nvs_set_str`(NVS_TYPE_STR 0x21)、number→`nvs_set_i32`(0x14)、
+  boolean→`nvs_set_u8`(0x01)、ArrayBuffer→`nvs_set_blob`(0x42)。
+  `get()` 用 `nvs_find_key()`（`nvs.h:521`）拿类型再分派到对应 `nvs_get_*`；
+  其中 blob 被 `NVSHandleSimple::find_key` 从内部 BLOB_IDX 映射成
+  `NVS_TYPE_BLOB`（`nvs_handle_simple.cpp:77-80` + `nvs_handle.hpp:38`）。
+  已实证 `Storage::writeItem` 在改类型时会用 `ItemType::ANY` 找到旧键、写新
+  类型再删旧条目（`nvs_storage.cpp:445-461, 534-589`），故 `set()` 覆盖不同
+  类型可直接写、无需手动 erase。发现不认识的 NVS 类型（其它固件写的
+  I8/U16/U64…）返回 `-2`，不猜测 JS 类型。
+- **init 失败一律 `-3`，且绝不自动擦除分区**。`nvs_flash_init()` 失败
+  （分区缺失 / `NO_FREE_PAGES` / `NEW_VERSION_FOUND`）是非 fatal 的：只
+  `ESP_LOGW`，`require_ready()` 把所有入口收敛到 `-3`，不 abort、不 crash，
+  与 lume.pmic 的 `-3` 风格一致。**刻意不做**官方例程那套
+  `erase()+retry()`：静默擦掉用户已持久化的 KV 数据是数据丢失隐患，分区损坏
+  应由主控显式处理。init 幂等（`nvs_flash_init` 对已注册分区直接返回 ESP_OK，
+  `nvs_partition_manager.cpp:41-44`），照搬 r8/r9 闩锁语义：**成功**闩锁进程
+  生命周期、**失败**不闩锁并在下一次 `register_bindings()` 重试，故
+  `nvs_open` 不会在活句柄上重复调用。每个写入口都 `nvs_commit()` 保证掉电
+  落盘（持久性真机验收留接板轮）。
+- **get()/keys() 的返回契约与其它 lume.\* 不同**：`lume.gpio/adc/pmic` 返回
+  int 状态码、`lume.imu.read()` 失败返回 null；`kv.get()` 成功返回值 / 缺失
+  返回 null，但**失败时返回负状态码（number）**，`kv.keys()` 成功返回
+  string[]、失败返回负状态码（number），以满足简报「所有 kv API 返回统一错误
+  码」的降级要求。代价是 get() 的 number 与错误码在类型上重叠（存的 number
+  也可能是负数）——但 NVS 不可用时根本没有已存值可撞，调用方可用
+  `typeof r === 'number' && r < 0` 判别，d.ts 已写明。`remove()` 对缺失键
+  幂等返回 0。
+- **keys() 用 NVS 迭代器 + 回调**，不自建固定容量数组：`nvs_entry_find_in_handle`
+  → `nvs_entry_next` → `nvs_entry_info` → `nvs_release_iterator`
+  （`nvs.h:757/775/789/799`），引擎侧回调把每个 key 追加进 JS 数组。空
+  namespace 返回空数组 `[]`。`nvs_entry_next` 到末尾会自己 free 迭代器并置
+  NULL（`nvs_api.cpp:859-864`），`nvs_release_iterator(NULL)` 是 no-op
+  （`:880-883`），无泄漏。NVS 自带内部锁（`nvs_api.cpp` 各 wrapper 的
+  `Lock lock;`），所有入口又只在引擎任务执行，故本层不加锁。
+- **无板不验证项（接板后由主控轮实测）**：① 掉电重启后 kv 的持久性（本轮只
+  保证 `nvs_commit()` 被调用）；② 24 KB 小分区在多条 string/blob 下的实际
+  碎片 / `NOT_ENOUGH_SPACE` 行为；③ 4000 字节 blob 在 6 页分区里的实际可写性；
+  ④ 与将来 WiFi/PHY 等也用默认 `nvs` 分区的组件共享命名空间/条目时的容量。
+- **roadmap 不勾选**：M2「NVS KV store + LittleFS partition」**保持未勾选**，
+  仅追加 r10 风格进度注记「r10 Kv 部分代码完成 + Codex review 通过后由主控
+  勾选」——本轮只做 Kv，LittleFS / `lume.storage.Fs` 未做，不勾整行（与 r7/r8/r9
+  处理一致）。
+
 其余架构取舍见 `docs/reactivity-design.md` §3。

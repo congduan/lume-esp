@@ -16,7 +16,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [x] AXP2101 power bindings (battery telemetry, power off/reboot)（r8 代码完成 + Codex review P-with-fixes，两条 follow-up 已修并复测；实机电池读数/powerOff 验收待接板。reboot 绑定归 lume.system，后续轮）
 - [x] QMI8658 IMU bindings (poll + motion interrupt)（r9 代码完成 + Codex review P-with-fixes（唯一发现：ODR 文档命名 vs 6DOF 有效速率，已修）+ 主控独立复测通过后勾选。polled-only：lume_pins.h 无 IMU INT 定义，运动/数据就绪 INT 中断留接板轮；验收 = 编译绿 + size 达标 + Waveshare 官方例程自查；真机读数验收留接板轮）
 - [ ] WiFi + HTTP client bindings
-- [ ] NVS KV store + LittleFS partition
+- [ ] NVS KV store + LittleFS partition（r10 Kv 部分代码完成 + Codex review 通过后由主控勾选；本轮只做 `lume.storage.kv`（NVS KV），LittleFS / `lume.storage.Fs` 未做，故整行**保持未勾选**。验收 = 编译绿 + size 达标（IRAM 硬红线 16384 不超）+ 对照 ESP-IDF v5.5.5 nvs API 自查；真机掉电重启后的 kv 持久性验收留主控接板轮）
 - [ ] ES8311/ES7210 audio playback/record
 
 ## M3 — declarative UI completeness
