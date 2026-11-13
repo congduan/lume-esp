@@ -3,12 +3,10 @@
 # engine sources directly; HOST tools (qjsc etc.) are NOT built on target.
 idf_component_register(
     SRCS
-        "cutils.c"
         "dtoa.c"
         "libregexp.c"
         "libunicode.c"
         "quickjs.c"
-        "xsum.c"
     INCLUDE_DIRS "."
     PRIV_INCLUDE_DIRS "."
 )
@@ -22,4 +20,5 @@ target_compile_options(${COMPONENT_LIB} PRIVATE
     -Wno-array-bounds -Wno-implicit-const-int-float-conversion
     -Wno-override-init -Wno-unused-function -Wno-unused-variable
     -Wno-implicit-fallthrough -Wno-sign-compare
+    -Wno-error=format
 )
