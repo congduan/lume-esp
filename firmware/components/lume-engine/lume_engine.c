@@ -654,20 +654,24 @@ static JSValue js_imu_on_motion(JSContext *ctx, JSValueConst this_val,
  * (not JS_ToCString) so the real byte length is known, and rejects keys with
  * an embedded NUL: NVS keys are C strings, so "a\0b" would silently shorten
  * to "a" and read/erase the wrong entry (r10 review finding). Returns NULL
- * with a pending exception on failure; caller frees with JS_FreeCString. */
-static const char *kv_key_from_js(JSContext *ctx, JSValueConst v)
+ * with a pending exception on failure; caller frees with JS_FreeCString.
+ * On success sets *ok: true = usable key, false = invalid key (embedded
+ * NUL) which callers map to the contracted LUME_KV_ERR_ARG (-1) return
+ * rather than an exception, matching the empty/over-length key contract. */
+static const char *kv_key_from_js(JSContext *ctx, JSValueConst v, bool *ok)
 {
     size_t klen = 0;
+    *ok = false;
     const char *key = JS_ToCStringLen(ctx, &klen, v);
     if (key == NULL) {
-        return NULL;
+        return NULL;    /* conversion failed: pending exception */
     }
     if (memchr(key, '\0', klen) != NULL) {
         JS_FreeCString(ctx, key);
-        JS_ThrowTypeError(ctx,
-            "lume.storage.kv: key must not contain an embedded NUL");
-        return NULL;
+        ESP_LOGW(TAG, "kv: key contains an embedded NUL");
+        return NULL;    /* *ok == false: map to LUME_KV_ERR_ARG */
     }
+    *ok = true;
     return key;
 }
 
@@ -679,7 +683,11 @@ static JSValue js_kv_set(JSContext *ctx, JSValueConst this_val,
         return JS_ThrowTypeError(ctx,
             "lume.storage.kv.set: expected 2 arguments (key, value)");
     }
-    const char *key = kv_key_from_js(ctx, argv[0]);
+    bool key_ok = false;
+    const char *key = kv_key_from_js(ctx, argv[0], &key_ok);
+    if (key == NULL && !key_ok) {
+        return JS_NewInt32(ctx, LUME_KV_ERR_ARG);
+    }
     if (key == NULL) {
         return JS_EXCEPTION;
     }
@@ -724,7 +732,11 @@ static JSValue js_kv_get(JSContext *ctx, JSValueConst this_val,
         return JS_ThrowTypeError(ctx,
             "lume.storage.kv.get: expected 1 argument (key)");
     }
-    const char *key = kv_key_from_js(ctx, argv[0]);
+    bool key_ok = false;
+    const char *key = kv_key_from_js(ctx, argv[0], &key_ok);
+    if (key == NULL && !key_ok) {
+        return JS_NewInt32(ctx, LUME_KV_ERR_ARG);
+    }
     if (key == NULL) {
         return JS_EXCEPTION;
     }
@@ -759,7 +771,11 @@ static JSValue js_kv_remove(JSContext *ctx, JSValueConst this_val,
         return JS_ThrowTypeError(ctx,
             "lume.storage.kv.remove: expected 1 argument (key)");
     }
-    const char *key = kv_key_from_js(ctx, argv[0]);
+    bool key_ok = false;
+    const char *key = kv_key_from_js(ctx, argv[0], &key_ok);
+    if (key == NULL && !key_ok) {
+        return JS_NewInt32(ctx, LUME_KV_ERR_ARG);
+    }
     if (key == NULL) {
         return JS_EXCEPTION;
     }
