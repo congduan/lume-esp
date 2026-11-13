@@ -8,7 +8,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [ ] LVGL integrated as render backend (hidden from JS)
 - [ ] Native bridge: minimal declarative View/Text/Button → lv_obj ops
 - [x] CST9220 touch events → QuickJS event loop → JS callback（代码链路已通；mirror_y/swap_xy 方向待实机确认）
-- [ ] Hot reload over USB CDC (bytecode push + engine reset)
+- [x] Hot reload over USB CDC（JS 源码推包 + engine runtime 重置；代码链路完整，实机推包验证待接板。bytecode 化留后续）
 - [ ] Demo app: interactive button counter,全程 JS
 
 ## M2 — hardware API surface

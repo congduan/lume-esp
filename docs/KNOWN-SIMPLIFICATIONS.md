@@ -39,4 +39,31 @@ Owner：主控接板后跑，M1 不据此验收。
 - **`console` 不可用**：QuickJS-NG 的 `console` 在 `quickjs-libc`（未链入固件），
   故提供 `lume.log` → `ESP_LOGI` 作为 JS 可见日志通道（prelude guard / 自测用）。
 
+## 热更新通道（r5 / M1）新接受的简化
+
+本轮打通 USB Serial/JTAG（USB CDC）推包链路后，以下行为按 M1 口径从简，**实机推包验证待接板**：
+
+- **无帧超时**：流式解析只靠 "LUME" magic 重同步，没有整体/字节间超时。
+  一帧收了一半而主机停发时，解析器会一直等后续字节，不会主动复位该半帧；坏帧
+  （坏 magic / 零长 / 超限 / 坏 crc）靠扫描下一个 magic 重新同步。
+- **单 staging 槽 + last-wins 合并**：引擎侧只有一个受 mutex 保护的 staging 槽，
+  未被引擎取走的新帧会覆盖旧帧，且 `s_reload_pending` 合并为最多一个排队中的
+  `LUME_EVT_RELOAD`。连续快速推包时只有最后一帧生效，不做逐帧排队/逐帧 ACK。
+- **LVGL 对象不随重载清空 + node id 复用**：按约定「驱动/LVGL/触摸不重启」，
+  `lume-ui-bridge` 的 `s_nodes[]` 表跨重载保留；引擎每轮把 `s_next_node_id` 复位为 0，
+  新 app 复用 1..N 的 id 覆盖表项，上一版 app 的 lv_obj 仍挂在屏幕上（成为孤儿/残留控件）。
+  没有 `clear screen` 原语，残留控件仍可能触发点击回调并投递旧 id。彻底清理留给后续刀。
+- **帧协议极简**：固定 12 字节头（`LUME` + `u32le total_len` + `u32le crc32`），
+  `total_len` 是 payload 字节数（不含头），上限 256KB；`crc32` = `esp_crc32_le(0, payload, len)`
+  （即标准 CRC-32 / `zlib.crc32`），只校验 payload。无版本号、flags、帧序号、压缩/分片。
+- **M1 仍是 JS_Eval 源码路径**：payload 直接当 JS 源码 eval，不做 bytecode 编译管线。
+- **OK 在 eval 成功后才发**：每帧恰好一条 `RELOAD ...` 应答；校验通过只触发引擎重载，
+  最终 `RELOAD OK <len>` / `RELOAD ERR eval-failed` 由引擎在 eval 结果确定后经回调发出
+  （校验期失败由 RX 任务直接发 `RELOAD ERR <reason>`），避免发过早的 OK。eval 失败时
+  引擎回退到上一个可用脚本（保留 `s_good_app` 旧值，否则内嵌 demo），不杀死引擎。
+- **USB CDC 与 console 共用同一物理口**：`CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y`，
+  ESP_LOG 与 `RELOAD ...` 应答混在同一条 CDC 上；未来 CLI 按 `RELOAD ` 前缀过滤。
+  RX 帧与 console stdin 共享 USJ 驱动 ring buffer，本固件不读 stdin，故 RX 由热更新
+  RX 任务独占；若将来加入 console REPL 需重新评估该共享。
+
 其余架构取舍见 `docs/reactivity-design.md` §3。

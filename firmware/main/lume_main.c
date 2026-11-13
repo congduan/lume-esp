@@ -5,8 +5,8 @@
  *   1. Board init (power rails via AXP2101, display bus, touch, TF card)
  *   2. LVGL render backend init (CO5300 QSPI)
  *   3. QuickJS-NG engine task start (heap in PSRAM)
- *   4. Load app bytecode (built-in fallback until hot-reload lands)
- *   5. Hot-reload server on USB CDC
+ *   4. Engine boots the embedded demo JS source (replaceable via hot reload)
+ *   5. Hot-reload RX channel on USB Serial/JTAG (USB CDC)
  */
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
@@ -28,6 +28,7 @@ void app_main(void)
 
     lume_engine_start();
 
-    /* M1: engine runs a built-in bytecode bundle; hot reload hooks in M1.x */
+    /* M1: engine runs the embedded demo; the hot-reload RX task can replace
+     * the app source over USB Serial/JTAG at runtime. */
     lume_hotreload_start();
 }
