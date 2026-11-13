@@ -169,7 +169,8 @@ declare namespace lume.pmic {
  *                         rest; g -> m/s^2 with the standard 9.80665)
  *   {gx, gy, gz}  deg/s  (angular rate, the sensor's native dps unit)
  * The raw->physical scaling is done in NATIVE C (lume-imu), not JS. Config
- * mirrors the Waveshare SensorQMI8658 GetDataExample: accel +/-4g @ 1000Hz,
+ * mirrors the Waveshare SensorQMI8658 GetDataExample: accel +/-4g @ the
+ * ACC_ODR_1000Hz setting (896.8 Hz effective in 6DOF mode),
  * gyro +/-64dps @ 896.8Hz, both LPFs on.
  *
  * On failure (no board, QMI8658 not detected, I2C error) read() returns null;

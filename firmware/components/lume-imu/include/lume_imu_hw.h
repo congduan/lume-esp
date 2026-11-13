@@ -49,7 +49,8 @@ typedef struct {
 
 /* One-time QMI8658 setup on the shared bus: add device 0x6B @ 400 kHz, soft
  * reset, WHO_AM_I check (0x05 QMI8658A / 0xFD QMI8658C), then configure
- * CTRL1..CTRL7 (accel +/-4g / 1000Hz, gyro +/-64dps / 896.8Hz, LPFs on) and
+ * CTRL1..CTRL7 (accel +/-4g / ACC_ODR_1000Hz setting -- 896.8 Hz effective
+ * in 6DOF mode per datasheet, gyro +/-64dps / 896.8Hz, LPFs on) and
  * enable both sensors. CTRL4/CTRL6 are reserved and never written. A
  * SUCCESSFUL init is latched for the process lifetime; ANY FAILURE (including
  * partial failures after add_device) drops the device handle and does NOT
