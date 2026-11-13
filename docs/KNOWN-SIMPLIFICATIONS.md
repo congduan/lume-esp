@@ -77,4 +77,35 @@ Owner：主控接板后跑，M1 不据此验收。
 - `enter_resync()` 进入时先测滚动窗口：恰好结束在错误边界的 `LUME` magic
   不再被漏扫（P2）。
 
+## r7 / M2 ADC 绑定（lume.adc）取舍
+
+本轮补上 M2 第一行的 ADC binding（GPIO/PWM 已于上轮完成）。以下按 M1/M2 口径从简，
+真机采样精度验收留主控接板轮（本轮无板，验收 = 编译绿 + size 达标 + API 对照自查）。
+
+- **只暴露 ADC1，且 pin 集合硬编码**：ESP32-S3 的 `SOC_ADC_PERIPH_NUM = 2`，
+  ADC2 实际存在（GPIO 11..20 / channels 0..9），但本绑定按任务口径只做
+  **ADC1 可采样集合**（GPIO 1..10 → ADC1 channels 0..9），映射写死在
+  `lume_adc.c` 的 `s_pin_to_chan[]`，来源是
+  `soc/esp32s3/include/soc/adc_channel.h`（IDF 5.5.5 实证）。板子 schematic
+  没有 ADC 分压/网络信息，因此 pin 校验**只到「是否属于 ADC1 可采样 GPIO」这一级**，
+  不假设任何板级分压比、量程或网口占用；ADC2 与板级约束留后续刀。
+- **单一共享 oneshot unit handle**：`adc_oneshot_new_unit()` 对同一 unit 第二次
+  claim 返回 `ESP_ERR_NOT_FOUND`（`adc_oneshot.c:99`），故全组件只有一个 ADC1
+  unit handle，首次 `config()` 惰性创建、常驻；每个 pin 只配置自己的 channel +
+  校准 handle。`free(pin)` 只删该 pin 的校准 handle 并置空闲，**不删 unit handle**
+  （对照 `gpio.pwmFree` 停 channel 但不拆 LEDC 外设）。
+- **校准方案只有 curve fitting**：ESP32-S3 只编译了
+  `ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED`（`esp_adc/esp32s3/.../adc_cali_schemes.h`），
+  没有 line fitting。`readMv()` = `adc_oneshot_read()` + `adc_cali_raw_to_voltage()`
+  （对照 `examples/peripherals/adc/oneshot_read`），是校准后 mV，不是 raw 线性估算。
+  eFuse 校准位未烧时 `adc_cali_create_scheme_curve_fitting()` 返回
+  `ESP_ERR_NOT_SUPPORTED`（官方例程是 WARN + 跳过）：本绑定让 `config()` 仍成功、
+  `readRaw()` 可用，`readMv()` 返回 `-3`（校准不可用），**不给未校准的假电压**。
+  mV 绝对精度受 eFuse 校准数据与 atten 档影响，接板后由主控轮实测。
+- **衰减档与量程**：atten 0..3 → `ADC_ATTEN_DB_0/2_5/6/12`（v5.5 为 `_12`，
+  `_11` 是 deprecated alias）。高衰减扩大可测范围、牺牲低端分辨率；本绑定不
+  换算/上报量程电压，量程由调用方按衰减档自行把握。
+- **roadmap 不勾选**：M2 第一行「GPIO / PWM / ADC bindings」**保持未勾选**，
+  等下轮把 GPIO/PWM/ADC 合并 review 后再一起勾，不在本轮单独勾。
+
 其余架构取舍见 `docs/reactivity-design.md` §3。
