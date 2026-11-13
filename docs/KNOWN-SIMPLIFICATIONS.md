@@ -155,11 +155,13 @@ Owner：主控接板后跑，M1 不据此验收。
   也不校验其有效性位；③ die temp 线性拟合的绝对精度；④ `isVbusIn()` 里 VINDPM
   条件对「USB 插入」判定的影响；⑤ `powerOff()` 后 PMIC 实际断电行为与所需延时。
   真实读数（mV / % / 充电态 / 温度）精度一律留接板验收。
-- **单一 dev handle + 一次 init**：`lume_pmic_hw_init()` 由 `register_bindings()`
-  调用（引擎任务、每轮 runtime 都调），用 `s_init_attempted` 闩锁保证进程生命周期内
-  只 `add_device()` 一次（热更新 runtime 重置不会重复挂设备），状态像 lume-adc 一样
-  跨重载常驻。init 失败（无板 / CHIP_ID≠0x4A）**非 fatal**，只 WARN，`s_dev` 保持
-  NULL，所有 `lume.pmic.*` 调用返回 `-3`。
+- **单一 dev handle + init 闩锁语义（r9 review 后修订）**：`lume_pmic_hw_init()` 由
+  `register_bindings()` 调用（引擎任务、每轮 runtime 都调）。**成功** init 闩锁进程
+  生命周期（热更新 runtime 重置直接返回，不会重复 `add_device()`）；**失败** init
+  **不闩锁**、且已 `add_device` 的 handle 在每条失败路径上 `i2c_master_bus_rm_device()`
+  释放（Codex r8 review 指出的两点：瞬态 I2C 失败会把绑定锁死到重启、部分失败泄漏
+  handle——均已修），下一轮 runtime 重试。init 失败（无板 / CHIP_ID≠0x4A）**非 fatal**，
+  只 WARN，`s_dev` 保持 NULL，所有 `lume.pmic.*` 调用返回 `-3`。
 - **roadmap 不勾选**：M2 第二行「AXP2101 power bindings」**保持未勾选**，等 review
   通过合并后再勾（与本轮 r7 的处理一致）。
 

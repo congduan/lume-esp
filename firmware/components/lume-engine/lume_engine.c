@@ -501,9 +501,10 @@ static JSValue js_adc_free(JSContext *ctx, JSValueConst this_val,
  * success; negatives are errors. Unlike gpio/adc these functions take NO
  * arguments, so there is nothing to marshal and the "too few arguments ->
  * TypeError" path never triggers. powerOff() is the one (high-risk) write.
- * lume_pmic_hw_init() runs once from register_bindings() (idempotent across
- * hot-reload runtime resets); a no-board / undetected PMIC makes every call
- * return -3. */
+ * lume_pmic_hw_init() runs from register_bindings() on every fresh runtime; a
+ * successful init is latched (idempotent across hot-reload runtime resets) and
+ * a failed one retries on the next pass (Codex r8 review). A no-board /
+ * undetected PMIC makes every call return -3. */
 
 static JSValue js_pmic_batt_voltage_mv(JSContext *ctx, JSValueConst this_val,
                                        int argc, JSValueConst *argv)

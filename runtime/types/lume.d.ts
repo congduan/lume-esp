@@ -115,13 +115,15 @@ declare namespace lume.adc {
  * negative values are the error codes. powerOff() returns the status itself
  * (0 = the shutdown bit was written).
  *
- * NO BOARD: lume_pmic_hw_init() (run once from the engine's binding registrar)
- * cannot confirm AXP2101 CHIP_ID 0x4A @ reg 0x03, so the device handle stays
- * NULL and ALL of battVoltageMv / battPercent / vbusVoltageMv / usbConnected /
- * chargingStatus / dieTempRaw / powerOff return -3. Init failure is non-fatal
- * (WARN only). Battery voltage/percent additionally return -3 when no battery
- * is connected (STATUS1 bit3 clear); vbusVoltageMv returns -3 when VBUS is not
- * in (STATUS1 bit5 VBUS_GOOD clear or STATUS2 bit3 VINDPM set).
+ * NO BOARD: lume_pmic_hw_init() (run from the engine's binding registrar on
+ * every fresh runtime) cannot confirm AXP2101 CHIP_ID 0x4A @ reg 0x03, so the
+ * device handle stays NULL and ALL of battVoltageMv / battPercent /
+ * vbusVoltageMv / usbConnected / chargingStatus / dieTempRaw / powerOff return
+ * -3. Init failure is non-fatal (WARN only) and retries on the next runtime
+ * reset; only a successful init latches. Battery voltage/percent additionally
+ * return -3 when no battery is connected (STATUS1 bit3 clear); vbusVoltageMv
+ * returns -3 when VBUS is not in (STATUS1 bit5 VBUS_GOOD clear or STATUS2
+ * bit3 VINDPM set).
  *
  * Register facts are verified against XPowersLib (see lume_pmic_hw.c head
  * comment for the file:line table). Note the verified correction: VBUS in is

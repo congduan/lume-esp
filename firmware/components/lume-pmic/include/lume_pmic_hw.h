@@ -20,7 +20,10 @@
  *
  * No board / no AXP2101: lume_pmic_hw_init() cannot verify CHIP_ID 0x4A, so
  * the device handle stays NULL and EVERY telemetry call and powerOff() return
- * LUME_PMIC_ERR_STATE (-3). Init failure is NON-FATAL (WARN only).
+ * LUME_PMIC_ERR_STATE (-3). Init failure is NON-FATAL (WARN only) and does NOT
+ * latch: the next register_bindings() pass retries init from scratch (Codex
+ * r8 review), so a transient I2C failure cannot poison the bindings until
+ * reboot. Only a SUCCESSFUL init latches for the process lifetime.
  *
  * Register facts are verified against XPowersLib before coding; see the
  * file-top comment in lume_pmic_hw.c for the file:line table.
@@ -34,9 +37,12 @@
 
 /* One-time AXP2101 setup: add device 0x34 @ 400 kHz on the shared bus, verify
  * CHIP_ID 0x4A @ reg 0x03, then (idempotently) enable battery detection and
- * the VBAT / VBUS / die-temperature ADC channels. Safe to call again: returns
- * immediately once ready (or the recorded failure) across hot-reload runtime
- * resets. Non-fatal on failure: WARN + negative status, no abort. */
+ * the VBAT / VBUS / die-temperature ADC channels. A SUCCESSFUL init is
+ * latched for the process lifetime; any FAILURE (including partial failures
+ * after add_device) drops the device handle and does NOT latch, so the next
+ * call retries from scratch — a transient I2C error never leaves the PMIC
+ * bindings dead until reboot, and add_device() is never called twice with a
+ * live handle. Non-fatal on failure: WARN + negative status, no abort. */
 int lume_pmic_hw_init(void);
 
 /* Battery voltage in mV, or a negative error. Returns -3 when no battery is
