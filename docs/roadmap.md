@@ -3,13 +3,13 @@
 ## M1 — minimal loop (current)
 Goal: prove the full stack on real hardware with the smallest possible surface.
 
-- [ ] ESP-IDF 5.5 project skeleton + Waveshare BSP (`waveshare/esp32_s3_touch_amoled_2_16`)
-- [ ] QuickJS-NG as IDF component, engine task with PSRAM heap
-- [ ] LVGL integrated as render backend (hidden from JS)
-- [ ] Native bridge: minimal declarative View/Text/Button → lv_obj ops
+- [x] ESP-IDF 5.5 project skeleton + Waveshare BSP (`waveshare/esp32_s3_touch_amoled_2_16`)（代码链路完整；实机验收（点屏/触摸方向/推包）待接板）
+- [x] QuickJS-NG as IDF component, engine task with PSRAM heap（代码链路完整；实机验收（点屏/触摸方向/推包）待接板）
+- [x] LVGL integrated as render backend (hidden from JS)（代码链路完整；实机验收（点屏/触摸方向/推包）待接板）
+- [x] Native bridge: minimal declarative View/Text/Button → lv_obj ops（代码链路完整；实机验收（点屏/触摸方向/推包）待接板）
 - [x] CST9220 touch events → QuickJS event loop → JS callback（代码链路已通；mirror_y/swap_xy 方向待实机确认）
 - [x] Hot reload over USB CDC（JS 源码推包 + engine runtime 重置；代码链路完整，实机推包验证待接板。bytecode 化留后续）
-- [ ] Demo app: interactive button counter,全程 JS
+- [x] Demo app: interactive button counter,全程 JS（代码链路完整；实机验收（点屏/触摸方向/推包）待接板）
 
 ## M2 — hardware API surface
 - [ ] GPIO / PWM / ADC bindings
