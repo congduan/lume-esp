@@ -28,6 +28,7 @@
 #include "lume_scripts.h"
 #include "lume_gpio.h"
 #include "lume_adc.h"
+#include "lume_pmic_hw.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -489,6 +490,84 @@ static JSValue js_adc_free(JSContext *ctx, JSValueConst this_val,
     return JS_NewInt32(ctx, lume_adc_free(pin));
 }
 
+/* ------------------------------------------------------------------ */
+/* lume.pmic natives (M2): AXP2101 telemetry + power-off, hw in lume-pmic */
+/* ------------------------------------------------------------------ */
+/* Same discipline as lume.gpio / lume.adc above: all seven run ONLY on the
+ * engine task, semantic / driver / state checks live in lume-pmic which
+ * returns an int status (0 = OK, negative = error code, see lume_pmic_hw.h).
+ * That status is returned to JS as a NUMBER, so failures never abort or
+ * throw. The six telemetry/status reads return a non-negative measurement on
+ * success; negatives are errors. Unlike gpio/adc these functions take NO
+ * arguments, so there is nothing to marshal and the "too few arguments ->
+ * TypeError" path never triggers. powerOff() is the one (high-risk) write.
+ * lume_pmic_hw_init() runs once from register_bindings() (idempotent across
+ * hot-reload runtime resets); a no-board / undetected PMIC makes every call
+ * return -3. */
+
+static JSValue js_pmic_batt_voltage_mv(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_pmic_hw_batt_voltage_mv());
+}
+
+static JSValue js_pmic_batt_percent(JSContext *ctx, JSValueConst this_val,
+                                    int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_pmic_hw_batt_percent());
+}
+
+static JSValue js_pmic_vbus_voltage_mv(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_pmic_hw_vbus_voltage_mv());
+}
+
+static JSValue js_pmic_usb_connected(JSContext *ctx, JSValueConst this_val,
+                                     int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_pmic_hw_usb_connected());
+}
+
+static JSValue js_pmic_charging_status(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_pmic_hw_charging_status());
+}
+
+static JSValue js_pmic_die_temp_raw(JSContext *ctx, JSValueConst this_val,
+                                    int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_pmic_hw_die_temp_raw());
+}
+
+static JSValue js_pmic_power_off(JSContext *ctx, JSValueConst this_val,
+                                 int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    (void)argc;
+    (void)argv;
+    return JS_NewInt32(ctx, lume_pmic_hw_power_off());
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -536,6 +615,28 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, adc, "free",
                       JS_NewCFunction(ctx, js_adc_free, "free", 1));
     JS_SetPropertyStr(ctx, lume, "adc", adc);
+    /* lume.pmic: built inline on the `lume` object, mirroring lume.gpio /
+     * lume.adc above (natives self-register, so the prelude needs no change).
+     * One-time AXP2101 init is idempotent across hot-reload runtime resets
+     * and non-fatal (no board -> every binding returns -3).
+     * JS_SetPropertyStr consumes `pmic`. */
+    lume_pmic_hw_init();
+    JSValue pmic = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, pmic, "battVoltageMv",
+                      JS_NewCFunction(ctx, js_pmic_batt_voltage_mv, "battVoltageMv", 0));
+    JS_SetPropertyStr(ctx, pmic, "battPercent",
+                      JS_NewCFunction(ctx, js_pmic_batt_percent, "battPercent", 0));
+    JS_SetPropertyStr(ctx, pmic, "vbusVoltageMv",
+                      JS_NewCFunction(ctx, js_pmic_vbus_voltage_mv, "vbusVoltageMv", 0));
+    JS_SetPropertyStr(ctx, pmic, "usbConnected",
+                      JS_NewCFunction(ctx, js_pmic_usb_connected, "usbConnected", 0));
+    JS_SetPropertyStr(ctx, pmic, "chargingStatus",
+                      JS_NewCFunction(ctx, js_pmic_charging_status, "chargingStatus", 0));
+    JS_SetPropertyStr(ctx, pmic, "dieTempRaw",
+                      JS_NewCFunction(ctx, js_pmic_die_temp_raw, "dieTempRaw", 0));
+    JS_SetPropertyStr(ctx, pmic, "powerOff",
+                      JS_NewCFunction(ctx, js_pmic_power_off, "powerOff", 0));
+    JS_SetPropertyStr(ctx, lume, "pmic", pmic);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }
