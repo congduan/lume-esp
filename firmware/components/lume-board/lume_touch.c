@@ -56,6 +56,7 @@ static i2c_master_dev_handle_t s_tp;
 static lv_point_t s_last_point = {0};
 static bool s_was_pressed = false;
 static uint32_t s_last_point_log_ms = 0;   /* last throttled point-log tick */
+static bool s_point_log_armed = false;     /* false => first press logs immediately */
 
 /* Consecutive-read failure budget (esp_lcd_touch.c:315-329 uses the same
  * pattern: a transient bus glitch must not kill an ongoing press, and a
@@ -196,7 +197,12 @@ static void indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
      * both emitted so the mirror_y/swap_xy mapping can be checked on a panel.
      * CLICKED keeps its own one-shot log in the ui-bridge press_cb. */
     uint32_t now_ms = lv_tick_get();
-    if ((uint32_t)(now_ms - s_last_point_log_ms) >= TP_LOG_INTERVAL_MS) {
+    /* First press after boot logs immediately (s_last_point_log_ms starts at 0,
+     * so a plain interval check would swallow touches inside the first 500ms);
+     * afterwards the 500ms throttle applies as declared. */
+    if (!s_point_log_armed ||
+        (uint32_t)(now_ms - s_last_point_log_ms) >= TP_LOG_INTERVAL_MS) {
+        s_point_log_armed = true;
         s_last_point_log_ms = now_ms;
         ESP_LOGI(TAG, "touch p=(%d,%d) raw=(%u,%u)",
                  (int)px, (int)py, (unsigned)tx, (unsigned)ty);
