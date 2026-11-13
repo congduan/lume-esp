@@ -26,6 +26,7 @@
 #include "lume_engine.h"
 #include "lume_ui_bridge.h"
 #include "lume_scripts.h"
+#include "lume_gpio.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -289,6 +290,91 @@ static JSValue js_remove_child(JSContext *ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
+/* ------------------------------------------------------------------ */
+/* lume.gpio natives (M2): GPIO + LEDC PWM, hardware in lume-gpio      */
+/* ------------------------------------------------------------------ */
+/* All six run ONLY on the engine task, exactly like the lume.* UI setters
+ * above: no lv_*, no new locks, no large buffers. Argument arity/type is
+ * validated here with JS_ToInt32 (JS_EXCEPTION on a non-int, mirroring
+ * js_set_attr); semantic range checks, the LEDC channel/pin conflict policy,
+ * ESP-IDF driver calls and ESP_LOGW logging live in lume-gpio, which returns
+ * an int status (0 = OK, negative = error code, see lume_gpio.h). That status
+ * is returned to JS as a NUMBER, so a failure never aborts/crashes and never
+ * throws. read() returns the 0/1 level on success; negatives are errors. */
+static JSValue js_gpio_set_pin(JSContext *ctx, JSValueConst this_val,
+                               int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin, mode, pull;
+    if (argc < 3 || JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &mode, argv[1]) < 0 ||
+        JS_ToInt32(ctx, &pull, argv[2]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_gpio_set_pin(pin, mode, pull));
+}
+
+static JSValue js_gpio_write(JSContext *ctx, JSValueConst this_val,
+                             int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin, level;
+    if (argc < 2 || JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &level, argv[1]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_gpio_write(pin, level));
+}
+
+static JSValue js_gpio_read(JSContext *ctx, JSValueConst this_val,
+                            int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin;
+    if (argc < 1 || JS_ToInt32(ctx, &pin, argv[0]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_gpio_read(pin));
+}
+
+static JSValue js_gpio_toggle(JSContext *ctx, JSValueConst this_val,
+                              int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin;
+    if (argc < 1 || JS_ToInt32(ctx, &pin, argv[0]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_gpio_toggle(pin));
+}
+
+static JSValue js_gpio_pwm_attach(JSContext *ctx, JSValueConst this_val,
+                                  int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin, freq_hz, duty_pct, channel;
+    if (argc < 4 || JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &freq_hz, argv[1]) < 0 ||
+        JS_ToInt32(ctx, &duty_pct, argv[2]) < 0 ||
+        JS_ToInt32(ctx, &channel, argv[3]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx,
+                       lume_gpio_pwm_attach(pin, freq_hz, duty_pct, channel));
+}
+
+static JSValue js_gpio_pwm_duty(JSContext *ctx, JSValueConst this_val,
+                                int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t pin, duty_pct;
+    if (argc < 2 || JS_ToInt32(ctx, &pin, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &duty_pct, argv[1]) < 0) {
+        return JS_EXCEPTION;
+    }
+    return JS_NewInt32(ctx, lume_gpio_pwm_duty(pin, duty_pct));
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -304,6 +390,23 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_remove_child, "removeChild", 1));
     JS_SetPropertyStr(ctx, lume, "log",
                       JS_NewCFunction(ctx, js_log, "log", 1));
+    /* lume.gpio: built inline on the `lume` object, mirroring how log /
+     * createNode / setAttr are attached directly (natives self-register, so
+     * the prelude needs no change). JS_SetPropertyStr consumes `gpio`. */
+    JSValue gpio = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, gpio, "setPin",
+                      JS_NewCFunction(ctx, js_gpio_set_pin, "setPin", 3));
+    JS_SetPropertyStr(ctx, gpio, "write",
+                      JS_NewCFunction(ctx, js_gpio_write, "write", 2));
+    JS_SetPropertyStr(ctx, gpio, "read",
+                      JS_NewCFunction(ctx, js_gpio_read, "read", 1));
+    JS_SetPropertyStr(ctx, gpio, "toggle",
+                      JS_NewCFunction(ctx, js_gpio_toggle, "toggle", 1));
+    JS_SetPropertyStr(ctx, gpio, "pwmAttach",
+                      JS_NewCFunction(ctx, js_gpio_pwm_attach, "pwmAttach", 4));
+    JS_SetPropertyStr(ctx, gpio, "pwmDuty",
+                      JS_NewCFunction(ctx, js_gpio_pwm_duty, "pwmDuty", 2));
+    JS_SetPropertyStr(ctx, lume, "gpio", gpio);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }
