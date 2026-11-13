@@ -12,7 +12,6 @@
  */
 #include <stdio.h>
 #include "esp_log.h"
-#include "lume.h"
 #include "lume_pins.h"
 
 static const char *TAG = "lume-board";
