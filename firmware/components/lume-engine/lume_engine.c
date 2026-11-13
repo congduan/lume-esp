@@ -16,6 +16,7 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "lume_engine.h"
+#include "quickjs.h"
 
 static const char *TAG = "lume-engine";
 
@@ -32,8 +33,38 @@ static void engine_task(void *arg)
     size_t psram_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
     ESP_LOGI(TAG, "engine task running, PSRAM free=%u bytes", (unsigned)psram_free);
 
-    /* TODO(M1): js_NewRuntime with js_malloc/us_malloc routed to PSRAM-backed
-     * allocator; load embedded bytecode; run event loop dispatching s_evt_queue */
+    /* M1 smoke: prove the vendored QuickJS-NG engine links and executes on
+     * target. Expected console line: "js eval: 2". The PSRAM-backed allocator,
+     * embedded bytecode bundle and event loop land in the next step. */
+    JSRuntime *rt = JS_NewRuntime();
+    if (rt == NULL) {
+        ESP_LOGE(TAG, "JS_NewRuntime failed");
+    } else {
+        JSContext *ctx = JS_NewContext(rt);
+        if (ctx == NULL) {
+            ESP_LOGE(TAG, "JS_NewContext failed");
+        } else {
+            static const char script[] = "1+1";
+            JSValue val = JS_Eval(ctx, script, sizeof(script) - 1, "<lume-smoke>",
+                                  JS_EVAL_TYPE_GLOBAL);
+            if (JS_IsException(val)) {
+                JSValue exc = JS_GetException(ctx);
+                const char *msg = JS_ToCString(ctx, exc);
+                ESP_LOGE(TAG, "js eval exception: %s", msg ? msg : "(unknown)");
+                if (msg) {
+                    JS_FreeCString(ctx, msg);
+                }
+                JS_FreeValue(ctx, exc);
+            } else {
+                int32_t result = 0;
+                JS_ToInt32(ctx, &result, val);
+                ESP_LOGI(TAG, "js eval: %d", (int)result);
+            }
+            JS_FreeValue(ctx, val);
+            JS_FreeContext(ctx);
+        }
+        JS_FreeRuntime(rt);
+    }
     for (;;) {
         uint8_t evt[32];
         if (xQueueReceive(s_evt_queue, evt, portMAX_DELAY) == pdTRUE) {
