@@ -20,6 +20,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "lume_engine.h"
@@ -38,6 +39,25 @@ static JSRuntime *s_rt;
 static JSContext *s_ctx;
 static uint16_t s_next_node_id;     /* engine-task-only id allocator */
 static uint32_t s_evt_dropped;      /* LVGL-task-only reverse-drop counter */
+
+/* ---- Hot-reload staging (shared: USB CDC RX task writes, engine consumes) ----
+ * The RX task and the engine task never dereference each other's buffers:
+ * request_reload() copies into a fresh PSRAM buffer, and the engine moves the
+ * pointer out under the mutex before it is used. Only the pointer/len/pending
+ * fields are protected (the big memcpy happens outside the lock). */
+static SemaphoreHandle_t s_stage_mutex;
+static char   *s_staged_src;        /* PSRAM, NULL when the slot is empty */
+static size_t  s_staged_len;
+static bool    s_reload_pending;    /* a RELOAD event is queued, not consumed */
+
+/* Engine-task-only: last app that evaled OK (fallback source on a failed
+ * reload). NULL means "use the embedded demo". Owned exclusively by the engine
+ * task, so no mutex. Transferred (not copied) from a successful reload. */
+static char   *s_good_app;
+static size_t  s_good_app_len;
+
+/* Registered by lume-hotreload; reports the final reload outcome over USB TX. */
+static lume_engine_reload_result_fn s_result_cb;
 
 /* ------------------------------------------------------------------ */
 /* PSRAM-backed allocator for QuickJS-NG (JSMallocFunctions)            */
@@ -105,9 +125,13 @@ static void dump_js_exception(JSContext *ctx, const char *where)
     JS_FreeValue(ctx, exc);
 }
 
-static int eval_script(JSContext *ctx, const char *src, const char *name)
+/* Evaluate a JS source buffer with an EXPLICIT length. Staged app source is
+ * delivered as (ptr, len) and may not be strlen()-able, so every eval funnels
+ * through here. */
+static int eval_buf(JSContext *ctx, const char *src, size_t len,
+                    const char *name)
 {
-    JSValue v = JS_Eval(ctx, src, strlen(src), name, JS_EVAL_TYPE_GLOBAL);
+    JSValue v = JS_Eval(ctx, src, len, name, JS_EVAL_TYPE_GLOBAL);
     int ok = 1;
     if (JS_IsException(v)) {
         dump_js_exception(ctx, name);
@@ -115,6 +139,12 @@ static int eval_script(JSContext *ctx, const char *src, const char *name)
     }
     JS_FreeValue(ctx, v);
     return ok;
+}
+
+/* Convenience wrapper for the embedded NUL-terminated bundles. */
+static int eval_script(JSContext *ctx, const char *src, const char *name)
+{
+    return eval_buf(ctx, src, strlen(src), name);
 }
 
 /* ------------------------------------------------------------------ */
@@ -385,6 +415,98 @@ static void dispatch_press(uint16_t node_id)
 }
 
 /* ------------------------------------------------------------------ */
+/* Hot reload: staging, result reporting, safe runtime recycling        */
+/* ------------------------------------------------------------------ */
+static void report_result(bool ok, size_t len, const char *reason)
+{
+    if (s_result_cb != NULL) {
+        s_result_cb(ok, len, reason);
+    }
+}
+
+void lume_engine_set_reload_result_cb(lume_engine_reload_result_fn cb)
+{
+    s_result_cb = cb;   /* set once, before any frame can arrive */
+}
+
+/* Move the staged source out of the shared slot into the engine task's sole
+ * ownership, and clear the "event pending" flag. Returns NULL if the slot is
+ * empty (e.g. coalesced duplicate events). */
+static char *take_staged(size_t *len)
+{
+    char *p;
+    xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
+    p = s_staged_src;
+    *len = s_staged_len;
+    s_staged_src = NULL;
+    s_staged_len = 0;
+    s_reload_pending = false;
+    xSemaphoreGive(s_stage_mutex);
+    return p;
+}
+
+int lume_engine_request_reload(const char *src, size_t len)
+{
+    if (src == NULL || len == 0 || s_stage_mutex == NULL ||
+        s_evt_queue == NULL) {
+        return -1;
+    }
+    /* Copy OUTSIDE the lock: src belongs to the CDC RX task and must not be
+     * shared with the engine. +1 for a defensive NUL terminator. */
+    char *copy = heap_caps_malloc(len + 1, MALLOC_CAP_SPIRAM);
+    if (copy == NULL) {
+        ESP_LOGE(TAG, "request_reload: PSRAM staging alloc failed (%u bytes)",
+                 (unsigned)len);
+        return -1;
+    }
+    memcpy(copy, src, len);
+    copy[len] = '\0';
+
+    bool need_post;
+    xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
+    if (s_staged_src != NULL) {
+        /* Single staging slot, last-frame-wins: a newer frame supersedes one
+         * the engine has not picked up yet. */
+        heap_caps_free(s_staged_src);
+    }
+    s_staged_src = copy;
+    s_staged_len = len;
+    need_post = !s_reload_pending;   /* coalesce: at most one queued reload */
+    s_reload_pending = true;
+    xSemaphoreGive(s_stage_mutex);
+
+    if (need_post) {
+        lume_engine_evt_t evt = { .type = LUME_EVT_RELOAD, .node_id = 0 };
+        if (xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(100)) != pdTRUE) {
+            /* No event in the queue yet (need_post implies pending was false),
+             * so the engine cannot have taken `copy`: safe to roll back. */
+            ESP_LOGE(TAG, "request_reload: evt queue full, dropping frame");
+            xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
+            if (s_staged_src == copy) {
+                s_staged_src = NULL;
+                s_staged_len = 0;
+            }
+            s_reload_pending = false;
+            xSemaphoreGive(s_stage_mutex);
+            heap_caps_free(copy);
+            return -1;
+        }
+    }
+    return 0;
+}
+
+/* Drop any removal latch left over from the previous app before a fresh
+ * context starts; stale ids must not be dispatched into the new JS context. */
+static void clear_removals(void)
+{
+    portENTER_CRITICAL(&s_rm_mux);
+    for (unsigned i = 0; i < LUME_RM_WORDS; i++) {
+        s_rm_pending[i] = 0;
+    }
+    portEXIT_CRITICAL(&s_rm_mux);
+}
+
+/* ------------------------------------------------------------------ */
 /* Engine task                                                         */
 /* ------------------------------------------------------------------ */
 static void engine_task(void *arg)
@@ -393,54 +515,163 @@ static void engine_task(void *arg)
     ESP_LOGI(TAG, "engine task up (pinned core 1), PSRAM free=%u bytes",
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 
-    s_rt = JS_NewRuntime2(&s_psram_mf, NULL);
-    if (s_rt == NULL) {
-        ESP_LOGE(TAG, "JS_NewRuntime2 (PSRAM allocator) failed");
-        abort();                 /* fail-fast: boot abort beats a dead engine */
-    }
-    JS_SetMemoryLimit(s_rt, LUME_JS_HEAP_LIMIT);
-    ESP_LOGI(TAG, "QuickJS heap: PSRAM (MALLOC_CAP_SPIRAM), limit=%u bytes",
-             (unsigned)LUME_JS_HEAP_LIMIT);
+    /* Candidate app source for the NEXT runtime iteration. Owned exclusively
+     * by the engine task. cand_is_reload drives TX reporting + commit-on-OK. */
+    char *cand_src = NULL;
+    size_t cand_len = 0;
+    bool cand_is_reload = false;
 
-    s_ctx = JS_NewContext(s_rt);
-    if (s_ctx == NULL) {
-        ESP_LOGE(TAG, "JS_NewContext failed");
-        abort();
-    }
-    register_bindings(s_ctx);
-    lume_ui_bridge_set_press_sink(lume_engine_post_press);
-    ESP_LOGI(TAG, "native lume.* bindings registered; press sink wired");
-
-    /* Prelude first (signals + ui components), then the app/demo. Both are
-     * global evals on this context, so prelude globals persist for the demo. */
-    if (eval_script(s_ctx, lume_prelude_js, "<lume-prelude>")) {
-        ESP_LOGI(TAG, "prelude eval ok");
-        if (eval_script(s_ctx, lume_demo_js, "<lume-demo>")) {
-            ESP_LOGI(TAG, "demo eval ok");
-        } else {
-            ESP_LOGE(TAG, "demo eval failed");
-        }
-    } else {
-        ESP_LOGE(TAG, "prelude eval failed; demo skipped");
-    }
-
+    /* OUTER LOOP: one iteration == one QuickJS runtime lifetime. A reload
+     * tears the runtime down at the bottom and continues here. Drivers
+     * (LVGL / touch / board) are NOT restarted across iterations. */
     for (;;) {
-        lume_engine_evt_t evt;
-        /* Bounded wait instead of portMAX_DELAY (r4 P2): the timeout is the
-         * poll tick for latched removal notifications (drain_removals). */
-        if (xQueueReceive(s_evt_queue, &evt, pdMS_TO_TICKS(20)) == pdTRUE) {
-            ESP_LOGI(TAG, "engine recv evt type=%u id=%u",
-                     (unsigned)evt.type, (unsigned)evt.node_id);
-            if (evt.type == LUME_EVT_PRESS) {
-                dispatch_press(evt.node_id);
+        const char *app_src;
+        size_t app_len;
+        bool from_reload = cand_is_reload;
+        if (cand_src != NULL) {
+            app_src = cand_src;                 /* staged frame */
+            app_len = cand_len;
+        } else if (s_good_app != NULL) {
+            app_src = s_good_app;               /* last-known-good app */
+            app_len = s_good_app_len;
+        } else {
+            app_src = lume_demo_js;             /* embedded demo (boot) */
+            app_len = strlen(lume_demo_js);
+        }
+
+        /* ---- fresh runtime, bindings, sink, per-app state ---- */
+        JSRuntime *rt = JS_NewRuntime2(&s_psram_mf, NULL);
+        if (rt == NULL) {
+            ESP_LOGE(TAG, "JS_NewRuntime2 (PSRAM allocator) failed");
+            abort();             /* fail-fast: boot abort beats a dead engine */
+        }
+        JS_SetMemoryLimit(rt, LUME_JS_HEAP_LIMIT);
+        JSContext *ctx = JS_NewContext(rt);
+        if (ctx == NULL) {
+            ESP_LOGE(TAG, "JS_NewContext failed");
+            JS_FreeRuntime(rt);
+            abort();
+        }
+        s_rt = rt;
+        s_ctx = ctx;
+        register_bindings(ctx);                              /* native lume.* */
+        lume_ui_bridge_set_press_sink(lume_engine_post_press); /* re-wire sink */
+        /* Fresh JS-side id allocator. NOTE: the LVGL s_nodes[] table is NOT
+         * cleared (drivers don't restart), so ids are reused across reloads;
+         * see docs/KNOWN-SIMPLIFICATIONS.md. */
+        s_next_node_id = 0;
+        clear_removals();                       /* drop stale removal latch */
+        ESP_LOGI(TAG, "runtime up; eval %s app (%u bytes)",
+                 from_reload ? "staged" : "embedded/last-good",
+                 (unsigned)app_len);
+
+        /* ---- eval prelude (signals/ui), then the app ---- */
+        bool ok = eval_script(ctx, lume_prelude_js, "<lume-prelude>");
+        if (ok) {
+            ok = eval_buf(ctx, app_src, app_len, "<lume-app>");
+        } else {
+            ESP_LOGE(TAG, "prelude eval failed; app skipped");
+        }
+
+        if (!ok) {
+            /* eval_buf already dumped the JS exception. A failed reload must
+             * NOT kill the engine: report ERR, then fall back to the previous
+             * good app (or the embedded demo) on the next iteration. */
+            if (from_reload) {
+                report_result(false, app_len, "eval-failed");
+                ESP_LOGW(TAG, "reload eval failed; falling back to last-good app");
+            } else {
+                ESP_LOGE(TAG, "embedded/last-good app eval failed (unexpected)");
+            }
+            s_rt = NULL;
+            s_ctx = NULL;
+            JS_FreeContext(ctx);
+            JS_FreeRuntime(rt);
+            if (cand_src != NULL) {            /* discard the bad candidate */
+                heap_caps_free(cand_src);
+                cand_src = NULL;
+            }
+            cand_len = 0;
+            cand_is_reload = false;            /* next iter uses s_good_app */
+            vTaskDelay(pdMS_TO_TICKS(50));     /* avoid a tight respin */
+            continue;
+        }
+
+        /* ---- success: commit candidate + report OK ---- */
+        if (from_reload) {
+            /* Transfer cand_src into the engine-owned last-good buffer (no
+             * copy). JS_Eval already consumed the source, so the runtime does
+             * not retain this buffer. s_good_app is the fallback for a future
+             * failed reload. */
+            if (s_good_app != NULL) {
+                heap_caps_free(s_good_app);
+            }
+            s_good_app = cand_src;
+            s_good_app_len = cand_len;
+            cand_src = NULL;                   /* ownership transferred */
+            report_result(true, app_len, NULL);
+        }
+        if (cand_src != NULL) {
+            heap_caps_free(cand_src);
+            cand_src = NULL;
+        }
+        cand_len = 0;
+        cand_is_reload = false;
+        ESP_LOGI(TAG, "app eval ok; entering event loop");
+
+        /* ---- inner event loop (one runtime lifetime) ---- */
+        bool reload = false;
+        for (;;) {
+            lume_engine_evt_t evt;
+            /* Bounded wait instead of portMAX_DELAY (r4 P2): the timeout is
+             * the poll tick for latched removal notifications. */
+            if (xQueueReceive(s_evt_queue, &evt, pdMS_TO_TICKS(20)) == pdTRUE) {
+                if (evt.type == LUME_EVT_RELOAD) {
+                    ESP_LOGI(TAG, "engine recv RELOAD -> recycle runtime");
+                    reload = true;
+                    break;                     /* leave the event loop */
+                } else if (evt.type == LUME_EVT_PRESS) {
+                    ESP_LOGI(TAG, "engine recv PRESS id=%u",
+                             (unsigned)evt.node_id);
+                    dispatch_press(evt.node_id);
+                }
+            }
+            drain_removals();
+        }
+
+        /* ---- teardown ----
+         * Only the engine task ever dereferences s_ctx (bindings, dispatch_*).
+         * The reverse channel (press sink) and the reload request path only
+         * post to FreeRTOS queues and never touch s_ctx, so no other task can
+         * be using this context here. Free context first, then runtime. */
+        s_rt = NULL;
+        s_ctx = NULL;
+        JS_FreeContext(ctx);
+        JS_FreeRuntime(rt);
+
+        /* ---- pick up the staged source for the next iteration ---- */
+        if (reload) {
+            size_t n = 0;
+            char *newsrc = take_staged(&n);
+            if (newsrc != NULL) {
+                cand_src = newsrc;
+                cand_len = n;
+                cand_is_reload = true;
+            } else {
+                ESP_LOGW(TAG, "reload event but staging empty; restarting last-good");
+                cand_is_reload = false;
             }
         }
-        drain_removals();
     }
 }
 
 void lume_engine_start(void)
 {
+    s_stage_mutex = xSemaphoreCreateMutex();
+    if (s_stage_mutex == NULL) {
+        ESP_LOGE(TAG, "engine_start: stage mutex create failed (OOM)");
+        abort();
+    }
     s_evt_queue = xQueueCreate(EVT_QUEUE_LEN, sizeof(lume_engine_evt_t));
     if (s_evt_queue == NULL) {
         /* Without this queue the engine task would call xQueueReceive(NULL).
@@ -455,5 +686,6 @@ void lume_engine_start(void)
         ESP_LOGE(TAG, "engine_start: engine task create failed (%d)", (int)ok);
         abort();
     }
-    ESP_LOGI(TAG, "engine_start: evt queue=%u, task lume-js up", EVT_QUEUE_LEN);
+    ESP_LOGI(TAG, "engine_start: evt queue=%u, stage mutex up, task lume-js up",
+             EVT_QUEUE_LEN);
 }
