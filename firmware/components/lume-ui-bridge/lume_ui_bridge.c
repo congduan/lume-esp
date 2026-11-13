@@ -11,6 +11,7 @@
  * engine task (a monotonic counter) and carried in each message; FIFO queue
  * ordering guarantees a CREATE is applied before any SET_ATTR for that id.
  */
+#include <stdlib.h>          /* abort(): boot-stage fail-fast on OOM */
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -21,6 +22,7 @@
 static const char *TAG = "lume-ui-bridge";
 #define UI_QUEUE_LEN 32
 #define DRAIN_PERIOD_MS 5
+#define LUME_POST_MAX_ATTEMPTS 8   /* finite retries when Queue A is full */
 
 static QueueHandle_t s_ui_queue;                  /* Queue A */
 static lv_obj_t *s_nodes[LUME_MAX_NODES];         /* id -> lv_obj* (LVGL task) */
@@ -153,16 +155,37 @@ static void apply_set_attr(const lume_ui_msg_t *m)
     }
 }
 
+/* lv_obj_delete() recursively frees the whole LVGL subtree, but the node
+ * table is separate: clearing only the parent's entry would leave child ids
+ * pointing at freed lv_obj_t (dangling pointers for later setAttr/removeChild).
+ * Walk the subtree BEFORE deletion and purge every table entry whose lv_obj
+ * carries a node_id (stamped into lv_obj user_data at creation). LVGL-internal
+ * children (e.g. a button's label) carry user_data 0 and are simply skipped. */
+static void clear_subtree(lv_obj_t *obj)
+{
+    if (obj == NULL) {
+        return;
+    }
+    uint32_t n = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < n; i++) {
+        clear_subtree(lv_obj_get_child(obj, (int32_t)i));
+    }
+    uint16_t id = (uint16_t)(uintptr_t)lv_obj_get_user_data(obj);
+    if (id > 0 && id < LUME_MAX_NODES) {
+        s_nodes[id] = NULL;
+        s_kinds[id] = 0;
+    }
+}
+
 static void apply_remove(const lume_ui_msg_t *m)
 {
     lv_obj_t *obj = get_node(m->node_id);
     if (obj == NULL) {
         return;
     }
-    lv_obj_delete(obj);       /* deletes the whole LVGL subtree */
-    s_nodes[m->node_id] = NULL;
-    s_kinds[m->node_id] = 0;
-    ESP_LOGI(TAG, "remove id=%u", (unsigned)m->node_id);
+    clear_subtree(obj);   /* purge this node AND every descendant table entry */
+    lv_obj_delete(obj);   /* deletes the whole LVGL subtree */
+    ESP_LOGI(TAG, "remove id=%u (subtree purged)", (unsigned)m->node_id);
 }
 
 /* LV_EVENT_CLICKED callback — runs on the LVGL task. Reverse channel: post
@@ -235,7 +258,21 @@ int lume_ui_bridge_post(const lume_ui_msg_t *msg)
     if (s_ui_queue == NULL) {
         return -1;
     }
-    return xQueueSend(s_ui_queue, msg, 0) == pdTRUE ? 0 : -1;
+    /* Queue A is drained by the LVGL task's timer. On a transient full queue,
+     * retry a bounded number of times; each attempt blocks briefly so the
+     * consumer can free a slot. Dropping the message after retries lets JS
+     * state diverge from the screen, so log it loudly. M1 accepts the log-only
+     * policy (no rollback/resync); full JS<->UI recovery is the M3 cut. */
+    for (int attempt = 0; attempt < LUME_POST_MAX_ATTEMPTS; attempt++) {
+        if (xQueueSend(s_ui_queue, msg, pdMS_TO_TICKS(2)) == pdTRUE) {
+            return 0;
+        }
+    }
+    ESP_LOGE(TAG,
+             "post: ui queue full after %d attempts (op=%u id=%u); "
+             "JS/UI state may diverge (M1 log-only, resync in M3)",
+             LUME_POST_MAX_ATTEMPTS, (unsigned)msg->op, (unsigned)msg->node_id);
+    return -1;
 }
 
 void lume_ui_bridge_init(void)
@@ -244,13 +281,21 @@ void lume_ui_bridge_init(void)
         return;   /* idempotent */
     }
     s_ui_queue = xQueueCreate(UI_QUEUE_LEN, sizeof(lume_ui_msg_t));
+    if (s_ui_queue == NULL) {
+        ESP_LOGE(TAG, "init: ui queue create failed (OOM)");
+        abort();
+    }
     memset(s_nodes, 0, sizeof(s_nodes));
     memset(s_kinds, 0, sizeof(s_kinds));
 
     /* Called from board init (main task) before the LVGL task is created:
      * lv_timer_create() has no concurrent lv_timer_handler() to race with.
      * The timer callback is the drain point inside the lv_timer_handler loop. */
-    lv_timer_create(drain_timer_cb, DRAIN_PERIOD_MS, NULL);
+    lv_timer_t *timer = lv_timer_create(drain_timer_cb, DRAIN_PERIOD_MS, NULL);
+    if (timer == NULL) {
+        ESP_LOGE(TAG, "init: drain timer create failed (OOM)");
+        abort();
+    }
     ESP_LOGI(TAG, "init: queue=%u msgs, drain timer=%ums",
              UI_QUEUE_LEN, DRAIN_PERIOD_MS);
 }

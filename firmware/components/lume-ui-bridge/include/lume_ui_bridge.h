@@ -86,10 +86,14 @@ void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn);
 
 /* Init: creates Queue A + the LVGL drain timer. Must be called once from board
  * init (main task) BEFORE the LVGL task starts, so lv_timer_create() has no
- * concurrent lv_timer_handler() to race with (LV_USE_OS == LV_OS_NONE). */
+ * concurrent lv_timer_handler() to race with (LV_USE_OS == LV_OS_NONE).
+ * Aborts (fail-fast) if the queue or timer cannot be allocated at boot. */
 void lume_ui_bridge_init(void);
 
-/* Engine-task side: enqueue one UI op. Never calls lv_*. Returns 0 on success. */
+/* Engine-task side: enqueue one UI op. Never calls lv_*. Returns 0 on success.
+ * On a full Queue A it retries a bounded number of times (briefly blocking so
+ * the LVGL drain timer can free a slot); if all attempts fail it logs ESP_LOGE
+ * (JS/UI state may diverge) and returns -1. M1 has no rollback/resync. */
 int lume_ui_bridge_post(const lume_ui_msg_t *msg);
 
 /* LVGL-task side: drain Queue A and apply each message to lv_obj. Invoked by
