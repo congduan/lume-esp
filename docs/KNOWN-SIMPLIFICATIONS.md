@@ -1,7 +1,11 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
 本文件记录 M1 刻意接受的行为简化，以及**本轮不做、留待接板验收**的硬指标。
-Codex review round-3 的 4 个 P1 已修（见提交）；以下项按约定延后或按 M1 口径从简。
+Codex review round-3 的 4 个 P1 已修（见提交）；round-4 review 的 2 个必修点已修：
+`__drain()` 对普通抛异常的 effect 不再误清残留批次（仅 guard 溢出路径清），
+且 UI 侧 removeChild 现在通过 `LUME_EVT_REMOVED` → `__lume_dispatchRemove` →
+`__dispose(id)` 同步释放 JS 侧 press handler 与 signal 绑定 effect。
+以下项按约定延后或按 M1 口径从简。
 
 ## Deferred: 资源硬指标验收（需接板测，主控接板后跑）
 
@@ -9,9 +13,11 @@ Codex review round-3 的 4 个 P1 已修（见提交）；以下项按约定延�
 需要真实 ESP32-S3 板级测量，当前无板无法取值。主控接板后的验证刀统一跑：
 
 - **prelude bytecode ≤ 40KB flash**：口径未统一——现有数字是 `lume_prelude_js[]`
-  **源码字符串**的体积（review 时 4333B，第三刀加修复后约 6.7KB），不是编译后的
-  bytecode 体积。需接板跑 `qjsc`/bytecode 导出后按 **bytecode 口径**实测；源码字节数
-  与 bytecode 字节数不可直接比较。
+  **源码字符串**的体积（review 时 4333B，第三刀加修复后约 6.7KB，r4 修复后再增），
+  不是编译后的 bytecode 体积。固件当前是 `JS_Eval` 内嵌**源码字符串**（非 bytecode），
+  bytecode 口径需先用 `qjsc` 编译同版源码量化 `JS_Eval` 路径的体积/内存收益——
+  这一步只需宿主机 qjsc，不需要接板；接板后要测的是**运行时**实际堆占用。
+  源码字节数与 bytecode 字节数不可直接比较。
 - **signal.set() → native message < 1ms**：需板级计时（无板无法测）。
 - **启动后 JS heap 基线 ≤ 256KB PSRAM**：需板级 `heap_caps` 读数。
 
