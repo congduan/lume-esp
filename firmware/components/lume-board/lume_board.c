@@ -90,7 +90,10 @@ esp_err_t lume_board_init(void)
 
     create_demo_ui();
 
-    xTaskCreate(lvgl_task, "lume-lvgl", 8192, NULL, 5, NULL);
+    BaseType_t task_ok = xTaskCreate(lvgl_task, "lume-lvgl", 8192, NULL, 5, NULL);
+    if (task_ok != pdPASS) {
+        ESP_RETURN_ON_ERROR(ESP_ERR_NO_MEM, TAG, "lvgl task creation failed");
+    }
 
     ESP_LOGI(TAG, "board init done: CO5300 QSPI + CST9220 + LVGL pipeline up");
     return ESP_OK;

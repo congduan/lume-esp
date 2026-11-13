@@ -49,6 +49,15 @@
 
 static const char *TAG = "lume-touch";
 static i2c_master_dev_handle_t s_tp;
+static lv_point_t s_last_point = {0};
+static bool s_was_pressed = false;
+
+/* Consecutive-read failure budget (esp_lcd_touch.c:315-329 uses the same
+ * pattern: a transient bus glitch must not kill an ongoing press, and a
+ * persistent bus fault triggers one controller reset, not a storm). */
+#define TP_MAX_READ_ERRORS   10
+
+static int s_read_errors = 0;
 
 static esp_err_t tp_reset(void)
 {
@@ -124,15 +133,36 @@ static void indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
     data->continue_reading = false;
 
     if (tp_read_reg(TP_DATA_REG, frame, sizeof(frame)) != ESP_OK) {
+        /* Transient I2C error: keep the previous point/press state instead of
+         * reporting an instant release (vendor driver: esp_lcd_touch.c reads
+         * keep last data on error). After a sustained failure, reset the
+         * controller once — mirrors the vendor recovery path. */
+        s_read_errors++;
+        if (s_read_errors >= TP_MAX_READ_ERRORS) {
+            ESP_LOGW(TAG, "touch bus down after %d read errors, resetting", s_read_errors);
+            s_read_errors = 0;
+            if (tp_reset() == ESP_OK) {
+                /* First reads after reset may be garbage; swallow this cycle. */
+                return;
+            }
+        }
+        /* Report release but restore last known point so LVGL doesn't jump. */
+        data->point = s_last_point;
+        data->state = s_was_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
         return;
     }
+    s_read_errors = 0;
+
     if (frame[6] != TP_ACK) {                 /* cst9217.c:129 */
+        s_was_pressed = false;
         return;
     }
     if ((frame[5] & 0x7F) == 0) {             /* cst9217.c:134 */
+        s_was_pressed = false;
         return;
     }
     if ((frame[0] & 0x0F) != TP_STATUS_PRESS) {
+        s_was_pressed = false;
         return;
     }
 
@@ -152,6 +182,8 @@ static void indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
     data->point.x = px;
     data->point.y = py;
     data->state = LV_INDEV_STATE_PRESSED;
+    s_last_point = data->point;
+    s_was_pressed = true;
 }
 
 esp_err_t lume_touch_init(i2c_master_bus_handle_t bus, lv_display_t *disp)

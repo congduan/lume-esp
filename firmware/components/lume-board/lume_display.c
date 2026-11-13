@@ -92,6 +92,22 @@ static const char *TAG = "lume-display";
 static esp_lcd_panel_io_handle_t s_io;
 static lv_display_t *s_disp;
 
+/* CO5300 quirk kept from the vendor BSP (bsp v2.0.1 rounder_event_cb:391-405):
+ * round the area start down to even and the end up to odd (2-pixel window).
+ * Partial updates at odd boundaries render incorrectly on this panel.
+ * LVGL 9 path: LV_EVENT_INVALIDATE_AREA, same hook the BSP uses. */
+static void rounder_event_cb(lv_event_t *e)
+{
+    lv_area_t *area = (lv_area_t *)lv_event_get_param(e);
+    if (area == NULL) {
+        return;
+    }
+    area->x1 = (area->x1 >> 1) << 1;
+    area->y1 = (area->y1 >> 1) << 1;
+    area->x2 = ((area->x2 >> 1) << 1) + 1;
+    area->y2 = ((area->y2 >> 1) << 1) + 1;
+}
+
 /* Fires in SPI ISR context when the last color DMA chunk completes. */
 static bool flush_ready_cb(esp_lcd_panel_io_handle_t io,
                            esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
@@ -111,11 +127,20 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
     int32_t x1 = area->x1, x2 = area->x2;
     int32_t y1 = area->y1, y2 = area->y2;
 
+    const size_t px_count = (size_t)(x2 - x1 + 1) * (size_t)(y2 - y1 + 1);
+    const size_t len = px_count * (LCD_BPP / 8);
+
+    /* CO5300 0x3A=0x55 (16 bit/pixel) expects big-endian RGB565 on the wire;
+     * LVGL renders little-endian and esp_lcd streams the buffer verbatim.
+     * Swap in place before DMA, same as esp_lvgl_port_disp.c:739-741 does when
+     * swap_bytes is set. Safe with PARTIAL render mode: LVGL rewrites the whole
+     * area on the next frame before flushing again. */
+    lv_draw_sw_rgb565_swap(px_map, (uint32_t)px_count);
+
     const uint8_t col[4] = {(uint8_t)(x1 >> 8), (uint8_t)x1,
                             (uint8_t)(x2 >> 8), (uint8_t)x2};
     const uint8_t row[4] = {(uint8_t)(y1 >> 8), (uint8_t)y1,
                             (uint8_t)(y2 >> 8), (uint8_t)y2};
-    const size_t len = (size_t)(x2 - x1 + 1) * (size_t)(y2 - y1 + 1) * (LCD_BPP / 8);
 
     esp_err_t err = esp_lcd_panel_io_tx_param(s_io, qspi_cmd(LCD_CMD_CASET, QSPI_OP_WRITE_CMD),
                                               col, sizeof(col));
@@ -226,6 +251,9 @@ esp_err_t lume_display_init(lv_display_t **out_disp)
     lv_display_set_buffers(disp, buf1, buf2, (uint32_t)buf_bytes,
                            LV_DISPLAY_RENDER_MODE_PARTIAL);
     lv_display_set_flush_cb(disp, flush_cb);
+    /* Vendor BSP registers the same rounder right after display creation
+     * (bsp v2.0.1 esp32_s3_touch_amoled_2_16.c:532). */
+    lv_display_add_event_cb(disp, rounder_event_cb, LV_EVENT_INVALIDATE_AREA, NULL);
 
     *out_disp = disp;
     ESP_LOGI(TAG, "CO5300 QSPI + LVGL display up (%dx%d RGB565, 2x%u B PSRAM draw buf)",
