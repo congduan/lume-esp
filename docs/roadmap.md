@@ -12,7 +12,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [x] Demo app: interactive button counter,全程 JS（代码链路完整；实机验收（点屏/触摸方向/推包）待接板）
 
 ## M2 — hardware API surface
-- [ ] GPIO / PWM / ADC bindings
+- [x] GPIO / PWM / ADC bindings（r6/r7 代码完成 + Codex review 通过；实机采样精度/驱动能力验收待接板）
 - [ ] AXP2101 power bindings (battery telemetry, power off/reboot)
 - [ ] QMI8658 IMU bindings (poll + motion interrupt)
 - [ ] WiFi + HTTP client bindings
