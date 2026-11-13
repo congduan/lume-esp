@@ -82,7 +82,8 @@ esp_err_t lume_pmic_display_power_on(i2c_master_bus_handle_t bus)
         .device_address = AXP2101_I2C_ADDR,
         .scl_speed_hz = 400000,
     };
-    i2c_master_dev_handle_t dev = NULL;
+    /* Kept registered for the app lifetime (the bus owns the handle). */
+    static i2c_master_dev_handle_t dev;
     esp_err_t err = i2c_master_bus_add_device(bus, &dev_cfg, &dev);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "AXP2101 add_device failed: %s", esp_err_to_name(err));
@@ -94,7 +95,6 @@ esp_err_t lume_pmic_display_power_on(i2c_master_bus_handle_t bus)
     if (err != ESP_OK || chip_id != AXP2101_CHIP_ID) {
         ESP_LOGW(TAG, "AXP2101 not detected (id=0x%02x err=%s); relying on OTP defaults",
                  (unsigned)chip_id, esp_err_to_name(err));
-        i2c_master_bus_rm_device(dev);
         return ESP_ERR_NOT_FOUND;
     }
     ESP_LOGI(TAG, "AXP2101 detected (chip id 0x%02x)", (unsigned)chip_id);
@@ -116,7 +116,5 @@ esp_err_t lume_pmic_display_power_on(i2c_master_bus_handle_t bus)
                         TAG, "enable display/touch rails");
     vTaskDelay(pdMS_TO_TICKS(10));  /* let rails settle before driving the panel */
     ESP_LOGI(TAG, "ALDO3+BLDO1+BLDO2 rails enabled");
-
-    i2c_master_bus_rm_device(dev);
     return ESP_OK;
 }

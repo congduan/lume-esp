@@ -2,17 +2,19 @@
  * Board init — M1 bring-up.
  *
  * Order (each step verified against vendor examples):
- *   1. I2C master on 15/14 — shared by touch/PMIC/IMU/codecs  (M1 next step)
- *   2. AXP2101: assert display/touch rails                    (M1 next step)
- *   3. CO5300 QSPI panel via esp_lcd + LVGL display           (here)
- *   4. CST9220 touch -> LVGL indev                            (M1 next step)
+ *   1. I2C master on 15/14 — shared by touch/PMIC/IMU/codecs
+ *   2. AXP2101: assert display/touch rails (isolated, non-fatal)
+ *   3. CO5300 QSPI panel via esp_lcd + LVGL display
+ *   4. CST9220 touch -> LVGL indev
  *   5. TF card (SPI/FATFS)                                    (later)
  *
- * This stage wires the display pipeline: lv_init -> lv_display_create ->
- * flush_cb(QSPI DMA) -> pure-LVGL proof screen -> lv_timer_handler task.
+ * LVGL: lv_init -> lv_display_create -> flush_cb(QSPI DMA) -> pure-LVGL proof
+ * screen -> lv_timer_handler task. lv_tick comes from LV_TICK_CUSTOM
+ * (esp_timer) in lv_conf.h, so only lv_timer_handler() needs driving.
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "driver/i2c_master.h"
 #include "esp_check.h"
 #include "esp_log.h"
 #include "lvgl.h"
@@ -42,9 +44,9 @@ static void create_demo_ui(void)
     lv_obj_center(label);
 }
 
-/* LVGL super-loop. lv_tick comes from LV_TICK_CUSTOM (esp_timer) in lv_conf.h,
- * so only lv_timer_handler() needs driving. M1: all LVGL calls are confined to
- * this task + the ISR flush-ready callback; M3's JS bridge must add a mutex. */
+/* LVGL super-loop. M1: all LVGL calls are confined to this task + the ISR
+ * flush-ready callback; M3's JS bridge must add a mutex before touching LVGL
+ * from the engine task. */
 static void lvgl_task(void *arg)
 {
     (void)arg;
@@ -56,15 +58,40 @@ static void lvgl_task(void *arg)
 
 esp_err_t lume_board_init(void)
 {
+    /* 1. Shared I2C master bus: AXP2101(0x34), CST9220(0x5A), IMU, codec, RTC. */
+    const i2c_master_bus_config_t i2c_cfg = {
+        .i2c_port = -1,
+        .sda_io_num = LUME_PIN_I2C_SDA,
+        .scl_io_num = LUME_PIN_I2C_SCL,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .flags = {
+            .enable_internal_pullup = true,
+        },
+    };
+    i2c_master_bus_handle_t bus = NULL;
+    ESP_RETURN_ON_ERROR(i2c_new_master_bus(&i2c_cfg, &bus), TAG, "i2c_new_master_bus failed");
+
+    /* 2. PMIC rails first, before anything drives the panel. Non-fatal by design
+     * (see lume_pmic.c): the vendor examples rely on OTP defaults. */
+    esp_err_t pmic_err = lume_pmic_display_power_on(bus);
+    if (pmic_err != ESP_OK) {
+        ESP_LOGW(TAG, "PMIC rail setup skipped/failed (%s); continuing", esp_err_to_name(pmic_err));
+    }
+
+    /* 3. LVGL core must be up before any display / indev / widget. */
     lv_init();
 
     lv_display_t *disp = NULL;
     ESP_RETURN_ON_ERROR(lume_display_init(&disp), TAG, "CO5300/LVGL display init failed");
 
+    /* 4. Touch -> LVGL indev (M1: LVGL only; M3 also posts to the JS queue). */
+    ESP_RETURN_ON_ERROR(lume_touch_init(bus, disp), TAG, "CST9220/LVGL indev init failed");
+
     create_demo_ui();
 
     xTaskCreate(lvgl_task, "lume-lvgl", 8192, NULL, 5, NULL);
 
-    ESP_LOGI(TAG, "board init done: CO5300 QSPI + LVGL pipeline up");
+    ESP_LOGI(TAG, "board init done: CO5300 QSPI + CST9220 + LVGL pipeline up");
     return ESP_OK;
 }
