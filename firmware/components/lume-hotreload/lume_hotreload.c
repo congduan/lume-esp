@@ -23,6 +23,7 @@
 #include "esp_heap_caps.h"
 #include "esp_crc.h"
 #include "driver/usb_serial_jtag.h"
+#include "driver/usb_serial_jtag_vfs.h"
 #include "lume_engine.h"
 #include "lume_hotreload.h"
 
@@ -66,7 +67,12 @@ static void respond(bool ok, size_t len, const char *reason)
     if (s_tx_mutex != NULL) {
         xSemaphoreTake(s_tx_mutex, portMAX_DELAY);
     }
-    usb_serial_jtag_write_bytes(line, (size_t)n, pdMS_TO_TICKS(50));
+    /* write_bytes can legitimately return 0 (TX mutex/ring-buffer timeout);
+     * a silently dropped reply would leave the host waiting forever. */
+    int written = usb_serial_jtag_write_bytes(line, (size_t)n, pdMS_TO_TICKS(50));
+    if (written != (int)n) {
+        ESP_LOGE(TAG, "reply TX short/failed (%d/%d)", written, n);
+    }
     if (s_tx_mutex != NULL) {
         xSemaphoreGive(s_tx_mutex);
     }
@@ -126,9 +132,15 @@ static void enter_magic(void)
 
 static void enter_resync(void)
 {
-    /* The rolling window s_sync already holds the trailing bytes, so a magic
-     * straddling the error boundary is not lost. No errors are emitted while
+    /* The rolling window s_sync already holds the trailing bytes; a magic
+     * ending exactly at the error boundary must not be lost, so test it
+     * BEFORE the first new byte arrives. No errors are emitted while
      * re-syncing on noise. */
+    if (sync_is_magic()) {
+        s_state = ST_HDR;
+        s_hdr_n = 0;
+        return;
+    }
     s_state = ST_RESYNC;
 }
 
@@ -273,6 +285,11 @@ void lume_hotreload_start(void)
     } else {
         ESP_LOGI(TAG, "USJ driver already installed; reusing it for RX");
     }
+    /* Switch the console VFS from direct-FIFO (nonblocking LL) writes to the
+     * driver. Otherwise ESP_LOG goes straight at the USJ FIFO while our
+     * replies go through the driver, and concurrent TX can interleave or
+     * clobber a RELOAD line. Idempotent; applies to both install paths. */
+    usb_serial_jtag_vfs_use_driver();
 
     /* Final reload outcome (app eval OK / failed) is reported back to TX. */
     lume_engine_set_reload_result_cb(respond);

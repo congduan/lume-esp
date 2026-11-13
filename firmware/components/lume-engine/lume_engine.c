@@ -466,8 +466,12 @@ int lume_engine_request_reload(const char *src, size_t len)
     xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
     if (s_staged_src != NULL) {
         /* Single staging slot, last-frame-wins: a newer frame supersedes one
-         * the engine has not picked up yet. */
+         * the engine has not picked up yet. The protocol promises one reply
+         * per frame, so tell the host the superseded frame will not be
+         * evaluated (the RX task owns frame replies; this callback path is
+         * the engine-task reply lane). */
         heap_caps_free(s_staged_src);
+        s_result_cb(false, s_staged_len, "superseded");
     }
     s_staged_src = copy;
     s_staged_len = len;
