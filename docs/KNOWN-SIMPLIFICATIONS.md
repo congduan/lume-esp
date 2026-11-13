@@ -66,4 +66,15 @@ Owner：主控接板后跑，M1 不据此验收。
   RX 帧与 console stdin 共享 USJ 驱动 ring buffer，本固件不读 stdin，故 RX 由热更新
   RX 任务独占；若将来加入 console REPL 需重新评估该共享。
 
+## r6 review fixes（r5 交付后 Codex review 的 2×P1 + 2×P2，均已修）
+
+- 安装/复用 USJ 驱动后调用 `usb_serial_jtag_vfs_use_driver()`：console 的 ESP_LOG
+  TX 也走驱动，不再与走驱动的 `RELOAD` 应答在 FIFO 直写路径上竞争（P1）。
+- 被 staging 槽覆盖（尚未被引擎取走）的帧现在会收到显式 `RELOAD ERR superseded`
+  应答，「每帧恰好一条应答」的约定成立（P1）。
+- `respond()` 检查 `usb_serial_jtag_write_bytes()` 返回值，TX 失败/短写打
+  `ESP_LOGE`，不再静默丢 OK/ERR 行（P2）。
+- `enter_resync()` 进入时先测滚动窗口：恰好结束在错误边界的 `LUME` magic
+  不再被漏扫（P2）。
+
 其余架构取舍见 `docs/reactivity-design.md` §3。
