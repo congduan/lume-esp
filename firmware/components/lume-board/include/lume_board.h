@@ -1,0 +1,15 @@
+#pragma once
+/* Public, cross-component API for the lume-board component.
+ * Lives in INCLUDE_DIRS "include" so other components (lume-pmic) can see it
+ * via `REQUIRES lume-board`. Board-internal helpers stay in the private
+ * lume_board_internal.h at the component root. */
+#include "driver/i2c_master.h"
+
+/* The shared I2C master bus created by lume_board_init() (AXP2101 0x34,
+ * CST9220 0x5A, IMU, codec, RTC). Returns NULL before board init succeeds.
+ * The handle is owned by the board component and kept for the app lifetime;
+ * callers add their own devices with i2c_master_bus_add_device() and must NOT
+ * delete the bus. ESP-IDF v5.5.5 i2c_master operation functions are
+ * thread-safe via the bus operation semaphore, so the LVGL task (touch poll)
+ * and the engine task (PMIC telemetry) may use the same bus concurrently. */
+i2c_master_bus_handle_t lume_board_get_i2c_bus(void);

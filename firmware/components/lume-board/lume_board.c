@@ -19,9 +19,14 @@
 #include "esp_log.h"
 #include "lvgl.h"
 #include "lume_pins.h"
+#include "lume_board.h"
 #include "lume_board_internal.h"
 
 static const char *TAG = "lume-board";
+
+/* Shared I2C bus handle, published for other components (lume-pmic) via
+ * lume_board_get_i2c_bus(). Set once by lume_board_init(), never deleted. */
+static i2c_master_bus_handle_t s_i2c_bus = NULL;
 
 /* M1: the JS demo owns the screen by default. Set LUME_BOARD_LEGACY_DEMO=1
  * to restore the original pure-LVGL proof screen (no JS handoff). */
@@ -78,6 +83,11 @@ static void lvgl_task(void *arg)
     }
 }
 
+i2c_master_bus_handle_t lume_board_get_i2c_bus(void)
+{
+    return s_i2c_bus;
+}
+
 esp_err_t lume_board_init(void)
 {
     /* 1. Shared I2C master bus: AXP2101(0x34), CST9220(0x5A), IMU, codec, RTC. */
@@ -93,6 +103,7 @@ esp_err_t lume_board_init(void)
     };
     i2c_master_bus_handle_t bus = NULL;
     ESP_RETURN_ON_ERROR(i2c_new_master_bus(&i2c_cfg, &bus), TAG, "i2c_new_master_bus failed");
+    s_i2c_bus = bus;   /* publish for cross-component users (no init-order change) */
 
     /* 2. PMIC rails first, before anything drives the panel. Non-fatal by design
      * (see lume_pmic.c): the vendor examples rely on OTP defaults. */
