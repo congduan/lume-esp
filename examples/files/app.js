@@ -159,4 +159,13 @@ View({ style: {
 /* ============ 生命周期 ============ */
 lume.app.onResume(function () { loadDir(cwd()); });   // 回前台重读目录
 
+/* 开发验证：在控制台调用 seedTestEntries()，用 1000 条模拟目录测试滚动。
+ * 不写 TF 卡；重新 loadDir(cwd()) 即可恢复真实目录。 */
+function seedTestEntries() {
+  var test = [];
+  for (var i = 0; i < 1000; i++) test.push({name: 'dir-' + i, isDir: true});
+  entries.set(test);
+  status.set('1000 test directories');
+}
+
 loadDir('/');

@@ -20,3 +20,13 @@ lume.power.onWake(function () {
   lastActivity = lume._nowMs();
   state.set('awake at ' + Math.floor(lume._nowMs()));
 });
+
+lume.system.setInterval(function () {
+  if (lume._nowMs() - lastActivity < 15000) return;
+  var status = lume.power.sleepNow();
+  if (status < 0) {
+    state.set('sleep error ' + status);
+    lastActivity = lume._nowMs(); // avoid a busy retry loop
+  }
+}, 1000);
+
