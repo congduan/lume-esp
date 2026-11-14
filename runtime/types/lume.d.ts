@@ -150,6 +150,24 @@ declare namespace lume.ui {
 
 /** Optional JS bundle module: import runtime/shell.js before using these components. */
 declare namespace lume.ui.shell {
+  interface DialogButton {
+    label: string;
+    style?: 'plain' | 'primary' | 'danger';
+    onPress?: () => void;
+  }
+  interface DialogProps {
+    title: string;
+    message?: string;
+    buttons: DialogButton[];
+    /** true (default): backdrop tap closes the top dialog; false: backdrop only intercepts touch. */
+    modal?: boolean;
+  }
+  /** Opens above existing dialogs. Returns an idempotent close function. */
+  function Dialog(props: DialogProps): () => void;
+  namespace Toast {
+    /** Replaces the active toast and restarts its duration. Never captures touch. */
+    function show(message: string, options?: {durationMs?: number; position?: 'top' | 'bottom'}): void;
+  }
   interface StatusBarProps {
     parent?: lume.ui.Node; left?: string | (() => string); right?: string | (() => string);
     height?: number; background?: string; clock?: boolean; x?: number; y?: number;
@@ -237,7 +255,9 @@ declare namespace lume.theme {
     colors?: Record<string, `#${string}`>;
     /** Default borderRadius for styles without an explicit borderRadius. */
     radius?: number;
-    /** Stored for future text sizing; does not change text in r18. */
+    /** With runtime/shell.js imported: default View padding and gap in px when omitted; explicit values win. */
+    spacing?: number;
+    /** Multiplies fontSize before selecting a bundled font face. */
     fontScale?: number;
   }
   /** Replaces the whole theme and repaints styles that read its named colors. */
