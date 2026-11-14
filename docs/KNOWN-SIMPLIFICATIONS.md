@@ -486,3 +486,9 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - 20ms engine 队列等待是 timer tick 源，`esp_timer_get_time()` 仅用于单调时钟读数。回调在 engine task 的 drain 点执行；interval 漏过的周期只补一次，不追赶连发。pause 时 timer 停止派发，resume 后到期的 timer 最多触发一次；bundle 替换时全部清掉。
 - `audio.record`/`audio.play` 与同步 HTTP 会阻塞 engine task，期间 timer、输入与热更新均延迟。后续可把这些操作迁到独立 worker，由定长消息桥回传完成事件，再在 engine drain 点派发 JS 回调。
 - 热替换释放次序：旧 app `onPause` → 清生命周期回调 → 清 timer → 取消 native 动画 → dispose 所有 effect（含 Canvas onDraw）/press handler → 清 signal 队列与版本 → Queue A RESET 场景 → 释放旧 QuickJS runtime → 新 runtime/prelude/bundle eval → `onStart`。signal 对象的最终内存由 QuickJS runtime 释放。eval 失败会回退上个可用 bundle；`onStart` 回调抛错仅记录日志。
+
+## r18 theme tokens
+
+- `lume.theme.set()` replaces one flat theme snapshot. Named `colors` resolve only in `Style.background` and `Style.borderColor`; unknown names pass to the existing `#RRGGBB` parser and raise its error. Literal hex colors and numeric background values retain their prior behavior. Canvas drawing colors and text glyph colors do not use theme tokens. There is no nested theme inheritance or partial merge.
+- The snapshot is held in a signal. Each named-color property has an owned effect and resends its ATTR when the theme changes; disposal removes its subscription. Theme changes may resend an unchanged named color. Literal properties stay quiet. An omitted `borderRadius` follows the theme's default `radius`; clearing that default sends radius 0. An explicitly set `borderRadius` stays fixed.
+- `fontScale` is validated and stored, but text font size remains LVGL's fixed default because Style has no `fontSize` property in this round. Theme changes are JS/Queue A events; on-board colors and visual timing still need device acceptance.

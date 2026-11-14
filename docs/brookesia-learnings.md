@@ -23,14 +23,15 @@ lume.app.onBack(() => boolean)  // 返回键拦截：返回 true=已处理，fal
 
 Brookesia：主题样式表集中管理，运行时可切换（phone/stylesheets/ 目录放 JSON 样式表）。
 
-**Lume 采纳（r18，与设计 token 合流）**：`lume.theme` 命名空间——
+**Lume 采纳（r18 已落地，与设计 token 合流）**：`lume.theme` 命名空间——
 ```js
 lume.theme.set({ colors: { primary:'#0B1E3F', text:'#FFFFFF' },
                  radius: 12, fontScale: 1.0 });
 ```
 prelude 把命名色注入样式解析（`background:'primary'` 引用 token），signal 化后全屏
 联动重绘（复用 r14/r15 的属性消息管线）。暗色/亮色主题一键切，这是嵌入式设备
-（夜间表盘/日间模式）的真实需求。
+（夜间表盘/日间模式）的真实需求。r18 采用扁平 colors 表和 owned signal effect；
+默认 radius 随主题更新，fontScale 只存储，字形大小留后续轮次。
 
 ## 3. Anim player（gui/anim_player/）
 

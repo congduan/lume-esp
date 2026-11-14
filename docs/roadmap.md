@@ -27,7 +27,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [ ] Canvas self-drawing widget（r16 代码完成：LVGL RGB565 canvas + PSRAM 预算、Canvas/onDraw 绘制 API、signal effect 重绘与折线图 flex 混排示例；host harness/构建/size 见 r16 战报。真机像素、时序和视觉验收留接板轮，故保持未勾选）
 - [ ] Gesture layer (tap/swipe/long-press/pan)
 - [x] App lifecycle（r17：生命周期钩子、BACK/PAUS/RESM 协议、timer、热替换释放链；真机待验收）
-- [ ] Theme system（r18 借鉴 ESP-Brookesia Stylesheet Manager：lume.theme 设计 token，命名色注入样式解析，signal 化全屏联动。详见 docs/brookesia-learnings.md）
+- [x] Theme system（r18：lume.theme flat color tokens + default radius，命名色通过 owned effect 在 theme.set 时重发 ATTR；fontScale 仅登记，真机视觉待接板验收。详见 docs/brookesia-learnings.md 和 KNOWN-SIMPLIFICATIONS）
 
 ## M4 — tooling
 - [ ] `lume` CLI: create / dev / deploy (esbuild → qjs bytecode → push)
