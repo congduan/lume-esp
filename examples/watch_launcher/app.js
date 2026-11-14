@@ -18,6 +18,9 @@ const PREVIEW = [
   { id: 'radio', label: '收音机', color: '#00ACC1', icon: 'O' },
   { id: 'torch', label: '手电', color: '#546E7A', icon: 'L' },
   { id: 'calc', label: '计算器', color: '#7CB342', icon: 'C' },
+  { id: 'games_2048', label: '2048', color: '#EDC850', icon: '2' },
+  { id: 'games_snake', label: '贪吃蛇', color: '#57E49B', icon: 'S' },
+  { id: 'games_breakout', label: '打砖块', color: '#63B8F0', icon: 'B' },
 ];
 
 const installed = lume.apps.entries();
