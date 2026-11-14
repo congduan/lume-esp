@@ -373,6 +373,12 @@ static void apply_create(const lume_ui_msg_t *m)
     switch (m->kind) {
         case LUME_NODE_VIEW:
             obj = lv_obj_create(parent);
+            /* Lume default: containers do not scroll. LVGL marks every lv_obj
+             * SCROLLABLE with an AUTO scrollbar, so overflowing flex children
+             * would grow a scrollbar and swallow drags before the gesture
+             * recognizer sees them; style.scroll re-adds the flag
+             * (ATTR_SCROLL_DIR != 0 in apply_set_attr). */
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
             break;
         case LUME_NODE_TEXT:
             obj = lv_label_create(parent);
