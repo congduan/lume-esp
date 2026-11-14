@@ -2212,7 +2212,6 @@ int lume_engine_request_reload(const char *src, size_t len)
     memcpy(copy, src, len);
     copy[len] = '\0';
 
-    bool need_post;
     xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
     if (s_staged_src != NULL) {
         /* Single staging slot, last-frame-wins: a newer frame supersedes one
@@ -2225,27 +2224,21 @@ int lume_engine_request_reload(const char *src, size_t len)
     }
     s_staged_src = copy;
     s_staged_len = len;
-    need_post = !s_reload_pending;   /* coalesce: at most one queued reload */
-    s_reload_pending = true;
-    xSemaphoreGive(s_stage_mutex);
-
-    if (need_post) {
+    if (!s_reload_pending) {
         lume_engine_evt_t evt = { .type = LUME_EVT_RELOAD, .node_id = 0 };
         if (xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(100)) != pdTRUE) {
-            /* No event in the queue yet (need_post implies pending was false),
-             * so the engine cannot have taken `copy`: safe to roll back. */
+            /* Staging ownership and the post decision remain under one lock.
+             * No later request can replace/free copy during this rollback. */
             ESP_LOGE(TAG, "request_reload: evt queue full, dropping frame");
-            xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
-            if (s_staged_src == copy) {
-                s_staged_src = NULL;
-                s_staged_len = 0;
-            }
-            s_reload_pending = false;
-            xSemaphoreGive(s_stage_mutex);
+            s_staged_src = NULL;
+            s_staged_len = 0;
             heap_caps_free(copy);
+            xSemaphoreGive(s_stage_mutex);
             return -1;
         }
+        s_reload_pending = true;
     }
+    xSemaphoreGive(s_stage_mutex);
     return 0;
 }
 
