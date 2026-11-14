@@ -22,7 +22,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 ## M3 — declarative UI completeness
 - [x] Flex layout engine in the bridge (map to LVGL flex)（r14：flex 方向/主轴/交叉轴/gap/padding/百分比宽高桥接 LVGL flex，CSS camelCase 在 prelude 解析；host harness 校验含负向用例）
 - [x] Style resolution (padding/margin/background/border/corner/opacity)（r14 部分：padding/gap/borderRadius/borderWidth/borderColor/opacity/百分比已落地；margin 与分边 padding 登记简化，见 KNOWN-SIMPLIFICATIONS）
-- [ ] List virtualization, image rendering (PNG/JPG decode)
+- [ ] List virtualization, image rendering (PNG/JPG decode)（r19：LVGL 原生滚动容器、固定行高窗口化 List、滚动反向事件和 files app 已落地；PNG/JPG 解码仍空缺，真机手感待接板，整行保持未勾）
 - [x] Animation primitives (tween/transition)（r15 代码完成：LVGL lv_anim 桥接、signal transition、lume.anim.to/cancel、完成事件回流与滑入示例；host harness/构建/size 验证，真机视觉流畅度待接板）
 - [ ] Canvas self-drawing widget（r16 代码完成：LVGL RGB565 canvas + PSRAM 预算、Canvas/onDraw 绘制 API、signal effect 重绘与折线图 flex 混排示例；host harness/构建/size 见 r16 战报。真机像素、时序和视觉验收留接板轮，故保持未勾选）
 - [ ] Gesture layer (tap/swipe/long-press/pan)
