@@ -81,7 +81,11 @@ declare namespace lume.ui.shell {
   }
   interface LauncherApp { id: string; label: string; color?: string; icon?: string; glyph?: string }
   interface LauncherProps {
-    parent?: lume.ui.Node; apps: LauncherApp[]; onLaunch?: (id: string) => void;
+    parent?: lume.ui.Node;
+    /** Defaults to lume.apps.entries(); pass a list to render something else. */
+    apps?: LauncherApp[];
+    /** Defaults to lume.apps.launch(id) (real runtime switch). */
+    onLaunch?: (id: string) => void;
     statusBar?: boolean; columns?: number; title?: string;
     right?: string | (() => string); indicator?: boolean;
     onBack?: () => boolean; onPageSwipe?: (dir: 'left' | 'right') => void;
@@ -429,6 +433,41 @@ declare namespace lume.storage.Fs {
   function mkdir(path: string): number;
   function list(dirPath: string): string[] | number;
   function exists(path: string): boolean | number;
+}
+
+/**
+ * Multi-app store + single-live-app switching (r30).
+ *
+ * Layout on the LittleFS "storage" partition:
+ *   /apps/<id>/app.js     bundled source (installed by `lume deploy`)
+ *   /apps/<id>/meta.json  one-line JSON: {"label","icon","color"}
+ *   /apps/.current        app started on the next boot ("" = built-in home)
+ *
+ * Ids are 1..31 chars of [A-Za-z0-9._-] and must not start with '.'.
+ *
+ * ONLY ONE APP IS ALIVE AT A TIME. launch()/home() do not run code in the
+ * current context: they ask the engine to recycle the whole QuickJS runtime
+ * and evaluate the target source in a fresh one (the hot-reload chain). The
+ * call returns before that happens, so nothing after it in the caller runs.
+ *
+ * Return codes: 0 = success, -1 bad id / queue full / switch refused, -2
+ * filesystem failure, -3 filesystem unavailable, -4 app not found, -6 refused
+ * because that app is the one currently running. list() returns an array of
+ * ids (ascending), meta() returns the raw JSON text. Launching is refused for
+ * an id with no app.js.
+ */
+declare namespace lume.apps {
+  function list(): string[] | number;
+  function meta(id: string): string | number;
+  function current(): string | number;
+  function launch(id: string): number;
+  function home(): number;
+  function remove(id: string): number;
+  function mounted(): boolean;
+  /** Installed apps with meta.json merged; used by the launcher and lume_home_js. */
+  function entries(): {
+    id: string; label: string; icon: string; color: string;
+  }[];
 }
 
 /**

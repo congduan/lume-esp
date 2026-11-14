@@ -18,9 +18,31 @@ node tools/lume/lume.js create my-app
 node tools/lume/lume.js dev my-app
 ```
 
-Edit `my-app/app.js`; `dev` bundles changed files with esbuild and sends the source over the board's USB Serial/JTAG port, then forwards serial logs. An unhandled `onBack` returns to the embedded demo. Press `p`, `r`, or `b` in an interactive dev terminal to send PAUS, RESM, or BACK; Ctrl+C exits. The firmware's embedded demo remains the boot and failed-reload fallback.
+Edit `my-app/app.js`; `dev` bundles changed files with esbuild, installs the app on the device (LittleFS) and starts it, then sends each subsequent change over USB Serial/JTAG as a hot update, forwarding serial logs. Press `p`, `r`, or `b` in an interactive dev terminal to send PAUS, RESM, or BACK; Ctrl+C exits.
 
-Use `node tools/lume/lume.js deploy my-app` for a single minified bundle and push. Both commands auto-detect a single Espressif USB port; if needed, specify `--port /dev/ttyACM0` (or the platform's serial path). The device's `RELOAD OK <length>` confirms that the JS source evaluated; `RELOAD ERR <reason>` is shown as a CLI error. `--help` and `--version` are available. Baud is set to 115200; USB CDC does not use it as a physical bit rate.
+### Multiple apps on one device
+
+The board stores a set of apps and runs **exactly one at a time**: switching apps tears the whole QuickJS runtime down and evaluates the target source in a fresh context (the same chain as a hot reload). Nothing is shared between apps and there is no background app.
+
+```bash
+node tools/lume/lume.js deploy my-app                    # id = directory name
+node tools/lume/lume.js deploy my-app --id clock
+node tools/lume/lume.js deploy my-app --ephemeral        # run once, do not install
+node tools/lume/lume.js apps                             # list installed apps
+node tools/lume/lume.js apps launch clock
+node tools/lume/lume.js apps remove clock
+node tools/lume/lume.js apps home                        # back to the built-in home grid
+```
+
+`deploy` sends a `STORE` command frame (writes `/apps/<id>/app.js` + `meta.json`) and then a `LAUNCH` command frame. The optional `label` / `icon` / `color` shown by the launcher come from the app's `package.json`:
+
+```json
+{ "lume": { "entry": "app.js", "label": "时钟", "icon": "C", "color": "#1E88E5" } }
+```
+
+Boot behaviour: the device starts `/apps/.current` (the last launched app) when that app is still installed, otherwise the built-in home grid (`lume_home_js`, one tile per installed app). An app that fails to evaluate drops the boot marker and falls back to home, so a broken install cannot brick the device. An unhandled `onBack` returns from the running app to the home grid; the built-in grid itself is the root and swallows BACK. `--ephemeral` keeps the M1 behaviour: no file is written, the pushed bundle only lives in RAM until the next boot or reload.
+
+Both commands auto-detect a single Espressif USB port; if needed, specify `--port /dev/ttyACM0` (or the platform's serial path). The device's `RELOAD OK <length>` confirms that the JS source evaluated; `RELOAD ERR <reason>` is shown as a CLI error. `--help` and `--version` are available. Baud is set to 115200; USB CDC does not use it as a physical bit rate.
 
 The scaffold uses `app.js` and a `package.json` `lume.entry` field. Apps use the prelude globals (`signal`, `View`, `Text`, `Button`, `lume`) directly. The CLI bundles imports from local modules via esbuild, emitting `iife`, `es2020` JavaScript source. The device's `JS_Eval(..., JS_EVAL_TYPE_GLOBAL)` accepts that source; it does not accept an ESM `export` statement or QuickJS bytecode. The CLI refuses empty or over 256 KiB bundles before opening the port. Development bundles are not minified, deployment bundles are.
 
@@ -36,14 +58,27 @@ Source of truth: the shared portable codec [lume_frame.h](../firmware/components
 | Payload bytes, 1..262144 | `LUME_FRAME_MAX_PAYLOAD` | `protocol.js:2`, `:17-27` |
 | `BACK`, `PAUS`, `RESM` four-byte controls | `LUME_FRAME_CTRL_*` | `protocol.js:3` |
 | Final `RELOAD OK/ERR` line | `lume_ota_reply()` (shared by USB + OTA) | `transport.js:24`, `ota.js` |
+| Command magic `LUMC`, same 12-byte header + CRC | `LUME_FRAME_CMD_MAGIC`, `LUME_FRAME_EV_CMD` | `protocol.js:cmdFrame()` |
+| Command text grammar (`STORE`/`LAUNCH`/`REMOVE`/`META`/`LIST`/`HOME`) | `lume_cmd.h` / `lume_cmd.c` | `protocol.js:storeCommand()/simpleCommand()` |
+| `CMD OK` / `CMD ERR` lines | `lume_hotreload.c:cmd_reply()` | `transport.js`, `ota.js` |
 
-The C host harness is compiled on the host (no ESP-IDF stubs):
+Two frame kinds share one byte stream: `LUME` payloads are evaluated as app source, `LUMC` payloads are management commands and are never evaluated. A command frame is answered with `CMD OK …` / `CMD ERR <reason>`; `LAUNCH`/`HOME` are answered with the engine's `RELOAD OK/ERR` because the outcome is only known after the target app evaluated. `LIST` sends one `APP\t<id>\nMETA\t<id>\t<json>\n` block per app before `CMD OK list <n>`.
+
+The C host harnesses are compiled on the host (no ESP-IDF stubs):
 
 ```bash
 gcc -std=c11 -Wall -Wextra -Werror \
   -I firmware/components/lume-hotreload/include \
   tests/ota_protocol.c firmware/components/lume-hotreload/lume_frame.c \
   -o /tmp/lume_ota_protocol && /tmp/lume_ota_protocol
+
+gcc -std=c11 -Wall -Wextra -Werror \
+  -I firmware/components/lume-hotreload/include \
+  -I firmware/components/lume-engine/include \
+  tests/apps_protocol.c \
+  firmware/components/lume-hotreload/lume_frame.c \
+  firmware/components/lume-hotreload/lume_cmd.c \
+  -o /tmp/lume_apps_protocol && /tmp/lume_apps_protocol
 ```
 
 ## WiFi OTA deploy (`lume deploy --ota`)

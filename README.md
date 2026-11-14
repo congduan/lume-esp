@@ -128,6 +128,10 @@ List({ style: { width: '100%', height: '100%', scroll: 'vertical' },
 1000 apps? The virtualized list still only creates ~20 nodes. Full source:
 [examples/watch_launcher/app.js](examples/watch_launcher/app.js).
 
+The launcher now reads the installed set from `lume.apps.entries()` and a tap
+switches the single live app (`lume deploy <dir> --id <app-id>`, see
+[docs/build.md](docs/build.md#multiple-apps-on-one-device)).
+
 ### 3. Files — a complete file manager app
 
 TF-card directory browsing with Fs API, selection highlighting via signal-bound styles,

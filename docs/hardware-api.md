@@ -105,3 +105,68 @@ push bundle.lumepak → validate header → mount → engine reload → app rest
 ```
 
 Native peripherals stay alive across reloads; only the JS engine state is reset.
+
+## Multi-app store (r30)
+
+The device holds a set of apps on the LittleFS `storage` partition and runs
+**exactly one of them at a time**. "Multi-app" is an installation/selection
+feature, not a runtime isolation feature: there is no shared runtime, no
+background app, no app-to-app messaging, and no per-app sandbox or permission
+model.
+
+```
+/apps/<id>/app.js      bundled app source (JS_Eval, iife + es2020 text)
+/apps/<id>/meta.json   one-line JSON: {"label","icon","color"}
+/apps/.current         id started on the next boot (missing = built-in home)
+```
+
+`<id>` is 1..31 chars of `[A-Za-z0-9._-]` and must not start with `.`
+(`lume-engine/include/lume_app_id.h`). The id is also the directory name, so
+path traversal is rejected by construction.
+
+### Switching model
+
+`lume.apps.launch(id)` / `lume.apps.home()` only **post** a switch request to
+the engine task. The current context keeps running until the JS call returns;
+then the engine performs the same teardown as a hot reload — `__lume_shutdown`
+(lifecycle + effects + timers + native animations + Canvas onDraw + press
+handlers), UI reset, free context, free runtime — reads the target bundle from
+LittleFS and evaluates prelude + target source in a **fresh** QuickJS runtime.
+Any code after a `launch()` call in the old app does not run.
+
+Boot: `.current` is started when that app is still installed; otherwise the
+built-in home grid (`lume_scripts.c:lume_home_js`) renders one tile per
+installed app. An app whose eval fails drops `.current` and falls back to home,
+so a broken install cannot brick the device. An unhandled BACK returns to home.
+
+### JS API
+
+| Call | Returns |
+|---|---|
+| `lume.apps.list()` | `string[]` of installed ids (ascending), or a negative number |
+| `lume.apps.meta(id)` | raw `meta.json` text, or a negative number |
+| `lume.apps.entries()` | `{id,label,icon,color}[]` with meta merged (prelude helper) |
+| `lume.apps.current()` | id of the running app, `''` for home, or a negative number |
+| `lume.apps.launch(id)` | `0` queued / `-1` bad id, queue full, or no app.js |
+| `lume.apps.home()` | `0` queued / negative |
+| `lume.apps.remove(id)` | `0`, `-4` not found, `-6` (refused: that app is running) |
+| `lume.apps.mounted()` | `true` when the store filesystem is mounted |
+
+`lume.ui.shell.Launcher` defaults its app list to `lume.apps.entries()` and its
+`onLaunch` to `lume.apps.launch(id)`; passing `apps` / `onLaunch` still wins.
+
+### Command channel
+
+Management operations travel as `LUMC` command frames on the same USB/WiFi
+byte stream as app bundles (see `docs/build.md` for the wire table and
+`lume-hotreload/include/lume_cmd.h` for the grammar). `STORE` is the only
+command that writes an app; the firmware never parses `meta.json`.
+
+### Not verified
+
+LittleFS write endurance under repeated `lume dev` installs, install time for a
+200 KiB bundle, switch latency, home-grid visuals/touch feel and real
+multi-app usage on the board are **deferred to board bring-up**. Only the host
+halves are checked: `tests/apps_protocol.c` (wire + grammar) and
+`tests/apps.js` (prelude + launcher over the extracted prelude). See
+`docs/KNOWN-SIMPLIFICATIONS.md` (r30).

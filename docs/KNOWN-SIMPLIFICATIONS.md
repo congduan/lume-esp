@@ -690,3 +690,15 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   `E (` 行 **0 条**、无 `QSPI flush failed`；`lume deploy examples/counter` 正常（`Deployed 1040 bytes`）。内部 RAM 代价为 2×19200 B。
 - **仍未验收/未量化**：① 观感上"扫过"是否消除——需要人眼确认，且**理论上仍会存在**：总线时间由 QSPI 40 MHz 决定（≈29 ms/整屏），无法靠缓冲切法消除；② 新配置的 render/flush 数字未复测（本轮结束时 perf monitor 已关闭），r28 的 39/29 ms 是老配置读数；③ 240 MHz 对功耗/发热的影响未测；④ 彻底消除需要 TE 引脚 + vsync 同步，尚未确认该板 TE 是否引到可用 GPIO。
 - **roadmap 不动**：`docs/roadmap.md` 未修改。
+
+## r30 / 多 app 存储 + 单 app 存活
+
+- **模型**：设备上可安装多个 app，但**任何时刻只有一个 QuickJS runtime / 一个 app 存活**。切换 = 完整重建（`__lume_shutdown` → UI reset → free context/runtime → 新 runtime 里 eval prelude + 目标源），与热替换同一条链路。没有共享 runtime、没有后台 app、没有 app 间通信、**没有沙箱或权限隔离**——任何 app 都能通过 `lume.storage.Fs` 读写 `/apps` 下其他 app 的文件。这是刻意的：目标是多入口体验，不是多租户隔离。
+- **存储**：LittleFS `storage` 分区，`/apps/<id>/app.js` + `/apps/<id>/meta.json`（单行 JSON，固件不解析，由 prelude 的 `lume.apps.entries()` 解析）+ `/apps/.current`（上次启动的 id）。id 规则见 `firmware/components/lume-engine/include/lume_app_id.h`（1..31 字符 `[A-Za-z0-9._-]`，禁止以 `.` 开头）。`STORE` 先写 meta 再写 app.js：中途掉电最多留下"新 meta + 旧 bundle"，不会出现没有 meta 的隐形 app。
+- **命令通道**：新增 `LUMC` 命令帧（与 `LUME` 应用帧共用 12 字节头/CRC、共用一个字节流），语法在 `firmware/components/lume-hotreload/include/lume_cmd.h`。`STORE`/`REMOVE`/`META`/`LIST` 立即回 `CMD OK/ERR`；`LAUNCH`/`HOME` 复用引擎的 `RELOAD OK/ERR`（最终结果只能在 eval 之后知道）。旧固件把 `LUMC` 当 bad-magic 重同步，不兼容新 CLI 的多 app 命令，但普通 deploy（`--ephemeral`）仍然只发 `LUME`。
+- **启动/返回**：boot 时 `.current` 指向的 app 仍存在就直接启动它，否则进固件内嵌 home 网格（`lume_scripts.c:lume_home_js`）。app eval 失败会清掉 `.current` 并回落 home（坏安装不会变砖）。BACK 未被 app 的 `onBack` 拦截时回 home；home 自身是根，拦截 BACK。`lume.apps.home()` 供 app 主动返回。
+- **热更新语义不变**：`lume dev` 首帧 `STORE` + `LAUNCH`（写盘并启动），之后的改动只走 `LUME` 数据帧，只存在内存里；重启后回到磁盘上的版本。这样 dev 崩溃不会把坏代码写进安装目录。`deploy --ephemeral` 完全保持 M1 行为（不写盘）。
+- **删除限制**：正在运行的 app 不能自我删除（`lume.apps.remove` 返回 `-6`，命令行 `CMD ERR busy`），避免 runtime 在自己源码被删后继续运行、下次启动落空。
+- **已做的主机侧验证**：`tests/apps_protocol.c` 35 项（LUMC 识别/交错流/逐字节喂入/CRC 重同步/STORE 元数据与源码切分/id 校验/CLI 字节往返）；`tests/apps.js` 9 项（真实 prelude 抽取 + `entries()` 合并 meta/坏 JSON/无 native 降级/Launcher 默认列表与默认 launch/显式覆盖）；`npm test --prefix tools/lume` 14 项（cmdFrame 字节、STORE 布局、OTA 命令往返 `STORE`+`LIST`+`LAUNCH`、CLI 子命令与 id 校验）。既有 harness 全绿，其中 `tests/style_mapping.js` / `tests/theme_mapping.js` 的 demo 提取正则从 `;\s*$` 改为 `;\n`（脚本文件末尾新增了 `lume_home_js`）。
+- **未验证（全部留接板轮）**：① 真机 LittleFS 写入/擦除耗时与 `lume dev` 反复安装的寿命影响；② 200 KiB 级 bundle 的 `STORE` 耗时与安装失败的掉电表现；③ 切换延迟、切换时的闪烁/黑屏；④ home 网格的观感、点击手感、图标尺寸；⑤ 多 app 实际使用下的内存碎片与长时间稳定性；⑥ `lume-hotreload`/`lume-engine` 的新增代码尚未在 ESP-IDF v5.5 下编译（本轮在 macOS 主机，无法 `idf.py build`），首次构建需注意 `lume_apps.c` 的 include/CMake 依赖。
+- **roadmap 不动**：`docs/roadmap.md` 未修改；多 app 属于 M5 组件库/启动器方向的落地，里程碑定义与验收项仍由接板轮维护。
