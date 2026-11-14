@@ -3,7 +3,7 @@
  * item; see G_AXIS constants). Without an IMU (host simulator) it falls down. */
 var W = 400, H = 400;
 var DT = 0.05;            /* 50 ms tick, ~20 fps */
-var R = 18;               /* ball radius, px */
+var R = 40;               /* ball radius, px */
 var G_SCALE = 55;         /* px/s^2 per m/s^2 of measured acceleration */
 var REST = 0.72;          /* bounce restitution */
 var V_MAX = 700;          /* speed clamp, px/s */
@@ -17,19 +17,46 @@ var GY = function (s) { return s.ay; };
 var frame = signal(0);
 var statusSig = signal('IMU: waiting');
 var ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
-var trail = [];           /* last positions, oldest first */
-var pollId = null, paused = false;
+var pollId = null, paused = false, flatCount = 0;
+
+/* ctx.circle draws only a pen-width ring (no width arg in the JS contract),
+ * so a solid ball is filled with per-row fillRect chords. */
+function fillCircle(ctx, cx, cy, r, color) {
+  ctx.fillColor(color);
+  ctx.fillRect(cx - r, cy, r * 2 + 1, 1);
+  for (var dy = 1; dy <= r; dy++) {
+    var half = Math.floor(Math.sqrt(r * r - dy * dy));
+    ctx.fillRect(cx - half, cy + dy, half * 2 + 1, 1);
+    ctx.fillRect(cx - half, cy - dy, half * 2 + 1, 1);
+  }
+}
 
 function tick() {
   if (paused) return;
   var s = lume.imu.read();
   var gx, gy;
   if (s) {
-    gx = GX(s) * G_SCALE;
-    gy = GY(s) * G_SCALE;
-    if (frame() % 20 === 0)
-      statusSig.set('a: ' + s.ax.toFixed(1) + ', ' + s.ay.toFixed(1) + ' m/s2');
+    var inplane = Math.sqrt(s.ax * s.ax + s.ay * s.ay);
+    if (inplane < 1.0) {
+      /* flat board -> in-plane gravity ~0. After ~2 s of flat idle, fall
+       * anyway (demo gravity) so the loop is visibly alive on the board. */
+      flatCount++;
+      gx = 0; gy = flatCount > 40 ? 250 : 0;
+    } else {
+      flatCount = 0;
+      gx = GX(s) * G_SCALE;
+      gy = GY(s) * G_SCALE;
+    }
+    if (frame() % 20 === 0) {
+      statusSig.set(flatCount > 40 ? 'idle fall - tilt to steer'
+        : flatCount > 0 ? 'flat (' + s.az.toFixed(1) + ' z) - tilt me'
+        : 'a ' + s.ax.toFixed(1) + ' / ' + s.ay.toFixed(1));
+      lume.log('imu-ball f=' + frame() + ' a=' + s.ax.toFixed(2) +
+        ',' + s.ay.toFixed(2) + ',' + s.az.toFixed(2) +
+        ' ball=' + Math.round(ball.x) + ',' + Math.round(ball.y));
+    }
   } else {
+    flatCount = 0;
     gx = 0; gy = 9.81 * G_SCALE;   /* simulator / no board: falls straight down */
     if (frame() % 20 === 0) statusSig.set('IMU unavailable - gravity down');
   }
@@ -51,8 +78,6 @@ function tick() {
     if (Math.abs(ball.vy) < 20) ball.vy = 0;
   }
 
-  trail.push([ball.x, ball.y]);
-  if (trail.length > 6) trail.shift();
   frame.set(frame() + 1);
 }
 
@@ -86,17 +111,10 @@ var scene = Canvas({ width: W, height: H, onDraw: function (ctx) {
                Math.round(H / 2 + gy / n * 40), '#46617A', 2);
   }
 
-  /* trail: shrinking dim circles, oldest first */
-  for (var i = 0; i < trail.length; i++) {
-    var t = 1 - (trail.length - i) / (trail.length + 1);
-    ctx.circle(Math.round(trail[i][0]), Math.round(trail[i][1]),
-               Math.max(2, Math.round(R * 0.5 * t)), '#1E3A55');
-  }
-
-  ctx.circle(Math.round(ball.x), Math.round(ball.y), R, '#47E0B1');
-  ctx.circle(Math.round(ball.x - R / 3), Math.round(ball.y - R / 3),
-             Math.round(R / 4), '#DCECF5');
-  ctx.text(8, 6, statusSig(), '#5C7794', 14);
+  fillCircle(ctx, Math.round(ball.x), Math.round(ball.y), R, '#47E0B1');
+  /* leading frame counter: if this number stops advancing on the board,
+   * the timer or the canvas redraw path is stuck, not the physics */
+  ctx.text(8, 6, 'f' + frame() + ' ' + statusSig(), '#5C7794', 14);
 } });
 
 View({ style: {
