@@ -8,6 +8,7 @@ var lightTheme = { colors: {
 lume.theme.set(darkTheme);
 var count = signal(0);
 var dim = signal(false);
+var darkButton, lightButton;   /* named globals: tests press them directly */
 
 /* Layout: one flex column fills the panel; the 40 px padding is the
  * round-corner safe inset, and the theme buttons share the row evenly. */
@@ -27,9 +28,9 @@ View({ style: {
 } }, [
   card,
   View({ style: { display: 'flex', flexDirection: 'row', gap: 12, width: '100%', height: 56 } }, [
-    Button({ title: 'Dark', style: { flexGrow: 1, height: 56, borderRadius: 12 },
+    darkButton = Button({ title: 'Dark', style: { flexGrow: 1, height: 56, borderRadius: 12 },
              onPress: function () { lume.theme.set(darkTheme); } }),
-    Button({ title: 'Light', style: { flexGrow: 1, height: 56, borderRadius: 12 },
+    lightButton = Button({ title: 'Light', style: { flexGrow: 1, height: 56, borderRadius: 12 },
              onPress: function () { lume.theme.set(lightTheme); } })
   ]),
   Button({ title: 'Count', style: { width: '100%', height: 64, borderRadius: 12 },
