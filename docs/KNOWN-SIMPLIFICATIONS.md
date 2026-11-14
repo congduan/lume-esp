@@ -446,3 +446,11 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - **roadmap 不勾选**：M2「WiFi + HTTP client bindings」**保持未勾选**，仅追加
   r11 风格进度注记「r11 代码完成 + 编译绿 + size 达标 + ESP-IDF 自查，真机
   连网验收留接板轮」——与 r7/r8/r9/r10 处理一致，等主控接板实测通过再勾。
+
+## r12 / M2 LittleFS 文件系统绑定（lume.storage.Fs）
+
+- 单个 `storage` 分区，挂载点 `/lume_fs`；成功挂载闩锁进程生命周期，失败在下次 runtime 注册时重试。`Fs.mounted()` 暴露状态；未挂载的操作返回 `-3`。
+- 首次挂载失败时组件按 `format_if_mount_failed=true` 格式化再挂载。这会清除已有的、无法挂载的 `storage` 内容；此分区此前标为 FAT，升级时原 FAT 内容不会保留。
+- 路径相对存储根目录，最多 240 字节。拒绝空路径段、`.`、`..`、末尾斜杠及内嵌 NUL；不自动创建父目录。`mkdir` 只创建一层，`remove` 不递归，`list` 只列直接子项名称。
+- `read` 最多一次读 64 KiB，按 QuickJS 的 UTF-8 文本解码；`readBinary` 返回原始 ArrayBuffer。写入的类型不记元数据，调用者自行选择读取方法。
+- `write`/`append` 同步执行 VFS 操作；没有事务、跨文件原子性或并发写入 API。文件系统层仅由 JS 引擎任务调用。掉电持久性和首次格式化行为仍待接板验证。
