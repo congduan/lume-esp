@@ -10,7 +10,7 @@ import { promisify } from 'node:util';
 import { build } from 'esbuild';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
-import { frame, crc32, CONTROL, MAX_PAYLOAD } from './protocol.js';
+import { frame, cmdFrame, storeCommand, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD } from './protocol.js';
 import { openOta, otaAuthLine, OTA_PORT_DEFAULT } from './ota.js';
 
 const execFileAsync = promisify(execFile);
@@ -72,6 +72,7 @@ test('bundle rejects oversize output before opening serial', async () => {
 // RELOAD OK <len>. Records the exact frame bytes for reuse assertions.
 function mockOtaDevice(token) {
   const received = [];
+  const commands = [];
   const sockets = new Set();
   const server = net.createServer(socket => {
     sockets.add(socket);
@@ -92,8 +93,23 @@ function mockOtaDevice(token) {
       if (authed && buf.length >= 12) {
         const len = buf.readUInt32LE(4);
         if (buf.length >= 12 + len) {
+          const magic = buf.subarray(0, 4).toString('ascii');
+          const payload = buf.subarray(12, 12 + len).toString('utf8');
           received.push(Buffer.from(buf.subarray(0, 12 + len)));
-          socket.write(`RELOAD OK ${len}\n`);
+          if (magic === MAGIC_CMD) {
+            commands.push(payload);
+            if (payload.startsWith('STORE\t')) {
+              socket.write(`CMD OK store ${payload.split('\t')[1].split('\n')[0]} ${len}\n`);
+            } else if (payload === 'LIST') {
+              socket.write('APP\tclock\nMETA\tclock\t{"label":"Clock"}\nCMD OK list 1\n');
+            } else if (payload.startsWith('LAUNCH')) {
+              socket.write('RELOAD OK 7\n');
+            } else {
+              socket.write('CMD OK home\n');
+            }
+          } else {
+            socket.write(`RELOAD OK ${len}\n`);
+          }
           buf = buf.subarray(12 + len);
         }
       }
@@ -103,6 +119,7 @@ function mockOtaDevice(token) {
     server.listen(0, '127.0.0.1', () => resolve({
       port: server.address().port,
       received,
+      commands,
       close: () => new Promise(r => {
         for (const s of sockets) s.destroy();
         server.close(r);
@@ -172,6 +189,68 @@ test('OTA RELOAD ERR is surfaced as a push error', async () => {
     for (const s of sockets) s.destroy();
     await new Promise(r => server.close(r));
   }
+});
+
+/* ---- r30 multi-app command frames ---- */
+
+test('command frame uses LUMC magic, same header and CRC as app frames', () => {
+  const bytes = cmdFrame('LIST');
+  assert.equal(bytes.subarray(0, 4).toString('ascii'), 'LUMC');
+  assert.equal(MAGIC_CMD, 'LUMC');
+  assert.equal(bytes.readUInt32LE(4), 4);
+  assert.equal(bytes.readUInt32LE(8), crc32(Buffer.from('LIST')));
+  assert.equal(bytes.subarray(12).toString('utf8'), 'LIST');
+  assert.equal(frame('LIST').subarray(0, 4).toString('ascii'), 'LUME');
+  assert.throws(() => cmdFrame(''), /1\.\.262144/);
+});
+
+test('STORE payload layout: verb, id, one-line meta, then raw source', () => {
+  assert.equal(storeCommand('clock', { label: '时钟' }, 'var a=1;'),
+    'STORE\tclock\n{"label":"时钟"}\nvar a=1;');
+  assert.equal(storeCommand('calc', {}, 'var b=2;'), 'STORE\tcalc\n\nvar b=2;');
+  // JSON.stringify escapes newlines, so the meta line always stays one line.
+  const multiline = storeCommand('x', { label: 'a\nb' }, 's');
+  assert.equal(multiline.split('\n').length, 3);
+  assert.ok(multiline.includes('\\n'));
+  assert.equal(simpleCommand('launch', 'clock'), 'LAUNCH\tclock');
+  assert.equal(simpleCommand('list'), 'LIST');
+  assert.equal(simpleCommand('home'), 'HOME');
+});
+
+test('OTA command round trip: STORE + LIST + LAUNCH ACKs', async () => {
+  const dev = await mockOtaDevice(OTA_TOKEN);
+  try {
+    const device = await openOta('127.0.0.1', OTA_TOKEN, dev.port);
+    const payload = storeCommand('clock', { label: 'Clock' }, 'View({});');
+    const stored = await device.command(payload);
+    assert.equal(stored.verb, 'store');
+    assert.equal(stored.arg, 'clock');
+
+    const list = await device.command(simpleCommand('LIST'));
+    assert.equal(list.count, 1);
+    assert.deepEqual(list.lines, ['APP\tclock', 'META\tclock\t{"label":"Clock"}']);
+
+    await device.commandReload(simpleCommand('LAUNCH', 'clock'));
+    await device.close();
+    assert.deepEqual(dev.commands, [payload, 'LIST', 'LAUNCH\tclock']);
+    assert.ok(dev.received.every(f => f.subarray(0, 4).toString('ascii') === 'LUMC'));
+  } finally { await dev.close(); }
+});
+
+test('CLI apps usage, sub-command and id validation', async () => {
+  const cli = new URL('./lume.js', import.meta.url).pathname;
+  const help = await execFileAsync(process.execPath, [cli, '--help']);
+  assert.match(help.stdout, /lume apps list\|launch <id>\|remove <id>\|home/);
+  assert.match(help.stdout, /--id <app-id>/);
+  await assert.rejects(
+    execFileAsync(process.execPath, [cli, 'apps', 'launch']),
+    err => /apps launch needs an app id/.test(err.stderr));
+  await assert.rejects(
+    execFileAsync(process.execPath, [cli, 'apps', 'explode']),
+    err => /unknown apps command: explode/.test(err.stderr));
+  await assert.rejects(
+    execFileAsync(process.execPath, [cli, 'deploy', '.', '--id', '.bad']),
+    err => /--id must be/.test(err.stderr));
 });
 
 test('OTA no-board path: connection refused is a clear error', async () => {
