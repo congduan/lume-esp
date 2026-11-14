@@ -32,7 +32,7 @@ function breakoutStep(s){
 }
 function breakoutState(){return {x:BW/2,y:BH-52,vx:2.5,vy:-3,paddle:BW/2-36,bricks:breakoutBricks(),remaining:36,lastBrick:-1,score:0,lives:3,level:1,over:false};}
 /* GAME UI */
-var state=breakoutState(),frame=signal(0),brickRevision=signal(0),score=signal(0),best=signal(gameHigh('breakout')),lives=signal(3),level=signal(1),note=signal('DRAG PADDLE');
+var state=breakoutState(),frame=signal(0),brickRevision=signal(0),score=signal(0),best=signal(gameHigh('brkout')),lives=signal(3),level=signal(1),note=signal('DRAG PADDLE');
 var root=View({style:{width:480,height:480,background:'#0A1428',scroll:'none'}});
 Text({parent:root,text:'BREAKOUT',style:{position:'absolute',x:72,y:22,fontSize:32,color:'#ECF2FF'}});
 Text({parent:root,text:function(){return 'S '+score()+'  BEST '+best()+'  L '+lives()+'  LV '+level();},style:{position:'absolute',x:72,y:63,fontSize:20,color:'#ECF2FF'}});
@@ -52,7 +52,7 @@ var bricks=[];
 for(var i=0;i<36;i++)(function(n){var b=state.bricks[n];bricks.push(View({parent:root,style:{position:'absolute',x:48+b.x,y:91+b.y,width:b.w,height:b.h,borderRadius:3,background:function(){brickRevision();return state.bricks[n].alive?['#F17A8A','#F8AB70','#F9D66C','#65D6B5','#63B8F0','#A48FE8'][Math.floor(n/6)]:'#0A1428';}}}));})(i);
 var timer=null,lastDx=0;
 function tick(){var event=breakoutStep(state);frame.set(frame()+1);
- if(event==='brick'||event==='level'){score.set(state.score);best.set(gameSave('breakout',state.score,best()));if(event==='brick')lume.setAttr(bricks[state.lastBrick],5,0);else for(var j=0;j<bricks.length;j++)lume.setAttr(bricks[j],5,1);gameBeep(620,20);}
+ if(event==='brick'||event==='level'){score.set(state.score);best.set(gameSave('brkout',state.score,best()));if(event==='brick')lume.setAttr(bricks[state.lastBrick],5,0);else for(var j=0;j<bricks.length;j++)lume.setAttr(bricks[j],5,1);gameBeep(620,20);}
  if(event==='paddle')gameBeep(400,12);
  if(event==='lost'||event==='over'){lives.set(state.lives);gameBeep(190,40);}
  if(event==='level'){level.set(state.level);note.set('LEVEL '+state.level);}

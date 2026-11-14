@@ -2,7 +2,7 @@
 
 ## Scope
 
-Three self-contained JS games under `examples/`: 2048, tilt/swipe Snake, and Breakout. `examples/games/shared.js` is a reference copy of helpers; every game embeds the helpers for direct single-file deployment. The launcher preview includes all three game IDs. There are no firmware/native changes, so no `idf.py build` was run.
+Three self-contained JS games under `examples/`: 2048, tilt/swipe Snake, and Breakout. `examples/games/shared.js` is a reference copy of helpers; every game embeds the helpers for direct single-file deployment. The launcher preview includes all three game IDs. Breakout stores its best score at `hiscore.brkout` because the NVS key limit is 15 characters. There are no firmware/native changes, so no `idf.py build` was run.
 
 Baseline requested: `653bf35`; actual HEAD before this work was `86272c5` after a successful `git fetch origin`. Three pre-existing modified simulator images (`EdgeNavigation.png`, `counter.png`, `files.png`) were left untouched. `docs/roadmap.md` has no game-example line; milestone definitions were not changed.
 
@@ -68,6 +68,9 @@ PASS snake eats
 PASS snake wall
 PASS snake body
 PASS snake IMU threshold
+PASS 2048 high score KV key
+PASS snake high score KV key
+PASS brkout high score KV key
 PASS breakout wall rebound
 PASS breakout brick
 PASS breakout level
