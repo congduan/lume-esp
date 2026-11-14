@@ -20,6 +20,7 @@ check('wall reflects normal velocity with restitution', () => {
     [{ x: 100, y: 90, w: 10, h: 20 }], 0.01);
   assert.equal(out.hitWall, true); near(out.ball.x, 91, 'wall x');
   near(out.ball.vx, -49.25, 'rebound vx');
+  near(out.impactSpeed, 98.5, 'impact speed');
 });
 check('hole event', () => {
   const out = game.physicsStep({ x: 120, y: 130, vx: 0, vy: 0 }, 0, 0, [], 0,
@@ -40,4 +41,10 @@ check('dt cap limits delayed tick', () => {
   const a = game.physicsStep({ x: 100, y: 100, vx: 0, vy: 0 }, 10, 0, [], 1);
   const b = game.physicsStep({ x: 100, y: 100, vx: 0, vy: 0 }, 10, 0, [], 0.1);
   near(a.ball.x, b.ball.x, 'capped x'); near(a.ball.vx, b.ball.vx, 'capped vx');
+});
+check('resting contact has no sound impact', () => {
+  const out = game.physicsStep({ x: 91.1, y: 100, vx: 0, vy: 0 }, 0, 0,
+    [{ x: 100, y: 90, w: 10, h: 20 }], 0.01);
+  assert.equal(out.hitWall, true);
+  near(out.impactSpeed, 0, 'resting impact');
 });

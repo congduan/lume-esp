@@ -52,12 +52,12 @@ function collideWall(b, wall) {
     b.vx -= (1 + RESTITUTION) * normalSpeed * nx;
     b.vy -= (1 + RESTITUTION) * normalSpeed * ny;
   }
-  return true;
+  return Math.max(0, -normalSpeed);
 }
 /* dt in seconds. Returns an independent ball plus event flags; no device/UI access. */
 function physicsStep(ball, ax, ay, walls, dt, holes, goal) {
   var b = { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy };
-  var event = { ball: b, hitWall: false, hole: false, goal: false };
+  var event = { ball: b, hitWall: false, impactSpeed: 0, hole: false, goal: false };
   var steps = Math.max(1, Math.ceil(clamp(dt, 0, 0.1) / 0.01));
   var h = clamp(dt, 0, 0.1) / steps;
   for (var n = 0; n < steps; n++) {
@@ -66,11 +66,14 @@ function physicsStep(ball, ax, ay, walls, dt, holes, goal) {
     var speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy);
     if (speed > MAX_SPEED) { b.vx *= MAX_SPEED / speed; b.vy *= MAX_SPEED / speed; }
     b.x += b.vx * h; b.y += b.vy * h;
-    if (b.x < BOUNDS.left + BALL_R) { b.x = BOUNDS.left + BALL_R; if (b.vx < 0) b.vx *= -RESTITUTION; event.hitWall = true; }
-    if (b.x > BOUNDS.right - BALL_R) { b.x = BOUNDS.right - BALL_R; if (b.vx > 0) b.vx *= -RESTITUTION; event.hitWall = true; }
-    if (b.y < BOUNDS.top + BALL_R) { b.y = BOUNDS.top + BALL_R; if (b.vy < 0) b.vy *= -RESTITUTION; event.hitWall = true; }
-    if (b.y > BOUNDS.bottom - BALL_R) { b.y = BOUNDS.bottom - BALL_R; if (b.vy > 0) b.vy *= -RESTITUTION; event.hitWall = true; }
-    for (var j = 0; j < walls.length; j++) if (collideWall(b, walls[j])) event.hitWall = true;
+    if (b.x < BOUNDS.left + BALL_R) { b.x = BOUNDS.left + BALL_R; if (b.vx < 0) { event.impactSpeed = Math.max(event.impactSpeed, -b.vx); b.vx *= -RESTITUTION; } event.hitWall = true; }
+    if (b.x > BOUNDS.right - BALL_R) { b.x = BOUNDS.right - BALL_R; if (b.vx > 0) { event.impactSpeed = Math.max(event.impactSpeed, b.vx); b.vx *= -RESTITUTION; } event.hitWall = true; }
+    if (b.y < BOUNDS.top + BALL_R) { b.y = BOUNDS.top + BALL_R; if (b.vy < 0) { event.impactSpeed = Math.max(event.impactSpeed, -b.vy); b.vy *= -RESTITUTION; } event.hitWall = true; }
+    if (b.y > BOUNDS.bottom - BALL_R) { b.y = BOUNDS.bottom - BALL_R; if (b.vy > 0) { event.impactSpeed = Math.max(event.impactSpeed, b.vy); b.vy *= -RESTITUTION; } event.hitWall = true; }
+    for (var j = 0; j < walls.length; j++) {
+      var impact = collideWall(b, walls[j]);
+      if (impact !== false) { event.hitWall = true; event.impactSpeed = Math.max(event.impactSpeed, impact); }
+    }
     if (holes) for (var k = 0; k < holes.length; k++) {
       if (insideCircle(b.x, b.y, holes[k], 0)) { event.hole = true; return event; }
     }
@@ -136,7 +139,7 @@ function tick() {
       levelIndex++; elapsed = 0; ball = startBall(LEVELS[levelIndex]);
       notice = 'LEVEL ' + (levelIndex + 1); noticeUntil = now + 1200;
     }
-  } else if (result.hitWall && now - lastWallSound > 120) {
+  } else if (result.impactSpeed > 25 && now - lastWallSound > 120) {
     lastWallSound = now; beep(180, 25, 180);
   }
   frame.set(frame() + 1);
