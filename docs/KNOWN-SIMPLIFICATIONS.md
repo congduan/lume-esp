@@ -861,3 +861,10 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   网格 + 状态栏时钟/电池，首拍 01:47），第二次拍摄验证了影子缓冲复用路径
   （两帧差异仅为时钟分钟数变化）。仍待验收：休眠/唤醒期间的 `shot-timeout`
   补拍行为、WiFi TCP 通道截图、与高频日志应用的并发噪声。
+
+## r35 / Games examples (host acceptance only)
+
+- `examples/games_2048`, `games_snake`, and `games_breakout` are standalone single-file app bundles. Four tiny helpers (fixed timer, `hiscore.<game>` KV, short 16 kHz stereo PCM beep, AABB) are duplicated in each app so direct deploy needs no import or shared file. The game rules are plain functions before `/* GAME UI */` for host logic tests.
+- Timers use the existing engine drain; 40 ms Breakout ticks target about 25/s, Snake starts at 180 ms and speeds up to 80 ms, while IMU polling is 50 ms. The 20 ms timer drain quantization and synchronous 12–48 ms audio calls can delay input and frames. There is no `requestAnimationFrame`, sprite/keyframe animation system, or general collision/physics engine. 2048 uses a simple width transition; Breakout uses basic AABB and axis reflection.
+- Canvas redraws reuse retained pixels. Snake changes at most the head, tail and food cells after the first paint. Breakout paints old/new entity rectangles and keeps bricks as separate Views. This limits raster command count, but display invalidation and PSRAM/QSPI flush timing still require measurement on the board. The simulator proves structure and visible pixels, not FPS.
+- IMU `ax`/`ay` signs and the 2.4 m/s² steering threshold are default estimates. Physical board tests must tune direction and sensitivity, verify round-edge touch, audio latency/level, actual frame pacing, and KV persistence through restart.
