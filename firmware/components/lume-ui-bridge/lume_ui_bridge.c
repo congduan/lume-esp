@@ -44,6 +44,12 @@ static void release_dead_canvases(void);
 static lume_anim_sink_fn s_anim_sink;
 static lume_press_sink_fn s_press_sink;           /* set once by engine task */
 static lume_scroll_sink_fn s_scroll_sink;
+static lume_gesture_sink_fn s_gesture_sink;       /* r21: set once by engine task */
+/* Per-node gesture press flags (LVGL task only). bit0 = a press is active,
+ * bit1 = a List scroll has already won this press (suppress gesture events). */
+#define GESTURE_ACTIVE   0x01
+#define GESTURE_SCROLLED 0x02
+static uint8_t s_gesture_flags[LUME_MAX_NODES];
 static int32_t s_scroll_last_y[LUME_MAX_NODES];
 static uint32_t s_scroll_last_tick[LUME_MAX_NODES];
 static uint8_t s_scroll_sent[LUME_MAX_NODES];
@@ -307,6 +313,7 @@ static void apply_create(const lume_ui_msg_t *m)
     s_explicit_width[m->node_id] = 0;
     s_explicit_height[m->node_id] = 0;
     s_scroll_sent[m->node_id] = 0;
+    s_gesture_flags[m->node_id] = 0;   /* r21: fresh node -> clear press/scroll latch */
     if (m->kind == LUME_NODE_CANVAS) {
         s_explicit_width[m->node_id] = 1;
         s_explicit_height[m->node_id] = 1;
@@ -622,6 +629,81 @@ static void apply_set_press(const lume_ui_msg_t *m)
     ESP_LOGI(TAG, "press registered id=%u", (unsigned)m->node_id);
 }
 
+/* r21 gesture pointer stream. Reuse LVGL's object events for per-target
+ * hit-testing (LV_EVENT_PRESSED/PRESSING/RELEASED are sent to the pressed
+ * object; non-clickable children such as labels are skipped by hit-testing so
+ * a card View receives them directly) and lv_indev_get_gesture_dir() for the
+ * swipe direction. We forward a normalized DOWN/MOVE/UP/SWIPEDIR stream over
+ * the same reverse queue (Queue B) the press path uses; all recognition lives
+ * in the pure JS state machine (lume_scripts.c), NOT here.
+ *
+ * Scroll arbitration (M3 r19 List coexistence): LVGL sets
+ * indev->pointer.scroll_obj once a drag is committed to scrolling and, on its
+ * own, suppresses LV_EVENT_GESTURE/LONG_PRESSED/CLICKED while it is set
+ * (lv_indev.c:1702 / 1352 / 1453). We extend the SAME rule to the PRESSING
+ * stream: when scroll_obj is non-NULL we stop emitting MOVE, so a List scroll
+ * never produces pan/swipe/tap/longpress. Because scroll begins at
+ * LV_INDEV_DEF_SCROLL_LIMIT (10px) but pan needs >12px, a scrollable container
+ * cannot even start a pan before the scroll steals the drag. */
+static void gesture_obj_cb(lv_event_t *e)
+{
+    uint16_t id = (uint16_t)(uintptr_t)lv_event_get_user_data(e);
+    if (!s_gesture_sink || id == 0 || id >= LUME_MAX_NODES) return;
+    lv_indev_t *indev = lv_indev_active();
+    lv_point_t p = {0, 0};
+    if (indev) lv_indev_get_point(indev, &p);
+    uint32_t t = lv_tick_get();
+    switch (lv_event_get_code(e)) {
+        case LV_EVENT_PRESSED:
+            s_gesture_flags[id] = GESTURE_ACTIVE;
+            s_gesture_sink(id, 0, (int16_t)p.x, (int16_t)p.y, t, 0, 0);   /* DOWN */
+            break;
+        case LV_EVENT_PRESSING:
+            if (!(s_gesture_flags[id] & GESTURE_ACTIVE)) break;
+            if ((s_gesture_flags[id] & GESTURE_SCROLLED) ||
+                (indev && lv_indev_get_scroll_obj(indev) != NULL)) {
+                s_gesture_flags[id] |= GESTURE_SCROLLED;   /* scroll wins: no MOVE */
+                break;
+            }
+            s_gesture_sink(id, 1, (int16_t)p.x, (int16_t)p.y, t, 0, 0);   /* MOVE */
+            break;
+        case LV_EVENT_GESTURE: {
+            /* indev_gesture() only fires this when no scroll_obj is active
+             * (lv_indev.c:1702), and only once per press (gesture_sent). */
+            if (!(s_gesture_flags[id] & GESTURE_ACTIVE) ||
+                (s_gesture_flags[id] & GESTURE_SCROLLED)) break;
+            uint8_t dir = indev ? (uint8_t)lv_indev_get_gesture_dir(indev) : 0;
+            s_gesture_sink(id, 3, (int16_t)p.x, (int16_t)p.y, t, dir, 0); /* SWIPEDIR */
+            break;
+        }
+        case LV_EVENT_RELEASED: {
+            uint8_t cancelled = (s_gesture_flags[id] & GESTURE_SCROLLED) ||
+                                (indev && lv_indev_get_scroll_obj(indev) != NULL);
+            s_gesture_sink(id, 2, (int16_t)p.x, (int16_t)p.y, t, 0, cancelled); /* UP */
+            s_gesture_flags[id] = 0;
+            break;
+        }
+        default:
+            break;
+    }
+}
+
+static void apply_set_gesture(const lume_ui_msg_t *m)
+{
+    lv_obj_t *obj = get_node(m->node_id);
+    if (obj == NULL) {
+        ESP_LOGW(TAG, "set-gesture: unknown node_id %u", (unsigned)m->node_id);
+        return;
+    }
+    void *ud = (void *)(uintptr_t)m->node_id;
+    lv_obj_add_event_cb(obj, gesture_obj_cb, LV_EVENT_PRESSED, ud);
+    lv_obj_add_event_cb(obj, gesture_obj_cb, LV_EVENT_PRESSING, ud);
+    lv_obj_add_event_cb(obj, gesture_obj_cb, LV_EVENT_RELEASED, ud);
+    lv_obj_add_event_cb(obj, gesture_obj_cb, LV_EVENT_GESTURE, ud);
+    s_gesture_flags[m->node_id] = 0;
+    ESP_LOGI(TAG, "gesture registered id=%u", (unsigned)m->node_id);
+}
+
 void lume_ui_bridge_drain(void)
 {
     lume_ui_msg_t m;
@@ -635,6 +717,7 @@ void lume_ui_bridge_drain(void)
             case LUME_OP_SET_ATTR:  apply_set_attr(&m);  break;
             case LUME_OP_REMOVE:    apply_remove(&m);    break;
             case LUME_OP_SET_PRESS: apply_set_press(&m); break;
+            case LUME_OP_SET_GESTURE: apply_set_gesture(&m); break;
             case LUME_OP_ANIMATE: apply_animate(&m); break;
             case LUME_OP_ANIMATE_CANCEL: cancel_anim(m.node_id, m.attr); break;
             case LUME_OP_CANVAS_DRAW: apply_canvas_draw(&m); break;
@@ -672,6 +755,11 @@ void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn)
 void lume_ui_bridge_set_scroll_sink(lume_scroll_sink_fn fn)
 {
     s_scroll_sink = fn;
+}
+
+void lume_ui_bridge_set_gesture_sink(lume_gesture_sink_fn fn)
+{
+    s_gesture_sink = fn;
 }
 
 int lume_ui_bridge_post(const lume_ui_msg_t *msg)

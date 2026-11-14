@@ -17,11 +17,19 @@ void lume_engine_start(void);
 #define LUME_EVT_PAUSE 5
 #define LUME_EVT_RESUME 6
 #define LUME_EVT_SCROLL 7
+/* r21 gesture pointer stream (LVGL task -> engine task). node_id = target. */
+#define LUME_EVT_GESTURE 8
 typedef struct {
     uint8_t  type;        /* LUME_EVT_* */
     uint16_t node_id;
     uint32_t token;
     int32_t scroll_y;
+    /* r21: normalized LVGL pointer stream (unused fields stay zero-initialised). */
+    uint8_t  g_kind;      /* 0 DOWN, 1 MOVE, 2 UP, 3 SWIPEDIR */
+    uint8_t  g_dir;       /* LVGL lv_dir bitmask (SWIPEDIR only) */
+    uint8_t  g_cancelled; /* 1 when a List scroll stole the press */
+    int16_t  g_x, g_y;    /* absolute point, lv_indev_get_point */
+    uint32_t g_t;         /* lv_tick_get ms */
 } lume_engine_evt_t;
 
 /* Reverse-channel sink: called by the ui-bridge press callback (LVGL task)
@@ -32,6 +40,9 @@ int lume_engine_post_back(void);
 int lume_engine_post_lifecycle(uint8_t type);
 void lume_engine_post_anim_complete(uint32_t token);
 void lume_engine_post_scroll(uint16_t node_id, int32_t y);
+/* r21: LVGL-task sink; enqueues one LUME_EVT_GESTURE (pure queue op). */
+void lume_engine_post_gesture(uint16_t node_id, uint8_t kind, int16_t x, int16_t y,
+                              uint32_t t, uint8_t dir, uint8_t cancelled);
 
 /* r4 P2: called by the ui-bridge remove path (LVGL task) after a subtree was
  * deleted. Latches node_id into a lock-protected pending-removal bitmap; the

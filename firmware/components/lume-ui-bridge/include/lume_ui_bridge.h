@@ -87,6 +87,7 @@ typedef enum {
     LUME_OP_CANVAS_DRAW,
     LUME_OP_CANVAS_INVALIDATE,
     LUME_OP_RESET,             /* release all app nodes/canvases on LVGL task */
+    LUME_OP_SET_GESTURE,       /* r21: register LVGL pointer-event callbacks on node_id */
 } lume_op_t;
 
 typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
@@ -121,9 +122,16 @@ typedef struct {
 typedef void (*lume_press_sink_fn)(uint16_t node_id);
 typedef void (*lume_anim_sink_fn)(uint32_t token);
 typedef void (*lume_scroll_sink_fn)(uint16_t node_id, int32_t y);
+/* r21: normalized LVGL pointer stream -> engine task (Queue B).
+ * kind 0=DOWN 1=MOVE 2=UP 3=SWIPEDIR; x/y absolute px; t=lv_tick_get ms;
+ * dir=LVGL lv_dir bitmask (SWIPEDIR only); cancelled=1 when a scroll won. */
+typedef void (*lume_gesture_sink_fn)(uint16_t node_id, uint8_t kind,
+                                    int16_t x, int16_t y, uint32_t t,
+                                    uint8_t dir, uint8_t cancelled);
 void lume_ui_bridge_set_anim_sink(lume_anim_sink_fn fn);
 void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn);
 void lume_ui_bridge_set_scroll_sink(lume_scroll_sink_fn fn);
+void lume_ui_bridge_set_gesture_sink(lume_gesture_sink_fn fn);
 
 /* Init: creates Queue A + the LVGL drain timer. Must be called once from board
  * init (main task) BEFORE the LVGL task starts, so lv_timer_create() has no

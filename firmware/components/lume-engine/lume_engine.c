@@ -429,6 +429,28 @@ static JSValue js_set_press_event(JSContext *ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
+/* r21: JS lume.setGestureEvent(node_id) -> LUME_OP_SET_GESTURE (Queue A).
+ * The prelude calls this once per node from lume.gesture.on(). */
+static JSValue js_set_gesture_event(JSContext *ctx, JSValueConst this_val,
+                                    int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t node_id;
+    if (argc < 1 || JS_ToInt32(ctx, &node_id, argv[0]) < 0) {
+        return JS_EXCEPTION;
+    }
+    lume_ui_msg_t m;
+    msg_init(&m);
+    m.op = LUME_OP_SET_GESTURE;
+    m.node_id = (uint16_t)node_id;
+    if (lume_ui_bridge_post(&m) != 0) {
+        ESP_LOGE(TAG, "setGestureEvent: ui queue full after retries (id=%u); "
+                      "JS/UI state may diverge", (unsigned)node_id);
+        return JS_ThrowInternalError(ctx, "lume: ui queue full");
+    }
+    return JS_UNDEFINED;
+}
+
 static JSValue js_remove_child(JSContext *ctx, JSValueConst this_val,
                                int argc, JSValueConst *argv)
 {
@@ -1352,6 +1374,8 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_animate_cancel, "nativeAnimateCancel", 2));
     JS_SetPropertyStr(ctx, lume, "setPressEvent",
                       JS_NewCFunction(ctx, js_set_press_event, "setPressEvent", 1));
+    JS_SetPropertyStr(ctx, lume, "setGestureEvent",
+                      JS_NewCFunction(ctx, js_set_gesture_event, "setGestureEvent", 1));
     JS_SetPropertyStr(ctx, lume, "removeChild",
                       JS_NewCFunction(ctx, js_remove_child, "removeChild", 1));
     JS_SetPropertyStr(ctx, lume, "_nowMs", JS_NewCFunction(ctx, js_now_ms, "_nowMs", 0));
@@ -1541,6 +1565,27 @@ void lume_engine_post_scroll(uint16_t node_id, int32_t y)
     }
 }
 
+/* r21: LVGL-task sink -> one LUME_EVT_GESTURE on Queue B. Pure queue op. */
+void lume_engine_post_gesture(uint16_t node_id, uint8_t kind, int16_t x, int16_t y,
+                              uint32_t t, uint8_t dir, uint8_t cancelled)
+{
+    lume_engine_evt_t evt = {
+        .type = LUME_EVT_GESTURE,
+        .node_id = node_id,
+        .g_kind = kind,
+        .g_x = x, .g_y = y,
+        .g_t = t,
+        .g_dir = dir,
+        .g_cancelled = cancelled,
+    };
+    if (s_evt_queue == NULL || xQueueSend(s_evt_queue, &evt, 0) != pdTRUE) {
+        s_evt_dropped++;
+        if (s_evt_dropped == 1 || (s_evt_dropped % EVT_DROP_LOG_EVERY) == 0)
+            ESP_LOGW(TAG, "gesture id=%u dropped: evt queue full (%u total drops)",
+                     (unsigned)node_id, (unsigned)s_evt_dropped);
+    }
+}
+
 static void dispatch_scroll(uint16_t node_id, int32_t y)
 {
     JSValue global = JS_GetGlobalObject(s_ctx);
@@ -1553,6 +1598,32 @@ static void dispatch_scroll(uint16_t node_id, int32_t y)
         JS_FreeValue(s_ctx, args[0]); JS_FreeValue(s_ctx, args[1]);
     }
     JS_FreeValue(s_ctx, fn); JS_FreeValue(s_ctx, global);
+}
+
+/* r21: Queue B gesture input -> __lume_dispatchGesture (JS state machine). */
+static void dispatch_gesture(const lume_engine_evt_t *e)
+{
+    JSValue global = JS_GetGlobalObject(s_ctx);
+    JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_dispatchGesture");
+    if (JS_IsFunction(s_ctx, fn)) {
+        JSValue args[7] = {
+            JS_NewInt32(s_ctx, e->node_id),
+            JS_NewInt32(s_ctx, e->g_kind),
+            JS_NewInt32(s_ctx, e->g_x),
+            JS_NewInt32(s_ctx, e->g_y),
+            JS_NewUint32(s_ctx, e->g_t),
+            JS_NewInt32(s_ctx, e->g_dir),
+            JS_NewInt32(s_ctx, e->g_cancelled),
+        };
+        JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 7, args);
+        if (JS_IsException(ret)) {
+            dump_js_exception(s_ctx, "__lume_dispatchGesture");
+        }
+        JS_FreeValue(s_ctx, ret);
+        for (int i = 0; i < 7; i++) JS_FreeValue(s_ctx, args[i]);
+    }
+    JS_FreeValue(s_ctx, fn);
+    JS_FreeValue(s_ctx, global);
 }
 
 int lume_engine_post_lifecycle(uint8_t type)
@@ -1822,6 +1893,7 @@ static void engine_task(void *arg)
         lume_ui_bridge_set_anim_sink(lume_engine_post_anim_complete);
         lume_ui_bridge_set_press_sink(lume_engine_post_press); /* re-wire sink */
         lume_ui_bridge_set_scroll_sink(lume_engine_post_scroll);
+        lume_ui_bridge_set_gesture_sink(lume_engine_post_gesture);
         /* Fresh JS-side id allocator. NOTE: the LVGL s_nodes[] table is NOT
          * cleared (drivers don't restart), so ids are reused across reloads;
          * see docs/KNOWN-SIMPLIFICATIONS.md. */
@@ -1927,6 +1999,8 @@ static void engine_task(void *arg)
                     dispatch_anim_complete(evt.token);
                 } else if (evt.type == LUME_EVT_SCROLL) {
                     dispatch_scroll(evt.node_id, evt.scroll_y);
+                } else if (evt.type == LUME_EVT_GESTURE) {
+                    dispatch_gesture(&evt);
                 }
             }
             drain_removals();
