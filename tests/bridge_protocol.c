@@ -21,8 +21,22 @@ _Static_assert(LUME_ATTR_PAD_TOP == 30 && LUME_ATTR_PAD_RIGHT == 31 &&
                LUME_ATTR_MARGIN_LEFT == 38 && LUME_ATTR_FLEX_GROW == 39 &&
                LUME_ATTR_ALIGN_TARGET == 40 && LUME_ATTR_ALIGN_OFS_X == 41 &&
                LUME_ATTR_ALIGN_OFS_Y == 42, "layout extension attribute ids");
+_Static_assert(LUME_ATTR_WIDTH_AUTO == 43 && LUME_ATTR_HEIGHT_AUTO == 44 &&
+               LUME_ATTR_MIN_WIDTH == 45 && LUME_ATTR_MAX_WIDTH == 46 &&
+               LUME_ATTR_MIN_HEIGHT == 47 && LUME_ATTR_MAX_HEIGHT == 48 &&
+               LUME_ATTR_TRANSLATE_X == 49 && LUME_ATTR_TRANSLATE_X_PCT == 50 &&
+               LUME_ATTR_TRANSLATE_Y == 51 && LUME_ATTR_TRANSLATE_Y_PCT == 52 &&
+               LUME_ATTR_TEXT_ALIGN == 53 && LUME_ATTR_TEXT_LONG_MODE == 54,
+               "sizing/text attribute ids");
 _Static_assert(LUME_ALIGN_TARGET_PARENT == 0 && LUME_ALIGN_RIGHT_MID == 8,
                "align wire values");
+_Static_assert(LUME_ALIGN_OUT_FIRST == LUME_ALIGN_OUT_TOP_LEFT &&
+               LUME_ALIGN_OUT_TOP_LEFT == 9 && LUME_ALIGN_OUT_BOTTOM_MID == 13 &&
+               LUME_ALIGN_OUT_RIGHT_MID == 19 &&
+               LUME_ALIGN_OUT_RIGHT_BOTTOM == 20, "outside align wire values");
+_Static_assert(LUME_TEXT_ALIGN_LEFT == 0 && LUME_TEXT_ALIGN_AUTO == 3 &&
+               LUME_TEXT_LONG_WRAP == 0 && LUME_TEXT_LONG_CLIP == 4,
+               "text layout wire values");
 _Static_assert(sizeof(lume_ui_msg_t) <= 112, "bounded copy message");
 _Static_assert(LUME_NODE_CANVAS == 3 && LUME_OP_CANVAS_DRAW == 6 &&
                LUME_OP_CANVAS_INVALIDATE == 7, "canvas wire ids");

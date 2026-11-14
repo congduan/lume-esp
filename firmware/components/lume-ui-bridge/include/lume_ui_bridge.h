@@ -73,6 +73,15 @@ typedef enum {
     LUME_ATTR_ALIGN_TARGET,   /* base node_id for ALIGN; 0 = parent (default) */
     LUME_ATTR_ALIGN_OFS_X,    /* signed px offset applied by the next ALIGN */
     LUME_ATTR_ALIGN_OFS_Y,
+    /* Content sizing, out-of-flow placement, translate and text layout. */
+    LUME_ATTR_WIDTH_AUTO,     /* width = LV_SIZE_CONTENT (value unused) */
+    LUME_ATTR_HEIGHT_AUTO,    /* height = LV_SIZE_CONTENT */
+    LUME_ATTR_MIN_WIDTH, LUME_ATTR_MAX_WIDTH,
+    LUME_ATTR_MIN_HEIGHT, LUME_ATTR_MAX_HEIGHT,
+    LUME_ATTR_TRANSLATE_X, LUME_ATTR_TRANSLATE_X_PCT,
+    LUME_ATTR_TRANSLATE_Y, LUME_ATTR_TRANSLATE_Y_PCT,
+    LUME_ATTR_TEXT_ALIGN,     /* msg.value (lume_text_align_t) */
+    LUME_ATTR_TEXT_LONG_MODE, /* msg.value (lume_text_long_t) */
 } lume_attr_t;
 
 /* ALIGN_TARGET value meaning "align inside the parent" (lv_obj_align). Any
@@ -98,7 +107,31 @@ typedef enum {
     LUME_ALIGN_BOTTOM_RIGHT,
     LUME_ALIGN_LEFT_MID,
     LUME_ALIGN_RIGHT_MID,
+    /* Outside alignments (>= LUME_ALIGN_OUT_FIRST) place the node NEXT TO the
+     * base instead of inside it, so they need lv_obj_align_to() with a base
+     * object and are never valid for a plain parent alignment. */
+    LUME_ALIGN_OUT_TOP_LEFT,
+    LUME_ALIGN_OUT_TOP_MID,
+    LUME_ALIGN_OUT_TOP_RIGHT,
+    LUME_ALIGN_OUT_BOTTOM_LEFT,
+    LUME_ALIGN_OUT_BOTTOM_MID,
+    LUME_ALIGN_OUT_BOTTOM_RIGHT,
+    LUME_ALIGN_OUT_LEFT_TOP,
+    LUME_ALIGN_OUT_LEFT_MID,
+    LUME_ALIGN_OUT_LEFT_BOTTOM,
+    LUME_ALIGN_OUT_RIGHT_TOP,
+    LUME_ALIGN_OUT_RIGHT_MID,
+    LUME_ALIGN_OUT_RIGHT_BOTTOM,
 } lume_align_t;
+
+#define LUME_ALIGN_OUT_FIRST LUME_ALIGN_OUT_TOP_LEFT
+
+/* TEXT_ALIGN / TEXT_LONG_MODE wire values (independent of LVGL's ordering). */
+typedef enum { LUME_TEXT_ALIGN_LEFT = 0, LUME_TEXT_ALIGN_CENTER,
+               LUME_TEXT_ALIGN_RIGHT, LUME_TEXT_ALIGN_AUTO } lume_text_align_t;
+typedef enum { LUME_TEXT_LONG_WRAP = 0, LUME_TEXT_LONG_DOTS,
+               LUME_TEXT_LONG_SCROLL, LUME_TEXT_LONG_SCROLL_CIRCULAR,
+               LUME_TEXT_LONG_CLIP } lume_text_long_t;
 
 /* Queue A operation codes. */
 typedef enum {

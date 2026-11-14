@@ -115,6 +115,25 @@ static lv_align_t map_align(int32_t v)
     }
 }
 
+static lv_align_t map_align_out(int32_t v)
+{
+    switch (v) {
+        case LUME_ALIGN_OUT_TOP_LEFT:      return LV_ALIGN_OUT_TOP_LEFT;
+        case LUME_ALIGN_OUT_TOP_MID:       return LV_ALIGN_OUT_TOP_MID;
+        case LUME_ALIGN_OUT_TOP_RIGHT:     return LV_ALIGN_OUT_TOP_RIGHT;
+        case LUME_ALIGN_OUT_BOTTOM_LEFT:   return LV_ALIGN_OUT_BOTTOM_LEFT;
+        case LUME_ALIGN_OUT_BOTTOM_MID:    return LV_ALIGN_OUT_BOTTOM_MID;
+        case LUME_ALIGN_OUT_BOTTOM_RIGHT:  return LV_ALIGN_OUT_BOTTOM_RIGHT;
+        case LUME_ALIGN_OUT_LEFT_TOP:      return LV_ALIGN_OUT_LEFT_TOP;
+        case LUME_ALIGN_OUT_LEFT_MID:      return LV_ALIGN_OUT_LEFT_MID;
+        case LUME_ALIGN_OUT_LEFT_BOTTOM:   return LV_ALIGN_OUT_LEFT_BOTTOM;
+        case LUME_ALIGN_OUT_RIGHT_TOP:     return LV_ALIGN_OUT_RIGHT_TOP;
+        case LUME_ALIGN_OUT_RIGHT_MID:     return LV_ALIGN_OUT_RIGHT_MID;
+        case LUME_ALIGN_OUT_RIGHT_BOTTOM:  return LV_ALIGN_OUT_RIGHT_BOTTOM;
+        default:                           return LV_ALIGN_OUT_BOTTOM_MID;
+    }
+}
+
 static lv_obj_t *get_node(uint16_t id)
 {
     if (id == 0 || id >= LUME_MAX_NODES) {
@@ -123,14 +142,62 @@ static lv_obj_t *get_node(uint16_t id)
     return s_nodes[id];
 }
 
+static lv_text_align_t map_text_align(int32_t v)
+{
+    switch (v) {
+        case LUME_TEXT_ALIGN_CENTER: return LV_TEXT_ALIGN_CENTER;
+        case LUME_TEXT_ALIGN_RIGHT:  return LV_TEXT_ALIGN_RIGHT;
+        case LUME_TEXT_ALIGN_AUTO:   return LV_TEXT_ALIGN_AUTO;
+        default:                     return LV_TEXT_ALIGN_LEFT;
+    }
+}
+
+static lv_label_long_mode_t map_long_mode(int32_t v)
+{
+    switch (v) {
+        case LUME_TEXT_LONG_DOTS:            return LV_LABEL_LONG_MODE_DOTS;
+        case LUME_TEXT_LONG_SCROLL:          return LV_LABEL_LONG_MODE_SCROLL;
+        case LUME_TEXT_LONG_SCROLL_CIRCULAR: return LV_LABEL_LONG_MODE_SCROLL_CIRCULAR;
+        case LUME_TEXT_LONG_CLIP:            return LV_LABEL_LONG_MODE_CLIP;
+        default:                             return LV_LABEL_LONG_MODE_WRAP;
+    }
+}
+
+/* Text attributes live on the label: a TEXT node is its own label, a BUTTON
+ * keeps its caption in child 0. */
+static lv_obj_t *text_target(uint16_t id, lv_obj_t *obj)
+{
+    if (s_kinds[id] == LUME_NODE_BUTTON) {
+        lv_obj_t *label = lv_obj_get_child(obj, 0);
+        if (label != NULL) {
+            return label;
+        }
+    }
+    return obj;
+}
+
 /* lv_obj_align() positions inside the parent; lv_obj_align_to() positions
  * against a sibling/other node. target 0 (or a node that no longer exists)
  * falls back to the parent, which keeps a removed base node from parking the
- * child at a stale position. */
+ * child at a stale position. Outside alignments (LUME_ALIGN_OUT_*) can only be
+ * expressed with align_to, so they fall back to the real parent pointer. */
 static void apply_align(lv_obj_t *obj, uint16_t id)
 {
-    lv_align_t align = map_align(s_align[id]);
+    int32_t wire = s_align[id];
     int32_t x = s_align_ofs_x[id], y = s_align_ofs_y[id];
+    if (wire >= LUME_ALIGN_OUT_FIRST) {
+        lv_obj_t *base = get_node(s_align_target[id]);
+        if (base == NULL || base == obj) {
+            base = lv_obj_get_parent(obj);
+        }
+        if (base == NULL) {
+            lv_obj_align(obj, LV_ALIGN_CENTER, x, y);
+            return;
+        }
+        lv_obj_align_to(obj, base, map_align_out(wire), x, y);
+        return;
+    }
+    lv_align_t align = map_align(wire);
     lv_obj_t *base = get_node(s_align_target[id]);
     if (base == NULL || base == obj) {
         lv_obj_align(obj, align, x, y);
@@ -443,18 +510,9 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             if (m->value) lv_obj_add_flag(obj, LV_OBJ_FLAG_IGNORE_LAYOUT);
             else lv_obj_remove_flag(obj, LV_OBJ_FLAG_IGNORE_LAYOUT);
             break;
-        case LUME_ATTR_TEXT: {
-            /* A BUTTON renders its text in a child label; TEXT is the label. */
-            lv_obj_t *target = obj;
-            if (s_kinds[m->node_id] == LUME_NODE_BUTTON) {
-                lv_obj_t *label = lv_obj_get_child(obj, 0);
-                if (label != NULL) {
-                    target = label;
-                }
-            }
-            lv_label_set_text(target, m->text);
+        case LUME_ATTR_TEXT:
+            lv_label_set_text(text_target(m->node_id, obj), m->text);
             break;
-        }
         case LUME_ATTR_BG_COLOR:
             if (s_kinds[m->node_id] == LUME_NODE_ARC) {
                 /* An arc has no box background. Setting bg_color would also force
@@ -482,6 +540,37 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             s_explicit_height[m->node_id] = 1;
             lv_obj_set_height(obj, lv_pct(m->value));
             break;
+        /* A content-sized axis counts as explicit: a stretch parent must not
+         * overwrite it with lv_pct(100). */
+        case LUME_ATTR_WIDTH_AUTO:
+            s_explicit_width[m->node_id] = 1;
+            lv_obj_set_width(obj, LV_SIZE_CONTENT);
+            break;
+        case LUME_ATTR_HEIGHT_AUTO:
+            s_explicit_height[m->node_id] = 1;
+            lv_obj_set_height(obj, LV_SIZE_CONTENT);
+            break;
+        case LUME_ATTR_MIN_WIDTH: lv_obj_set_style_min_width(obj, m->value, 0); break;
+        case LUME_ATTR_MAX_WIDTH: lv_obj_set_style_max_width(obj, m->value, 0); break;
+        case LUME_ATTR_MIN_HEIGHT: lv_obj_set_style_min_height(obj, m->value, 0); break;
+        case LUME_ATTR_MAX_HEIGHT: lv_obj_set_style_max_height(obj, m->value, 0); break;
+        case LUME_ATTR_TRANSLATE_X: lv_obj_set_style_translate_x(obj, m->value, 0); break;
+        case LUME_ATTR_TRANSLATE_X_PCT: lv_obj_set_style_translate_x(obj, lv_pct(m->value), 0); break;
+        case LUME_ATTR_TRANSLATE_Y: lv_obj_set_style_translate_y(obj, m->value, 0); break;
+        case LUME_ATTR_TRANSLATE_Y_PCT: lv_obj_set_style_translate_y(obj, lv_pct(m->value), 0); break;
+        case LUME_ATTR_TEXT_ALIGN:
+            lv_obj_set_style_text_align(text_target(m->node_id, obj),
+                                        map_text_align(m->value), 0);
+            break;
+        case LUME_ATTR_TEXT_LONG_MODE: {
+            lv_obj_t *label = text_target(m->node_id, obj);
+            /* Only real labels carry a long mode; a View would be a no-op. */
+            if (s_kinds[m->node_id] == LUME_NODE_TEXT ||
+                s_kinds[m->node_id] == LUME_NODE_BUTTON) {
+                lv_label_set_long_mode(label, map_long_mode(m->value));
+            }
+            break;
+        }
         case LUME_ATTR_FLEX_FLOW:
             s_flow[m->node_id] = (uint8_t)m->value;
             lv_obj_set_flex_flow(obj, map_flow(m->value));
@@ -536,8 +625,9 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             break;
         case LUME_ATTR_ALIGN:
             /* Out-of-range wire values degrade to CENTER instead of indexing
-             * off the end of map_align(). */
-            s_align[m->node_id] = (uint8_t)(m->value < 0 || m->value > LUME_ALIGN_RIGHT_MID
+             * off the end of the align maps. */
+            s_align[m->node_id] = (uint8_t)(m->value < 0 ||
+                                            m->value > LUME_ALIGN_OUT_RIGHT_BOTTOM
                                                 ? LUME_ALIGN_CENTER : m->value);
             apply_align(obj, m->node_id);
             break;

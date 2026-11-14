@@ -35,6 +35,12 @@ check('per-side padding overrides box shorthand', {padding:8,paddingTop:2,paddin
 check('margin box + per-side margin', {margin:4,marginLeft:12}, [[34,4],[38,12]]);
 check('margin sides only', {marginTop:2,marginRight:3,marginBottom:5,marginLeft:7}, [[35,2],[36,3],[37,5],[38,7]]);
 check('flex grow inside a flex row', {display:'flex',flexGrow:1}, [[7,0],[39,1]]);
+check('auto sizing', {width:'auto',height:'auto'}, [[43,1],[44,1]]);
+check('min/max size bounds', {minWidth:10,maxWidth:200,minHeight:20,maxHeight:40}, [[45,10],[46,200],[47,20],[48,40]]);
+check('absolute position escapes the flow', {position:'absolute',x:4,y:8}, [[23,1],[18,4],[19,8]]);
+check('relative position sends nothing', {position:'relative'}, []);
+check('translate px + percent', {translateX:6,translateY:'50%'}, [[49,6],[52,50]]);
+checkLayout('text align + long mode', "Text({style:{textAlign:'center',longMode:'dots'}})", [[53,1],[54,1]]);
 function checkProps(name, props, expected) {
   messages = [];
   vm.runInContext(`View(${JSON.stringify(props)})`, ctx);
@@ -48,10 +54,20 @@ for (const [value, wire] of [['center',0],['top-left',1],['top-mid',2],['top-rig
 }
 checkProps('align numeric constant', {align:4}, [[4,4]]);
 checkProps('aligned to parent with an offset', {align:'top-mid',alignTo:0,alignOffset:{y:12}}, [[40,0],[42,12],[4,2]]);
-for (const props of [{align:9},{align:'middle'},{alignTo:'parent'},{alignOffset:4},{alignOffset:{x:1.5}},{style:{flexGrow:256}},{style:{margin:-1}}]) {
+checkProps('outside align below a base node', {align:'below',alignTo:7}, [[40,7],[4,13]]);
+checkProps('outside align above a base node', {align:'above',alignTo:7}, [[40,7],[4,10]]);
+checkProps('outside align right of a base node', {align:'right-of',alignTo:7}, [[40,7],[4,19]]);
+checkProps('outside align corner', {align:'outside-right-top',alignTo:7,alignOffset:{x:4}}, [[40,7],[41,4],[4,18]]);
+checkProps('outside align numeric constant', {align:20}, [[4,20]]);
+for (const props of [
+  {align:21},{align:'middle'},{alignTo:'parent'},{alignOffset:4},{alignOffset:{x:1.5}},
+  {style:{flexGrow:256}},{style:{margin:-1}},{style:{position:'fixed'}},
+  {style:{translateX:'101%'}},{style:{translateX:1.5}},{style:{textAlign:'middle'}},
+  {style:{longMode:'ellipsis'}},{style:{minWidth:-1}},{style:{width:'fit-content'}}
+]) {
   assert.throws(() => vm.runInContext(`View(${JSON.stringify(props)})`, ctx));
 }
-console.log('PASS invalid align/alignTo/alignOffset/flexGrow/margin rejected in prelude');
+console.log('PASS invalid align/alignTo/alignOffset/flexGrow/margin/position/translate/text rejected in prelude');
 function checkLayout(name, expr, expected) {
   messages = [];
   vm.runInContext(expr, ctx);

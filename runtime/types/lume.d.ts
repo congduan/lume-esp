@@ -34,8 +34,23 @@ declare namespace lume.ui {
     transition?: { property: 'bg' | 'x' | 'y' | 'width' | 'height' | 'opacity'; durationMs: number; easing?: lume.anim.Easing };
     /** #RRGGBB or a key in lume.theme.get().colors; number keeps the M1 bg path. */
     background?: string | number | (() => string | number);
-    width?: number | `${number}%` | (() => number);
-    height?: number | `${number}%` | (() => number);
+    /** Pixel, `'0%'`-`'100%'` of the parent content area, or `'auto'` (content size). */
+    width?: number | `${number}%` | 'auto' | (() => number);
+    height?: number | `${number}%` | 'auto' | (() => number);
+    /** Bounds applied to the computed size; most useful together with `'auto'`. */
+    minWidth?: number;
+    maxWidth?: number;
+    minHeight?: number;
+    maxHeight?: number;
+    /** `'absolute'` takes the node out of the parent's flex flow (x/y apply). */
+    position?: 'relative' | 'absolute';
+    /** Offsets applied after layout/alignment; also accepts a percentage of the node's own size. */
+    translateX?: number | `${number}%`;
+    translateY?: number | `${number}%`;
+    /** Label alignment inside its own box (Text and Button captions). */
+    textAlign?: 'left' | 'center' | 'right' | 'auto';
+    /** Overflow behaviour of a label that is wider/taller than its box. */
+    longMode?: 'wrap' | 'dots' | 'scroll' | 'scroll-circular' | 'clip';
     /** Enables LVGL native scrolling on a View. */
     scroll?: 'vertical' | 'horizontal' | 'none';
     scrollbar?: 'off' | 'auto' | 'on';
@@ -43,8 +58,16 @@ declare namespace lume.ui {
 
   /** Nodes are numeric ids returned by the embedded prelude. */
   type Node = number;
-  /** LVGL alignment, as an ALIGN_* constant (0..8) or its kebab-case name. */
-  type Align = number | 'center' | 'top-left' | 'top-mid' | 'top-right' | 'bottom-mid' | 'bottom-left' | 'bottom-right' | 'left-mid' | 'right-mid';
+  /** LVGL alignment: an `ALIGN_*` constant (0..20) or its kebab-case name.
+   * `outside-*` (and the `above`/`below`/`left-of`/`right-of` aliases) place the
+   * node next to its base and therefore need `alignTo`. */
+  type Align = number
+    | 'center' | 'top-left' | 'top-mid' | 'top-right' | 'bottom-mid' | 'bottom-left' | 'bottom-right' | 'left-mid' | 'right-mid'
+    | 'outside-top-left' | 'outside-top-mid' | 'outside-top-right'
+    | 'outside-bottom-left' | 'outside-bottom-mid' | 'outside-bottom-right'
+    | 'outside-left-top' | 'outside-left-mid' | 'outside-left-bottom'
+    | 'outside-right-top' | 'outside-right-mid' | 'outside-right-bottom'
+    | 'above' | 'below' | 'left-of' | 'right-of';
   interface ViewProps {
     style?: Style;
     parent?: Node;
@@ -164,6 +187,18 @@ declare const ALIGN_BOTTOM_LEFT: 5;
 declare const ALIGN_BOTTOM_RIGHT: 6;
 declare const ALIGN_LEFT_MID: 7;
 declare const ALIGN_RIGHT_MID: 8;
+declare const ALIGN_OUT_TOP_LEFT: 9;
+declare const ALIGN_OUT_TOP_MID: 10;
+declare const ALIGN_OUT_TOP_RIGHT: 11;
+declare const ALIGN_OUT_BOTTOM_LEFT: 12;
+declare const ALIGN_OUT_BOTTOM_MID: 13;
+declare const ALIGN_OUT_BOTTOM_RIGHT: 14;
+declare const ALIGN_OUT_LEFT_TOP: 15;
+declare const ALIGN_OUT_LEFT_MID: 16;
+declare const ALIGN_OUT_LEFT_BOTTOM: 17;
+declare const ALIGN_OUT_RIGHT_TOP: 18;
+declare const ALIGN_OUT_RIGHT_MID: 19;
+declare const ALIGN_OUT_RIGHT_BOTTOM: 20;
 declare function List<T>(props: lume.ui.ListProps<T>): lume.ui.Node;
 declare function Text(props: lume.ui.TextProps): lume.ui.Node;
 declare function Button(props: lume.ui.ButtonProps): lume.ui.Node;
