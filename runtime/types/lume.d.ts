@@ -28,16 +28,41 @@ declare namespace lume.ui {
   interface ViewProps { style?: Style; parent?: Node; bg?: number | (() => number); w?: number; h?: number; align?: number; visible?: boolean }
   interface TextProps extends ViewProps { text?: string | (() => string) }
   interface ButtonProps extends ViewProps { title?: string | (() => string); onPress?: () => void }
+  /** RGB565 canvas, fixed size. All coordinates use canvas-local integer pixels. */
+  interface CanvasContext {
+    fillColor(color: `#${string}` | number): void;
+    /** Clears to black. */
+    clear(): void;
+    fillRect(x: number, y: number, width: number, height: number): void;
+    line(x1: number, y1: number, x2: number, y2: number, color: `#${string}` | number, width?: number): void;
+    /** Up to 240 [x,y] points. */
+    polyline(points: [number, number][], color: `#${string}` | number, width?: number): void;
+    circle(x: number, y: number, radius: number, color: `#${string}` | number): void;
+    /** LVGL default 14px font; UTF-8 text at most 63 bytes. */
+    text(x: number, y: number, str: string, color: `#${string}` | number, size?: 14): void;
+  }
+  interface CanvasProps {
+    /** 1..480 pixels; all canvases share a 460,800-byte RGB565 budget. */
+    width: number;
+    height: number;
+    /** Runs on creation and when a signal read inside changes. */
+    onDraw(ctx: CanvasContext): void;
+    parent?: Node;
+    /** Layout styling; width and height must be specified above. */
+    style?: Omit<Style, 'width' | 'height'>;
+  }
 
   function View(props: ViewProps, children?: Node[]): Node;
   function Text(props: TextProps): Node;
   function Button(props: ButtonProps): Node;
+  function Canvas(props: CanvasProps): Node;
 }
 
 /** Embedded prelude globals used by the firmware fallback bundle. */
 declare function View(props: lume.ui.ViewProps, children?: lume.ui.Node[]): lume.ui.Node;
 declare function Text(props: lume.ui.TextProps): lume.ui.Node;
 declare function Button(props: lume.ui.ButtonProps): lume.ui.Node;
+declare function Canvas(props: lume.ui.CanvasProps): lume.ui.Node;
 declare function signal<T>(initial: T): (() => T) & { set(value: T): void };
 
 declare namespace lume.anim {
