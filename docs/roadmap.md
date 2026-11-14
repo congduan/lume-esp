@@ -29,6 +29,10 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [x] App lifecycle（r17：生命周期钩子、BACK/PAUS/RESM 协议、timer、热替换释放链；真机待验收）
 - [x] Theme system（r18：lume.theme flat color tokens + default radius，命名色通过 owned effect 在 theme.set 时重发 ATTR；fontScale 仅登记，真机视觉待接板验收。详见 docs/brookesia-learnings.md 和 KNOWN-SIMPLIFICATIONS）
 
+## Power management (r20)
+
+- [ ] Light sleep and touch wake: board pause/CO5300 DCS 0x10/0x11, GPIO11 ext0 low-level wake, JS `lume.power.sleepNow/onWake`, and 15-second idle demo are built and host-harness tested. WiFi-started calls return `-1`; actual current, latency, PSRAM retention, and INT wake behavior await board validation.
+
 ## M4 — tooling
 - [ ] `lume` CLI: create / dev / deploy (esbuild → qjs bytecode → push)
 - [ ] WiFi OTA channel (TCP push, port + auth token)
