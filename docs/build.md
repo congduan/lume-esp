@@ -48,6 +48,12 @@ The scaffold uses `app.js` and a `package.json` `lume.entry` field. Apps use the
 
 ## Frame protocol cross-check
 
+Queue A UI text: `lume_ui_msg_t` carries up to 63 UTF-8 bytes inline. Text of
+64–256 bytes has a separate PSRAM payload; ownership transfers on successful
+post and the LVGL drain frees it after applying or dropping the message. Queue
+A remains 384 fixed records of at most 128 bytes each (at most 48 KiB of queue
+storage); a 257-byte string is rejected before posting.
+
 Source of truth: the shared portable codec [lume_frame.h](../firmware/components/lume-hotreload/include/lume_frame.h) / [lume_frame.c](../firmware/components/lume-hotreload/lume_frame.c). **Both** push channels — the USB RX task and each WiFi-OTA TCP connection — feed their own instance of this codec, so the wire format is literally shared, not duplicated. The CLI encoder is [protocol.js](../tools/lume/protocol.js); the r26 [host harness](../tests/ota_protocol.c) feeds CLI-produced frames into the C decoder and asserts field-by-field equality.
 
 | Field | Firmware source | CLI source |

@@ -97,7 +97,7 @@ declare namespace lume.ui {
     /** Up to 240 [x,y] points. */
     polyline(points: [number, number][], color: `#${string}` | number, width?: number): void;
     circle(x: number, y: number, radius: number, color: `#${string}` | number): void;
-    /** LVGL default 14px font; UTF-8 text at most 63 bytes. */
+    /** LVGL default 14px font; UTF-8 text at most 256 bytes. */
     text(x: number, y: number, str: string, color: `#${string}` | number, size?: 14): void;
   }
   interface CanvasProps {

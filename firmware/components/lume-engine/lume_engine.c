@@ -185,6 +185,33 @@ static void msg_init(lume_ui_msg_t *m)
     memset(m, 0, sizeof(*m));
 }
 
+/* On successful post Queue A owns text_heap; on failure the sender frees it. */
+static int msg_set_text(JSContext *ctx, lume_ui_msg_t *m, JSValueConst value)
+{
+    size_t len = 0;
+    const char *s = JS_ToCStringLen(ctx, &len, value);
+    if (!s) return -1;
+    if (len > LUME_TEXT_LIMIT) {
+        JS_FreeCString(ctx, s);
+        JS_ThrowRangeError(ctx, "lume: text exceeds %d bytes", LUME_TEXT_LIMIT);
+        return -1;
+    }
+    m->text_len = (uint16_t)len;
+    if (len < LUME_TEXT_MAX) {
+        memcpy(m->text, s, len + 1);
+    } else {
+        m->text_heap = heap_caps_malloc(len + 1, MALLOC_CAP_SPIRAM);
+        if (!m->text_heap) {
+            JS_FreeCString(ctx, s);
+            JS_ThrowInternalError(ctx, "lume: text allocation failed");
+            return -1;
+        }
+        memcpy(m->text_heap, s, len + 1);
+    }
+    JS_FreeCString(ctx, s);
+    return 0;
+}
+
 /* JS-visible logger (QuickJS-NG's console lives in quickjs-libc, which is not
  * linked into the firmware). Used by the prelude's drain guard and by M1
  * self-tests so those events are visible via ESP_LOGI. */
@@ -367,12 +394,12 @@ static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, J
     m.value = color; m.draw_width = width;
     if (op == LUME_DRAW_TEXT) {
         if (argc < 9) return JS_ThrowTypeError(ctx, "lume: canvas text required");
-        size_t len; const char *s = JS_ToCStringLen(ctx, &len, argv[8]);
-        if (!s) return JS_EXCEPTION;
-        if (len >= LUME_TEXT_MAX) { JS_FreeCString(ctx,s); return JS_ThrowRangeError(ctx,"lume: canvas text exceeds 63 bytes"); }
-        memcpy(m.text,s,len); JS_FreeCString(ctx,s);
+        if (msg_set_text(ctx, &m, argv[8]) != 0) return JS_EXCEPTION;
     }
-    if (lume_ui_bridge_post(&m) != 0) return JS_ThrowInternalError(ctx,"lume: ui queue full");
+    if (lume_ui_bridge_post(&m) != 0) {
+        heap_caps_free(m.text_heap);
+        return JS_ThrowInternalError(ctx,"lume: ui queue full");
+    }
     return JS_UNDEFINED;
 }
 static JSValue js_canvas_invalidate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -404,21 +431,7 @@ static JSValue js_set_attr(JSContext *ctx, JSValueConst this_val,
     m.attr = (uint8_t)attr;
 
     if (JS_IsString(argv[2])) {
-        size_t len = 0;
-        const char *s = JS_ToCStringLen(ctx, &len, argv[2]);
-        if (s == NULL) {
-            return JS_EXCEPTION;
-        }
-        if (len >= LUME_TEXT_MAX) {
-            /* JS-visible over-length error; the inline char[64] never overflows. */
-            JS_FreeCString(ctx, s);
-            return JS_ThrowRangeError(ctx,
-                                      "lume: text exceeds %d bytes",
-                                      LUME_TEXT_MAX - 1);
-        }
-        memcpy(m.text, s, len);
-        m.text[len] = '\0';
-        JS_FreeCString(ctx, s);
+        if (msg_set_text(ctx, &m, argv[2]) != 0) return JS_EXCEPTION;
     } else {
         if (JS_ToInt32(ctx, &m.value, argv[2]) < 0) {
             return JS_EXCEPTION;
@@ -426,6 +439,7 @@ static JSValue js_set_attr(JSContext *ctx, JSValueConst this_val,
     }
 
     if (lume_ui_bridge_post(&m) != 0) {
+        heap_caps_free(m.text_heap);
         ESP_LOGE(TAG, "setAttr: ui queue full after retries (id=%u); "
                       "JS/UI state may diverge", (unsigned)node_id);
         return JS_ThrowInternalError(ctx, "lume: ui queue full");

@@ -25,6 +25,7 @@
  * ------------------------------------------------------------------------ */
 
 #define LUME_TEXT_MAX 64      /* inline text capacity, includes trailing NUL */
+#define LUME_TEXT_LIMIT 256   /* maximum UTF-8 text bytes, excluding NUL */
 #define LUME_MAX_NODES 128    /* node table slots; node_id 0 == active screen */
 
 /* Declarative UI node kinds (M1: VIEW, TEXT, BUTTON). */
@@ -154,9 +155,9 @@ typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
 typedef enum { LUME_EASE_LINEAR = 0, LUME_EASE_IN, LUME_EASE_OUT,
                LUME_EASE_IN_OUT } lume_easing_t;
 
-/* Fixed-size UI message. Text is inlined (char[64]); the native binding
- * rejects strings >= LUME_TEXT_MAX so this buffer is always NUL-terminated.
- * The receiver additionally hard-terminates text[63] as a defensive truncate. */
+/* Fixed-size UI message. Short text is inline; longer text has a PSRAM
+ * allocation whose ownership passes to Queue A on successful post. The LVGL
+ * drain always frees text_heap after applying or dropping the record. */
 typedef struct {
     uint8_t  op;                       /* lume_op_t */
     uint8_t  kind;                     /* lume_node_kind_t (CREATE) */
@@ -165,6 +166,8 @@ typedef struct {
     uint8_t  attr;                     /* lume_attr_t (SET_ATTR) */
     int32_t  value;                    /* numeric attr value */
     char     text[LUME_TEXT_MAX];      /* inline, NUL-terminated string */
+    uint16_t text_len;                 /* UTF-8 byte count, <= LUME_TEXT_LIMIT */
+    char    *text_heap;                /* optional owned NUL-terminated payload */
     /* Animation extension: entire sizeof(lume_ui_msg_t) is copied by Queue A;
  * this protocol was 96 bytes before the image-source pointer extension. */
     int32_t  from, to;                 /* from ignored when has_from == 0 */

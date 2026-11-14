@@ -37,7 +37,9 @@ _Static_assert(LUME_ALIGN_OUT_FIRST == LUME_ALIGN_OUT_TOP_LEFT &&
 _Static_assert(LUME_TEXT_ALIGN_LEFT == 0 && LUME_TEXT_ALIGN_AUTO == 3 &&
                LUME_TEXT_LONG_WRAP == 0 && LUME_TEXT_LONG_CLIP == 4,
                "text layout wire values");
-_Static_assert(sizeof(lume_ui_msg_t) <= 112, "bounded copy message");
+_Static_assert(sizeof(lume_ui_msg_t) <= 128, "bounded copy message");
+_Static_assert(LUME_TEXT_LIMIT == 256 && LUME_TEXT_MAX == 64,
+               "text payload limits");
 _Static_assert(LUME_NODE_CANVAS == 3 && LUME_OP_CANVAS_DRAW == 6 &&
                LUME_OP_CANVAS_INVALIDATE == 7, "canvas wire ids");
 _Static_assert(LUME_NODE_IMAGE == 4 && LUME_OP_IMAGE_SOURCE == 10, "image wire ids");

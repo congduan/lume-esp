@@ -22,14 +22,15 @@
 #include "lume_engine.h"     /* r4 P2: lume_engine_notify_removed() */
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
 
-_Static_assert(sizeof(lume_ui_msg_t) <= 112, "UI queue record size budget");
+_Static_assert(sizeof(lume_ui_msg_t) <= 128, "UI queue record size budget");
 
 static const char *TAG = "lume-ui-bridge";
 /* Queue A depth. Every canvasDraw() is one record, and a Canvas gauge redraw
  * (arc polylines included) emits 30..90 records back-to-back from the JS task,
  * so 32 slots was not enough for a dashboard app: the queue filled mid-redraw,
  * post() returned -1 and JS threw "ui queue full" halfway through a refresh.
- * 128 slots x <=112 B = ~14 KB of internal RAM, drained every 5 ms. */
+ * 384 slots x <=128 B = <=48 KB of queue memory, drained every 5 ms.
+ * Long text lives in a separate PSRAM payload, keeping queue records bounded. */
 #define UI_QUEUE_LEN 384
 #define DRAIN_PERIOD_MS 5
 #define LUME_POST_MAX_ATTEMPTS 8   /* finite retries when Queue A is full */
@@ -549,7 +550,8 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             else lv_obj_remove_flag(obj, LV_OBJ_FLAG_IGNORE_LAYOUT);
             break;
         case LUME_ATTR_TEXT:
-            lv_label_set_text(text_target(m->node_id, obj), m->text);
+            lv_label_set_text(text_target(m->node_id, obj),
+                              m->text_heap ? m->text_heap : m->text);
             break;
         case LUME_ATTR_BG_COLOR:
             if (s_kinds[m->node_id] == LUME_NODE_ARC) {
@@ -863,7 +865,7 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
             lv_canvas_init_layer(s_nodes[id], &layer);
             lv_draw_label_dsc_t dsc;
             lv_draw_label_dsc_init(&dsc);
-            dsc.text = m->text;
+            dsc.text = m->text_heap ? m->text_heap : m->text;
             dsc.color = lv_color_hex((uint32_t)m->value);
             lv_area_t area = {x, y, s_canvas_w[id]-1, s_canvas_h[id]-1};
             lv_draw_label(&layer, &dsc, &area);
@@ -1141,7 +1143,8 @@ void lume_ui_bridge_drain(void)
     lume_ui_msg_t m;
     while (s_ui_queue != NULL &&
            xQueueReceive(s_ui_queue, &m, 0) == pdTRUE) {
-        /* Defensive hard truncate: text is always a bounded 64-byte field. */
+        /* The inline fallback is bounded; external payload was allocated by
+         * the engine and is freed after every apply path below. */
         m.text[LUME_TEXT_MAX - 1] = '\0';
         switch (m.op) {
             case LUME_OP_RESET:     apply_reset();       break;
@@ -1161,6 +1164,7 @@ void lume_ui_bridge_drain(void)
                 ESP_LOGW(TAG, "drain: unknown op %u", (unsigned)m.op);
                 break;
         }
+        heap_caps_free(m.text_heap);
     }
 }
 
