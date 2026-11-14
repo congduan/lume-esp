@@ -33,7 +33,7 @@ Lume replaces that loop:
 | Layout | Manual coordinate math | **CSS-style flex (column/row/justify/gap/padding/%)** |
 | Custom visuals | Custom C drawing code | **Canvas widget with a JS drawing context** |
 | Motion | Hand-tuned lv_anim calls | **CSS-style transitions + `lume.anim` tweens** |
-| Iteration | Rebuild + flash (minutes) | **Hot reload over USB (seconds)** + host simulator |
+| Iteration | Rebuild + flash (minutes) | **Hot reload over USB (seconds)** + host simulator + on-device screenshots (`lume screenshot`) |
 | Hardware access | ESP-IDF APIs | **Clean JS APIs: GPIO/PWM/ADC/Power/IMU/Audio/WiFi/HTTP/KV/Files** |
 | Runtime overhead | none | QuickJS-NG on 8MB PSRAM — fine for app-layer UI |
 
@@ -49,7 +49,8 @@ Lume replaces that loop:
 │    QuickJS-NG engine (PSRAM heap, event loop)      │
 │    signals prelude · declarative → LVGL bridge     │
 │    lifecycle · themes · gestures · animations      │
-│    hot-reload channel (USB serial)                 │
+│    push channel: USB serial + WiFi TCP (apps,      │
+│    commands, screenshots)                          │
 ├────────────────────────────────────────────────────┤
 │  LVGL (render backend, hidden) · ESP-IDF           │
 │    CO5300 QSPI AMOLED · CST9220 touch · AXP2101    │
@@ -75,6 +76,10 @@ USB Serial/JTAG port is not detected automatically. For a one-time push, run
 `node tools/lume/lume.js deploy my-app`. Once the board is on WiFi, the same bundle can be
 pushed over TCP with `node tools/lume/lume.js deploy my-app --ota <ip> --token <t>` (the
 token is printed on the device serial log at boot; `--ota-port` selects a non-default port).
+To capture what the board is actually showing, run `node tools/lume/lume.js screenshot
+shot.bmp` — the frame comes back over the same USB/WiFi channel as a CRC-checked
+480×480 RGB565 snapshot and is written as a BMP (works with `--ota` too; see
+[debug screenshot](docs/build.md#debug-screenshot-lume-screenshot)).
 See [build and development](docs/build.md) for protocol details, controls, and the WiFi OTA /
 CI release notes.
 
@@ -202,6 +207,8 @@ code, and every failure mode is documented in [`runtime/types/lume.d.ts`](runtim
 - **Themes** — named color tokens, one-call dark/light switch that repaints referenced attrs
 - **Auto-sleep** — idle timeout into light sleep, touch wakes the screen (ext0 on the
   touch INT pin)
+- **Screenshot debugging** — `lume screenshot` grabs the live panel frame over the
+  same USB/WiFi push channel and writes a CRC-verified BMP, no extra tooling
 
 ## Hardware target
 
