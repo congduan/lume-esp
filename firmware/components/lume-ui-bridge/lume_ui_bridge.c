@@ -16,6 +16,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "lvgl.h"
 #include "lume_ui_bridge.h"
 #include "lume_engine.h"     /* r4 P2: lume_engine_notify_removed() */
@@ -31,6 +32,13 @@ static uint8_t s_kinds[LUME_MAX_NODES];           /* id -> kind   (LVGL task) */
 static uint8_t s_flow[LUME_MAX_NODES];            /* wire flow, for stretch axis */
 static uint8_t s_main[LUME_MAX_NODES], s_cross[LUME_MAX_NODES];
 static uint8_t s_explicit_width[LUME_MAX_NODES], s_explicit_height[LUME_MAX_NODES];
+static uint16_t *s_canvas_pixels[LUME_MAX_NODES];
+static uint16_t s_canvas_w[LUME_MAX_NODES], s_canvas_h[LUME_MAX_NODES];
+static uint16_t s_canvas_stride[LUME_MAX_NODES]; /* RGB565 pixels per row */
+static size_t s_canvas_bytes;
+#define CANVAS_BUDGET (480u * 480u * 2u)
+static void clear_subtree(lv_obj_t *obj);
+static void release_dead_canvases(void);
 static lume_anim_sink_fn s_anim_sink;
 static lume_press_sink_fn s_press_sink;           /* set once by engine task */
 
@@ -197,6 +205,12 @@ static void apply_create(const lume_ui_msg_t *m)
         ESP_LOGE(TAG, "create: invalid node_id %u", (unsigned)m->node_id);
         return;
     }
+    if (s_nodes[m->node_id]) {
+        lv_obj_t *old = s_nodes[m->node_id];
+        clear_subtree(old);
+        lv_obj_delete(old);
+        release_dead_canvases();
+    }
     lv_obj_t *parent = (m->parent_id == 0)
                            ? lv_screen_active()
                            : get_node(m->parent_id);
@@ -224,6 +238,28 @@ static void apply_create(const lume_ui_msg_t *m)
             lv_obj_center(label);
             break;
         }
+        case LUME_NODE_CANVAS: {
+            int32_t w = m->from, h = m->to;
+            if (w < 1 || h < 1 || w > 480 || h > 480 ||
+                (size_t)w * h * 2u > CANVAS_BUDGET - s_canvas_bytes) {
+                ESP_LOGE(TAG, "canvas id=%u invalid dimensions/budget %ldx%ld", m->node_id, (long)w, (long)h);
+                return;
+            }
+            size_t bytes = (size_t)lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565) * h;
+            if (bytes > CANVAS_BUDGET - s_canvas_bytes) return;
+            uint16_t *pixels = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
+            if (!pixels) { ESP_LOGE(TAG, "canvas PSRAM allocation failed (%u)", (unsigned)bytes); return; }
+            memset(pixels, 0, bytes);
+            obj = lv_canvas_create(parent);
+            lv_canvas_set_buffer(obj, pixels, w, h, LV_COLOR_FORMAT_RGB565);
+            lv_obj_set_size(obj, w, h);
+            s_canvas_pixels[m->node_id] = pixels;
+            s_canvas_w[m->node_id] = w;
+            s_canvas_h[m->node_id] = h;
+            s_canvas_stride[m->node_id] = lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565) / 2u;
+            s_canvas_bytes += bytes;
+            break;
+        }
         default:
             ESP_LOGE(TAG, "create: unknown kind %u", (unsigned)m->kind);
             return;
@@ -237,6 +273,10 @@ static void apply_create(const lume_ui_msg_t *m)
     s_cross[m->node_id] = LUME_FLEX_START;
     s_explicit_width[m->node_id] = 0;
     s_explicit_height[m->node_id] = 0;
+    if (m->kind == LUME_NODE_CANVAS) {
+        s_explicit_width[m->node_id] = 1;
+        s_explicit_height[m->node_id] = 1;
+    }
     lv_obj_set_user_data(obj, (void *)(uintptr_t)m->node_id);
     if (m->parent_id > 0 && m->parent_id < LUME_MAX_NODES &&
         s_nodes[m->parent_id] == parent) apply_stretch_child(obj, m->parent_id);
@@ -369,6 +409,89 @@ static void clear_subtree(lv_obj_t *obj)
         s_explicit_width[id] = s_explicit_height[id] = 0;
     }
 }
+static void release_dead_canvases(void)
+{
+    for (uint16_t id = 1; id < LUME_MAX_NODES; id++) {
+        if (s_canvas_pixels[id] && !s_nodes[id]) {
+            s_canvas_bytes -= (size_t)s_canvas_stride[id] * 2u * s_canvas_h[id];
+            heap_caps_free(s_canvas_pixels[id]);
+            s_canvas_pixels[id] = NULL;
+        }
+    }
+}
+
+/* Raster commands are applied only by the LVGL timer. The buffer belongs to
+ * the canvas and is never shared with the engine; one final invalidate per
+ * onDraw run avoids lv_canvas_set_px's per-pixel invalidation. */
+static void canvas_px(uint16_t id, int32_t x, int32_t y, uint16_t color)
+{
+    if (x >= 0 && y >= 0 && x < s_canvas_w[id] && y < s_canvas_h[id])
+        s_canvas_pixels[id][(size_t)y * s_canvas_stride[id] + x] = color;
+}
+static void canvas_disc(uint16_t id, int32_t x, int32_t y, int r, uint16_t c)
+{
+    for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++)
+        if (dx * dx + dy * dy <= r * r) canvas_px(id, x + dx, y + dy, c);
+}
+static void canvas_brush(uint16_t id, int32_t x, int32_t y, int width, uint16_t c)
+{
+    for (int dy = -(width - 1) / 2; dy <= width / 2; dy++)
+        for (int dx = -(width - 1) / 2; dx <= width / 2; dx++)
+            canvas_px(id, x + dx, y + dy, c);
+}
+static void apply_canvas_draw(const lume_ui_msg_t *m)
+{
+    uint16_t id = m->node_id;
+    if (id == 0 || id >= LUME_MAX_NODES || !s_canvas_pixels[id]) return;
+    uint16_t c = lv_color_to_u16(lv_color_hex((uint32_t)m->value));
+    int32_t x = m->from, y = m->to, a = (int32_t)m->duration_ms, b = (int32_t)m->token;
+    switch (m->attr) {
+        case LUME_DRAW_CLEAR:
+            for (int32_t yy = 0; yy < s_canvas_h[id]; yy++)
+                for (int32_t xx = 0; xx < s_canvas_w[id]; xx++) canvas_px(id, xx, yy, c);
+            break;
+        case LUME_DRAW_RECT:
+            for (int32_t yy = y < 0 ? 0 : y; yy < y + b && yy < s_canvas_h[id]; yy++)
+                for (int32_t xx = x < 0 ? 0 : x; xx < x + a && xx < s_canvas_w[id]; xx++) canvas_px(id, xx, yy, c);
+            break;
+        case LUME_DRAW_LINE: {
+            int32_t dx = abs(a - x), sx = x < a ? 1 : -1;
+            int32_t dy = -abs(b - y), sy = y < b ? 1 : -1, err = dx + dy;
+            for (;;) {
+                canvas_brush(id, x, y, m->draw_width, c);
+                if (x == a && y == b) break;
+                int32_t e = 2 * err;
+                if (e >= dy) { err += dy; x += sx; }
+                if (e <= dx) { err += dx; y += sy; }
+            }
+            break;
+        }
+        case LUME_DRAW_CIRCLE: {
+            int r = a;
+            int32_t xx = r, yy = 0, err = 1 - r;
+            while (xx >= yy) {
+                canvas_disc(id,x+xx,y+yy,(m->draw_width-1)/2,c); canvas_disc(id,x+yy,y+xx,(m->draw_width-1)/2,c);
+                canvas_disc(id,x-yy,y+xx,(m->draw_width-1)/2,c); canvas_disc(id,x-xx,y+yy,(m->draw_width-1)/2,c);
+                canvas_disc(id,x-xx,y-yy,(m->draw_width-1)/2,c); canvas_disc(id,x-yy,y-xx,(m->draw_width-1)/2,c);
+                canvas_disc(id,x+yy,y-xx,(m->draw_width-1)/2,c); canvas_disc(id,x+xx,y-yy,(m->draw_width-1)/2,c);
+                yy++; if (err < 0) err += 2*yy+1; else { xx--; err += 2*(yy-xx)+1; }
+            }
+            break;
+        }
+        case LUME_DRAW_TEXT: {
+            lv_layer_t layer;
+            lv_canvas_init_layer(s_nodes[id], &layer);
+            lv_draw_label_dsc_t dsc;
+            lv_draw_label_dsc_init(&dsc);
+            dsc.text = m->text;
+            dsc.color = lv_color_hex((uint32_t)m->value);
+            lv_area_t area = {x, y, s_canvas_w[id]-1, s_canvas_h[id]-1};
+            lv_draw_label(&layer, &dsc, &area);
+            lv_canvas_finish_layer(s_nodes[id], &layer);
+            break;
+        }
+    }
+}
 
 /* r4 P2: same subtree walk as clear_subtree(), but recording the node ids
  * (caller must invoke BEFORE lv_obj_delete() frees the objects). Bounded by
@@ -407,6 +530,7 @@ static void apply_remove(const lume_ui_msg_t *m)
 
     clear_subtree(obj);   /* purge this node AND every descendant table entry */
     lv_obj_delete(obj);   /* deletes the whole LVGL subtree */
+    release_dead_canvases();
     ESP_LOGI(TAG, "remove id=%u (subtree purged, %d js owners)",
              (unsigned)m->node_id, n_purged);
     for (int i = 0; i < n_purged; i++) {
@@ -458,6 +582,10 @@ void lume_ui_bridge_drain(void)
             case LUME_OP_SET_PRESS: apply_set_press(&m); break;
             case LUME_OP_ANIMATE: apply_animate(&m); break;
             case LUME_OP_ANIMATE_CANCEL: cancel_anim(m.node_id, m.attr); break;
+            case LUME_OP_CANVAS_DRAW: apply_canvas_draw(&m); break;
+            case LUME_OP_CANVAS_INVALIDATE:
+                if (m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) lv_obj_invalidate(s_nodes[m.node_id]);
+                break;
             default:
                 ESP_LOGW(TAG, "drain: unknown op %u", (unsigned)m.op);
                 break;

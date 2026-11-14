@@ -187,13 +187,21 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
                               int argc, JSValueConst *argv)
 {
     (void)this_val;
-    int32_t kind, parent;
+    int32_t kind, parent, canvas_w = 0, canvas_h = 0;
     if (argc < 2 || JS_ToInt32(ctx, &kind, argv[0]) < 0 ||
         JS_ToInt32(ctx, &parent, argv[1]) < 0) {
         return JS_EXCEPTION;
     }
     if (s_next_node_id + 1 >= LUME_MAX_NODES) {
         return JS_ThrowRangeError(ctx, "lume: node table full");
+    }
+    if (kind == LUME_NODE_CANVAS) {
+        if (argc < 4) return JS_ThrowTypeError(ctx, "lume: canvas width and height required");
+        if (JS_ToInt32(ctx, &canvas_w, argv[2]) < 0 ||
+            JS_ToInt32(ctx, &canvas_h, argv[3]) < 0) return JS_EXCEPTION;
+        if (canvas_w < 1 || canvas_h < 1 || canvas_w > 480 || canvas_h > 480 ||
+            (size_t)canvas_w * canvas_h * 2u > 480u * 480u * 2u)
+            return JS_ThrowRangeError(ctx, "lume: canvas dimensions exceed 480x480 budget");
     }
     uint16_t id = ++s_next_node_id;   /* 1..LUME_MAX_NODES-1; 0 is the screen */
 
@@ -203,12 +211,53 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
     m.kind = (uint8_t)kind;
     m.node_id = id;
     m.parent_id = (uint16_t)parent;
+    m.from = canvas_w;
+    m.to = canvas_h;
     if (lume_ui_bridge_post(&m) != 0) {
         ESP_LOGE(TAG, "createNode: ui queue full after retries (id=%u); "
                       "JS/UI state may diverge", (unsigned)id);
         return JS_ThrowInternalError(ctx, "lume: ui queue full");
     }
     return JS_NewInt32(ctx, id);
+}
+
+static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t id, op, x, y, a, b, color, width;
+    if (argc < 8) return JS_ThrowTypeError(ctx, "lume: canvasDraw needs 8 arguments");
+    if (JS_ToInt32(ctx,&id,argv[0]) < 0 || JS_ToInt32(ctx,&op,argv[1]) < 0 ||
+        JS_ToInt32(ctx,&x,argv[2]) < 0 || JS_ToInt32(ctx,&y,argv[3]) < 0 ||
+        JS_ToInt32(ctx,&a,argv[4]) < 0 || JS_ToInt32(ctx,&b,argv[5]) < 0 ||
+        JS_ToInt32(ctx,&color,argv[6]) < 0 || JS_ToInt32(ctx,&width,argv[7]) < 0) return JS_EXCEPTION;
+    if (id < 1 || id >= LUME_MAX_NODES || op < LUME_DRAW_CLEAR || op > LUME_DRAW_TEXT ||
+        width < 1 || width > 16 || x < -480 || x > 480 || y < -480 || y > 480 ||
+        a < -480 || a > 480 || b < -480 || b > 480)
+        return JS_ThrowRangeError(ctx, "lume: canvas draw argument out of range");
+    lume_ui_msg_t m; msg_init(&m);
+    m.op = LUME_OP_CANVAS_DRAW; m.node_id = id; m.attr = op;
+    m.from = x; m.to = y; m.duration_ms = (uint32_t)a; m.token = (uint32_t)b;
+    m.value = color; m.draw_width = width;
+    if (op == LUME_DRAW_TEXT) {
+        if (argc < 9) return JS_ThrowTypeError(ctx, "lume: canvas text required");
+        size_t len; const char *s = JS_ToCStringLen(ctx, &len, argv[8]);
+        if (!s) return JS_EXCEPTION;
+        if (len >= LUME_TEXT_MAX) { JS_FreeCString(ctx,s); return JS_ThrowRangeError(ctx,"lume: canvas text exceeds 63 bytes"); }
+        memcpy(m.text,s,len); JS_FreeCString(ctx,s);
+    }
+    if (lume_ui_bridge_post(&m) != 0) return JS_ThrowInternalError(ctx,"lume: ui queue full");
+    return JS_UNDEFINED;
+}
+static JSValue js_canvas_invalidate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t id;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "lume: canvasInvalidate needs id");
+    if (JS_ToInt32(ctx,&id,argv[0]) < 0) return JS_EXCEPTION;
+    if (id < 1 || id >= LUME_MAX_NODES) return JS_ThrowRangeError(ctx,"lume: invalid canvas id");
+    lume_ui_msg_t m; msg_init(&m); m.op = LUME_OP_CANVAS_INVALIDATE; m.node_id = id;
+    if (lume_ui_bridge_post(&m) != 0) return JS_ThrowInternalError(ctx,"lume: ui queue full");
+    return JS_UNDEFINED;
 }
 
 static JSValue js_set_attr(JSContext *ctx, JSValueConst this_val,
@@ -1242,6 +1291,8 @@ static void register_bindings(JSContext *ctx)
     /* JS_SetPropertyStr consumes the passed value (no JS_FreeValue needed). */
     JS_SetPropertyStr(ctx, lume, "createNode",
                       JS_NewCFunction(ctx, js_create_node, "createNode", 2));
+    JS_SetPropertyStr(ctx, lume, "canvasDraw", JS_NewCFunction(ctx, js_canvas_draw, "canvasDraw", 9));
+    JS_SetPropertyStr(ctx, lume, "canvasInvalidate", JS_NewCFunction(ctx, js_canvas_invalidate, "canvasInvalidate", 1));
     JS_SetPropertyStr(ctx, lume, "setAttr",
                       JS_NewCFunction(ctx, js_set_attr, "setAttr", 3));
     JS_SetPropertyStr(ctx, lume, "nativeAnimate",

@@ -32,6 +32,7 @@ typedef enum {
     LUME_NODE_VIEW = 0,
     LUME_NODE_TEXT,
     LUME_NODE_BUTTON,
+    LUME_NODE_CANVAS,
 } lume_node_kind_t;
 
 /* set-attr attribute ids. PARENT is the "append child" primitive: View()
@@ -80,7 +81,12 @@ typedef enum {
     LUME_OP_SET_PRESS,       /* register CLICKED callback on node_id */
     LUME_OP_ANIMATE,        /* numeric attr, optional from, to, duration, easing, token */
     LUME_OP_ANIMATE_CANCEL, /* stop one node/attr animation */
+    LUME_OP_CANVAS_DRAW,
+    LUME_OP_CANVAS_INVALIDATE,
 } lume_op_t;
+
+typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
+               LUME_DRAW_CIRCLE, LUME_DRAW_TEXT } lume_draw_t;
 
 typedef enum { LUME_EASE_LINEAR = 0, LUME_EASE_IN, LUME_EASE_OUT,
                LUME_EASE_IN_OUT } lume_easing_t;
@@ -101,6 +107,9 @@ typedef struct {
     int32_t  from, to;                 /* from ignored when has_from == 0 */
     uint32_t duration_ms, token;       /* token 0 means no completion event */
     uint8_t  easing, has_from;
+    /* Canvas draw: attr=opcode, value=color, from/to=x/y,
+     * duration_ms/token=w/h or x2/y2, draw_width=stroke/size. */
+    uint16_t draw_width;
 } lume_ui_msg_t;
 
 /* How the bridge hands a CLICKED event back to the engine task. Registered by
