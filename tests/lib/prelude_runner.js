@@ -40,6 +40,15 @@ function runApp(script, options = {}) {
     _nowMs: () => Date.now(), log: (...args) => options.onLog?.(...args),
     imu: { read: () => null }, pmic: { battPercent: () => 80 },
     power: { _sleepNow: () => 0, _wake: () => 0 }, net: { deinit: () => 0 },
+    // Host-side BLE stand-in: no radio, no stack. Harnesses can override any
+    // method with options.ble (see tests/ble.js); the simulator uses these.
+    ble: {
+      IDLE: 0, ADVERTISING: 1, CONNECTED: 2, MAX_PAYLOAD: 20,
+      init: () => 0, start: () => 0, stop: () => 0,
+      status: () => ({ state: 1, connected: false, subscribed: false, mtu: 23, pending: 0 }),
+      write: () => 0, read: () => null,
+      ...(options.ble || {}),
+    },
     storage: { Fs, mounted: () => true },
     image: { sizeOf: () => -1, _setSource: () => -1 },
   };
