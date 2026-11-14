@@ -3,6 +3,7 @@
 #include "lume_net.h"
 #include "lume_pins.h"
 #include "driver/gpio.h"
+#include "driver/rtc_io.h"
 #include "esp_sleep.h"
 #include "esp_log.h"
 
@@ -29,10 +30,19 @@ int lume_power_sleep_now(void)
      * IDF's S3 half-sleep mode retains contents with this sdkconfig. */
     err = esp_light_sleep_start();
     esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_EXT0);
+    /* EXT0 switches the pad to RTC IO. Restore the digital input before the
+     * LVGL task resumes its touch polling (IDF sleep_modes.rst:217). */
+    esp_err_t pin_err = rtc_gpio_deinit(LUME_PIN_TP_INT);
+    const gpio_config_t touch_int_cfg = {
+        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = 1ULL << LUME_PIN_TP_INT,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    if (pin_err == ESP_OK) pin_err = gpio_config(&touch_int_cfg);
     esp_err_t wake_err = lume_display_wake();
-    if (err != ESP_OK || wake_err != ESP_OK) {
-        ESP_LOGE(TAG, "light sleep/wake failed: sleep=%s panel=%s",
-                 esp_err_to_name(err), esp_err_to_name(wake_err));
+    if (err != ESP_OK || pin_err != ESP_OK || wake_err != ESP_OK) {
+        ESP_LOGE(TAG, "light sleep/wake failed: sleep=%s pin=%s panel=%s",
+                 esp_err_to_name(err), esp_err_to_name(pin_err), esp_err_to_name(wake_err));
         return LUME_POWER_ERR_DRIVER;
     }
     return LUME_POWER_OK;
