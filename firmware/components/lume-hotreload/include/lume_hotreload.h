@@ -22,6 +22,12 @@
  *                   bytecode). Bytes are copied verbatim; no embedded NUL is
  *                   expected but explicit lengths are used throughout.
  *
+ * At an aligned frame boundary, four-byte control frames are also accepted:
+ * "BACK" dispatches onBack (true = handled, false/unregistered = close the
+ * current app and open the embedded demo); "PAUS" / "RESM" dispatch pause /
+ * resume. They carry no payload or response. Callbacks always run on the
+ * engine task, never on the USB RX task.
+ *
  * Streaming parse / resync: the RX task reads the driver's byte stream into a
  * small state machine. It aligns on 4-byte "LUME" magic at frame boundaries;
  * on a bad magic, an over-limit/zero length, or a bad CRC it emits an

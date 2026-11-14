@@ -150,6 +150,12 @@ static void reject(const char *reason, size_t len)
     respond(false, len, reason);
 }
 
+static void back_frame(void)
+{
+    if (lume_engine_post_back() != 0)
+        ESP_LOGW(TAG, "BACK dropped: engine queue full");
+}
+
 static void feed(uint8_t b)
 {
     sync_push(b);               /* always maintain the rolling window */
@@ -159,7 +165,16 @@ static void feed(uint8_t b)
         s_magic[s_magic_n++] = b;
         if (s_magic_n == LUME_MAGIC_LEN) {
             s_magic_n = 0;
-            if (memcmp(s_magic, LUME_MAGIC, LUME_MAGIC_LEN) == 0) {
+            if (memcmp(s_magic, "PAUS", LUME_MAGIC_LEN) == 0) {
+                lume_engine_post_lifecycle(LUME_EVT_PAUSE);
+                enter_magic();
+            } else if (memcmp(s_magic, "RESM", LUME_MAGIC_LEN) == 0) {
+                lume_engine_post_lifecycle(LUME_EVT_RESUME);
+                enter_magic();
+            } else if (memcmp(s_magic, "BACK", LUME_MAGIC_LEN) == 0) {
+                back_frame();
+                enter_magic();
+            } else if (memcmp(s_magic, LUME_MAGIC, LUME_MAGIC_LEN) == 0) {
                 s_state = ST_HDR;
                 s_hdr_n = 0;
             } else {
