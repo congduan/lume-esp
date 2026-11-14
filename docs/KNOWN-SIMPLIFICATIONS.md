@@ -797,3 +797,19 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   16384/16384→16384/16384（0，未溢出）**，Total 2216753→2216945（+192）。
   `idf.py build` + `idf.py size`、12 个 JS harness、CLI 14 项和网站检查均通过。
   无真机，本轮不声明板上行为已验证；M5 Board abstraction 仍未勾选。
+
+## r33 / WiFi 扫描（lume.net.scan）同步阻塞
+
+- 新增 `lume.net.scan()`（`lume_net.c` 同步实现 + `lume_engine.c` `js_net_scan`
+  绑定）：全信道主动扫描，返回按 RSSI 降序的 `{ssid, rssi, auth}` 数组（上限
+  20，`ssid === ''` 为隐藏 AP，`auth` 为 wifi_auth_mode_t，0 = open），失败
+  返回负错误码。结果由 `examples/settings` 扫描页用于选择并连接网络。
+- **同步阻塞是本轮接受的简化**：扫描期间引擎任务被阻塞 ~1.5-3 s（与 r11 同步
+  httpGet 同一取舍），触摸/热更新事件停摆，设置应用 UI 冻结；异步扫描留待后续
+  轮次。扫描需要 station 已启动；关联过程中驱动可能拒绝扫描（-2）。
+- open（auth 0）网络不可连：`connect()` 固定 WPA2-PSK 阈值（r11 契约不变）。
+- 真实扫描结果（AP 列表、RSSI 准确度、关联中扫描行为）属板上验收项，本轮仅在
+  macOS 主机侧做 JS/host 验证；**`idf.py build` 需在 Linux + ESP-IDF v5.5 构建
+  机上执行，本机无法编译验证**——esp_wifi_scan_* 的 API 形状已按 IDF v5.5 头文
+  件书写，`lume_net.h` 注释中标注了上线前需对照构建机源码复核。
+

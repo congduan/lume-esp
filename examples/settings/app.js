@@ -1,26 +1,34 @@
 /** Settings app: WiFi (station / WPA2-PSK), Bluetooth (BLE peripheral) and
  *  general device settings (volume, battery, sleep, power off, storage).
  *
+ *  NODE BUDGET: the firmware node table is LUME_MAX_NODES = 128 slots and the
+ *  engine does NOT reject ids beyond it (creates are silently dropped on the
+ *  LVGL side, leaving JS/UI diverged), so this app keeps its static tree at
+ *  ~95 nodes and its two virtualized Lists add <= ~25 visible rows worst case.
+ *  The on-screen keyboard is therefore 4 compact rows; BACK navigation uses
+ *  the prelude's global gesture (swipe up) instead of per-page back buttons.
+ *
  *  Pages are built once and switched by toggling ATTR_VISIBLE with
  *  lume.setAttr(node, 5, 0|1) -- the pattern already used by
  *  examples/dashboard/app.js and examples/file_manager/app.js. The on-screen
  *  keyboard is an absolute overlay on top; the runtime has no text-input
  *  widget, so SSID / password / BLE name are typed with key buttons.
  *
- *  Firmware limits honoured here (runtime/types/lume.d.ts):
- *  - WiFi: station only, WPA2-PSK only, NO scan list -> SSIDs are typed in
- *    and remembered in NVS (lume.storage.kv 'wifi.saved'). connect() is
- *    non-blocking; status() is polled: DISCONNECTED -> CONNECTING ->
- *    CONNECTED -> GOT_IP.
+ *  Firmware behaviour honoured here (runtime/types/lume.d.ts):
+ *  - WiFi: station only, WPA2-PSK only. lume.net.scan() (added this round)
+ *    lists nearby APs SYNCHRONOUSLY -- it blocks the engine task for ~1.5-3 s,
+ *    so the UI freezes during a scan (same tradeoff as the synchronous
+ *    httpGet). Saved networks are remembered in NVS (lume.storage.kv
+ *    'wifi.saved'); connect() is non-blocking and status() is polled:
+ *    DISCONNECTED -> CONNECTING -> CONNECTED -> GOT_IP.
  *  - Bluetooth: lume.ble is a GATT PERIPHERAL only (Nordic-UART-shaped): the
  *    app advertises for a central; it cannot scan/pair/connect out to other
  *    devices. ble.status() WARNs on every call while NimBLE is down, so it is
  *    probed once (same as examples/device_monitor).
- *  - httpGet / connect() would block the engine task; nothing here uses them.
  *
- *  On-device acceptance (advertising, association, coexistence, sleep
- *  current) is deferred to the board bring-up round -- a green host run does
- *  NOT mean the radios work on hardware.
+ *  On-device acceptance (advertising, association, real scan results,
+ *  coexistence, sleep current) is deferred to the board bring-up round -- a
+ *  green host run does NOT mean the radios work on hardware.
  */
 var settingsTheme = { colors: {
   primary: '#08111C',
@@ -63,7 +71,7 @@ var NET_STATES = ['disconnected', 'connecting', 'associated', 'got ip'];
 var BLE_STATES = ['idle', 'advertising', 'connected'];
 var CHARGE_STATES = ['trickle', 'pre', 'CC', 'CV', 'done', 'idle'];
 
-var page = signal(0);              /* 0 menu, 1 wifi, 2 bluetooth, 3 general */
+var page = signal(0);              /* 0 menu, 1 wifi, 2 bt, 3 general, 4 scan */
 var wifiLine = signal('off');
 var btLine = signal('off');
 var btName = signal(function () {
@@ -93,7 +101,8 @@ function showPage(name) {
   for (var k in pageNodes) lume.setAttr(pageNodes[k], 5, k === name ? 1 : 0);
 }
 function go(name) {
-  page.set(name === 'menu' ? 0 : (name === 'wifi' ? 1 : (name === 'bt' ? 2 : 3)));
+  page.set(name === 'menu' ? 0 : (name === 'wifi' ? 1 : (name === 'bt' ? 2 :
+          name === 'general' ? 3 : 4)));
   showPage(name);
 }
 
@@ -106,16 +115,20 @@ var kbMax = 32;
 var kbOnOk = null;
 var kbOpen = false;
 
+/* Each key is [abcChar, symChar, flexGrow?]. In 'sym' mode row 1 becomes the
+ * digits 1..0 and row 2 the symbol band, so the #123 toggle visibly changes
+ * every row; the toggle key itself swaps between '#123' and 'ABC'.
+ * 4 compact rows x 36 keys: the whole keyboard must stay inside the 128-node
+ * firmware budget (see header). */
 var KB_ROWS = [
-  [['q', 'q'], ['w', 'w'], ['e', 'e'], ['r', 'r'], ['t', 't'], ['y', 'y'],
-   ['u', 'u'], ['i', 'i'], ['o', 'o'], ['p', 'p']],
-  [['a', 'a'], ['s', 's'], ['d', 'd'], ['f', 'f'], ['g', 'g'], ['h', 'h'],
-   ['j', 'j'], ['k', 'k'], ['l', 'l'], ['DEL', 'DEL', 4]],
-  [['#123', 'ABC', 4], ['z', '['], ['x', ']'], ['c', '{'], ['v', '}'],
-   ['b', ':'], ['n', ';'], ['m', "'"], ['.', '"']],
-  [['-', '+'], ['_', '='], ['@', '<'], ['.', '>'], [',', '?'], ['!', '/'],
-   ['?', '%'], ['^', '*']],
-  [['ESC', 'ESC', 3], ['space', 'space', 8], ['OK', 'OK', 3]]
+  [['q', '1'], ['w', '2'], ['e', '3'], ['r', '4'], ['t', '5'], ['y', '6'],
+   ['u', '7'], ['i', '8'], ['o', '9'], ['p', '0']],
+  [['a', '!'], ['s', '@'], ['d', '#'], ['f', '$'], ['g', '%'], ['h', '^'],
+   ['j', '&'], ['k', '*'], ['l', '('], ['DEL', 'DEL', 4]],
+  [['#123', 'ABC', 4], ['z', ')'], ['x', '['], ['c', ']'], ['v', '{'],
+   ['b', '}'], ['n', ':'], ['m', "'"], ['.', '"']],
+  [['-', '+'], ['_', '='], ['@', '<'], ['.', '>'], ['space', 'space', 5],
+   ['OK', 'OK', 3], ['ESC', 'ESC', 3]]
 ];
 
 function keyChar(k) { return kbMode() === 'abc' ? k[0] : k[1]; }
@@ -191,7 +204,7 @@ for (var r = 0; r < KB_ROWS.length; r++) {
   kbChildren.push(kbRow(KB_ROWS[r].map(kbKeyButton)));
 }
 var kbOverlay = View({ style: {
-  position: 'absolute', x: 12, y: 190, width: 456, height: 278,
+  position: 'absolute', x: 12, y: 234, width: 456, height: 234,
   background: '#0E1B28', borderRadius: 14,
   display: 'flex', flexDirection: 'column', gap: 4, padding: 8
 } }, kbChildren);
@@ -250,10 +263,47 @@ function forgetNet(item) {
 function autoConnect() {
   var last = autoSsid();
   if (!last) return;
+  /* WiFi survives app switches (driver-level association; init latches for
+   * the process lifetime), so only reconnect when the station is idle:
+   * CONNECTING/CONNECTED/GOT_IP mean nothing to do (and calling connect()
+   * again would kick a needless re-association). */
+  var st = lume.net.status();
+  if (typeof st === 'object' && st !== null && st.state >= 1) return;
   var list = savedNets();
   for (var i = 0; i < list.length; i++) {
     if (list[i].ssid === last) { connectNet(list[i]); return; }
   }
+}
+
+/* ---- wifi scan -----------------------------------------------------------
+ * lume.net.scan() is SYNCHRONOUS: the engine task is blocked for ~1.5-3 s
+ * (all-channel active scan), so the whole UI freezes while it runs and the
+ * status text below may only repaint afterwards. That is the accepted
+ * firmware tradeoff this round, shared with the synchronous httpGet. */
+var scanResults = signal([]);
+
+function scanNow() {
+  if (!netInit()) return;
+  wifiLine.set('scanning... UI frozen');
+  var r = lume.net.scan();
+  if (typeof r === 'number') {
+    wifiLine.set('scan err ' + r);
+    return;
+  }
+  scanResults.set(r);
+  wifiLine.set(r.length + ' aps found');
+}
+function connectFromScan(item) {
+  if (item.auth === 0) {
+    wifiLine.set('open networks unsupported');
+    return;
+  }
+  kbShow('Password (8-63)', 63, function (pass) {
+    if (pass.length < 8) { wifiLine.set('password too short (8+)'); return; }
+    upsertNet(item.ssid, pass);
+    savedNets.set(loadSaved());
+    connectNet({ ssid: item.ssid, pass: pass });
+  });
 }
 
 /* ---- bluetooth ------------------------------------------------------------- */
@@ -378,15 +428,10 @@ function stopPolling() {
 
 /* ---- shared widgets ------------------------------------------------------------ */
 
-function titleBar(text) {
-  return View({ style: {
-    width: '100%', height: 40, display: 'flex', flexDirection: 'row',
-    justifyContent: 'space-between', alignItems: 'center'
-  } }, [
-    Text({ text: text, style: {} }),
-    Button({ title: '< Back', onPress: function () { go('menu'); },
-      style: { width: 84, height: 36, borderRadius: 10 } })
-  ]);
+/* Page titles are bare Texts (node budget): BACK navigation comes from the
+ * prelude's global swipe-up gesture, which applies to EVERY app. */
+function titleText(text) {
+  return Text({ text: text, style: { width: '100%', height: 36 } });
 }
 function infoRow(label, value, height) {
   return View({ style: {
@@ -420,15 +465,14 @@ var summary = Text({ text: function () {
 }, style: { width: '100%', height: 22, textAlign: 'left' } });
 
 var menuChildren = [
-  Text({ text: 'Settings', style: { width: '100%', height: 36 } }),
+  titleText('Settings'),
   summary,
   actionRow([bigButton('WiFi', function () { go('wifi'); })], 56),
   actionRow([bigButton('Bluetooth', function () { go('bt'); })], 56),
   actionRow([bigButton('General', function () { go('general'); })], 56),
   infoRow('battery', function () { return battLine(); }, 36),
-  infoRow('storage', function () { return storeLine(); }, 36),
-  Text({ text: 'BACK returns here from any page',
-    style: { width: '100%', height: 36 } })
+  Text({ text: 'swipe up = BACK; radios need board bring-up',
+    style: { width: '100%', height: 22 } })
 ];
 
 var menuPage = View({ style: {
@@ -460,22 +504,54 @@ var wifiPage = View({ style: {
   background: 'primary', padding: SAFE, gap: 8,
   display: 'flex', flexDirection: 'column', scroll: 'none'
 } }, [
-  titleBar('WiFi'),
+  titleText('WiFi'),
   infoRow('status', function () { return wifiLine(); }),
   actionRow([
+    bigButton('Scan', function () { go('scan'); }),
     bigButton('Disconnect', disconnectNet),
-    bigButton('Add network', addNetwork)
+    bigButton('Add', addNetwork)
   ]),
-  Text({ text: 'saved networks - tap to connect, X to forget',
+  Text({ text: 'saved - tap to connect, X to forget',
     style: { width: '100%', height: 20 } }),
   List({ items: savedNets, itemHeight: 44, overscan: 1,
     renderItem: netRow,
-    style: { width: '100%', height: 160, background: 'primary',
-      scrollbar: 'auto' } }),
-  Text({ text: 'WPA2-PSK only; no scan list in the firmware',
-    style: { width: '100%', height: 22 } })
+    style: { width: '100%', height: 132, background: 'primary',
+      scrollbar: 'auto' } })
 ]);
 pageNodes.wifi = wifiPage;
+
+/* ---- page: wifi scan --------------------------------------------------------------- */
+
+function scanRow(item) {
+  /* one text per row (node budget): name + rssi + auth in a single label */
+  return View({ style: {
+    width: '100%', height: 44, background: 'surface',
+    display: 'flex', flexDirection: 'row', alignItems: 'center',
+    padding: 8, scroll: 'none'
+  }, onPress: function () { connectFromScan(item); } }, [
+    Text({ text: function () {
+      var name = item.ssid === '' ? '(hidden)' : item.ssid.slice(0, 16);
+      return name + '  ' + item.rssi + 'dBm' + (item.auth === 0 ? ' open' : '');
+    }, style: { flexGrow: 1 } })
+  ]);
+}
+
+var scanPage = View({ style: {
+  position: 'absolute', x: 0, y: 0, width: '100%', height: '100%',
+  background: 'primary', padding: SAFE, gap: 8,
+  display: 'flex', flexDirection: 'column', scroll: 'none'
+} }, [
+  titleText('WiFi scan'),
+  infoRow('status', function () { return wifiLine(); }),
+  actionRow([bigButton('Rescan', scanNow)]),
+  List({ items: scanResults, itemHeight: 44, overscan: 1,
+    renderItem: scanRow,
+    style: { width: '100%', height: 176, background: 'primary',
+      scrollbar: 'auto' } }),
+  Text({ text: 'tap to join (WPA2-PSK)',
+    style: { width: '100%', height: 20 } })
+]);
+pageNodes.scan = scanPage;
 
 /* ---- page: bluetooth ------------------------------------------------------------------ */
 
@@ -484,14 +560,16 @@ var btPage = View({ style: {
   background: 'primary', padding: SAFE, gap: 10,
   display: 'flex', flexDirection: 'column', scroll: 'none'
 } }, [
-  titleBar('Bluetooth'),
-  infoRow('device', function () { return btName() + ' (peripheral)'; }),
-  infoRow('status', function () { return btLine(); }),
-  actionRow([bigButton('Advertise', bleStart), bigButton('Stop', bleStop)]),
-  actionRow([bigButton('Rename', renameBle)]),
-  Text({ text: 'a central (NUS console) connects to this board',
-    style: { width: '100%', height: 22 } }),
-  Text({ text: 'no scan / pairing / outbound links',
+  titleText('Bluetooth'),
+  infoRow('device', function () {
+    return btName() + ' ' + btLine();
+  }),
+  actionRow([
+    bigButton('Advertise', bleStart),
+    bigButton('Stop', bleStop),
+    bigButton('Rename', renameBle)
+  ]),
+  Text({ text: 'peripheral only: no scan / pairing / outbound',
     style: { width: '100%', height: 22 } })
 ]);
 pageNodes.bt = btPage;
@@ -503,7 +581,7 @@ var generalPage = View({ style: {
   background: 'primary', padding: SAFE, gap: 8,
   display: 'flex', flexDirection: 'column', scroll: 'none'
 } }, [
-  titleBar('General'),
+  titleText('General'),
   View({ style: {
     width: '100%', height: 44, background: 'surface',
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
@@ -516,14 +594,17 @@ var generalPage = View({ style: {
     Button({ title: '+', onPress: function () { applyVolume(volume() + 10, true); },
       style: { width: 44, height: 34, borderRadius: 8 } })
   ]),
-  infoRow('volume note', function () { return volNote() === '' ? '-' : volNote(); }),
   infoRow('battery', function () { return battLine(); }),
-  infoRow('storage', function () { return storeLine(); }),
-  actionRow([bigButton('Sleep now', function () { lume.power.sleepNow(); })]),
-  actionRow([bigButton(function () {
-    return powerConfirm() ? 'Confirm off?' : 'Power off';
-  }, powerOff, 1)]),
-  Text({ text: 'sleep blocks until a touch wake; power off cuts the PMIC rail',
+  infoRow('storage', function () {
+    return storeLine() + (volNote() === '' ? '' : ' ' + volNote());
+  }),
+  actionRow([
+    bigButton('Sleep now', function () { lume.power.sleepNow(); }),
+    bigButton(function () {
+      return powerConfirm() ? 'Confirm off?' : 'Power off';
+    }, powerOff, 1)
+  ]),
+  Text({ text: 'sleep waits for a touch wake; off cuts the PMIC rail',
     style: { width: '100%', height: 40 } })
 ]);
 pageNodes.general = generalPage;
@@ -532,7 +613,7 @@ pageNodes.general = generalPage;
 
 var root = View({ style: {
   width: '100%', height: '100%', background: 'primary', scroll: 'none'
-} }, [menuPage, wifiPage, btPage, generalPage, kbOverlay]);
+} }, [menuPage, wifiPage, btPage, generalPage, scanPage, kbOverlay]);
 
 showPage('menu');
 
@@ -548,6 +629,7 @@ lume.app.onPause(function () {
 lume.app.onResume(startPolling);
 lume.app.onBack(function () {
   if (kbOpen) { kbHide(); return true; }
+  if (page() === 4) { go('wifi'); return true; }   /* scan -> wifi page */
   if (page() !== 0) { go('menu'); return true; }
   return false;                   /* default: back out to the home launcher */
 });

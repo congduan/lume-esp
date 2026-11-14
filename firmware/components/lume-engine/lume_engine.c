@@ -1447,6 +1447,38 @@ static JSValue js_net_status(JSContext *ctx, JSValueConst this_val,
     return obj;
 }
 
+/* lume.net.scan(): synchronous AP scan. Returns an ARRAY of
+ * { ssid, rssi, auth } sorted by RSSI descending on success (possibly
+ * empty), or a NEGATIVE NUMBER (the error code) on failure -- the same
+ * shape as status(). BLOCKS the engine task for the scan duration
+ * (~1.5-3 s), mirroring the synchronous-httpGet tradeoff (docs r11).
+ * The item array lives on the engine-task stack: 20 x ~36 B is well
+ * within its budget; the C layer heap-buffers the larger driver
+ * records itself. Hidden APs carry ssid "" (rendered by JS). */
+static JSValue js_net_scan(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    lume_net_scan_item_t items[LUME_NET_SCAN_MAX];
+    int count = 0;
+    int r = lume_net_scan(items, LUME_NET_SCAN_MAX, &count);
+    if (r < 0) {
+        return JS_NewInt32(ctx, r);
+    }
+    JSValue arr = JS_NewArray(ctx);
+    for (int i = 0; i < count; i++) {
+        JSValue obj = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, obj, "ssid",
+            items[i].ssid[0]
+                ? JS_NewStringLen(ctx, items[i].ssid, strlen(items[i].ssid))
+                : JS_NewString(ctx, ""));
+        JS_SetPropertyStr(ctx, obj, "rssi", JS_NewInt32(ctx, items[i].rssi));
+        JS_SetPropertyStr(ctx, obj, "auth", JS_NewInt32(ctx, items[i].auth));
+        JS_SetPropertyUint32(ctx, arr, (uint32_t)i, obj);
+    }
+    return arr;
+}
+
 /* r26: lume.net.otaStatus() -> { running, wifiReady, tokenReady, port, token }.
  * The status is supplied by the WiFi-OTA channel's registered provider (see
  * lume_engine.h); no provider -> an all-false/zero status object. */
@@ -1901,6 +1933,8 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_net_status, "status", 0));
     JS_SetPropertyStr(ctx, net, "otaStatus",
                       JS_NewCFunction(ctx, js_net_ota_status, "otaStatus", 0));
+    JS_SetPropertyStr(ctx, net, "scan",
+                      JS_NewCFunction(ctx, js_net_scan, "scan", 0));
     JS_SetPropertyStr(ctx, net, "httpGet",
                       JS_NewCFunction(ctx, js_net_http_get, "httpGet", 1));
     /* The status() state enum, exposed as named numeric constants (mirrors

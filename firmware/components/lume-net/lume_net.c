@@ -518,3 +518,72 @@ void lume_net_http_free(lume_net_http_response_t *out)
     }
     out->body_len = 0;
 }
+
+/* ------------------------------------------------------------------ */
+/* Synchronous WiFi scan (esp_wifi_scan_start, blocking).              */
+/* NOTE: blocks the engine task for ~1.5-3 s while all channels are    */
+/* visited -- same accepted tradeoff as the synchronous httpGet above. */
+/* An async/callback version is a LATER round.                         */
+/* ------------------------------------------------------------------ */
+int lume_net_scan(lume_net_scan_item_t *out, int max, int *count)
+{
+    if (out == NULL || count == NULL || max <= 0 || max > LUME_NET_SCAN_MAX) {
+        return LUME_NET_ERR_ARG;
+    }
+    *count = 0;
+    int r = require_ready();
+    if (r != LUME_NET_OK) {
+        return r;
+    }
+
+    /* NULL config = driver defaults: all channels, active scan, no SSID
+     * filter, show_hidden false. block = true so the caller can consume
+     * the results immediately. A scan during an ongoing association may
+     * be rejected by the driver (ESP_ERR_WIFI_STATE -> -2, no crash). */
+    esp_err_t err = esp_wifi_scan_start(NULL, true);
+    if (err != ESP_OK) {
+        return map_err(err, "esp_wifi_scan_start");
+    }
+
+    /* wifi_ap_record_t is ~100 B, so up to LUME_NET_SCAN_MAX records go on
+     * the heap, not the engine-task stack. get_ap_records() copies up to
+     * `num` records AND releases the driver's internal scan buffer; num
+     * receives the ACTUAL count (<= requested). */
+    uint16_t num = (uint16_t)max;
+    wifi_ap_record_t *records = malloc(num * sizeof(wifi_ap_record_t));
+    if (records == NULL) {
+        ESP_LOGW(TAG, "scan: record alloc failed (%u x %u B)",
+                 (unsigned)num, (unsigned)sizeof(wifi_ap_record_t));
+        return LUME_NET_ERR_DRIVER;
+    }
+    err = esp_wifi_scan_get_ap_records(&num, records);
+    if (err != ESP_OK) {
+        free(records);
+        return map_err(err, "esp_wifi_scan_get_ap_records");
+    }
+
+    /* Insertion sort by RSSI descending: small n, and get_ap_records()
+     * does not guarantee ordering. */
+    for (uint16_t i = 1; i < num; i++) {
+        wifi_ap_record_t key = records[i];
+        uint16_t j = i;
+        while (j > 0 && records[j - 1].rssi < key.rssi) {
+            records[j] = records[j - 1];
+            j--;
+        }
+        records[j] = key;
+    }
+
+    for (uint16_t i = 0; i < num; i++) {
+        /* record.ssid is uint8_t[33] (MAX_SSID_LEN 32 + 1); copy 32 bytes
+         * max and force the NUL instead of trusting the driver's layout. */
+        memcpy(out[i].ssid, records[i].ssid, LUME_NET_SSID_MAX);
+        out[i].ssid[LUME_NET_SSID_MAX] = '\0';
+        out[i].rssi = records[i].rssi;
+        out[i].auth = (uint8_t)records[i].authmode;
+        (*count)++;
+    }
+    free(records);
+    ESP_LOGI(TAG, "scan done: %u APs (cap %d)", (unsigned)num, max);
+    return LUME_NET_OK;
+}

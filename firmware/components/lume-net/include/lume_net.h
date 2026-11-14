@@ -188,3 +188,34 @@ int lume_net_http_get(const char *url, int timeout_ms,
 
 /* Release the heap body returned by lume_net_http_get() (no-op otherwise). */
 void lume_net_http_free(lume_net_http_response_t *out);
+
+/* ---- WiFi scan -----------------------------------------------------
+ * Synchronous ACTIVE scan of all channels. BLOCKS the engine task for
+ * ~1.5-3 s -- the same accepted tradeoff as the synchronous httpGet
+ * (touch / hot-reload events stall meanwhile; an async version is a
+ * later round). Requires the station started (require_ready()); the
+ * driver may reject a scan during an ongoing association (-> -2).
+ * Results are sorted by RSSI descending, SSID "" means a hidden AP.
+ *
+ * ESP-IDF v5.5 API used (verify against the IDF source on the Linux
+ * build host before shipping; API shapes from esp_wifi_types_generic.h
+ * and esp_wifi.h):
+ *  - wifi_ap_record_t: uint8_t ssid[33] (MAX_SSID_LEN 32 + 1),
+ *    int8_t rssi, wifi_auth_mode_t authmode
+ *  - esp_wifi_scan_start(const wifi_scan_config_t *config, bool block):
+ *    NULL config = driver defaults (all channels, active scan)
+ *  - esp_wifi_scan_get_ap_records(uint16_t *number, wifi_ap_record_t *):
+ *    copies up to *number records AND frees the driver's internal scan
+ *    buffer -- must be called exactly once per successful scan */
+#define LUME_NET_SCAN_MAX    20
+
+typedef struct {
+    char    ssid[LUME_NET_SSID_MAX + 1];   /* NUL-terminated; "" = hidden AP */
+    int8_t  rssi;                          /* signal strength in dBm (negative) */
+    uint8_t auth;                          /* wifi_auth_mode_t (0 = open) */
+} lume_net_scan_item_t;
+
+/* Synchronous scan: fills up to `max` items, sets *count to the number
+ * written. Sorted by RSSI descending.
+ * Returns 0, -1 (bad args), -2 (driver), -3 (WiFi not ready). */
+int lume_net_scan(lume_net_scan_item_t *out, int max, int *count);

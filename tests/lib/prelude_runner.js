@@ -57,6 +57,11 @@ function runApp(script, options = {}) {
       status: () => ({ state: 0, ip: null }),
       otaStatus: () => ({ running: false, wifiReady: false, tokenReady: false, port: 8765, token: '' }),
       httpGet: () => -3,
+      // Host-side scan stand-in (no radio): two fake APs, RSSI-sorted.
+      scan: () => [
+        { ssid: 'Demo-AP', rssi: -42, auth: 3 },
+        { ssid: 'OpenNet', rssi: -60, auth: 0 },
+      ],
     },
     // Host-side BLE stand-in: no radio, no stack. Harnesses can override any
     // method with options.ble (see tests/ble.js); the simulator uses these.

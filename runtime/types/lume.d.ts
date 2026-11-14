@@ -670,6 +670,24 @@ declare namespace lume.net {
     * transfer, negative error code (number) on failure / WiFi down. */
   function httpGet(url: string, options?: HttpGetOptions): HttpResponse | number;
 
+  interface ScanResult {
+    /** AP name, '' for a hidden AP. */
+    ssid: string;
+    /** signal strength in dBm (negative; closer to 0 = stronger). */
+    rssi: number;
+    /** wifi_auth_mode_t: 0 open, 1 WEP, 2 WPA_PSK, 3 WPA2_PSK,
+      * 4 WPA/WPA2_PSK, ... only WPA2-PSK-class networks (>= 2) can be
+      * joined with connect(). */
+    auth: number;
+  }
+
+  /** Synchronous AP scan over all channels; BLOCKS the engine task for
+    * ~1.5-3 s (same tradeoff as the synchronous httpGet). Returns an
+    * array sorted by RSSI descending (possibly empty), or a negative
+    * error code (number) when WiFi is not initialized or the driver
+    * rejects the scan (e.g. during an ongoing association). */
+  function scan(): ScanResult[] | number;
+
   /** Reserved `http` sub-namespace: get() is the SAME native as httpGet(). */
   namespace http {
     function get(url: string, options?: HttpGetOptions): HttpResponse | number;

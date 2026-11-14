@@ -61,6 +61,15 @@ round (compile + size + ESP-IDF v5.5.5 header/example self-check only); the
 roadmap line stays unchecked for the on-board round. See
 `docs/KNOWN-SIMPLIFICATIONS.md` (r11 section) for the full tradeoff list.
 
+scan implementation note: `lume.net.scan()` (added with the settings demo) is a
+**synchronous** all-channel active scan returning an RSSI-descending array of
+`{ssid, rssi, auth}` (cap 20; ssid `""` = hidden AP; `auth` = wifi_auth_mode_t,
+0 = open) or a negative error code. It **blocks the engine task for ~1.5-3 s**
+— the same accepted tradeoff as the synchronous `httpGet()`, so touch /
+hot-reload events stall during a scan. Requires the station started; the
+driver may reject a scan during an ongoing association (`-2`). Real scan
+results on hardware are deferred to the on-board round.
+
 r25 implementation note: the design-only `Ble` entry from the r11 note is now
 implemented as a **separate `lume.ble` namespace** (not under `lume.net`), so
 the WiFi/HTTP contract stays untouched. New component
