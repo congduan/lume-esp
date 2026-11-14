@@ -1967,8 +1967,9 @@ void lume_engine_post_gesture(uint16_t node_id, uint8_t kind, int16_t x, int16_t
         s_evt_dropped++;
         return;
     }
-    if (kind == 1 && uxQueueSpacesAvailable(s_evt_queue) == 0) {
-        /* Full queue + lossy MOVE: drop proactively (counted/logged). */
+    if (kind == 1 && uxQueueSpacesAvailable(s_evt_queue) <= 4) {
+        /* Keep four slots for DOWN/UP and other critical events. MOVE is
+         * lossy; critical events must preserve FIFO and be delivered. */
         s_evt_dropped++;
         if (s_evt_dropped == 1 || (s_evt_dropped % EVT_DROP_LOG_EVERY) == 0)
             ESP_LOGW(TAG, "gesture-MOVE id=%u dropped: evt queue full (%u total drops)",
@@ -1985,16 +1986,10 @@ void lume_engine_post_gesture(uint16_t node_id, uint8_t kind, int16_t x, int16_t
         }
         return;
     }
-    /* kind 0/2/3 (DOWN/UP/SWIPEDIR) and cancelled UP: front-post so a burst of
-     * MOVEs queued ahead cannot delay or evict the release. xQueueSendToFront
-     * fails only if the queue is full; in that case fall back to the tail. */
-    if (xQueueSendToFront(s_evt_queue, &evt, 0) != pdTRUE &&
-        xQueueSend(s_evt_queue, &evt, 0) != pdTRUE) {
-        s_evt_dropped++;
-        if (s_evt_dropped == 1 || (s_evt_dropped % EVT_DROP_LOG_EVERY) == 0)
-            ESP_LOGW(TAG, "gesture id=%u dropped: evt queue full (%u total drops)",
-                     (unsigned)node_id, (unsigned)s_evt_dropped);
-    }
+    /* A release must never disappear: wait for the engine to drain if the
+     * reserved capacity is exhausted. Queue B's consumer does not need the
+     * LVGL lock, so it can keep making progress while this task waits. */
+    xQueueSend(s_evt_queue, &evt, portMAX_DELAY);
 }
 
 static void dispatch_scroll(uint16_t node_id, int32_t y)
