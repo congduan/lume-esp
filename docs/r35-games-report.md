@@ -8,7 +8,7 @@ Baseline requested: `653bf35`; actual HEAD before this work was `86272c5` after 
 
 ## Checks
 
-`node tests/games.js` covers 2048 four directions, unchanged board and loss; Snake turns, food, wall, body and tilt threshold; Breakout wall bounce, brick, level and loss. The full `tests/*.js` loop also ran it. Three simulator screenshots have DOM and Canvas assertions. Bundle sizes: 2048 5739 bytes, Snake 6493 bytes, Breakout 6807 bytes, all below 262144 bytes.
+`node tests/games.js` covers 2048 four directions, unchanged board and loss; Snake turns, food, wall, body and tilt threshold; Breakout wall bounce, brick, level and loss. The full `tests/*.js` loop also ran it. Three simulator screenshots have DOM and Canvas assertions. Bundle sizes: 2048 5739 bytes, Snake 6493 bytes, Breakout 6803 bytes, all below 262144 bytes.
 
 The following is raw command output:
 
