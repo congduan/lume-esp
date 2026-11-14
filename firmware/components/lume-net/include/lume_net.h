@@ -93,6 +93,10 @@
 #define LUME_NET_ERR_DRIVER  (-2)
 #define LUME_NET_ERR_STATE   (-3)
 
+/* True whenever the WiFi driver has been started, including association and
+ * disconnected states. Engine-task-only, like the other public net calls. */
+bool lume_net_wifi_started(void);
+
 /* WPA2-PSK station only (r11 simplification). SSID <= MAX_SSID_LEN(32) bytes;
  * password is 8..63 bytes (WPA2 passphrase; .password[64] leaves room for the
  * NUL). Verified: esp_wifi_types_generic.h:559-560, 1196-1197. */

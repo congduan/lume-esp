@@ -56,6 +56,11 @@ static bool s_loop_ready;           /* default event loop exists */
 static bool s_wifi_inited;          /* esp_wifi_init() done */
 static bool s_handlers_on;          /* both event handlers registered */
 static bool s_started;              /* esp_wifi_start() done */
+
+bool lume_net_wifi_started(void)
+{
+    return s_started;
+}
 static esp_netif_t *s_sta_netif;
 static esp_event_handler_instance_t s_wifi_hdl;
 static esp_event_handler_instance_t s_ip_hdl;

@@ -35,6 +35,7 @@
 #include "lume_fs.h"
 #include "lume_net.h"
 #include "lume_audio.h"
+#include "lume_power.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -188,6 +189,18 @@ static JSValue js_now_ms(JSContext *ctx, JSValueConst self, int argc, JSValueCon
 {
     (void)self; (void)argc; (void)argv;
     return JS_NewFloat64(ctx, (double)esp_timer_get_time() / 1000.0);
+}
+
+static JSValue js_power_sleep_now(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_power_sleep_now());
+}
+
+static JSValue js_power_wake(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_power_wake());
 }
 
 static void call_app_hook(const char *name)
@@ -1342,6 +1355,10 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, lume, "removeChild",
                       JS_NewCFunction(ctx, js_remove_child, "removeChild", 1));
     JS_SetPropertyStr(ctx, lume, "_nowMs", JS_NewCFunction(ctx, js_now_ms, "_nowMs", 0));
+    JSValue power = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, power, "_sleepNow", JS_NewCFunction(ctx, js_power_sleep_now, "_sleepNow", 0));
+    JS_SetPropertyStr(ctx, power, "_wake", JS_NewCFunction(ctx, js_power_wake, "_wake", 0));
+    JS_SetPropertyStr(ctx, lume, "power", power);
     JS_SetPropertyStr(ctx, lume, "log",
                       JS_NewCFunction(ctx, js_log, "log", 1));
     /* lume.gpio: built inline on the `lume` object, mirroring how log /
