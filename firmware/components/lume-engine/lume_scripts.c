@@ -369,12 +369,20 @@ const char lume_prelude_js[] =
 "}\n";
 
 const char lume_demo_js[] =
-"/* ---- M3 flex button counter ---- */\n"
+"/** M3 animation sample; firmware embeds the same app in lume_demo_js. */\n"
 "var count = signal(0);\n"
-"View({ style: { display: 'flex', flexDirection: 'column',\n"
-"  justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: 16,\n"
-"  background: '#0B1E3F', width: '100%', height: '100%', borderRadius: 12 } }, [\n"
-"  Text({ text: function () { return 'taps: ' + count(); } }),\n"
-"  Button({ title: '+1', style: { width: '50%', borderRadius: 12 },\n"
-"           onPress: function () { count.set(count() + 1); } })\n"
-"]);\n";
+"var cardY = signal(200);\n"
+"var card = View({ style: {\n"
+"  x: 24, y: cardY, width: 192, height: 80,\n"
+"  background: '#355C8A', borderRadius: 12, opacity: 0,\n"
+"  transition: { property: 'y', durationMs: 300, easing: 'ease-out' }\n"
+"} }, [Text({ text: function () { return 'taps: ' + count(); } })]);\n"
+"Button({ title: 'Slide card', style: { x: 48, y: 300, width: 144, height: 48 },\n"
+"  onPress: function () {\n"
+"    count.set(count() + 1);\n"
+"    var entering = count() % 2 === 1;\n"
+"    cardY.set(entering ? 80 : 200);\n"
+"    lume.anim.to(card, { attr: 'opacity', to: entering ? 1 : 0,\n"
+"      durationMs: 300, easing: 'ease-out' });\n"
+"  }\n"
+"});\n";
