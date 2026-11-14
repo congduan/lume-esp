@@ -162,6 +162,13 @@ if (typeof clip !== 'number') {
 lume.net.connect('SSID', 'password');
 const res = lume.net.httpGet('http://api.example.com/weather');
 
+// BLE peripheral (NimBLE, Nordic UART Service shape) — poll, no callbacks
+lume.ble.start('Lume');
+lume.system.setInterval(() => {
+  const msg = lume.ble.read();   // string | null (empty) | negative error code
+  if (typeof msg === 'string') lume.ble.write('echo:' + msg.slice(0, 12));
+}, 100);
+
 // Settings that survive power loss
 lume.storage.kv.set('brightness', 70);
 

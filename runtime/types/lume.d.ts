@@ -536,6 +536,64 @@ declare namespace lume.net {
   }
 }
 
+/**
+ * BLE peripheral (NimBLE GATT server), r25. One 128-bit Nordic UART
+ * Service-shaped service: RX (write / write-no-rsp) + TX (notify). Peripheral
+ * only: no central/scan, no pairing/bonding, no encryption, one connection.
+ * Radio init is LAZY (first start()/init()); there is no deinit() — stop()
+ * ends advertising/the connection but the stack lives for the process
+ * lifetime. status()/read() return an object/value on success and a NEGATIVE
+ * NUMBER on failure; init/start/stop/write return the int status directly.
+ * Error codes (lume_ble.h): 0 OK, -1 bad name/data, -2 NimBLE driver,
+ * -3 stack/connection state. Semantic failures never abort or throw.
+ *
+ * Data is a UTF-8 string of at most MAX_PAYLOAD (20) bytes: the default ATT
+ * MTU 23 minus the 3-byte ATT header. No MTU negotiation / fragmentation and
+ * no ArrayBuffer form. read() polls a bounded 8-packet FIFO (a full queue
+ * drops the OLDEST packet); pair it with lume.system.setInterval(). A central
+ * must subscribe to TX notifications to receive write().
+ *
+ * Firmware build + `idf.py size` are verified on ESP-IDF v5.5.5, but on-board
+ * acceptance is NOT done: advertising, GATT discovery, notify throughput,
+ * WiFi+BLE coexistence and sleep current remain for the board round
+ * (docs/KNOWN-SIMPLIFICATIONS.md r25).
+ */
+declare namespace lume.ble {
+  const IDLE: 0;
+  const ADVERTISING: 1;
+  const CONNECTED: 2;
+  /** Fixed 20-byte packet cap (default ATT_MTU 23 - 3). */
+  const MAX_PAYLOAD: 20;
+  type BleState = 0 | 1 | 2;
+
+  interface BleStatus {
+    state: BleState;
+    connected: boolean;
+    /** central subscribed to TX notifications */
+    subscribed: boolean;
+    /** last observed ATT MTU (23 before BLE_GAP_EVENT_MTU) */
+    mtu: number;
+    /** unread packets waiting in the bounded FIFO */
+    pending: number;
+  }
+
+  /** One-time NimBLE stack setup; idempotent, optional (start() calls it). */
+  function init(): number;
+  /** Set the advertised name (1..24 bytes, no embedded NUL) and start
+    * undirected general-discoverable advertising. Omit for "Lume". */
+  function start(name?: string): number;
+  /** Stop advertising and terminate the current connection (best effort). */
+  function stop(): number;
+  /** Snapshot; negative error code when the stack is not initialized. */
+  function status(): BleStatus | number;
+  /** Notify the connected central. 1..20 UTF-8 bytes, no embedded NUL.
+    * 0 or a negative error code (-3 when not connected / no TX handle). */
+  function write(data: string): number;
+  /** Pop one inbound packet: string, null when the FIFO is empty, or a
+    * negative error code. */
+  function read(): string | null | number;
+}
+
 /** M2 audio: signed little-endian 16-bit stereo PCM at 16 kHz, no WAV header.
  * play/record block the JS engine task; 64000 bytes = one second. */
 declare namespace lume.audio {
@@ -586,6 +644,7 @@ declare namespace lume {
   const imu: typeof lume.imu;
   const storage: typeof lume.storage;
   const net: typeof lume.net;
+  const ble: typeof lume.ble;
   const audio: typeof lume.audio;
   const gesture: typeof lume.gesture;
   function start(root: lume.ui.Node): void;

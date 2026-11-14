@@ -25,7 +25,8 @@ lume/board      Power (AXP2101), Imu (QMI8658), Audio (ES8311/ES7210),
                 Touch, Display
 lume/imu        QMI8658 accel + gyro: read() polled; motion / data-ready INT
                 deferred until an INT pin is defined in lume_pins.h (r9)
-lume/net        Wifi, Http, Ble
+lume/net        Wifi, Http
+lume/ble        Ble (NimBLE GATT peripheral: advertise, RX write / TX notify)
 lume/storage    Kv (NVS), Fs (LittleFS partition)
 lume/system     sleep, reboot, time, timers, log
 lume/ui         App, View, Text, Button, Image, List, ... (declarative)
@@ -59,6 +60,32 @@ are never logged. Real association / HTTP transfer is **not** verified this
 round (compile + size + ESP-IDF v5.5.5 header/example self-check only); the
 roadmap line stays unchecked for the on-board round. See
 `docs/KNOWN-SIMPLIFICATIONS.md` (r11 section) for the full tradeoff list.
+
+r25 implementation note: the design-only `Ble` entry from the r11 note is now
+implemented as a **separate `lume.ble` namespace** (not under `lume.net`), so
+the WiFi/HTTP contract stays untouched. New component
+`firmware/components/lume-ble/`; natives self-register under `lume.ble`
+(`init/start/stop/status/write/read`, `IDLE/ADVERTISING/CONNECTED`,
+`MAX_PAYLOAD`); prelude unchanged. Role = **NimBLE GATT peripheral** with one
+Nordic-UART-Service-shaped 128-bit service (RX write / write-no-rsp, TX
+notify), one connection, no pairing/bonding, 20-byte unfragmented UTF-8 text
+packets. `start(name?)` starts advertising (lazy radio init on the first
+call); `status()` returns `{state, connected, subscribed, mtu, pending}`;
+`read()` pops a bounded 8-packet FIFO (`string | null | negative`), `write()`
+notifies. **No JS callbacks this round**: apps poll from
+`lume.system.setInterval()`, so the NimBLE host task never enters QuickJS;
+GAP/GATT callbacks only write flags and copy <= 20 bytes under a portMUX
+critical section. All APIs degrade to the r10-style negative error codes
+(`-1` arg, `-2` driver, `-3` state). Device names and BLE payloads are never
+logged. `CONFIG_BT_ENABLED=y` and the NimBLE host were added to
+`firmware/sdkconfig.defaults`, and `firmware/sdkconfig` was regenerated with
+`idf.py` (ESP-IDF v5.5.5) so a plain `idf.py build` keeps Bluetooth enabled.
+**Firmware build + size verified on the host**: build links cleanly, IRAM
+16384/16384 (100%, no overflow), DIRAM 227975, Flash Code 1657930,
+Total image 2183301 bytes; app partition still 67% free. Real advertising,
+GATT discovery, notify throughput, WiFi+BLE coexistence and sleep current are
+**NOT verified** — no board, on-device acceptance is deferred. See
+`docs/KNOWN-SIMPLIFICATIONS.md` (r25 section).
 
 ## Conventions
 
