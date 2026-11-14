@@ -4,24 +4,38 @@
 
 declare namespace lume.ui {
   interface Style {
-    background?: string;
-    color?: string;
-    fontSize?: number;
+    display?: 'flex';
+    flexDirection?: 'row' | 'column';
+    flexWrap?: 'nowrap' | 'wrap';
+    justifyContent?: 'start' | 'end' | 'center' | 'space-between' | 'space-around' | 'space-evenly';
+    alignItems?: 'start' | 'end' | 'center' | 'stretch';
+    gap?: number;
     padding?: number;
+    borderRadius?: number;
+    borderWidth?: number;
+    borderColor?: `#${string}`;
+    opacity?: number; // 0..1
+    background?: `#${string}` | number; // number keeps the M1 bg path
+    width?: number | `${number}%`;
+    height?: number | `${number}%`;
   }
 
-  interface ViewProps { id?: string; style?: Style; children?: Node[] }
-  interface TextProps { id?: string; text: string; style?: Style }
-  interface ButtonProps { id?: string; title: string; onPress: () => void }
+  /** Nodes are numeric ids returned by the embedded prelude. */
+  type Node = number;
+  interface ViewProps { style?: Style; parent?: Node; bg?: number; w?: number; h?: number; align?: number; visible?: boolean }
+  interface TextProps extends ViewProps { text?: string | (() => string) }
+  interface ButtonProps extends ViewProps { title?: string | (() => string); onPress?: () => void }
 
-  type Node = { kind: 'view'; props: ViewProps }
-            | { kind: 'text'; props: TextProps }
-            | { kind: 'button'; props: ButtonProps };
-
-  function View(props: ViewProps, children?: Node[]): Node & { setState(id: string, patch: object): void };
+  function View(props: ViewProps, children?: Node[]): Node;
   function Text(props: TextProps): Node;
   function Button(props: ButtonProps): Node;
 }
+
+/** Embedded prelude globals used by the firmware fallback bundle. */
+declare function View(props: lume.ui.ViewProps, children?: lume.ui.Node[]): lume.ui.Node;
+declare function Text(props: lume.ui.TextProps): lume.ui.Node;
+declare function Button(props: lume.ui.ButtonProps): lume.ui.Node;
+declare function signal<T>(initial: T): (() => T) & { set(value: T): void };
 
 declare namespace lume.system {
   function log(msg: string): void;
