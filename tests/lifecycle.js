@@ -13,7 +13,7 @@ const lume = {
   nativeAnimateCancel: (...a) => nativeCalls.push(['cancel', ...a]),
   setPressEvent: () => {}
 };
-const ctx = vm.createContext({lume});
+const ctx = vm.createContext({lume, __lumeScreen: {w: 480, h: 480}});
 vm.runInContext(prelude, ctx);
 function run(src) { return vm.runInContext(src, ctx); }
 const seq = [];
@@ -72,7 +72,7 @@ assert.strictEqual(run('Object.keys(__timers).length'),0);
 console.log('PASS shutdown clears lifecycle and timer registries');
 
 // A replacement creates a fresh prelude/runtime; old closures stay inert.
-const replacement = vm.createContext({lume: {...lume, _nowMs: () => now}});
+const replacement = vm.createContext({lume: {...lume, _nowMs: () => now}, __lumeScreen: {w: 480, h: 480}});
 vm.runInContext(prelude, replacement);
 vm.runInContext('var fresh = 0; lume.app.onStart(function(){fresh++}); __lume_start()', replacement);
 assert.strictEqual(vm.runInContext('fresh', replacement), 1);
