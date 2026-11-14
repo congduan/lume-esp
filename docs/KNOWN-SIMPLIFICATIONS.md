@@ -544,3 +544,63 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - Auto-detection selects a unique Espressif USB serial port; multiple ports require `--port`. It does not identify a particular board among several matching devices. A disconnect or missing ACK surfaces as an error; reconnect and rerun `dev`.
 - The scaffold uses global prelude APIs and plain JavaScript. The `tsconfig.json` supports editor checking without a TypeScript build step. Bare `lume` / `lume/ui` npm imports are not yet supplied as packages. JSX/TSX transforms, full type declarations, and WiFi OTA remain later M4 work.
 - Host tests cover bundle generation, global-script IIFE behavior, frame bytes, and CLI failure paths. Real-device push latency, log interleaving, control keys, and changed JS appearing on screen await the board round.
+
+## r26 / M4 CI 固件发布 + WiFi OTA 通道
+
+本轮补上 M4 收官两块：CI 固件发布（`.github/workflows/firmware.yml`）与 WiFi OTA
+推包通道（`lume-hotreload` 扩展 + `tools/lume` CLI）。**真机 WiFi 推包实测留接板轮**，
+本轮验收 = 编译绿 + size 达标 + host harness + CLI 无板报错路径 + ESP-IDF / Actions
+文档实证。以下按 M4 口径从简：
+
+- **安全边界：token 明文 + LAN 信任模型**。鉴权 token（16 字节随机 → 32 hex）经 TCP
+  `AUTH <token>\n` **明文**传输，且**每次启动打 `ESP_LOGI` 日志**（CLI 需要用户从串口
+  日志复制）。无任何加密/传输保护，仅适用于可信局域网：能嗅探 LAN 或读串口日志者即可
+  推包。**公网 / 不可信网络必须加 TLS**：后续路径为在 OTA TCP server 上挂 `esp_tls` /
+  mbedTLS 服务端证书（或改走 HTTPS/WS 隧道）+ 关闭日志打印 token、改为带外分发；
+  本轮不做。也不做防重放、auth 失败速率限制、token 轮换/撤销（NVS 里只有一个固定
+  token）。
+- **完整性 only：CRC-32，无签名**。帧协议复用 USB 同款（`LUME` | u32le len |
+  u32le crc32 | payload + BACK/PAUS/RESM），CRC-32 只防传输比特错误，**不防篡改**：
+  持有 token 的对端可任意构造合法 CRC 的 bundle。后续路径：**ed25519 签名**（固件内置
+  公钥、CLI 私钥签名、帧内增签名字段或独立签名帧）+ 版本号/单调计数防重放；本轮协议
+  字段**刻意不改**（与 r23 USB 通道逐字段对称），登记为后续刀。
+- **token 不硬编码、NVS 持久化 + 降级**。首次启动 `esp_fill_random()` 生成、存 NVS
+  （`lume_ota`/`token`）、后续启动沿用；每次启动都打印当前 token。NVS 不可用（分区缺失
+  / 初始化失败）时**非 fatal**：退化为本次启动的临时 token，OTA 仍可用、重启后变化。
+  可用性优先于持久性的取舍。
+- **单结果回调 + 跨通道应答路由**。引擎只有**一个** `lume_engine_set_reload_result_cb()`，
+  USB 与 OTA 共用它，靠 `lume_hotreload.c` 里有界（16）的 pending-sink FIFO + 递归互斥
+  锁把 `RELOAD OK/ERR` 送回发起帧的通道；staging 槽仍是单槽 last-wins，被覆盖帧收到
+  `superseded`。代价：**客户端必须保持 TCP 连接直到收到自己那帧的 `RELOAD` 应答**
+  （CLI 正是如此）；若发完帧立刻断开，结果回调可能写到已关闭/被复用的 fd。并发跨通道
+  推包不保证逐帧隔离，登记为已知简化。
+- **OTA server 单客户端、无帧超时（沿用 USB）**。`select` 1s 轮询 + 单 `accept`，一次
+  只服务一个连接；客户端 socket 设 5s 收发超时防挂死。`lume_frame` 解析器沿用 M1 的
+  「只对 `LUME` magic 重同步、无整体/字节间超时」；半帧停发会一直等。帧仍走现有热替换
+  链（r17 生命周期释放 → eval 新 bundle），无独立编译管线。
+- **WiFi 门控 = GOT_IP 才 bind**。OTA 任务每秒用 `lume_net_has_ip()`（自旋锁保护、任意
+  任务可调）判断；只有 station 拿到 IPv4 才 `bind/listen`，掉线即 `close`、`connect`
+  后自启。不做 AP 模式配网、不做断线自动重连（沿用 r11 不搬官方 retry 逻辑）。
+- **`lume.net.otaStatus()`（可选，已实现）**。返回 `{running, wifiReady, tokenReady,
+  port, token}` 的**本地快照**（registered provider 函数指针，避免 lume-engine →
+  lume-hotreload 组件依赖环）。它不探测网络、不代表对端可达；token 字段等于日志里的
+  明文 token，调用方可在 UI 显示。
+- **端口可配**：`CONFIG_LUME_OTA_PORT`（Kconfig，默认 8765），CLI `--ota-port` 对应。
+  本轮不做运行时改端口 / 多监听。
+- **CI 发布取舍**。`espressif/esp-idf-ci-action@v1` 起官方 `espressif/idf:v5.5.5`
+  Docker 镜像（已实证该 tag active）；`command` 默认 `idf.py build`，`path: firmware`
+  使产物落在 `firmware/build/`。**flash_args 路径修正**：IDF 的 `flash_args` 用
+  `bootloader/bootloader.bin` 等 build 相对子目录路径，而收集步骤把三 bin 拍平到
+  `dist/` 根；本轮把 offset 行改写成 basename（保留 option 行），使
+  `write_flash @flash_args` 对 artifact 与扁平 Release 资产都成立。版本策略：push →
+  仅 artifact（`lume-firmware-<run_number>`）、`vX.Y.Z` tag → 追加 Release、
+  手动 `workflow_dispatch` 可用；依 GitHub Actions 文档「Path filters are not evaluated
+  for pushes of tags」，`branches`+`paths` 与 `tags` 可在同一 `push` 下共存。**CI 只跑
+  构建 + 收集**，不跑 host harness / CLI 单测（宿主机任务，由本地验证）。
+- **无板不验证项（接板后由主控轮实测）**：① 真机连 WiFi 拿 IP 后 OTA server 是否如期
+  bind；② 真机 `lume deploy --ota` 推包 → 热替换链端到端；③ 真机 token 鉴权 AUTH
+  OK/ERR；④ 关闭 WiFi IRAM 优化后的 TCP 吞吐与实际推包延迟；⑤ 掉线/重连 server 自启
+  时序；⑥ 串口日志里 token 与 boot log 交错的可读性；⑦ NVS 掉电后 token 持久性。
+  真机一律留接板验收。
+- **roadmap 不勾选**：M4「WiFi OTA」**保持未勾选**，等主控接板实测通过再勾（与
+  r7~r11 处理一致）。

@@ -515,6 +515,17 @@ declare namespace lume.net {
   function disconnect(): number;
   /** Snapshot state + IP; negative error code (number) when WiFi is not up. */
   function status(): NetStatus | number;
+
+  /** r26: local snapshot of the WiFi-OTA push channel (no network probe).
+   * `token` is the plaintext 32-hex token also printed on the serial log. */
+  interface OtaStatus {
+    running: boolean;       /* TCP listener currently bound */
+    wifiReady: boolean;      /* station has a usable IPv4 */
+    tokenReady: boolean;     /* a token is available */
+    port: number;            /* configured TCP port (default 8765) */
+    token: string;           /* 32 lowercase hex chars */
+  }
+  function otaStatus(): OtaStatus;
   /** Synchronous oneshot HTTP GET, primary shape. Object on a completed
     * transfer, negative error code (number) on failure / WiFi down. */
   function httpGet(url: string, options?: HttpGetOptions): HttpResponse | number;

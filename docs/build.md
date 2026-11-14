@@ -26,16 +26,45 @@ The scaffold uses `app.js` and a `package.json` `lume.entry` field. Apps use the
 
 ## Frame protocol cross-check
 
-Source of truth: [hotreload header](../firmware/components/lume-hotreload/include/lume_hotreload.h) and [parser](../firmware/components/lume-hotreload/lume_hotreload.c). The CLI frame implementation is [protocol.js](../tools/lume/protocol.js).
+Source of truth: the shared portable codec [lume_frame.h](../firmware/components/lume-hotreload/include/lume_frame.h) / [lume_frame.c](../firmware/components/lume-hotreload/lume_frame.c). **Both** push channels — the USB RX task and each WiFi-OTA TCP connection — feed their own instance of this codec, so the wire format is literally shared, not duplicated. The CLI encoder is [protocol.js](../tools/lume/protocol.js); the r26 [host harness](../tests/ota_protocol.c) feeds CLI-produced frames into the C decoder and asserts field-by-field equality.
 
 | Field | Firmware source | CLI source |
 |---|---|---|
-| Magic `LUME`, 4 bytes | `lume_hotreload.c:32-35`, `:177` | `protocol.js:23` |
-| Payload length, u32 little endian, excludes 12-byte header | `lume_hotreload.c:121-125`, `:197-202` | `protocol.js:24` |
-| CRC-32 of payload, u32 little endian | `lume_hotreload.c:202`, `:239-245` | `protocol.js:5-15`, `:25` |
-| Payload bytes, 1..262144 | `lume_hotreload.c:37`, `:204-215`, `:228-239` | `protocol.js:2`, `:17-27` |
-| `BACK`, `PAUS`, `RESM` four-byte controls | `lume_hotreload.c:168-176` | `protocol.js:3` |
-| Final `RELOAD OK/ERR` line | `lume_hotreload.c:51-60` | `transport.js:18-30` |
+| Magic `LUME`, 4 bytes | `LUME_FRAME_MAGIC`, `lume_frame_parser_feed()` | `protocol.js:23` |
+| Payload length, u32 little endian, excludes 12-byte header | `lume_frame_encode()`, ST_HDR `load_le32` | `protocol.js:24` |
+| CRC-32 of payload, u32 little endian | `lume_frame_crc32()` (== `esp_crc32_le(0,…)` == `zlib.crc32`) | `protocol.js:5-15`, `:25` |
+| Payload bytes, 1..262144 | `LUME_FRAME_MAX_PAYLOAD` | `protocol.js:2`, `:17-27` |
+| `BACK`, `PAUS`, `RESM` four-byte controls | `LUME_FRAME_CTRL_*` | `protocol.js:3` |
+| Final `RELOAD OK/ERR` line | `lume_ota_reply()` (shared by USB + OTA) | `transport.js:24`, `ota.js` |
+
+The C host harness is compiled on the host (no ESP-IDF stubs):
+
+```bash
+gcc -std=c11 -Wall -Wextra -Werror \
+  -I firmware/components/lume-hotreload/include \
+  tests/ota_protocol.c firmware/components/lume-hotreload/lume_frame.c \
+  -o /tmp/lume_ota_protocol && /tmp/lume_ota_protocol
+```
+
+## WiFi OTA deploy (`lume deploy --ota`)
+
+Once the board is on WiFi with an IP, push a bundle over TCP instead of USB. The device generates a random token on first boot, stores it in NVS and prints it on the serial console every boot (`lume-ota: WiFi OTA token: <32 hex>`):
+
+```bash
+node tools/lume/lume.js deploy my-app --ota 192.168.1.42 --token <32-hex-token>
+# non-default port (firmware CONFIG_LUME_OTA_PORT):
+node tools/lume/lume.js deploy my-app --ota 192.168.1.42 --token <t> --ota-port 9000
+```
+
+The OTA server listens only while `lume.net.status().state === GOT_IP`; it stops on disconnect and restarts after reconnect. `--ota` needs `--token` and is mutually exclusive with the serial `--port`. The OTA channel reuses the exact same frame codec and `RELOAD OK/ERR` replies as USB; the only extra step is a one-line `AUTH <token>` preamble before frames. `lume.net.otaStatus()` returns `{running, wifiReady, tokenReady, port, token}`.
+
+Security boundary: the token is plaintext on a trusted LAN and CRC-32 gives integrity only (no signature). Do not expose the port to an untrusted network; TLS / ed25519 signing are deferred — see [known simplifications](KNOWN-SIMPLIFICATIONS.md) (r26). Real-device WiFi push is verified on the board round, not here.
+
+## CI firmware release
+
+`.github/workflows/firmware.yml` builds with `espressif/esp-idf-ci-action@v1` (image `espressif/idf:v5.5.5`, target `esp32s3`, `path: firmware`). A push to `main` touching `firmware/**` uploads `lume-firmware-<run_number>` as an artifact only; pushing a `vX.Y.Z` tag additionally publishes a GitHub Release; `workflow_dispatch` builds manually. GitHub Actions does not evaluate `paths` for tag pushes, so branch path filtering and tag releases coexist under one `push` trigger.
+
+The three binaries are flattened into `dist/` and `flash_args` is rewritten to basenames during collection, so `esptool.py write_flash @flash_args` resolves against the flat artifact **and** the flat Release assets. `README-flash.txt` also lists the explicit offsets (`0x0 bootloader.bin`, `0x8000 partition-table.bin`, `0x10000 lume.bin`) for manual flashing. CI runs the build + collection only; the host harnesses and CLI tests are host-side checks.
 
 ## Firmware build
 

@@ -68,8 +68,11 @@ node tools/lume/lume.js dev my-app
 
 Edit `my-app/app.js` to see each saved change on screen. Use `--port /dev/ttyACM0` if the
 USB Serial/JTAG port is not detected automatically. For a one-time push, run
-`node tools/lume/lume.js deploy my-app`. See [build and development](docs/build.md) for
-protocol details and controls.
+`node tools/lume/lume.js deploy my-app`. Once the board is on WiFi, the same bundle can be
+pushed over TCP with `node tools/lume/lume.js deploy my-app --ota <ip> --token <t>` (the
+token is printed on the device serial log at boot; `--ota-port` selects a non-default port).
+See [build and development](docs/build.md) for protocol details, controls, and the WiFi OTA /
+CI release notes.
 
 ### Host Simulator
 
@@ -204,7 +207,7 @@ Active development — M1/M2/M3 code complete.
 | **M1 — minimal loop** (engine, touch→JS, declarative UI, hot reload) | ✅ code complete |
 | **M2 — hardware API surface** (GPIO/PWM/ADC, power, IMU, WiFi+HTTP, KV, files, audio) | ✅ code complete |
 | **M3 — declarative UI completeness** (flex, styles, animation, canvas, gestures, lifecycle, themes, virtualized lists, images) | ✅ code complete |
-| **M4 — tooling** (`lume` CLI ✅, host simulator ✅, WiFi OTA) | 🚧 |
+| **M4 — tooling** (`lume` CLI ✅, host simulator ✅, WiFi OTA code complete / board check pending) | 🚧 |
 | **M5 — ecosystem** (component library, launcher shell, board abstraction) | ⬜ |
 
 > **Honesty note**: "code complete" means compiles green, host-tested, and reviewed.
