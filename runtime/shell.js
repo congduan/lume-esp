@@ -47,6 +47,44 @@
     }
     return id;
   };
+  function color(name, fallback) { return function () { return lume.theme.get().colors[name] || fallback; }; }
+  var dialogs = [], toast = null;
+  function closeDialog(entry) {
+    if (entry.closed) return;
+    entry.closed = true;
+    var i = dialogs.indexOf(entry);
+    if (i >= 0) dialogs.splice(i, 1);
+    lume.removeChild(entry.mask);
+    lume.removeChild(entry.card);
+  }
+  function Dialog(p) {
+    p = p || {};
+    if (!Array.isArray(p.buttons)) throw new TypeError('lume: Dialog buttons must be an array');
+    var entry = { closed: false };
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    entry.mask = View({ style: { x:0, y:0, width:screen.w, height:screen.h,
+      background:'#000000', opacity:0.65, scroll:'none' },
+      onPress: function () { if (p.modal !== false && dialogs[dialogs.length - 1] === entry) closeDialog(entry); } });
+    var children = [Text({text:String(p.title || ''),style:{fontSize:20}})];
+    if (p.message) children.push(Text({text:String(p.message),style:{longMode:'wrap'}}));
+    p.buttons.forEach(function (button) {
+      if (!button || ['plain','primary','danger'].indexOf(button.style || 'plain') < 0)
+        throw new TypeError('lume: Dialog button style must be plain, primary or danger');
+      callback('Dialog onPress', button.onPress);
+      var press = function () { if (dialogs[dialogs.length - 1] !== entry) return; closeDialog(entry); if (button.onPress) button.onPress(); };
+      if (button.style === 'plain' || !button.style) children.push(View({style:{height:44,width:'100%',
+        display:'flex',alignItems:'center',justifyContent:'center',padding:0,gap:0},onPress:press},
+        [Text({text:String(button.label),style:{}})]));
+      else children.push(Button({title:String(button.label),style:{width:'100%',height:44,
+        background:color(button.style === 'danger' ? 'danger' : 'accent', button.style === 'danger' ? '#C62828' : '#385CA5')},onPress:press}));
+    });
+    entry.card = View({style:{width:360,height:'auto',alignItems:'stretch',display:'flex',
+      flexDirection:'column',background:color('surface','#202632'),padding:16,gap:12,scroll:'none'},
+      align:'center',onPress:function () {}},children);
+    dialogs.push(entry);
+    return function () { closeDialog(entry); };
+  }
+  lume.app.onPause(function () { dialogs.slice().forEach(closeDialog); });
   function positive(name, value, fallback, max) {
     var n = value === undefined ? fallback : value;
     if (typeof n !== 'number' || !isFinite(n) || Math.floor(n) !== n || n < 1 || n > max)
@@ -202,6 +240,7 @@
   shell.StatusBar = StatusBar;
   shell.EdgeNavigation = EdgeNavigation;
   shell.Launcher = Launcher;
+  shell.Dialog = Dialog;
   shell.dispose = dispose;
   lume.ui = lume.ui || {};
   lume.ui.shell = shell;
