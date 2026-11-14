@@ -31,6 +31,7 @@
 #include "lume_pmic_hw.h"
 #include "lume_imu_hw.h"
 #include "lume_kv.h"
+#include "lume_fs.h"
 #include "lume_net.h"
 #include "quickjs.h"
 
@@ -842,6 +843,112 @@ static JSValue js_kv_clear(JSContext *ctx, JSValueConst this_val,
     return JS_NewInt32(ctx, lume_kv_clear());
 }
 
+/* LittleFS natives: semantic errors use Kv's negative status convention.
+ * read() is text, readBinary() preserves exact bytes. */
+static const char *fs_path_arg(JSContext *ctx, JSValueConst v, bool *valid)
+{
+    size_t n = 0;
+    *valid = true;
+    const char *p = JS_ToCStringLen(ctx, &n, v);
+    if (!p) return NULL;
+    if (memchr(p, '\0', n)) { *valid = false; JS_FreeCString(ctx, p); return NULL; }
+    return p;
+}
+
+static JSValue js_fs_write_common(JSContext *ctx, int argc,
+                                  JSValueConst *argv, bool append)
+{
+    if (argc < 2) return JS_ThrowTypeError(ctx, "Fs.write/append: expected path and data");
+    bool valid;
+    const char *path = fs_path_arg(ctx, argv[0], &valid);
+    if (!path) return valid ? JS_EXCEPTION : JS_NewInt32(ctx, LUME_FS_ERR_ARG);
+    const uint8_t *data = NULL;
+    const char *str = NULL;
+    size_t len = 0;
+    if (JS_IsString(argv[1])) {
+        str = JS_ToCStringLen(ctx, &len, argv[1]);
+        if (!str) { JS_FreeCString(ctx, path); return JS_EXCEPTION; }
+        data = (const uint8_t *)str;
+    } else if (JS_IsArrayBuffer(argv[1])) {
+        data = JS_GetArrayBuffer(ctx, &len, argv[1]);
+    } else {
+        JS_FreeCString(ctx, path);
+        return JS_NewInt32(ctx, LUME_FS_ERR_ARG);
+    }
+    int r = data ? lume_fs_write(path, data, len, append) : LUME_FS_ERR_ARG;
+    if (str) JS_FreeCString(ctx, str);
+    JS_FreeCString(ctx, path);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue js_fs_write(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{ (void)this_val; return js_fs_write_common(ctx, argc, argv, false); }
+static JSValue js_fs_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{ (void)this_val; return js_fs_write_common(ctx, argc, argv, true); }
+
+static JSValue js_fs_read_common(JSContext *ctx, int argc, JSValueConst *argv, bool binary)
+{
+    if (argc < 1) return JS_ThrowTypeError(ctx, "Fs.read: expected path");
+    bool valid;
+    const char *path = fs_path_arg(ctx, argv[0], &valid);
+    if (!path) return valid ? JS_EXCEPTION : JS_NewInt32(ctx, LUME_FS_ERR_ARG);
+    uint8_t *data = NULL;
+    size_t len = 0;
+    int r = lume_fs_read(path, &data, &len);
+    JS_FreeCString(ctx, path);
+    if (r < 0) return JS_NewInt32(ctx, r);
+    JSValue result = binary ? JS_NewArrayBufferCopy(ctx, data, len)
+                            : JS_NewStringLen(ctx, (const char *)data, len);
+    free(data);
+    return result;
+}
+static JSValue js_fs_read(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{ (void)this_val; return js_fs_read_common(ctx, argc, argv, false); }
+static JSValue js_fs_read_binary(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{ (void)this_val; return js_fs_read_common(ctx, argc, argv, true); }
+
+static JSValue js_fs_path_action(JSContext *ctx, int argc, JSValueConst *argv, int op)
+{
+    if (argc < 1) return JS_ThrowTypeError(ctx, "Fs: expected path");
+    bool valid;
+    const char *path = fs_path_arg(ctx, argv[0], &valid);
+    if (!path) return valid ? JS_EXCEPTION : JS_NewInt32(ctx, LUME_FS_ERR_ARG);
+    bool exists = false;
+    int r = op == 0 ? lume_fs_remove(path) :
+            op == 1 ? lume_fs_mkdir(path) : lume_fs_exists(path, &exists);
+    JS_FreeCString(ctx, path);
+    if (r < 0 || op != 2) return JS_NewInt32(ctx, r);
+    return JS_NewBool(ctx, exists);
+}
+static JSValue js_fs_remove(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{ (void)v; return js_fs_path_action(ctx, n, a, 0); }
+static JSValue js_fs_mkdir(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{ (void)v; return js_fs_path_action(ctx, n, a, 1); }
+static JSValue js_fs_exists(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{ (void)v; return js_fs_path_action(ctx, n, a, 2); }
+
+static void fs_list_emit(void *arg, const char *name)
+{ kv_keys_emit(arg, name); }
+static JSValue js_fs_list(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "Fs.list: expected directory path");
+    bool valid;
+    const char *path = fs_path_arg(ctx, argv[0], &valid);
+    if (!path) return valid ? JS_EXCEPTION : JS_NewInt32(ctx, LUME_FS_ERR_ARG);
+    kv_keys_ctx_t c = { ctx, JS_NewArray(ctx), 0, false };
+    if (JS_IsException(c.arr)) { JS_FreeCString(ctx, path); return JS_EXCEPTION; }
+    int r = lume_fs_list(path, fs_list_emit, &c);
+    JS_FreeCString(ctx, path);
+    if (r < 0 || c.failed) {
+        JS_FreeValue(ctx, c.arr);
+        return c.failed ? JS_EXCEPTION : JS_NewInt32(ctx, r);
+    }
+    return c.arr;
+}
+static JSValue js_fs_mounted(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{ (void)v; (void)n; (void)a; return JS_NewBool(ctx, lume_fs_mounted()); }
+
 /* lume.net / lume.net.http natives (M2 / r11): WiFi station + HTTP client,
  * hardware/net layer in lume-net. Same thread discipline as the lume.* natives
  * above: all run ONLY on the engine task; lume-net is QuickJS-free and returns
@@ -1105,6 +1212,18 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, kv, "clear",
                       JS_NewCFunction(ctx, js_kv_clear, "clear", 0));
     JS_SetPropertyStr(ctx, storage, "kv", kv);
+    lume_fs_init();
+    JSValue fs = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, fs, "write", JS_NewCFunction(ctx, js_fs_write, "write", 2));
+    JS_SetPropertyStr(ctx, fs, "append", JS_NewCFunction(ctx, js_fs_append, "append", 2));
+    JS_SetPropertyStr(ctx, fs, "read", JS_NewCFunction(ctx, js_fs_read, "read", 1));
+    JS_SetPropertyStr(ctx, fs, "readBinary", JS_NewCFunction(ctx, js_fs_read_binary, "readBinary", 1));
+    JS_SetPropertyStr(ctx, fs, "remove", JS_NewCFunction(ctx, js_fs_remove, "remove", 1));
+    JS_SetPropertyStr(ctx, fs, "mkdir", JS_NewCFunction(ctx, js_fs_mkdir, "mkdir", 1));
+    JS_SetPropertyStr(ctx, fs, "exists", JS_NewCFunction(ctx, js_fs_exists, "exists", 1));
+    JS_SetPropertyStr(ctx, fs, "list", JS_NewCFunction(ctx, js_fs_list, "list", 1));
+    JS_SetPropertyStr(ctx, fs, "mounted", JS_NewCFunction(ctx, js_fs_mounted, "mounted", 0));
+    JS_SetPropertyStr(ctx, storage, "Fs", fs);
     JS_SetPropertyStr(ctx, lume, "storage", storage);
     /* lume.net + lume.net.http (M2 / r11): WiFi station + HTTP client, hw in
      * lume-net. Natives self-register, so the prelude needs no change.
