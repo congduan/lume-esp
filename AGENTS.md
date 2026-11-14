@@ -9,7 +9,7 @@ Lume lets you write the entire app for an ESP32-S3 AMOLED board in JavaScript �
 - Target board: Waveshare ESP32-S3-Touch-AMOLED-2.16 (ESP32-S3, 16MB flash, 8MB PSRAM, CO5300 480x480 QSPI AMOLED, CST9220 touch, AXP2101 PMIC, QMI8658 IMU, ES8311/ES7210 audio, TF card).
 - Three layers: app JS/TS (declarative UI + signals + `lume.*` hardware APIs) -> C runtime (QuickJS-NG engine, prelude, UI-to-LVGL bridge, hot reload, ESP-IDF components) -> LVGL / ESP-IDF / board drivers.
 - **LVGL is only a rendering backend and must not leak into app code**; app developers should not need a C toolchain.
-- Status: M1–M3 code complete, M4 tooling in progress (CLI and simulator exist, WiFi OTA pending), M5 not started. **On-device acceptance has not happened**: visuals, touch feel, sleep current, radio, etc. are deferred to board bring-up. A green build / green host harness is not the same as working hardware — never claim hardware verification.
+- Status: M1–M3 code complete; M4 tooling in progress (CLI and simulator exist, WiFi OTA pending); M5 has started — optional JS shell components (`runtime/shell.js`: `StatusBar`, `EdgeNavigation`, `Launcher`) and the bilingual docs site have landed, while board abstraction is not started. **On-device acceptance has not happened**: visuals, touch feel, sleep current, radio, etc. are deferred to board bring-up. A green build / green host harness is not the same as working hardware — never claim hardware verification.
 
 See `README.md` and `docs/roadmap.md`.
 
@@ -20,7 +20,7 @@ See `README.md` and `docs/roadmap.md`.
 | `firmware/` | ESP-IDF project (`main/`, `CMakeLists.txt`, `sdkconfig*`, `partitions.csv`) |
 | `firmware/components/lume-*` | Feature components: engine / board / ui-bridge / hotreload / gpio / adc / pmic / power / imu / net / storage / audio |
 | `firmware/components/quickjs-ng/`, `lvgl/` | Vendored third-party sources; keep changes minimal and documented |
-| `runtime/` | Public JS API surface: `types/*.d.ts` (autocomplete / contract), `shell.js`. **The prelude is not here** |
+| `runtime/` | Public JS API surface: `types/*.d.ts` (autocomplete / contract), `shell.js` (optional JS-only shell components, bundled by the CLI). **The prelude is not here** |
 | `tools/lume/` | `lume` CLI (create / dev / deploy), frame protocol, serial transport, unit tests |
 | `tools/simulator/` | Browser simulator and Playwright verification script |
 | `examples/` | Nine sample apps, each with `app.js` as its entry point |

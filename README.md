@@ -196,11 +196,13 @@ First-class board support:
   2.16" 480×480 QSPI AMOLED CO5300, CST9220 touch, AXP2101 PMIC, QMI8658 IMU,
   ES8311 codec + ES7210 mic, 32GB TF card over SPI)
 
-The board layer is abstracted; more boards are welcome.
+Board support currently targets the Waveshare ESP32-S3-Touch-AMOLED-2.16 only;
+a board abstraction layer for additional targets is not implemented yet.
 
 ## Status
 
-Active development — M1/M2/M3 code complete.
+Active development — M1/M2/M3 code complete; M4 tooling and the first M5 shell
+components are in progress.
 
 | Milestone | State |
 |---|---|
@@ -208,7 +210,7 @@ Active development — M1/M2/M3 code complete.
 | **M2 — hardware API surface** (GPIO/PWM/ADC, power, IMU, WiFi+HTTP, KV, files, audio) | ✅ code complete |
 | **M3 — declarative UI completeness** (flex, styles, animation, canvas, gestures, lifecycle, themes, virtualized lists, images) | ✅ code complete |
 | **M4 — tooling** (`lume` CLI ✅, host simulator ✅, WiFi OTA code complete / board check pending) | 🚧 |
-| **M5 — ecosystem** (component library, launcher shell, board abstraction) | ⬜ |
+| **M5 — ecosystem** (component library, launcher shell, board abstraction) | 🚧 optional JS shell components + bilingual docs site landed; board abstraction not started |
 
 > **Honesty note**: "code complete" means compiles green, host-tested, and reviewed.
 > On-device acceptance (visuals, touch feel, sleep current, radio range) is pending
@@ -221,4 +223,4 @@ Documentation: [docs/roadmap.md](docs/roadmap.md) ·
 
 ## License
 
-Apache-2.0
+MIT

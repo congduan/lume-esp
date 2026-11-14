@@ -42,3 +42,21 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [ ] Component library
 - [ ] Docs site + example gallery
 - [ ] Board abstraction for additional targets
+
+Status after the shell slice (`2172f50`); milestone definitions and checkbox states
+are unchanged because full scope and on-device acceptance are still pending:
+
+- **Component library**: first slice landed — `runtime/shell.js` exposes optional
+  `StatusBar` / `EdgeNavigation` / `Launcher` / `dispose` components, with
+  `runtime/types/lume.d.ts` types, `examples/shell_demo/`, a reworked
+  `examples/watch_launcher/`, 8 host harness cases (`tests/shell_components.js`)
+  and simulator E2E screenshots. Still JS-only: bundled by the CLI rather than
+  embedded in firmware, no bundle switching (`onLaunch` only logs), no icon/theme
+  system, no CI harness run, no site API docs. On-device feel pending board bring-up.
+- **Docs site + example gallery**: bilingual static site (`website/`, six pages) and
+  `.github/workflows/pages.yml` are in place. The gallery does not list `shell_demo`
+  yet; Pages triggers only on `website/**`; live deployment is not verifiable from
+  the repository.
+- **Board abstraction**: not started. Pins, resolution and display init are
+  hard-coded for the Waveshare board (`lume_pins.h`, `sdkconfig.defaults`,
+  `lume_display.c`); there is no Kconfig, board selector or `boards/` directory.
