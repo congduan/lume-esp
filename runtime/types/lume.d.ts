@@ -210,9 +210,7 @@ declare namespace lume.imu {
 }
 
 /**
- * NVS-backed persistent key-value store (M2 / r10). Kv ONLY this round;
- * lume.storage.Fs (LittleFS partition) is a LATER round -- the module layout
- * reserves the `storage` namespace for both, but only `kv` is implemented.
+ * NVS-backed persistent key-value store (M2 / r10).
  * Natives self-register under lume.storage.kv, so the prelude is unchanged.
  *
  * Status contract (returned as a NUMBER): 0 = success, negative = error code
@@ -271,6 +269,31 @@ declare namespace lume.storage.kv {
   function keys(): string[] | number;
   /** erase ALL keys in the namespace; 0 or negative error. */
   function clear(): number;
+}
+
+/** LittleFS storage partition (M2 / r12). Paths are root-relative and may
+ * start with '/'. Empty, '.', '..', repeated slash, trailing slash, embedded
+ * NUL, and paths longer than 240 bytes are rejected with -1. No automatic
+ * parent-directory creation; mkdir creates one level. Files are limited to
+ * 64 KiB per read. write/append accept UTF-8 strings or ArrayBuffers.
+ * read decodes UTF-8 text (invalid sequences use QuickJS replacement decoding);
+ * readBinary returns exact bytes. Missing file on read/list is -2; remove of
+ * a missing path is 0. All semantic failures return -1 invalid argument,
+ * -2 filesystem/IO failure, or -3 unmounted. Too few arguments throw
+ * TypeError; runtime allocation failures propagate a JS exception.
+ * Mount failure is nonfatal; mounted() reports readiness. First mount may
+ * format an unmountable partition, destroying any previous contents there.
+ */
+declare namespace lume.storage.Fs {
+  function mounted(): boolean;
+  function write(path: string, data: string | ArrayBuffer): number;
+  function append(path: string, data: string | ArrayBuffer): number;
+  function read(path: string): string | number;
+  function readBinary(path: string): ArrayBuffer | number;
+  function remove(path: string): number;
+  function mkdir(path: string): number;
+  function list(dirPath: string): string[] | number;
+  function exists(path: string): boolean | number;
 }
 
 /**
