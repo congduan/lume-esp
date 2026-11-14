@@ -1,5 +1,19 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
+## r36 Tilt Maze host acceptance; board tuning pending
+
+- `examples/imu_ball` uses a simplified 2D ball model: constant in-plane acceleration,
+  linear damping, speed cap, circle/rectangle collision and fixed restitution.
+  There is no rolling-friction parameter table or mechanical tilt simulation.
+- QMI8658 acceleration is converted to m/s² in the native driver; the app
+  assumes `ax` maps to screen x and `ay` to screen y. Axis signs, gain, dead
+  zone, rebound, level difficulty and sound volume need on-device tuning.
+- The app redraws its 400×400 Canvas at 20 fps. Host simulator rendering
+  cannot establish board frame rate; if it is slow, evaluate dirty rectangles
+  in a later board round. Audio, visual alignment and tilt feel also await
+  board acceptance.
+
+
 ## r34 host fixes; board acceptance pending
 
 - Hot-reload staging ownership, Queue B gesture FIFO and release delivery,
