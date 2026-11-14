@@ -454,3 +454,10 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - 路径相对存储根目录，最多 240 字节。拒绝空路径段、`.`、`..`、末尾斜杠及内嵌 NUL；不自动创建父目录。`mkdir` 只创建一层，`remove` 不递归，`list` 只列直接子项名称。
 - `read` 最多一次读 64 KiB，按 QuickJS 的 UTF-8 文本解码；`readBinary` 返回原始 ArrayBuffer。写入的类型不记元数据，调用者自行选择读取方法。
 - `write`/`append` 同步执行 VFS 操作；没有事务、跨文件原子性或并发写入 API。文件系统层仅由 JS 引擎任务调用。掉电持久性和首次格式化行为仍待接板验证。
+
+## r13 / M2 ES8311 + ES7210 音频
+
+- `lume.audio.play()` / `record()` 在 engine task 同步阻塞。数据为 16 kHz、16-bit、有符号小端、双声道交错裸 PCM；不解析 WAV 头，也不做重采样。1 秒为 64,000 字节。其他 `sampleRate/channels/bits` 返回 -1。
+- `record()` 最多 10 秒，原生缓冲通过 `heap_caps_malloc(MALLOC_CAP_SPIRAM)` 分配；复制到 QuickJS ArrayBuffer 后释放。最多约 1.28 MB 的短时双份占用。无环形 DMA、后台 worker 或多实例。`stop()` 仅静音后续输出，不能从同一 JS task 中打断正在运行的同步播放。
+- 官方 `07_ES8311.ino:54-55` 把 PA=GPIO46 设成输出高电平；板级 `pin_config.h:27` 也标为 GPIO46。IDF 5.5.5 的 `esp32s3/soc_caps.h:187-189` 明确将其列为可输出 GPIO。真实 PA 时序与扬声器效果仍留接板实证；配置失败时明确 WARN。
+- 音频寄存器取自 Waveshare `examples/arduino/06_ES7210/es7210.cpp` 与 `07_ES8311/es8311.c`；仅实现示例中的 16 kHz 配置。ADC 示例用独立 I2S1 RX；DAC 示例用 I2S 标准模式。这里 I2S0 主机 TX 发共用时钟，I2S1 从机 RX 接同网时钟。真机需确认 GPIO matrix 共线输入、双声道排序及 PA 实际行为。
