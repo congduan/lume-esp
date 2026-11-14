@@ -64,4 +64,63 @@ check('dispose unregisters gestures and app close clears resources', () => {
   assert.equal(evalIn(s, 'Object.keys(__timers).length'), 0);
   assert.equal(evalIn(s, '__allEffects.length'), 0);
 });
+check('spacing injects missing View padding and gap and follows theme changes', () => {
+  const s = app('lume.theme.set({spacing:8});globalThis.box=View({style:{width:100}});');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[1] === s.ctx.box && m[2] === 10 && m[3] === 8));
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[1] === s.ctx.box && m[2] === 11 && m[3] === 8));
+  s.messages.length = 0;
+  evalIn(s, 'lume.theme.set({spacing:12})');
+  assert.ok(s.messages.some(m => m[1] === s.ctx.box && m[2] === 10 && m[3] === 12));
+});
+check('explicit spacing wins and invalid token is atomic', () => {
+  const s = app('lume.theme.set({spacing:8});globalThis.box=View({style:{padding:3,gap:4}});');
+  s.messages.length = 0;
+  evalIn(s, 'lume.theme.set({spacing:12})');
+  assert.ok(!s.messages.some(m => m[1] === s.ctx.box && (m[2] === 10 || m[2] === 11)));
+  assert.throws(() => evalIn(s, 'lume.theme.set({spacing:-1})'), /spacing/);
+  assert.equal(evalIn(s, 'lume.theme.get().spacing'), 12);
+});
+check('Dialog opens and close is idempotent', () => {
+  const s = app('globalThis.close=lume.ui.shell.Dialog({title:"Confirm",buttons:[{label:"Cancel"}]});');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 0 && m[3] === 'Confirm'));
+  evalIn(s, 'close();close()');
+  assert.equal(s.messages.filter(m => m[0] === 'remove').length, 2);
+});
+check('Dialog stack ignores covered button and closes top first', () => {
+  const s = app('globalThis.hits=[];globalThis.a=lume.ui.shell.Dialog({title:"A",buttons:[{label:"First",style:"primary",onPress:()=>hits.push("A")}]});globalThis.b=lume.ui.shell.Dialog({title:"B",buttons:[{label:"Second",style:"primary",onPress:()=>hits.push("B")}]});');
+  const buttons = s.messages.filter(m => m[0] === 'press').map(m => m[1]);
+  s.press(buttons[1]);
+  assert.deepEqual([...s.ctx.hits], []);
+  s.press(buttons[4]);
+  assert.deepEqual([...s.ctx.hits], ['B']);
+  s.press(buttons[1]);
+  assert.deepEqual([...s.ctx.hits], ['B','A']);
+});
+check('Dialog lifecycle pause removes overlays', () => {
+  const s = app('lume.ui.shell.Dialog({title:"A",buttons:[]});lume.ui.shell.Dialog({title:"B",buttons:[]});');
+  evalIn(s, '__lume_pause()');
+  assert.equal(s.messages.filter(m => m[0] === 'remove').length, 4);
+});
+check('danger button follows theme danger token', () => {
+  const s = app('lume.theme.set({colors:{danger:"#AA1122"}});lume.ui.shell.Dialog({title:"Danger",buttons:[{label:"Delete",style:"danger"}]});');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 1 && m[3] === 0xAA1122));
+  evalIn(s, 'lume.theme.set({colors:{danger:"#BB2233"}})');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 1 && m[3] === 0xBB2233));
+});
+check('Toast replaces current and resets timer', () => {
+  const s = app('lume.ui.shell.Toast.show("one",{durationMs:100});');
+  const first = s.messages.find(m => m[0] === 'create')[1];
+  evalIn(s, 'lume.ui.shell.Toast.show("two",{durationMs:200})');
+  assert.ok(s.messages.some(m => m[0] === 'remove' && m[1] === first));
+  assert.equal(evalIn(s, 'Object.keys(__timers).length'), 1);
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 0 && m[3] === 'two'));
+});
+check('Toast fades then removes itself', () => {
+  const s = app('lume.ui.shell.Toast.show("Saved",{durationMs:100});');
+  const id = s.messages.find(m => m[0] === 'create')[1];
+  evalIn(s, 'Object.values(__timers)[0].cb()');
+  assert.ok(s.messages.some(m => m[0] === 'animate' && m[1] === id && m[2] === 15));
+  evalIn(s, 'Object.values(__timers).at(-1).cb()');
+  assert.ok(s.messages.some(m => m[0] === 'remove' && m[1] === id));
+});
 console.log('PASS ' + cases + ' shell component cases');
