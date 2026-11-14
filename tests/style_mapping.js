@@ -77,7 +77,11 @@ function checkLayout(name, expr, expected) {
 }
 checkLayout('Row presets flex row', 'Row({})', [[7,0]]);
 checkLayout('Column presets flex column', "Column({style:{width:'100%'}})", [[16,100],[7,1]]);
-for (const style of [{width:'101%'}, {padding:'8'}, {background:'#bad'}, {opacity:2}]) {
+checkLayout('fontSize/letterSpacing/lineHeight', "Text({style:{fontSize:20,letterSpacing:1,lineHeight:-2}})", [[55,20],[56,1],[57,-2]]);
+checkLayout('fontSize snaps + scales via theme.fontScale', "lume.theme.set({colors:{primary:'#102030',text:'#FFFFFF'},fontScale:1.25}); Text({style:{fontSize:14}})", [[55,18]]);
+checkLayout('fontScale below 1 keeps faces in range', "lume.theme.set({colors:{primary:'#102030',text:'#FFFFFF'},fontScale:0.7}); Text({style:{fontSize:32}})", [[55,22]]);
+for (const style of [{width:'101%'}, {padding:'8'}, {background:'#bad'}, {opacity:2},
+                     {fontSize:0}, {fontSize:14.5}, {fontSize:'20'}, {letterSpacing:0.5}, {lineHeight:'x'}]) {
   assert.throws(() => vm.runInContext(`View({style:${JSON.stringify(style)}})`, ctx));
 }
 console.log('PASS invalid percentage/metric/color/opacity rejected in prelude');
