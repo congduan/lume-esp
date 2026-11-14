@@ -50,6 +50,9 @@ typedef enum {
     LUME_ATTR_BORDER_WIDTH, LUME_ATTR_BORDER_COLOR, LUME_ATTR_OPACITY,
     LUME_ATTR_WIDTH_PCT, LUME_ATTR_HEIGHT_PCT,
     LUME_ATTR_X, LUME_ATTR_Y,
+    LUME_ATTR_SCROLL_DIR, LUME_ATTR_SCROLLBAR_MODE,
+    LUME_ATTR_SCROLL_Y,       /* programmatic offset, non-animated */
+    LUME_ATTR_IGNORE_LAYOUT,  /* absolute-positioned virtual rows */
 } lume_attr_t;
 
 /* Wire values are independent of LVGL's enum ordering. */
@@ -117,8 +120,10 @@ typedef struct {
  * the engine at startup; keeps lume-ui-bridge free of any lume-engine link. */
 typedef void (*lume_press_sink_fn)(uint16_t node_id);
 typedef void (*lume_anim_sink_fn)(uint32_t token);
+typedef void (*lume_scroll_sink_fn)(uint16_t node_id, int32_t y);
 void lume_ui_bridge_set_anim_sink(lume_anim_sink_fn fn);
 void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn);
+void lume_ui_bridge_set_scroll_sink(lume_scroll_sink_fn fn);
 
 /* Init: creates Queue A + the LVGL drain timer. Must be called once from board
  * init (main task) BEFORE the LVGL task starts, so lv_timer_create() has no

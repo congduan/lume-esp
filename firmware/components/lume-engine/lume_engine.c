@@ -46,7 +46,7 @@ static const char *TAG = "lume-engine";
 static QueueHandle_t s_evt_queue;   /* Queue B: LVGL -> engine */
 static JSRuntime *s_rt;
 static JSContext *s_ctx;
-static uint16_t s_next_node_id;     /* engine-task-only id allocator */
+static bool s_node_live[LUME_MAX_NODES]; /* cleared only after LVGL remove acknowledgement */
 static uint32_t s_evt_dropped;      /* LVGL-task-only reverse-drop counter */
 
 /* ---- Hot-reload staging (shared: USB CDC RX task writes, engine consumes) ----
@@ -228,9 +228,6 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
         JS_ToInt32(ctx, &parent, argv[1]) < 0) {
         return JS_EXCEPTION;
     }
-    if (s_next_node_id + 1 >= LUME_MAX_NODES) {
-        return JS_ThrowRangeError(ctx, "lume: node table full");
-    }
     if (kind == LUME_NODE_CANVAS) {
         if (argc < 4) return JS_ThrowTypeError(ctx, "lume: canvas width and height required");
         if (JS_ToInt32(ctx, &canvas_w, argv[2]) < 0 ||
@@ -239,7 +236,11 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
             (size_t)canvas_w * canvas_h * 2u > 480u * 480u * 2u)
             return JS_ThrowRangeError(ctx, "lume: canvas dimensions exceed 480x480 budget");
     }
-    uint16_t id = ++s_next_node_id;   /* 1..LUME_MAX_NODES-1; 0 is the screen */
+    uint16_t id = 0;
+    for (uint16_t i = 1; i < LUME_MAX_NODES; i++)
+        if (!s_node_live[i]) { id = i; break; }
+    if (!id) return JS_ThrowRangeError(ctx, "lume: node table full");
+    s_node_live[id] = true;
 
     lume_ui_msg_t m;
     msg_init(&m);
@@ -250,6 +251,7 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
     m.from = canvas_w;
     m.to = canvas_h;
     if (lume_ui_bridge_post(&m) != 0) {
+        s_node_live[id] = false;
         ESP_LOGE(TAG, "createNode: ui queue full after retries (id=%u); "
                       "JS/UI state may diverge", (unsigned)id);
         return JS_ThrowInternalError(ctx, "lume: ui queue full");
@@ -1511,6 +1513,31 @@ void lume_engine_post_press(uint16_t node_id)
     }
 }
 
+void lume_engine_post_scroll(uint16_t node_id, int32_t y)
+{
+    lume_engine_evt_t evt = { .type = LUME_EVT_SCROLL, .node_id = node_id, .scroll_y = y };
+    if (s_evt_queue == NULL || xQueueSend(s_evt_queue, &evt, 0) != pdTRUE) {
+        s_evt_dropped++;
+        if (s_evt_dropped == 1 || (s_evt_dropped % EVT_DROP_LOG_EVERY) == 0)
+            ESP_LOGW(TAG, "scroll id=%u dropped: evt queue full (%u total drops)",
+                     (unsigned)node_id, (unsigned)s_evt_dropped);
+    }
+}
+
+static void dispatch_scroll(uint16_t node_id, int32_t y)
+{
+    JSValue global = JS_GetGlobalObject(s_ctx);
+    JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_dispatchScroll");
+    if (JS_IsFunction(s_ctx, fn)) {
+        JSValue args[2] = {JS_NewInt32(s_ctx, node_id), JS_NewInt32(s_ctx, y)};
+        JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 2, args);
+        if (JS_IsException(ret)) dump_js_exception(s_ctx, "__lume_dispatchScroll");
+        JS_FreeValue(s_ctx, ret);
+        JS_FreeValue(s_ctx, args[0]); JS_FreeValue(s_ctx, args[1]);
+    }
+    JS_FreeValue(s_ctx, fn); JS_FreeValue(s_ctx, global);
+}
+
 int lume_engine_post_lifecycle(uint8_t type)
 {
     lume_engine_evt_t evt = { .type = type };
@@ -1605,6 +1632,7 @@ static void drain_removals(void)
             unsigned bit = __builtin_ctz(bits);
             bits &= bits - 1;
             dispatch_remove((uint16_t)(w * 32u + bit));
+            s_node_live[w * 32u + bit] = false;
         }
     }
 }
@@ -1776,10 +1804,11 @@ static void engine_task(void *arg)
         register_bindings(ctx);                              /* native lume.* */
         lume_ui_bridge_set_anim_sink(lume_engine_post_anim_complete);
         lume_ui_bridge_set_press_sink(lume_engine_post_press); /* re-wire sink */
+        lume_ui_bridge_set_scroll_sink(lume_engine_post_scroll);
         /* Fresh JS-side id allocator. NOTE: the LVGL s_nodes[] table is NOT
          * cleared (drivers don't restart), so ids are reused across reloads;
          * see docs/KNOWN-SIMPLIFICATIONS.md. */
-        s_next_node_id = 0;
+        memset(s_node_live, 0, sizeof(s_node_live));
         clear_removals();                       /* drop stale removal latch */
         ESP_LOGI(TAG, "runtime up; eval %s app (%u bytes)",
                  from_reload ? "staged" : "embedded/last-good",
@@ -1879,6 +1908,8 @@ static void engine_task(void *arg)
                     dispatch_press(evt.node_id);
                 } else if (evt.type == LUME_EVT_ANIM_COMPLETE) {
                     dispatch_anim_complete(evt.token);
+                } else if (evt.type == LUME_EVT_SCROLL) {
+                    dispatch_scroll(evt.node_id, evt.scroll_y);
                 }
             }
             drain_removals();

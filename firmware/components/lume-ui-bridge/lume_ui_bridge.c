@@ -21,6 +21,8 @@
 #include "lume_ui_bridge.h"
 #include "lume_engine.h"     /* r4 P2: lume_engine_notify_removed() */
 
+_Static_assert(sizeof(lume_ui_msg_t) == 96, "UI queue record must remain 96 bytes");
+
 static const char *TAG = "lume-ui-bridge";
 #define UI_QUEUE_LEN 32
 #define DRAIN_PERIOD_MS 5
@@ -41,6 +43,28 @@ static void clear_subtree(lv_obj_t *obj);
 static void release_dead_canvases(void);
 static lume_anim_sink_fn s_anim_sink;
 static lume_press_sink_fn s_press_sink;           /* set once by engine task */
+static lume_scroll_sink_fn s_scroll_sink;
+static int32_t s_scroll_last_y[LUME_MAX_NODES];
+static uint32_t s_scroll_last_tick[LUME_MAX_NODES];
+static uint8_t s_scroll_sent[LUME_MAX_NODES];
+
+static void scroll_cb(lv_event_t *e)
+{
+    uint16_t id = (uint16_t)(uintptr_t)lv_event_get_user_data(e);
+    if (!s_scroll_sink || id == 0 || id >= LUME_MAX_NODES) return;
+    int32_t y = lv_obj_get_scroll_y(lv_event_get_target_obj(e));
+    uint32_t now = lv_tick_get();
+    int32_t delta = y - s_scroll_last_y[id];
+    if (s_scroll_sent[id] && lv_event_get_code(e) != LV_EVENT_SCROLL_END &&
+        (uint32_t)(now - s_scroll_last_tick[id]) < 25) return;
+    if (s_scroll_sent[id] && lv_event_get_code(e) != LV_EVENT_SCROLL_END &&
+        delta > -12 && delta < 12 &&
+        (uint32_t)(now - s_scroll_last_tick[id]) < 40) return;
+    s_scroll_last_y[id] = y;
+    s_scroll_last_tick[id] = now;
+    s_scroll_sent[id] = 1;
+    s_scroll_sink(id, y);
+}
 
 static lv_align_t map_align(int32_t v)
 {
@@ -282,6 +306,7 @@ static void apply_create(const lume_ui_msg_t *m)
     s_cross[m->node_id] = LUME_FLEX_START;
     s_explicit_width[m->node_id] = 0;
     s_explicit_height[m->node_id] = 0;
+    s_scroll_sent[m->node_id] = 0;
     if (m->kind == LUME_NODE_CANVAS) {
         s_explicit_width[m->node_id] = 1;
         s_explicit_height[m->node_id] = 1;
@@ -304,6 +329,26 @@ static void apply_set_attr(const lume_ui_msg_t *m)
     switch (m->attr) {
         case LUME_ATTR_X: lv_obj_set_x(obj, m->value); break;
         case LUME_ATTR_Y: lv_obj_set_y(obj, m->value); break;
+        case LUME_ATTR_SCROLL_DIR:
+            if (m->value == 0) lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+            else {
+                lv_obj_add_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+                lv_obj_set_scroll_dir(obj, m->value == 1 ? LV_DIR_VER : LV_DIR_HOR);
+                lv_obj_add_event_cb(obj, scroll_cb, LV_EVENT_SCROLL,
+                                    (void *)(uintptr_t)m->node_id);
+                lv_obj_add_event_cb(obj, scroll_cb, LV_EVENT_SCROLL_END,
+                                    (void *)(uintptr_t)m->node_id);
+            }
+            break;
+        case LUME_ATTR_SCROLLBAR_MODE:
+            lv_obj_set_scrollbar_mode(obj, m->value == 0 ? LV_SCROLLBAR_MODE_OFF :
+                                      m->value == 2 ? LV_SCROLLBAR_MODE_ON : LV_SCROLLBAR_MODE_AUTO);
+            break;
+        case LUME_ATTR_SCROLL_Y: lv_obj_scroll_to_y(obj, m->value, LV_ANIM_OFF); break;
+        case LUME_ATTR_IGNORE_LAYOUT:
+            if (m->value) lv_obj_add_flag(obj, LV_OBJ_FLAG_IGNORE_LAYOUT);
+            else lv_obj_remove_flag(obj, LV_OBJ_FLAG_IGNORE_LAYOUT);
+            break;
         case LUME_ATTR_TEXT: {
             /* A BUTTON renders its text in a child label; TEXT is the label. */
             lv_obj_t *target = obj;
@@ -622,6 +667,11 @@ void lume_ui_bridge_set_anim_sink(lume_anim_sink_fn fn)
 void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn)
 {
     s_press_sink = fn;
+}
+
+void lume_ui_bridge_set_scroll_sink(lume_scroll_sink_fn fn)
+{
+    s_scroll_sink = fn;
 }
 
 int lume_ui_bridge_post(const lume_ui_msg_t *msg)

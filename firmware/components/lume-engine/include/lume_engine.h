@@ -16,10 +16,12 @@ void lume_engine_start(void);
 #define LUME_EVT_BACK 4
 #define LUME_EVT_PAUSE 5
 #define LUME_EVT_RESUME 6
+#define LUME_EVT_SCROLL 7
 typedef struct {
     uint8_t  type;        /* LUME_EVT_* */
     uint16_t node_id;
     uint32_t token;
+    int32_t scroll_y;
 } lume_engine_evt_t;
 
 /* Reverse-channel sink: called by the ui-bridge press callback (LVGL task)
@@ -29,6 +31,7 @@ void lume_engine_post_press(uint16_t node_id);
 int lume_engine_post_back(void);
 int lume_engine_post_lifecycle(uint8_t type);
 void lume_engine_post_anim_complete(uint32_t token);
+void lume_engine_post_scroll(uint16_t node_id, int32_t y);
 
 /* r4 P2: called by the ui-bridge remove path (LVGL task) after a subtree was
  * deleted. Latches node_id into a lock-protected pending-removal bitmap; the
