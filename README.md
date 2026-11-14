@@ -51,6 +51,18 @@ Lume replaces that loop:
 LVGL never leaks into app code. It is a rendering backend, the way UIKit sits behind
 React Native.
 
+## Quick Start
+
+With Node.js 18+ and Lume firmware on the board:
+
+```bash
+npm ci --prefix tools/lume
+node tools/lume/lume.js create my-app
+node tools/lume/lume.js dev my-app
+```
+
+Edit `my-app/app.js` to see each saved change on screen. Use `--port /dev/ttyACM0` if the USB Serial/JTAG port is not detected automatically. For a one-time push, run `node tools/lume/lume.js deploy my-app`. See [build and development](docs/build.md) for protocol details and controls.
+
 ## Examples
 
 ### 1. Hello Lume — signals-driven counter
