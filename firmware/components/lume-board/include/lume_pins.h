@@ -42,6 +42,8 @@
 #define LUME_PIN_I2S_SCLK     9
 #define LUME_PIN_I2S_LRCK     45
 #define LUME_PIN_I2S_DOUT     8
+#define LUME_PIN_I2S_DIN      10
+#define LUME_PIN_AUDIO_PA     46
 
 #define LUME_LCD_H_RES        480
 #define LUME_LCD_V_RES        480
