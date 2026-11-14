@@ -23,11 +23,15 @@ declare namespace lume.ui {
     background?: string | number | (() => string | number);
     width?: number | `${number}%` | (() => number);
     height?: number | `${number}%` | (() => number);
+    /** Enables LVGL native scrolling on a View. */
+    scroll?: 'vertical' | 'horizontal' | 'none';
+    scrollbar?: 'off' | 'auto' | 'on';
   }
 
   /** Nodes are numeric ids returned by the embedded prelude. */
   type Node = number;
-  interface ViewProps { style?: Style; parent?: Node; bg?: number | (() => number); w?: number; h?: number; align?: number; visible?: boolean }
+  interface ViewProps { style?: Style; parent?: Node; bg?: number | (() => number); w?: number; h?: number; align?: number; visible?: boolean; onPress?: () => void; onScroll?: (offsetPx: number) => void }
+  interface ListProps<T> { style: Style & { height: number }; parent?: Node; items: T[] | (() => T[]); itemHeight: number; overscan?: number; renderItem(item: T, index: number): Node }
   interface TextProps extends ViewProps { text?: string | (() => string) }
   interface ButtonProps extends ViewProps { title?: string | (() => string); onPress?: () => void }
   /** RGB565 canvas, fixed size. All coordinates use canvas-local integer pixels. */
@@ -55,6 +59,7 @@ declare namespace lume.ui {
   }
 
   function View(props: ViewProps, children?: Node[]): Node;
+  function List<T>(props: ListProps<T>): Node;
   function Text(props: TextProps): Node;
   function Button(props: ButtonProps): Node;
   function Canvas(props: CanvasProps): Node;
@@ -62,6 +67,7 @@ declare namespace lume.ui {
 
 /** Embedded prelude globals used by the firmware fallback bundle. */
 declare function View(props: lume.ui.ViewProps, children?: lume.ui.Node[]): lume.ui.Node;
+declare function List<T>(props: lume.ui.ListProps<T>): lume.ui.Node;
 declare function Text(props: lume.ui.TextProps): lume.ui.Node;
 declare function Button(props: lume.ui.ButtonProps): lume.ui.Node;
 declare function Canvas(props: lume.ui.CanvasProps): lume.ui.Node;

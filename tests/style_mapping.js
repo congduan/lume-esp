@@ -31,6 +31,9 @@ for (const [value, wire] of [['start',0],['end',1],['center',2],['space-between'
 check('stretch + gap + padding', {alignItems:'stretch',gap:8,padding:16}, [[9,3],[10,16],[11,8]]);
 check('radius + border + opacity', {borderRadius:12,borderWidth:2,borderColor:'#abcdef',opacity:0.5}, [[12,12],[13,2],[14,0xabcdef],[15,128]]);
 check('pixel + legacy bg', {width:240,height:120,background:0x112233}, [[1,0x112233],[2,240],[3,120]]);
+check('vertical scroll + auto scrollbar', {scroll:'vertical',scrollbar:'auto'}, [[20,1],[21,1]]);
+check('horizontal scroll + on scrollbar', {scroll:'horizontal',scrollbar:'on'}, [[20,2],[21,2]]);
+check('scroll disabled + scrollbar off', {scroll:'none',scrollbar:'off'}, [[20,0],[21,0]]);
 for (const style of [{width:'101%'}, {padding:'8'}, {background:'#bad'}, {opacity:2}]) {
   assert.throws(() => vm.runInContext(`View({style:${JSON.stringify(style)}})`, ctx));
 }
