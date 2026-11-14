@@ -1,6 +1,15 @@
 name: Deploy website to Pages
+# GitHub Actions docs: "Path filters are not evaluated for pushes of tags."
+# Without the `branches` filter a `vX.Y.Z` tag push runs this workflow too, and
+# `actions/deploy-pages` then fails with:
+#   Tag "vX.Y.Z" is not allowed to deploy to github-pages due to environment
+#   protection rules.
+# The github-pages environment only permits deployments from `main`, so gate the
+# trigger on the branch as well.
 on:
   push:
+    branches:
+      - main
     paths:
       - 'website/**'
       - '.github/workflows/pages.yml'
