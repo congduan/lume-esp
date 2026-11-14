@@ -38,7 +38,7 @@ static QueueHandle_t s_evt_queue = &queue_handle;
 static char *s_staged_src;
 static size_t s_staged_len;
 static bool s_reload_pending;
-static int frees, superseded, posts, post_result, block_post;
+static int frees, superseded, posts, post_results[2], block_post;
 static atomic_int entered_post, release_post, b_started;
 static pthread_mutex_t alloc_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void *live[8];
@@ -67,7 +67,7 @@ static void xSemaphoreGive(SemaphoreHandle_t m) { pthread_mutex_unlock(m); }
 static int xQueueSend(QueueHandle_t q, lume_engine_evt_t *e, int wait) {
   (void)q; (void)e; (void)wait; posts++; atomic_store(&entered_post, 1);
   while (block_post && !atomic_load(&release_post)) sched_yield();
-  return post_result;
+  return post_results[posts - 1];
 }
 ${body}
 static int a_result, b_result;
@@ -80,18 +80,20 @@ static void reset(void) {
 }
 int main(void) {
   pthread_t a, b;
-  reset(); post_result = 0; block_post = 1;
+  reset(); post_results[0] = 0; post_results[1] = 1; block_post = 1;
   pthread_create(&a, NULL, run_a, NULL);
   while (!atomic_load(&entered_post)) sched_yield();
   pthread_create(&b, NULL, run_b, NULL);
   while (!atomic_load(&b_started)) sched_yield();
   atomic_store(&release_post, 1);
   pthread_join(a, NULL); pthread_join(b, NULL);
-  assert(a_result == -1 && b_result == -1);
-  assert(frees == 2 && !s_staged_src && !s_reload_pending && posts == 2);
-  puts("PASS: concurrent failed posts free each frame once and clear pending");
+  assert(a_result == -1 && b_result == 0);
+  assert(frees == 1 && s_staged_src && s_staged_src[0] == 'B');
+  assert(s_staged_len == 1 && s_reload_pending && posts == 2);
+  heap_caps_free(s_staged_src);
+  puts("PASS: A post failure frees only A; B posts latest frame with pending set");
 
-  reset(); post_result = 1; block_post = 1;
+  reset(); post_results[0] = 1; post_results[1] = 1; block_post = 1;
   pthread_create(&a, NULL, run_a, NULL);
   while (!atomic_load(&entered_post)) sched_yield();
   pthread_create(&b, NULL, run_b, NULL);
