@@ -1583,6 +1583,99 @@ static JSValue js_net_http_get(JSContext *ctx, JSValueConst this_val,
     return obj;
 }
 
+/* Synchronous bounded HTTP request. All borrowed JS strings stay live until perform returns. */
+static JSValue js_net_http_request(JSContext *ctx, JSValueConst this_val,
+                                   int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc != 1 || !JS_IsObject(argv[0])) return JS_NewInt32(ctx, LUME_NET_ERR_ARG);
+    JSValue urlv = JS_GetPropertyStr(ctx, argv[0], "url");
+    JSValue methodv = JS_GetPropertyStr(ctx, argv[0], "method");
+    JSValue headersv = JS_GetPropertyStr(ctx, argv[0], "headers");
+    JSValue bodyv = JS_GetPropertyStr(ctx, argv[0], "body");
+    JSValue timeoutv = JS_GetPropertyStr(ctx, argv[0], "timeoutMs");
+    JSValue cav = JS_GetPropertyStr(ctx, argv[0], "caPem");
+    JSValue insecurev = JS_GetPropertyStr(ctx, argv[0], "httpsInsecure");
+    const char *url = NULL, *method = "GET", *ca = NULL;
+    const char *names[LUME_HTTP_HEADER_MAX] = {0};
+    const char *values[LUME_HTTP_HEADER_MAX] = {0};
+    lume_net_http_header_t headers[LUME_HTTP_HEADER_MAX] = {0};
+    JSPropertyEnum *props = NULL;
+    uint32_t count = 0;
+    size_t body_len = 0, len = 0;
+    const uint8_t *body = NULL;
+    const char *body_string = NULL;
+    int32_t timeout = 30000;
+    int result = LUME_NET_ERR_ARG;
+    bool insecure = false;
+    JSValue ret = JS_UNDEFINED;
+    if (!JS_IsString(urlv)) goto done;
+    url = JS_ToCStringLen(ctx, &len, urlv);
+    if (!url || memchr(url, 0, len)) goto done;
+    if (!JS_IsUndefined(methodv)) {
+        if (!JS_IsString(methodv)) goto done;
+        method = JS_ToCString(ctx, methodv);
+        if (!method) goto done;
+    }
+    if (!JS_IsUndefined(timeoutv) && JS_ToInt32(ctx, &timeout, timeoutv) < 0) goto done;
+    if (!JS_IsUndefined(cav) && !JS_IsNull(cav)) {
+        if (!JS_IsString(cav)) goto done;
+        ca = JS_ToCString(ctx, cav);
+        if (!ca || !strstr(ca, "-----BEGIN CERTIFICATE-----")) goto done;
+    }
+    if (!JS_IsUndefined(insecurev)) insecure = JS_ToBool(ctx, insecurev) == 1;
+    if (!JS_IsUndefined(bodyv) && !JS_IsNull(bodyv)) {
+        if (JS_IsString(bodyv)) {
+            body_string = JS_ToCStringLen(ctx, &body_len, bodyv);
+            body = (const uint8_t *)body_string;
+        } else body = JS_GetArrayBuffer(ctx, &body_len, bodyv);
+        if (!body || body_len > LUME_HTTP_REQUEST_MAX) goto done;
+    }
+    if (!JS_IsUndefined(headersv) && !JS_IsNull(headersv)) {
+        if (!JS_IsObject(headersv) || JS_GetOwnPropertyNames(ctx, &props, &count,
+                headersv, JS_GPN_STRING_MASK | JS_GPN_ENUM_ONLY) < 0 ||
+            count > LUME_HTTP_HEADER_MAX) goto done;
+        for (uint32_t i = 0; i < count; i++) {
+            JSValue hv = JS_GetProperty(ctx, headersv, props[i].atom);
+            names[i] = JS_AtomToCString(ctx, props[i].atom);
+            if (JS_IsString(hv)) values[i] = JS_ToCString(ctx, hv);
+            JS_FreeValue(ctx, hv);
+            if (!names[i] || !values[i] || strchr(names[i], '\r') ||
+                strchr(names[i], '\n') || strchr(names[i], ':') ||
+                strchr(values[i], '\r') || strchr(values[i], '\n')) goto done;
+            headers[i] = (lume_net_http_header_t){ names[i], values[i] };
+        }
+    }
+    lume_net_http_response_t resp;
+    result = lume_net_http_request(url, method, headers, count, body, body_len,
+                                   timeout, ca, insecure, &resp);
+    if (result == 0) {
+        JSValue obj = JS_NewObject(ctx);
+        JS_SetPropertyStr(ctx, obj, "status", JS_NewInt32(ctx, resp.status));
+        JS_SetPropertyStr(ctx, obj, "body", JS_NewStringLen(ctx,
+                (const char *)resp.body, resp.body_len));
+        JS_SetPropertyStr(ctx, obj, "contentLength", JS_NewInt64(ctx, resp.content_length));
+        JS_SetPropertyStr(ctx, obj, "truncated", JS_NewBool(ctx, resp.truncated));
+        lume_net_http_free(&resp);
+        ret = obj;
+    }
+done:
+    for (uint32_t i = 0; i < count; i++) {
+        if (i < LUME_HTTP_HEADER_MAX && names[i]) JS_FreeCString(ctx, names[i]);
+        if (i < LUME_HTTP_HEADER_MAX && values[i]) JS_FreeCString(ctx, values[i]);
+        if (props) JS_FreeAtom(ctx, props[i].atom);
+    }
+    if (props) js_free(ctx, props);
+    if (url) JS_FreeCString(ctx, url);
+    if (!JS_IsUndefined(methodv) && method) JS_FreeCString(ctx, method);
+    if (ca) JS_FreeCString(ctx, ca);
+    if (body_string) JS_FreeCString(ctx, body_string);
+    JS_FreeValue(ctx, urlv); JS_FreeValue(ctx, methodv);
+    JS_FreeValue(ctx, headersv); JS_FreeValue(ctx, bodyv);
+    JS_FreeValue(ctx, timeoutv); JS_FreeValue(ctx, cav); JS_FreeValue(ctx, insecurev);
+    return JS_IsUndefined(ret) ? JS_NewInt32(ctx, result) : ret;
+}
+
 /* lume.ble natives (r25): NimBLE GATT peripheral, hardware in lume-ble.
  * Same thread discipline as lume.net: natives run ONLY on the engine task,
  * lume-ble is QuickJS-free and returns an int status (0 = OK, negative =
@@ -1935,6 +2028,8 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_net_ota_status, "otaStatus", 0));
     JS_SetPropertyStr(ctx, net, "scan",
                       JS_NewCFunction(ctx, js_net_scan, "scan", 0));
+    JS_SetPropertyStr(ctx, net, "httpRequest",
+                      JS_NewCFunction(ctx, js_net_http_request, "httpRequest", 1));
     JS_SetPropertyStr(ctx, net, "httpGet",
                       JS_NewCFunction(ctx, js_net_http_get, "httpGet", 1));
     /* The status() state enum, exposed as named numeric constants (mirrors

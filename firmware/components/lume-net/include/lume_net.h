@@ -92,6 +92,7 @@
 #define LUME_NET_ERR_ARG     (-1)
 #define LUME_NET_ERR_DRIVER  (-2)
 #define LUME_NET_ERR_STATE   (-3)
+#define LUME_NET_ERR_TIMEOUT (-5)
 
 /* True whenever the WiFi driver has been started, including association and
  * disconnected states. Engine-task-only, like the other public net calls. */
@@ -119,6 +120,11 @@ bool lume_net_has_ip(void);
 #define LUME_HTTP_URL_MAX           512
 #define LUME_HTTP_TIMEOUT_DEFAULT_MS 5000
 #define LUME_HTTP_TIMEOUT_MAX_MS     30000
+#define LUME_HTTP_REQUEST_MAX        (16 * 1024)
+#define LUME_HTTP_HEADER_MAX         12
+#define LUME_HTTP_TIMEOUT_POST_MAX_MS 120000
+
+typedef struct { const char *name; const char *value; } lume_net_http_header_t;
 
 /* status() state enum (returned to JS as a number). CONNECTED = associated but
  * DHCP not done yet; GOT_IP = has an IPv4 address and is usable for httpGet. */
@@ -174,9 +180,8 @@ int lume_net_disconnect(void);
  * Returns 0 with a populated out, or a negative error code. */
 int lume_net_status(lume_net_status_t *out);
 
-/* Synchronous oneshot GET. `url` is a NUL-terminated "http://..." string
- * (https:// is accepted by the URL parser but has NO CA bundle configured this
- * round -- see docs r11; prefer http://). `timeout_ms` is clamped to
+/* Synchronous oneshot GET. `url` is a NUL-terminated http(s) URL;
+ * HTTPS uses the certificate bundle. `timeout_ms` is clamped to
  * [1, LUME_HTTP_TIMEOUT_MAX_MS] (<=0 -> default). Returns 0 with a populated
  * out (status/body/content_length/truncated) on a completed transfer; an
  * HTTP-level code such as 404 is a SUCCESS with out.status == 404. Returns -3
@@ -185,6 +190,13 @@ int lume_net_status(lume_net_status_t *out);
  * lume_net_http_free(). */
 int lume_net_http_get(const char *url, int timeout_ms,
                       lume_net_http_response_t *out);
+
+/* POST request; body and headers are borrowed for the duration of the call. */
+int lume_net_http_request(const char *url, const char *method,
+                          const lume_net_http_header_t *headers, size_t header_count,
+                          const uint8_t *request_body, size_t request_len,
+                          int timeout_ms, const char *ca_pem, bool https_insecure,
+                          lume_net_http_response_t *out);
 
 /* Release the heap body returned by lume_net_http_get() (no-op otherwise). */
 void lume_net_http_free(lume_net_http_response_t *out);

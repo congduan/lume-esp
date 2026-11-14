@@ -38,6 +38,8 @@
 #include "esp_netif.h"
 #include "esp_netif_ip_addr.h"
 #include "esp_http_client.h"
+#include "esp_crt_bundle.h"
+#include "esp_heap_caps.h"
 #include "nvs_flash.h"
 #include "lume_net.h"
 
@@ -431,6 +433,18 @@ static esp_err_t http_evt_handler(esp_http_client_event_t *evt)
 int lume_net_http_get(const char *url, int timeout_ms,
                       lume_net_http_response_t *out)
 {
+    if (timeout_ms > LUME_HTTP_TIMEOUT_MAX_MS) timeout_ms = LUME_HTTP_TIMEOUT_MAX_MS;
+    return lume_net_http_request(url, "GET", NULL, 0, NULL, 0, timeout_ms,
+                                 NULL, false, out);
+}
+
+int lume_net_http_request(const char *url, const char *method,
+                          const lume_net_http_header_t *headers, size_t header_count,
+                          const uint8_t *request_body, size_t request_len,
+                          int timeout_ms, const char *ca_pem, bool https_insecure,
+                          lume_net_http_response_t *out)
+{
+    if (out == NULL) return LUME_NET_ERR_ARG;
     memset(out, 0, sizeof(*out));
     /* Uniform degradation: WiFi must be up AND have an IP. */
     int r = require_ready();
@@ -462,11 +476,15 @@ int lume_net_http_get(const char *url, int timeout_ms,
     if (timeout_ms <= 0) {
         timeout_ms = LUME_HTTP_TIMEOUT_DEFAULT_MS;
     }
-    if (timeout_ms > LUME_HTTP_TIMEOUT_MAX_MS) {
-        timeout_ms = LUME_HTTP_TIMEOUT_MAX_MS;
+    if (timeout_ms > LUME_HTTP_TIMEOUT_POST_MAX_MS) {
+        timeout_ms = LUME_HTTP_TIMEOUT_POST_MAX_MS;
     }
+    if (method == NULL || (strcmp(method, "GET") != 0 && strcmp(method, "POST") != 0) ||
+        header_count > LUME_HTTP_HEADER_MAX || request_len > LUME_HTTP_REQUEST_MAX ||
+        (request_len && request_body == NULL) || (https_insecure && ca_pem != NULL))
+        return LUME_NET_ERR_ARG;
 
-    uint8_t *body = malloc(LUME_HTTP_BODY_MAX);
+    uint8_t *body = heap_caps_malloc(LUME_HTTP_BODY_MAX, MALLOC_CAP_SPIRAM);
     if (body == NULL) {
         ESP_LOGW(TAG, "httpGet: body alloc failed (%d B)", LUME_HTTP_BODY_MAX);
         return LUME_NET_ERR_DRIVER;
@@ -474,19 +492,32 @@ int lume_net_http_get(const char *url, int timeout_ms,
     http_sink_t sink = { .buf = body, .len = 0, .truncated = false };
 
     esp_http_client_config_t cfg = {
-        .url = url,                    /* http:// this round; https has no CA bundle */
-        .method = HTTP_METHOD_GET,
+        .url = url,
+        .method = strcmp(method, "POST") == 0 ? HTTP_METHOD_POST : HTTP_METHOD_GET,
         .timeout_ms = timeout_ms,
         .event_handler = http_evt_handler,
         .user_data = &sink,
         .buffer_size = 2048,
-        /* No crt_bundle_attach / cert_pem: TLS server verification is NOT set
-         * up this round -> https:// will typically fail the handshake. See
-         * docs/KNOWN-SIMPLIFICATIONS.md (r11). */
+        .cert_pem = ca_pem,
+        .crt_bundle_attach = ca_pem || https_insecure ? NULL : esp_crt_bundle_attach,
     };
     esp_http_client_handle_t client = esp_http_client_init(&cfg);
     if (client == NULL) {
         ESP_LOGW(TAG, "httpGet: esp_http_client_init failed");
+        free(body);
+        return LUME_NET_ERR_DRIVER;
+    }
+    for (size_t i = 0; i < header_count; i++) {
+        if (!headers[i].name || !headers[i].value ||
+            esp_http_client_set_header(client, headers[i].name, headers[i].value) != ESP_OK) {
+            esp_http_client_cleanup(client);
+            free(body);
+            return LUME_NET_ERR_ARG;
+        }
+    }
+    if (request_len && esp_http_client_set_post_field(client,
+            (const char *)request_body, (int)request_len) != ESP_OK) {
+        esp_http_client_cleanup(client);
         free(body);
         return LUME_NET_ERR_DRIVER;
     }
@@ -495,7 +526,8 @@ int lume_net_http_get(const char *url, int timeout_ms,
         ESP_LOGW(TAG, "httpGet: perform failed: %s", esp_err_to_name(err));
         esp_http_client_cleanup(client);
         free(body);
-        return LUME_NET_ERR_DRIVER;
+        return err == ESP_ERR_TIMEOUT || err == ESP_ERR_HTTP_CONNECTING
+            ? LUME_NET_ERR_TIMEOUT : LUME_NET_ERR_DRIVER;
     }
     /* HTTP-level codes (404/500/...) are SUCCESS results, not C errors. */
     out->status = esp_http_client_get_status_code(client);
