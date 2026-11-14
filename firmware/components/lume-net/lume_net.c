@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
@@ -521,12 +522,15 @@ int lume_net_http_request(const char *url, const char *method,
         free(body);
         return LUME_NET_ERR_DRIVER;
     }
+    TickType_t started_at = xTaskGetTickCount();
     esp_err_t err = esp_http_client_perform(client);
     if (err != ESP_OK) {
+        uint32_t elapsed_ms = (uint32_t)(xTaskGetTickCount() - started_at) * portTICK_PERIOD_MS;
         ESP_LOGW(TAG, "httpGet: perform failed: %s", esp_err_to_name(err));
         esp_http_client_cleanup(client);
         free(body);
         return err == ESP_ERR_TIMEOUT || err == ESP_ERR_HTTP_CONNECTING
+            || elapsed_ms >= (uint32_t)timeout_ms
             ? LUME_NET_ERR_TIMEOUT : LUME_NET_ERR_DRIVER;
     }
     /* HTTP-level codes (404/500/...) are SUCCESS results, not C errors. */

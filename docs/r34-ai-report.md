@@ -57,7 +57,7 @@ API signatures not found in lume.d.ts: none
 ```text
 [100%] Built target lume.elf
 Successfully created esp32s3 image.
-lume.bin binary size 0x230d40 bytes. Smallest app partition is 0x640000 bytes. 0x40f2c0 bytes (65%) free.
+lume.bin binary size 0x230d60 bytes. Smallest app partition is 0x640000 bytes. 0x40f2a0 bytes (65%) free.
 [100%] Built target app_check_size
 [100%] Built target app
 Project build complete.
@@ -66,14 +66,14 @@ Project build complete.
 `idf.py size`:
 
 ```text
-Flash Code        1681278
+Flash Code        1681310
 Flash Data         467748
 DIRAM              229823 / 341760
 IRAM                16384 / 16384 (100.0%; 0 remain)
-Total image size: 2297025 bytes (.bin may be padded larger)
+Total image size: 2297057 bytes (.bin may be padded larger)
 ```
 
-Baseline in `docs/r34-implementation-report.md`: image 2,220,217 bytes, `.bin` `0x21e130`. Current image grew **76,808 bytes**, `.bin` grew **76,816 bytes**. IRAM remains at the 16,384-byte limit.
+Baseline in `docs/r34-implementation-report.md`: image 2,220,217 bytes, `.bin` `0x21e130`. Current image grew **76,840 bytes**, `.bin` grew **76,848 bytes**. IRAM remains at the 16,384-byte limit.
 
 ## Board acceptance pending
 
@@ -87,8 +87,8 @@ Memory Type Usage Summary
 ┃ Memory            ┃              ┃          ┃                ┃               ┃
 ┃ Type/Section      ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
 ┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
-│ Flash Code        │      1681278 │          │                │               │
-│    .text          │      1681278 │          │                │               │
+│ Flash Code        │      1681310 │          │                │               │
+│    .text          │      1681310 │          │                │               │
 │ Flash Data        │       467748 │          │                │               │
 │    .rodata        │       467492 │          │                │               │
 │    .appdesc       │          256 │          │                │               │
@@ -106,7 +106,7 @@ Memory Type Usage Summary
 │ RTC SLOW          │           32 │     0.39 │           8160 │          8192 │
 │    .force_slow    │           32 │     0.39 │                │               │
 └───────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
-Total image size: 2297025 bytes (.bin may be padded larger)
+Total image size: 2297057 bytes (.bin may be padded larger)
 Note: The reported total sizes may be smaller than those in the technical 
 reference manual due to reserved memory and application configuration. The total
 flash size available for the application is not included by default, as it 
