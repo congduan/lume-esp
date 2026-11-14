@@ -882,3 +882,8 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - Timers use the existing engine drain; 40 ms Breakout ticks target about 25/s, Snake starts at 180 ms and speeds up to 80 ms, while IMU polling is 50 ms. The 20 ms timer drain quantization and synchronous 12–48 ms audio calls can delay input and frames. There is no `requestAnimationFrame`, sprite/keyframe animation system, or general collision/physics engine. 2048 uses a simple width transition; Breakout uses basic AABB and axis reflection.
 - Canvas redraws reuse retained pixels. Snake changes at most the head, tail and food cells after the first paint. Breakout paints old/new entity rectangles and keeps bricks as separate Views. This limits raster command count, but display invalidation and PSRAM/QSPI flush timing still require measurement on the board. The simulator proves structure and visible pixels, not FPS.
 - IMU `ax`/`ay` signs and the 2.4 m/s² steering threshold are default estimates. Physical board tests must tune direction and sensitivity, verify round-edge touch, audio latency/level, actual frame pacing, and KV persistence through restart.
+## r37 / M5 Dialog、Toast 与 shell spacing
+
+- `runtime/shell.js` 是可选 bundle 模块。导入后 `lume.theme.set({colors, radius, spacing, fontScale})` 接受 `spacing` 非负整数像素；未显式设置 `View.style.padding` / `gap` 时，两者使用此值。局部显式值（含单边 padding）优先；换主题会更新继承值。未导入 shell 的内嵌 prelude 仍只有原有 colors/radius/fontScale 语义。本轮为满足零固件改动，没有修改内嵌 prelude。
+- Dialog 只支持居中卡片和堆叠，不支持拖拽移动。全屏遮罩注册点击处理以拦截下层触摸；`modal:false` 仅禁止点遮罩关闭。bundle 暂停/替换时清理组件。真实 LVGL 触摸命中仍待接板验收。
+- Toast 是单实例，新 `show()` 顶替当前并重置显示时长；淡出 180ms 后移除。浮层不注册点击处理，不应拦截触摸；真机触摸待验收。

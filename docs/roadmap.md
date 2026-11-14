@@ -53,6 +53,8 @@ are unchanged because full scope and on-device acceptance are still pending:
   and simulator E2E screenshots. Still JS-only: bundled by the CLI rather than
   embedded in firmware, no bundle switching (`onLaunch` only logs), no icon/theme
   system, no CI harness run, no site API docs. On-device feel pending board bring-up.
+  r37 adds optional `Dialog` and `Toast`, plus shell-side `theme.spacing` defaults;
+  `examples/files` uses the deletion dialog. Component library acceptance remains pending.
 - **Docs site + example gallery**: bilingual static site (`website/`, six pages) and
   `.github/workflows/pages.yml` are in place. The gallery does not list `shell_demo`
   yet; Pages triggers only on `website/**`; live deployment is not verifiable from
