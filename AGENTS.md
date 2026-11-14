@@ -50,6 +50,7 @@ PLAYWRIGHT_MODULE=/path/to/playwright node tools/simulator/verify.js
 # Tests
 node tests/<harness>.js                 # JS host harnesses, run individually
 npm test --prefix tools/lume           # node --test, CLI unit tests
+python3 scripts/gen_api_docs.py        # regenerate website/api.html from runtime/types/lume.d.ts (--check verifies freshness)
 python3 scripts/check_website.py
 ```
 
