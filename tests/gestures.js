@@ -7,9 +7,7 @@ const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
 const source = fs.readFileSync('firmware/components/lume-engine/lume_scripts.c', 'utf8');
-const block = source.match(/const char lume_prelude_js\[\] =\n([\s\S]*?)\n\nconst char lume_demo_js/);
-assert(block, 'prelude block not found');
-const prelude = [...block[1].matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(m => JSON.parse(m[0])).join('');
+const { prelude } = require('./lib/prelude_runner');
 
 let nextNode = 1;
 const enabled = [];      // nodes for which setGestureEvent was posted

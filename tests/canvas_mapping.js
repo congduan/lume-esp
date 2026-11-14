@@ -1,12 +1,6 @@
 // Host harness for the exact embedded prelude and demo message sequence.
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/lume_scripts.c', 'utf8');
-function extract(name, end) {
-  const part = source.split(`const char ${name}[] =\n`)[1].split(end)[0];
-  return [...part.matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(m => JSON.parse(m[0])).join('');
-}
-const prelude = extract('lume_prelude_js', '\n\nconst char lume_demo_js');
-const demo = extract('lume_demo_js', ';\n');
+const { prelude, demo } = require('./lib/prelude_runner');
 function harness(script) {
   const calls = [], handlers = new Map(); let next = 0;
   const lume = {

@@ -1,7 +1,6 @@
 const fs = require('fs'), vm = require('vm'), zlib = require('zlib'), assert = require('assert');
 const source = fs.readFileSync('firmware/components/lume-engine/lume_scripts.c', 'utf8');
-const block = source.match(/const char lume_prelude_js\[\] =\n([\s\S]*?)\n\nconst char lume_demo_js/);
-const prelude = [...block[1].matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(x => JSON.parse(x[0])).join('');
+const { prelude } = require('./lib/prelude_runner');
 function run(script, size = {width: 1, height: 1}, rc = 0) {
   const calls = []; let id = 0;
   const lume = {image: {sizeOf: () => size, _setSource: (...a) => {calls.push(['source', ...a]); return rc;}},
