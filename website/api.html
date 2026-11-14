@@ -17,6 +17,7 @@
 <tr data-api="lume.theme.set function set(theme: theme): void;" data-name="lume.theme.set"><td><code>lume.theme.set</code></td><td><code>function set(theme: Theme): void;</code></td></tr>
 <tr data-api="lume.theme.get function get(): theme;" data-name="lume.theme.get"><td><code>lume.theme.get</code></td><td><code>function get(): Theme;</code></td></tr>
 <tr data-api="lume.system.log function log(msg: string): void;" data-name="lume.system.log"><td><code>lume.system.log</code></td><td><code>function log(msg: string): void;</code></td></tr>
+<tr data-api="lume.system.warn function warn(msg: string): void;" data-name="lume.system.warn"><td><code>lume.system.warn</code></td><td><code>function warn(msg: string): void;</code></td></tr>
 <tr data-api="lume.system.setinterval function setinterval(cb: () =&gt; void, ms: number): number;" data-name="lume.system.setInterval"><td><code>lume.system.setInterval</code></td><td><code>function setInterval(cb: () =&gt; void, ms: number): number;</code></td></tr>
 <tr data-api="lume.system.settimeout function settimeout(cb: () =&gt; void, ms: number): number;" data-name="lume.system.setTimeout"><td><code>lume.system.setTimeout</code></td><td><code>function setTimeout(cb: () =&gt; void, ms: number): number;</code></td></tr>
 <tr data-api="lume.system.clearinterval function clearinterval(id: number): void;" data-name="lume.system.clearInterval"><td><code>lume.system.clearInterval</code></td><td><code>function clearInterval(id: number): void;</code></td></tr>
@@ -77,7 +78,10 @@
 <tr data-api="lume.net.status function status(): netstatus | number;" data-name="lume.net.status"><td><code>lume.net.status</code></td><td><code>function status(): NetStatus | number;</code></td></tr>
 <tr data-api="lume.net.otastatus function otastatus(): otastatus;" data-name="lume.net.otaStatus"><td><code>lume.net.otaStatus</code></td><td><code>function otaStatus(): OtaStatus;</code></td></tr>
 <tr data-api="lume.net.httpget function httpget(url: string, options?: httpgetoptions): httpresponse | number;" data-name="lume.net.httpGet"><td><code>lume.net.httpGet</code></td><td><code>function httpGet(url: string, options?: HttpGetOptions): HttpResponse | number;</code></td></tr>
+<tr data-api="lume.net.httprequest function httprequest(options: httprequestoptions): httpresponse | number;" data-name="lume.net.httpRequest"><td><code>lume.net.httpRequest</code></td><td><code>function httpRequest(options: HttpRequestOptions): HttpResponse | number;</code></td></tr>
 <tr data-api="lume.net.http.get function get(url: string, options?: httpgetoptions): httpresponse | number;" data-name="lume.net.http.get"><td><code>lume.net.http.get</code></td><td><code>function get(url: string, options?: HttpGetOptions): HttpResponse | number;</code></td></tr>
+<tr data-api="lume.ai.setkey function setkey(key: string): number;" data-name="lume.ai.setKey"><td><code>lume.ai.setKey</code></td><td><code>function setKey(key: string): number;</code></td></tr>
+<tr data-api="lume.ai.chat function chat(options: chatoptions): chatresult | number;" data-name="lume.ai.chat"><td><code>lume.ai.chat</code></td><td><code>function chat(options: ChatOptions): ChatResult | number;</code></td></tr>
 <tr data-api="lume.ble.init function init(): number;" data-name="lume.ble.init"><td><code>lume.ble.init</code></td><td><code>function init(): number;</code></td></tr>
 <tr data-api="lume.ble.start function start(name?: string): number;" data-name="lume.ble.start"><td><code>lume.ble.start</code></td><td><code>function start(name?: string): number;</code></td></tr>
 <tr data-api="lume.ble.stop function stop(): number;" data-name="lume.ble.stop"><td><code>lume.ble.stop</code></td><td><code>function stop(): number;</code></td></tr>

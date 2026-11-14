@@ -826,3 +826,12 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   **板上验证随下次 Linux 固件构建**：状态栏布局（3 元素 space-between 在空标志
   时的表现）与真实 net 状态切换需真机确认。
 
+## r34 AI infrastructure: deferred board acceptance
+
+- `lume.ai.chat()` is synchronous. The JS engine task blocks through network completion, so the loading state may not paint and touch stops responding for up to the 120-second configured cap. An async/SSE client needs an engine event-loop design and is deferred.
+- Nonstreaming responses are capped at 32 KiB. Larger JSON is marked truncated and `chat()` returns `-4`; no partial answer is shown. Request bodies are capped at 16 KiB to bound copies and memory use. The cap accommodates ordinary short message histories but excludes very long system prompts.
+- `examples/ai_chat` cycles preset questions because the UI has no keyboard. It pages answers to respect the existing 256-byte UI text payload cap. Non-ASCII text can hit the byte cap before its 80-character page size.
+- The API key and WiFi credentials are plaintext in NVS. Physical flash readers can recover them. Provision through a private local app; never commit keys. No secure element or encrypted NVS has been added.
+- TLS uses IDF's certificate bundle or a caller-provided CA. Explicit `httpsInsecure` skips validation and is unsafe. A verified TLS handshake requires correct time; SNTP provisioning is a board prerequisite. If clock setup fails, use a local HTTP test server or controlled test-only insecure mode, never production credentials.
+- Host harnesses check request shape, key storage, response/error handling, and a Node local HTTP POST round trip. The latter does not execute ESP-IDF C transport. Real WiFi, TLS, DeepSeek response, and on-device UI behavior await board acceptance.
+

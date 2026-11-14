@@ -669,6 +669,21 @@ declare namespace lume.net {
   /** Synchronous oneshot HTTP GET, primary shape. Object on a completed
     * transfer, negative error code (number) on failure / WiFi down. */
   function httpGet(url: string, options?: HttpGetOptions): HttpResponse | number;
+  interface HttpRequestOptions {
+    url: string;
+    method?: 'GET' | 'POST';
+    headers?: Record<string, string>;
+    body?: string | ArrayBuffer;
+    /** Defaults to 30 seconds; capped at 120 seconds. */
+    timeoutMs?: number;
+    /** PEM CA certificate. Overrides the built-in trust bundle. */
+    caPem?: string;
+    /** Explicitly disable TLS server verification. Unsafe. Defaults to false. */
+    httpsInsecure?: boolean;
+  }
+  /** Synchronous request. Response body is text, capped at 32 KiB.
+   * -1 argument, -2 transport, -3 WiFi state, -5 timeout. */
+  function httpRequest(options: HttpRequestOptions): HttpResponse | number;
 
   interface ScanResult {
     /** AP name, '' for a hidden AP. */
@@ -692,6 +707,26 @@ declare namespace lume.net {
   namespace http {
     function get(url: string, options?: HttpGetOptions): HttpResponse | number;
   }
+}
+
+/** Synchronous OpenAI-compatible chat completion. Blocks UI and touch. */
+declare namespace lume.ai {
+  interface Message { role: 'system' | 'user' | 'assistant'; content: string; }
+  interface ChatOptions {
+    messages: Message[];
+    model?: string;       /* defaults to deepseek-flash */
+    baseUrl?: string;     /* defaults to https://api.deepseek.com */
+    maxTokens?: number;
+    temperature?: number;
+    timeoutMs?: number;   /* defaults 30000, native cap 120000 */
+    caPem?: string;
+    httpsInsecure?: boolean;
+  }
+  interface ChatResult { content: string; usage: unknown; finishReason: string | null; }
+  /** Persists plaintext key in NVS under ai_api_key. Never bundle a real key. */
+  function setKey(key: string): number;
+  /** -1 invalid/key absent, -2 network, -3 HTTP, -4 parse/truncated, -5 timeout. */
+  function chat(options: ChatOptions): ChatResult | number;
 }
 
 /**
@@ -802,6 +837,7 @@ declare namespace lume {
   const imu: typeof lume.imu;
   const storage: typeof lume.storage;
   const net: typeof lume.net;
+  const ai: typeof lume.ai;
   const ble: typeof lume.ble;
   const audio: typeof lume.audio;
   const gesture: typeof lume.gesture;

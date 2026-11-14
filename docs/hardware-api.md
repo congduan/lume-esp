@@ -188,3 +188,18 @@ launcher over the extracted prelude).
 LittleFS write endurance under repeated `lume dev` installs, install time for a
 200 KiB bundle, switch latency numbers, home-grid visuals/touch feel and
 long-running memory fragmentation. See `docs/KNOWN-SIMPLIFICATIONS.md` (r30).
+
+## r34: HTTP requests and AI chat
+
+`lume.net.httpRequest({url, method:'POST', headers, body, timeoutMs, caPem?, httpsInsecure?})`
+returns `{status, body, contentLength, truncated}` or a negative error code. `body` is a string or ArrayBuffer (at most 16 KiB); response text is capped at 32 KiB and backed by PSRAM while in C. Headers are string values, at most 12 entries. Set `Content-Type` to `application/json` or `application/x-www-form-urlencoded` as appropriate. GET remains available through `httpGet`. Request timeout defaults to 30 seconds and is capped at 120 seconds. HTTPS verifies with IDF's certificate bundle by default; `caPem` supplies a custom CA. `httpsInsecure: true` deliberately skips certificate verification and should be used only for a controlled test endpoint. TLS needs a valid system clock for certificate date validation; the app or board should synchronize time with SNTP before a verified HTTPS request. HTTP status codes are returned in the response; `-1` means invalid input, `-2` transport failure, `-3` WiFi unavailable, and `-5` detected timeout.
+
+`lume.ai.setKey(key)` saves a key in the NVS KV namespace under `ai_api_key`; the plaintext key must never be committed to a bundle or repository. `lume.ai.chat({messages, model?, baseUrl?, maxTokens?, temperature?, timeoutMs?})` sends a nonstreaming OpenAI-compatible `POST /chat/completions` and returns `{content, usage, finishReason}`. Defaults: DeepSeek base URL, `deepseek-flash`, 30 seconds. The current model name follows [DeepSeek's official first-call example](https://api-docs.deepseek.com/); the r34 brief used the older `deepseek-chat` name. Override `model` for a compatible provider. The chat call blocks the JS engine, so UI updates and touch delivery stall until the response or timeout. Errors: `-1` invalid request or missing key, `-2` network, `-3` non-2xx HTTP status, `-4` invalid or truncated JSON, `-5` detected timeout.
+
+| Official DeepSeek Chat Completions field | Lume mapping |
+|---|---|
+| `POST /chat/completions`, `Content-Type: application/json`, Bearer key | `httpRequest` URL, headers, NVS key |
+| `model`, `messages`, optional `max_tokens`, `temperature`, `stream` | Request payload; `stream: false` |
+| `choices[0].message.content`, `choices[0].finish_reason`, `usage` | `content`, `finishReason`, `usage` result |
+
+Contract source: [DeepSeek Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/). ESP-IDF transport source: [ESP HTTP Client v5.5](https://docs.espressif.com/projects/esp-idf/en/release-v5.5/esp32/api-reference/protocols/esp_http_client.html).
