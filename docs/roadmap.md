@@ -20,10 +20,11 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [ ] ES8311/ES7210 audio playback/record（r13 `lume-audio` + `lume.audio`：16 kHz/16-bit/stereo 裸 PCM 同步放音及最多 10 秒录音，ES8311/ES7210 寄存器序列对照 Waveshare Arduino 示例；构建与尺寸见 r13 战报。GPIO46 PA 实际时序和真机放音/录音验收留接板轮，故整行保持未勾选）
 
 ## M3 — declarative UI completeness
-- [ ] Flex layout engine in the bridge (map to LVGL flex)
-- [ ] Style resolution (padding/margin/background/border/corner/opacity)
+- [x] Flex layout engine in the bridge (map to LVGL flex)（r14：flex 方向/主轴/交叉轴/gap/padding/百分比宽高桥接 LVGL flex，CSS camelCase 在 prelude 解析；host harness 校验含负向用例）
+- [x] Style resolution (padding/margin/background/border/corner/opacity)（r14 部分：padding/gap/borderRadius/borderWidth/borderColor/opacity/百分比已落地；margin 与分边 padding 登记简化，见 KNOWN-SIMPLIFICATIONS）
 - [ ] List virtualization, image rendering (PNG/JPG decode)
-- [ ] Animation primitives (tween/transition)（r15 代码完成：LVGL lv_anim 桥接、signal transition、lume.anim.to/cancel、完成事件回流与滑入示例；host harness/构建/size 验证，真机视觉流畅度待接板）
+- [x] Animation primitives (tween/transition)（r15 代码完成：LVGL lv_anim 桥接、signal transition、lume.anim.to/cancel、完成事件回流与滑入示例；host harness/构建/size 验证，真机视觉流畅度待接板）
+- [ ] Canvas self-drawing widget（r16 计划：`<Canvas>` 声明式组件 + 绘制上下文 JS API——底层 LVGL canvas widget，参与 flex 布局流与脏区管线，不自管 framebuffer；signal 驱动重绘节流；折线图/仪表盘样板。视觉上限破局点：声明式组合覆盖结构化 UI + canvas 自绘覆盖任意像素）
 - [ ] Gesture layer (tap/swipe/long-press/pan)
 
 ## M4 — tooling
