@@ -25,7 +25,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [ ] List virtualization, image rendering (PNG/JPG decode)（r19：LVGL 原生滚动容器、固定行高窗口化 List、滚动反向事件和 files app 已落地；PNG/JPG 解码仍空缺，真机手感待接板，整行保持未勾）
 - [x] Animation primitives (tween/transition)（r15 代码完成：LVGL lv_anim 桥接、signal transition、lume.anim.to/cancel、完成事件回流与滑入示例；host harness/构建/size 验证，真机视觉流畅度待接板）
 - [ ] Canvas self-drawing widget（r16 代码完成：LVGL RGB565 canvas + PSRAM 预算、Canvas/onDraw 绘制 API、signal effect 重绘与折线图 flex 混排示例；host harness/构建/size 见 r16 战报。真机像素、时序和视觉验收留接板轮，故保持未勾选）
-- [ ] Gesture layer (tap/swipe/long-press/pan)
+- [ ] Gesture layer (tap/swipe/long-press/pan)（r21 代码完成：复用 LVGL 对象事件做按目标命中/滚动仲裁/`lv_indev_get_gesture_dir()`，纯 JS 手势状态机识别六类事件（tap/swipe/longpress/pan/panstart/panend），`lume.gesture.on(target,type,cb)` 返回注销函数；阈值集中在 `lume.gesture.tuning` 并以 LVGL 默认起步；longpress 后不双发 tap/onPress、可滚动容器手势让给 List 滚动。构建绿 + IRAM 16384 不变 + 20 例 host harness + 既有 harness 全绿。真机手感、阈值舒适度、与 List 滚动冲突的实机表现留接板轮，故整行保持未勾选。详见 docs/KNOWN-SIMPLIFICATIONS.md r21）
 - [x] App lifecycle（r17：生命周期钩子、BACK/PAUS/RESM 协议、timer、热替换释放链；真机待验收）
 - [x] Theme system（r18：lume.theme flat color tokens + default radius，命名色通过 owned effect 在 theme.set 时重发 ATTR；fontScale 仅登记，真机视觉待接板验收。详见 docs/brookesia-learnings.md 和 KNOWN-SIMPLIFICATIONS）
 
