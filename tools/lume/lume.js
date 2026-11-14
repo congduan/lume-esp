@@ -5,23 +5,39 @@ import { bundle } from './bundle.js';
 import { create } from './create.js';
 import { CONTROL } from './protocol.js';
 import { openPort } from './transport.js';
+import { openOta, OTA_PORT_DEFAULT } from './ota.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>]\n  lume deploy <dir> [--port <path>]\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n`;
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>]\n  lume deploy <dir> [--port <path>]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>]\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n`;
 
 function parse(args) {
   const [command, ...rest] = args;
   if (command === '--help' || command === '-h' || !command) return { command: 'help' };
   if (command === '--version' || command === '-v') return { command: 'version' };
   if (!['create', 'dev', 'deploy'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
-  let dir, port;
+  let dir, port, ota, token, otaPort;
   for (let i = 0; i < rest.length; i++) {
-    if (rest[i] === '--port' && command !== 'create' && rest[i + 1]) port = rest[++i];
-    else if (!rest[i].startsWith('-') && !dir) dir = rest[i];
-    else throw new Error(`unexpected argument: ${rest[i]}\n${usage}`);
+    const a = rest[i];
+    if (a === '--port' && command !== 'create' && rest[i + 1]) port = rest[++i];
+    else if (a === '--ota' && command === 'deploy' && rest[i + 1]) ota = rest[++i];
+    else if (a === '--token' && command === 'deploy' && rest[i + 1]) token = rest[++i];
+    else if (a === '--ota-port' && command === 'deploy' && rest[i + 1]) otaPort = rest[++i];
+    else if (!a.startsWith('-') && !dir) dir = a;
+    else throw new Error(`unexpected argument: ${a}\n${usage}`);
   }
   if (!dir && command === 'create') throw new Error(`create needs a name\n${usage}`);
-  return { command, dir: dir ?? '.', port };
+  if (ota && !token) throw new Error(`--ota needs --token <t>\n${usage}`);
+  if (token && !ota) throw new Error(`--token requires --ota <ip>\n${usage}`);
+  if (otaPort && !ota) throw new Error(`--ota-port requires --ota <ip>\n${usage}`);
+  if (ota && port) throw new Error(`--ota and --port (serial path) are mutually exclusive\n${usage}`);
+  if (otaPort !== undefined) {
+    const n = Number(otaPort);
+    if (!Number.isInteger(n) || n < 1 || n > 65535) {
+      throw new Error(`--ota-port must be 1..65535 (got ${otaPort})`);
+    }
+    otaPort = n;
+  }
+  return { command, dir: dir ?? '.', port, ota, token, otaPort };
 }
 
 async function runDev(dir, portPath) {
@@ -87,15 +103,21 @@ async function runDev(dir, portPath) {
 }
 
 try {
-  const { command, dir, port } = parse(process.argv.slice(2));
+  const { command, dir, port, ota, token, otaPort } = parse(process.argv.slice(2));
   if (command === 'help') process.stdout.write(usage);
   else if (command === 'version') process.stdout.write(pkg.version + '\n');
   else if (command === 'create') process.stdout.write(`Created ${await create(dir)}\n`);
   else if (command === 'dev') await runDev(dir, port);
   else {
     const source = await bundle(dir);
-    const serial = await openPort(port);
-    try { await serial.push(source); process.stdout.write(`Deployed ${source.length} bytes to ${serial.path}\n`); }
-    finally { await serial.close(); }
+    if (ota) {
+      const device = await openOta(ota, token, otaPort ?? OTA_PORT_DEFAULT);
+      try { await device.push(source); process.stdout.write(`Deployed ${source.length} bytes to ${device.address} (WiFi OTA)\n`); }
+      finally { await device.close(); }
+    } else {
+      const serial = await openPort(port);
+      try { await serial.push(source); process.stdout.write(`Deployed ${source.length} bytes to ${serial.path}\n`); }
+      finally { await serial.close(); }
+    }
   }
 } catch (err) { process.stderr.write(`lume: ${err.message}\n`); process.exitCode = 1; }
