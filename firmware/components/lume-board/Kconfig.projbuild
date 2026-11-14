@@ -1,0 +1,25 @@
+menu "Lume board"
+
+    choice LUME_BOARD
+        prompt "Lume target board"
+        default LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_16
+        help
+            Select the hardware board profile compiled into the firmware.
+            Each board supplies its pin map, display geometry, I2C addresses,
+            QSPI timing and panel init sequence as compile-time constants in
+            firmware/boards/<CONFIG_LUME_BOARD_DIR>/lume_board_profile.h.
+            See firmware/boards/README.md for how to add a board.
+        config LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_16
+            bool "Waveshare ESP32-S3-Touch-AMOLED-2.16"
+    endchoice
+
+    # Hidden: derived from the choice, consumed by lume-board/CMakeLists.txt
+    # to put the selected board's profile header on the public include path.
+    config LUME_BOARD_DIR
+        string
+        default "waveshare_esp32_s3_touch_amoled_2_16" if LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_16
+        help
+            Directory under firmware/boards/ that holds the selected profile.
+            Add a "default <dir> if LUME_BOARD_<NEW>" line when adding a board.
+
+endmenu
