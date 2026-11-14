@@ -36,6 +36,7 @@
 #include "lume_net.h"
 #include "lume_audio.h"
 #include "lume_power.h"
+#include "lume_image.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -270,6 +271,42 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
         return JS_ThrowInternalError(ctx, "lume: ui queue full");
     }
     return JS_NewInt32(ctx, id);
+}
+
+static JSValue js_image_size_of(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    size_t len = 0;
+    uint8_t *bytes = argc > 0 ? JS_GetArrayBuffer(ctx, &len, argv[0]) : NULL;
+    uint16_t w = 0, h = 0;
+    int r = lume_image_size_of(bytes, len, &w, &h);
+    if (r) return JS_NewInt32(ctx, r);
+    JSValue result = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, result, "width", JS_NewInt32(ctx, w));
+    JS_SetPropertyStr(ctx, result, "height", JS_NewInt32(ctx, h));
+    return result;
+}
+
+static JSValue js_image_set_source(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    int32_t id = 0;
+    if (argc < 2 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
+        id < 1 || id >= LUME_MAX_NODES || !s_node_live[id])
+        return JS_NewInt32(ctx, -1);
+    size_t len = 0;
+    uint8_t *bytes = JS_GetArrayBuffer(ctx, &len, argv[1]);
+    if (!bytes) return JS_NewInt32(ctx, -1);
+    uint8_t *pixels = NULL, alpha = 0;
+    uint16_t w = 0, h = 0;
+    int r = lume_image_decode(bytes, len, &pixels, &w, &h, &alpha);
+    if (r) return JS_NewInt32(ctx, r);
+    lume_ui_msg_t m; msg_init(&m);
+    m.op = LUME_OP_IMAGE_SOURCE;
+    m.node_id = id; m.image_pixels = pixels;
+    m.image_w = w; m.image_h = h; m.image_alpha = alpha;
+    if (lume_ui_bridge_post(&m) != 0) { heap_caps_free(pixels); return JS_NewInt32(ctx, -3); }
+    return JS_NewInt32(ctx, 0);
 }
 
 static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
@@ -1366,6 +1403,10 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_create_node, "createNode", 2));
     JS_SetPropertyStr(ctx, lume, "canvasDraw", JS_NewCFunction(ctx, js_canvas_draw, "canvasDraw", 9));
     JS_SetPropertyStr(ctx, lume, "canvasInvalidate", JS_NewCFunction(ctx, js_canvas_invalidate, "canvasInvalidate", 1));
+    JSValue image = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, image, "sizeOf", JS_NewCFunction(ctx, js_image_size_of, "sizeOf", 1));
+    JS_SetPropertyStr(ctx, image, "_setSource", JS_NewCFunction(ctx, js_image_set_source, "_setSource", 2));
+    JS_SetPropertyStr(ctx, lume, "image", image);
     JS_SetPropertyStr(ctx, lume, "setAttr",
                       JS_NewCFunction(ctx, js_set_attr, "setAttr", 3));
     JS_SetPropertyStr(ctx, lume, "nativeAnimate",

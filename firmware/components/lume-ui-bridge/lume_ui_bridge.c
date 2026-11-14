@@ -21,7 +21,7 @@
 #include "lume_ui_bridge.h"
 #include "lume_engine.h"     /* r4 P2: lume_engine_notify_removed() */
 
-_Static_assert(sizeof(lume_ui_msg_t) == 96, "UI queue record must remain 96 bytes");
+_Static_assert(sizeof(lume_ui_msg_t) <= 112, "UI queue record size budget");
 
 static const char *TAG = "lume-ui-bridge";
 #define UI_QUEUE_LEN 32
@@ -35,12 +35,25 @@ static uint8_t s_flow[LUME_MAX_NODES];            /* wire flow, for stretch axis
 static uint8_t s_main[LUME_MAX_NODES], s_cross[LUME_MAX_NODES];
 static uint8_t s_explicit_width[LUME_MAX_NODES], s_explicit_height[LUME_MAX_NODES];
 static uint16_t *s_canvas_pixels[LUME_MAX_NODES];
+static uint8_t *s_image_pixels[LUME_MAX_NODES];
+static lv_image_dsc_t s_image_dsc[LUME_MAX_NODES];
 static uint16_t s_canvas_w[LUME_MAX_NODES], s_canvas_h[LUME_MAX_NODES];
 static uint16_t s_canvas_stride[LUME_MAX_NODES]; /* RGB565 pixels per row */
 static size_t s_canvas_bytes;
 #define CANVAS_BUDGET (480u * 480u * 2u)
 static void clear_subtree(lv_obj_t *obj);
 static void release_dead_canvases(void);
+static void release_dead_images(void)
+{
+    for (uint16_t id = 1; id < LUME_MAX_NODES; id++) {
+        if (s_image_pixels[id] && !s_nodes[id]) {
+            lv_image_cache_drop(&s_image_dsc[id]);
+            heap_caps_free(s_image_pixels[id]);
+            s_image_pixels[id] = NULL;
+            memset(&s_image_dsc[id], 0, sizeof(s_image_dsc[id]));
+        }
+    }
+}
 static lume_anim_sink_fn s_anim_sink;
 static lume_press_sink_fn s_press_sink;           /* set once by engine task */
 static lume_scroll_sink_fn s_scroll_sink;
@@ -235,6 +248,7 @@ static void apply_reset(void)
     clear_subtree(screen);
     lv_obj_clean(screen);
     release_dead_canvases();
+    release_dead_images();
     ESP_LOGI(TAG, "app UI reset complete");
 }
 
@@ -249,6 +263,7 @@ static void apply_create(const lume_ui_msg_t *m)
         clear_subtree(old);
         lv_obj_delete(old);
         release_dead_canvases();
+        release_dead_images();
     }
     lv_obj_t *parent = (m->parent_id == 0)
                            ? lv_screen_active()
@@ -299,6 +314,10 @@ static void apply_create(const lume_ui_msg_t *m)
             s_canvas_bytes += bytes;
             break;
         }
+        case LUME_NODE_IMAGE:
+            obj = lv_image_create(parent);
+            lv_image_set_inner_align(obj, LV_IMAGE_ALIGN_CONTAIN);
+            break;
         default:
             ESP_LOGE(TAG, "create: unknown kind %u", (unsigned)m->kind);
             return;
@@ -481,6 +500,32 @@ static void release_dead_canvases(void)
     }
 }
 
+static void apply_image_source(const lume_ui_msg_t *m)
+{
+    uint16_t id = m->node_id;
+    if (!m->image_pixels) return;
+    if (!id || id >= LUME_MAX_NODES || !s_nodes[id] || s_kinds[id] != LUME_NODE_IMAGE) {
+        heap_caps_free(m->image_pixels);
+        return;
+    }
+    /* LVGL sees only the native RGB565 descriptor, never JS-owned encoded bytes. */
+    lv_image_dsc_t *d = &s_image_dsc[id];
+    uint8_t *old = s_image_pixels[id];
+    if (old) lv_image_cache_drop(d);
+    memset(d, 0, sizeof(*d));
+    d->header.magic = LV_IMAGE_HEADER_MAGIC;
+    d->header.cf = m->image_alpha ? LV_COLOR_FORMAT_RGB565A8 : LV_COLOR_FORMAT_RGB565;
+    d->header.w = m->image_w; d->header.h = m->image_h;
+    d->header.stride = m->image_w * 2;
+    d->data_size = (uint32_t)m->image_w * m->image_h * (m->image_alpha ? 3 : 2);
+    d->data = m->image_pixels;
+    s_image_pixels[id] = m->image_pixels;
+    lv_image_set_src(s_nodes[id], d);
+    if (!s_explicit_width[id]) lv_obj_set_width(s_nodes[id], m->image_w);
+    if (!s_explicit_height[id]) lv_obj_set_height(s_nodes[id], m->image_h);
+    if (old) heap_caps_free(old);
+}
+
 /* Raster commands are applied only by the LVGL timer. The buffer belongs to
  * the canvas and is never shared with the engine; one final invalidate per
  * onDraw run avoids lv_canvas_set_px's per-pixel invalidation. */
@@ -592,6 +637,7 @@ static void apply_remove(const lume_ui_msg_t *m)
     clear_subtree(obj);   /* purge this node AND every descendant table entry */
     lv_obj_delete(obj);   /* deletes the whole LVGL subtree */
     release_dead_canvases();
+    release_dead_images();
     ESP_LOGI(TAG, "remove id=%u (subtree purged, %d js owners)",
              (unsigned)m->node_id, n_purged);
     for (int i = 0; i < n_purged; i++) {
@@ -721,6 +767,7 @@ void lume_ui_bridge_drain(void)
             case LUME_OP_ANIMATE: apply_animate(&m); break;
             case LUME_OP_ANIMATE_CANCEL: cancel_anim(m.node_id, m.attr); break;
             case LUME_OP_CANVAS_DRAW: apply_canvas_draw(&m); break;
+            case LUME_OP_IMAGE_SOURCE: apply_image_source(&m); break;
             case LUME_OP_CANVAS_INVALIDATE:
                 if (m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) lv_obj_invalidate(s_nodes[m.node_id]);
                 break;

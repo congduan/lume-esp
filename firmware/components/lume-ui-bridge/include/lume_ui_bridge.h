@@ -33,6 +33,7 @@ typedef enum {
     LUME_NODE_TEXT,
     LUME_NODE_BUTTON,
     LUME_NODE_CANVAS,
+    LUME_NODE_IMAGE,
 } lume_node_kind_t;
 
 /* set-attr attribute ids. PARENT is the "append child" primitive: View()
@@ -88,6 +89,7 @@ typedef enum {
     LUME_OP_CANVAS_INVALIDATE,
     LUME_OP_RESET,             /* release all app nodes/canvases on LVGL task */
     LUME_OP_SET_GESTURE,       /* r21: register LVGL pointer-event callbacks on node_id */
+    LUME_OP_IMAGE_SOURCE,      /* owned PSRAM RGB565/RGB565A8 payload */
 } lume_op_t;
 
 typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
@@ -108,13 +110,16 @@ typedef struct {
     int32_t  value;                    /* numeric attr value */
     char     text[LUME_TEXT_MAX];      /* inline, NUL-terminated string */
     /* Animation extension: entire sizeof(lume_ui_msg_t) is copied by Queue A;
-     * this protocol is 96 bytes on ESP32 (76-byte base + 20-byte extension). */
+ * this protocol was 96 bytes before the image-source pointer extension. */
     int32_t  from, to;                 /* from ignored when has_from == 0 */
     uint32_t duration_ms, token;       /* token 0 means no completion event */
     uint8_t  easing, has_from;
     /* Canvas draw: attr=opcode, value=color, from/to=x/y,
      * duration_ms/token=w/h or x2/y2, draw_width=stroke/size. */
     uint16_t draw_width;
+    void *image_pixels;                  /* IMAGE_SOURCE: ownership passes to queue on success */
+    uint16_t image_w, image_h;
+    uint8_t image_alpha;
 } lume_ui_msg_t;
 
 /* How the bridge hands a CLICKED event back to the engine task. Registered by
