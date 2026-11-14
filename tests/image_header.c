@@ -19,5 +19,10 @@ int main(void)
     puts("PASS bad bytes rejected");
     assert(lume_image_size_of(NULL, 0, &w, &h) == -1);
     puts("PASS invalid argument error code");
+    const uint8_t red_rgba[] = {255, 0, 0, 255};
+    uint8_t red_565a8[3] = {0};
+    assert(lume_image_rgba_to_rgb565a8(red_rgba, 1, red_565a8) == 0);
+    assert(red_565a8[0] == 0x00 && red_565a8[1] == 0xf8 && red_565a8[2] == 0xff);
+    puts("PASS 1x1 opaque red RGBA to exact RGB565A8 bytes");
     return 0;
 }

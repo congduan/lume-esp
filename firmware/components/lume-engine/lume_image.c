@@ -50,14 +50,7 @@ int lume_image_decode(const uint8_t *b, size_t n, uint8_t **pixels,
         if (err || dw != *w || dh != *h || !rgba) {
             lv_free(rgba); heap_caps_free(out); return err == 83 ? -3 : -2;
         }
-        bool alpha = false;
-        for (size_t i = 0; i < count; i++) {
-            uint8_t *p = rgba + 4 * i;
-            uint16_t v = (uint16_t)((p[0] & 0xf8) << 8 | (p[1] & 0xfc) << 3 | p[2] >> 3);
-            out[2*i] = v & 255; out[2*i+1] = v >> 8;
-            out[2*count+i] = p[3];
-            if (p[3] != 255) alpha = true;
-        }
+        uint8_t alpha = lume_image_rgba_to_rgb565a8(rgba, count, out);
         lv_free(rgba);
         *has_alpha = alpha;
     } else {
