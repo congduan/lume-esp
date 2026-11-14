@@ -37,7 +37,7 @@ for (const style of [{width:'101%'}, {padding:'8'}, {background:'#bad'}, {opacit
 console.log('PASS invalid percentage/metric/color/opacity rejected in prelude');
 console.log('PASS all style mapping cases');
 
-const demoBlock = source.match(/const char lume_demo_js\[\] =\n([\s\S]*?);\s*$/);
+const demoBlock = source.match(/const char lume_demo_js\[\] =\n([\s\S]*?);\n/);
 assert(demoBlock, 'embedded demo found');
 const embeddedDemo = [...demoBlock[1].matchAll(/^"(?:\\.|[^"\\])*"/gm)]
   .map(m => JSON.parse(m[0])).join('');

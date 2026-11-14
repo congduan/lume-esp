@@ -46,7 +46,7 @@ assert.deepStrictEqual(rows(), []);
 pass('disposed node stops receiving theme updates');
 assert.throws(() => run("View({style:{background:'missing'}})"), /expected #RRGGBB/);
 pass('unknown token falls through to literal parser');
-const demoBlock = source.match(/const char lume_demo_js\[\] =\n([\s\S]*?);\s*$/);
+const demoBlock = source.match(/const char lume_demo_js\[\] =\n([\s\S]*?);\n/);
 const demo = [...demoBlock[1].matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(m => JSON.parse(m[0])).join('');
 let demoMessages = [], demoId = 0;
 const demoCtx = vm.createContext({lume: {

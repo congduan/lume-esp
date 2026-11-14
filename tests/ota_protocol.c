@@ -35,7 +35,7 @@ static int g_checks;
 
 /* ---------------- event recorder (one parser instance) ---------------- */
 typedef struct {
-    int      data, back, pause, resume, err;
+    int      data, back, pause, resume, err, cmd;
     size_t   len;
     char     reason[32];
     uint8_t  payload[2048];
@@ -58,6 +58,9 @@ static void rec_event(lume_frame_ev_t ev, const uint8_t *payload, size_t len,
     case LUME_FRAME_EV_BACK:   r->back++;   break;
     case LUME_FRAME_EV_PAUSE:  r->pause++;  break;
     case LUME_FRAME_EV_RESUME: r->resume++; break;
+    /* r30 command frames are covered by tests/apps_protocol.c; this harness
+     * only asserts the app-frame path, so a command frame is counted apart. */
+    case LUME_FRAME_EV_CMD:    r->cmd++;    break;
     case LUME_FRAME_EV_ERR:
         r->err++;
         r->len = len;

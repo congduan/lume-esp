@@ -22,11 +22,15 @@ function runApp(script, options = {}) {
   const emit = (...message) => { messages.push(message); options.onMessage?.(message); };
   const files = options.files || { '/': ['demo.txt', 'photos'], '/photos/': ['image.raw'] };
   const Fs = {
+    mounted: () => true,
     list: p => [...(files[p] || [])],
     exists: p => p in files || (!p.endsWith('/') && Object.values(files).some(a => a.includes(p.split('/').at(-1)))),
     remove: p => { const dir = p.slice(0, p.lastIndexOf('/') + 1); files[dir] = (files[dir] || []).filter(n => n !== p.slice(dir.length)); return 0; },
     read: () => -2, write: () => -2,
   };
+  // r30 multi-app store stand-in: options.apps = { id: {label,icon,color} }.
+  const installedApps = { ...(options.apps || {}) };
+  let currentApp = options.currentApp || '';
   const lume = {
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
@@ -44,7 +48,14 @@ function runApp(script, options = {}) {
       usbConnected: () => 1, chargingStatus: () => 2, dieTempRaw: () => 6900,
       powerOff: () => 0,
     },
-    power: { _sleepNow: () => 0, _wake: () => 0 }, net: { deinit: () => 0 },
+    power: { _sleepNow: () => 0, _wake: () => 0 },
+    net: {
+      DISCONNECTED: 0, CONNECTING: 1, CONNECTED: 2, GOT_IP: 3,
+      init: () => 0, deinit: () => 0, connect: () => 0, disconnect: () => 0,
+      status: () => ({ state: 0, ip: null }),
+      otaStatus: () => ({ running: false, wifiReady: false, tokenReady: false, port: 8765, token: '' }),
+      httpGet: () => -3,
+    },
     // Host-side BLE stand-in: no radio, no stack. Harnesses can override any
     // method with options.ble (see tests/ble.js); the simulator uses these.
     ble: {
@@ -54,7 +65,26 @@ function runApp(script, options = {}) {
       write: () => 0, read: () => null,
       ...(options.ble || {}),
     },
-    storage: { Fs, mounted: () => true },
+    storage: {
+      Fs, mounted: () => true,
+      kv: { set: () => 0, get: () => null, remove: () => 0, keys: () => [], clear: () => 0 },
+    },
+    // Host-side multi-app stand-in. list()/meta() mirror the native contract
+    // (meta returns the JSON text, -4 when absent); launch()/home() only RECORD
+    // the request — the host harness never tears a runtime down.
+    apps: {
+      list: () => Object.keys(installedApps),
+      meta: id => (id in installedApps ? JSON.stringify(installedApps[id]) : -4),
+      current: () => currentApp,
+      launch: id => { emit('launch', id); currentApp = id; options.onLaunch?.(id); return 0; },
+      home: () => { emit('home'); currentApp = ''; return 0; },
+      remove: id => {
+        if (!(id in installedApps)) return -4;
+        delete installedApps[id];
+        return 0;
+      },
+      mounted: () => true,
+    },
     image: { sizeOf: () => -1, _setSource: () => -1 },
   };
   const ctx = vm.createContext({ lume, Fs, console, setTimeout, clearTimeout, ArrayBuffer, Uint8Array });
