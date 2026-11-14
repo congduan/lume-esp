@@ -2,6 +2,51 @@
 (function () {
   var shell = lume.ui && lume.ui.shell || {};
   var cleanups = {};
+  /* Shell-owned spacing extension: the embedded prelude remains unchanged. */
+  var nativeThemeSet = lume.theme.set, nativeThemeGet = lume.theme.get;
+  var spacing, spaced = {};
+  lume.theme.set = function (next) {
+    if (!next || typeof next !== 'object' || Array.isArray(next)) return nativeThemeSet(next);
+    var value = next.spacing;
+    if (value !== undefined && (typeof value !== 'number' || !isFinite(value) || value < 0 || Math.floor(value) !== value))
+      throw new Error('lume: theme spacing must be nonnegative integer pixels');
+    nativeThemeSet(next);
+    spacing = value;
+    Object.keys(spaced).forEach(function (id) {
+      var record = spaced[id];
+      if (record.padding) {
+        lume.setAttr(Number(id), 10, spacing === undefined ? 0 : spacing);
+        Object.keys(record.sides).forEach(function (key) { lume.setAttr(Number(id), Number(key), record.sides[key]); });
+      }
+      if (record.gap) lume.setAttr(Number(id), 11, spacing === undefined ? 0 : spacing);
+    });
+  };
+  lume.theme.get = function () { var current = nativeThemeGet(); current.spacing = spacing; return current; };
+  var nativeView = View;
+  var nativeDispatchRemove = __lume_dispatchRemove;
+  __lume_dispatchRemove = function (id) { delete spaced[id]; nativeDispatchRemove(id); };
+  View = function (props, children) {
+    props = props || {};
+    var style = props.style || {};
+    if (spacing === undefined || (style.padding !== undefined && style.gap !== undefined)) return nativeView(props, children);
+    var copy = {}, styled = {};
+    Object.keys(props).forEach(function (key) { copy[key] = props[key]; });
+    Object.keys(style).forEach(function (key) { styled[key] = style[key]; });
+    var inheritPadding = style.padding === undefined, inheritGap = style.gap === undefined;
+    if (inheritPadding) styled.padding = spacing;
+    if (inheritGap) styled.gap = spacing;
+    copy.style = styled;
+    var id = nativeView(copy, children);
+    if (inheritPadding || inheritGap) {
+      var sides = {};
+      if (inheritPadding) ['Top','Right','Bottom','Left'].forEach(function (side, i) {
+        var key = 'padding' + side;
+        if (style[key] !== undefined) sides[30 + i] = style[key];
+      });
+      spaced[id] = { padding: inheritPadding, gap: inheritGap, sides: sides };
+    }
+    return id;
+  };
   function positive(name, value, fallback, max) {
     var n = value === undefined ? fallback : value;
     if (typeof n !== 'number' || !isFinite(n) || Math.floor(n) !== n || n < 1 || n > max)
