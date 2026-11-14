@@ -958,11 +958,21 @@ static JSValue js_net_http_get(JSContext *ctx, JSValueConst this_val,
         JS_FreeValue(ctx, t);
 
         JSValue rt = JS_GetPropertyStr(ctx, argv[1], "responseType");
+        if (JS_IsException(rt)) {
+            /* property getter threw — propagate instead of leaking (r11 review #3) */
+            JS_FreeCString(ctx, url);
+            return JS_EXCEPTION;
+        }
         if (JS_IsString(rt)) {
             const char *s = JS_ToCString(ctx, rt);
             if (s != NULL) {
                 as_arraybuffer = (strcmp(s, "arraybuffer") == 0);
                 JS_FreeCString(ctx, s);
+            } else {
+                /* JS_ToCString failed: exception pending — propagate */
+                JS_FreeValue(ctx, rt);
+                JS_FreeCString(ctx, url);
+                return JS_EXCEPTION;
             }
         }
         JS_FreeValue(ctx, rt);

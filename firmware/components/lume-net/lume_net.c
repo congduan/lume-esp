@@ -185,10 +185,28 @@ int lume_net_init(void)
         }
     }
     if (s_sta_netif == NULL) {
-        s_sta_netif = esp_netif_create_default_wifi_sta();
+        /* Raw esp_netif_new over the default-STA inherent config instead of
+         * esp_netif_create_default_wifi_sta(): the helper runs internal
+         * assert/ESP_ERROR_CHECK paths that can abort() before returning
+         * NULL, breaking the non-fatal error contract (Codex r11 review #2).
+         * Teardown pairs with esp_netif_destroy_default_wifi() which accepts
+         * netifs created either way. */
+        esp_netif_config_t cfg = ESP_NETIF_DEFAULT_WIFI_STA();
+        s_sta_netif = esp_netif_new(&cfg);
         if (s_sta_netif == NULL) {
-            ESP_LOGW(TAG, "esp_netif_create_default_wifi_sta returned NULL");
+            ESP_LOGW(TAG, "esp_netif_new(WIFI STA default) returned NULL");
             return LUME_NET_ERR_DRIVER;
+        }
+        /* attach the netif to the default WiFi driver: same calls as the
+         * helper, but each failure is reported instead of abort()ing. */
+        esp_err_t attach_err = esp_netif_attach_wifi_station(s_sta_netif);
+        if (attach_err == ESP_OK) {
+            attach_err = esp_wifi_set_default_wifi_sta_handlers();
+        }
+        if (attach_err != ESP_OK) {
+            esp_netif_destroy(s_sta_netif);
+            s_sta_netif = NULL;
+            return map_err(attach_err, "esp_netif_attach_wifi_station");
         }
     }
     if (!s_wifi_inited) {
@@ -244,8 +262,16 @@ int lume_net_deinit(void)
     if (r != LUME_NET_OK) {
         return r;
     }
-    esp_wifi_disconnect();
-    esp_wifi_stop();
+    /* Best-effort teardown: run every step, remember the FIRST failure and
+     * report it — a silent success could leave half a live WiFi stack
+     * (Codex r11 review #4). Subsequent steps still run so the stack shuts
+     * down as much as possible regardless. */
+    int tear_err = LUME_NET_OK;
+    esp_err_t e;
+    e = esp_wifi_disconnect();
+    if (e != ESP_OK && tear_err == LUME_NET_OK) tear_err = map_err(e, "esp_wifi_disconnect");
+    e = esp_wifi_stop();
+    if (e != ESP_OK && tear_err == LUME_NET_OK) tear_err = map_err(e, "esp_wifi_stop");
     if (s_handlers_on) {
         esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, s_wifi_hdl);
         esp_event_handler_instance_unregister(IP_EVENT, ESP_EVENT_ANY_ID, s_ip_hdl);
@@ -256,7 +282,10 @@ int lume_net_deinit(void)
         s_wifi_inited = false;
     }
     if (s_sta_netif != NULL) {
-        esp_netif_destroy(s_sta_netif);
+        /* Paired with esp_netif_create_default_wifi_sta(): this also clears
+         * the netif-related handlers/refs the create helper registered, so
+         * deinit -> init can be re-entered cleanly (Codex r11 review #1). */
+        esp_netif_destroy_default_wifi(s_sta_netif);
         s_sta_netif = NULL;
     }
     /* s_netif_inited / s_loop_ready intentionally RETAINED: the netif layer
@@ -269,7 +298,7 @@ int lume_net_deinit(void)
     portEXIT_CRITICAL(&s_state_mux);
     s_ready = false;
     s_init_ok = false;   /* allow re-init; retained flags make it resumable */
-    return LUME_NET_OK;
+    return tear_err;
 }
 
 int lume_net_connect(const char *ssid, size_t ssid_len,

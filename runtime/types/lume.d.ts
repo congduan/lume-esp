@@ -328,6 +328,10 @@ declare namespace lume.net {
     /** network timeout in ms; <=0 -> 5000, clamped to 30000. */
     timeoutMs?: number;
     /** 'text' (default) -> string body; 'arraybuffer' -> ArrayBuffer body. */
+    /**
+     * 'text' (default) or 'arraybuffer'. Unknown string values fall back to
+     * text at runtime (string-compare based coercion).
+     */
     responseType?: 'text' | 'arraybuffer';
   }
   interface HttpResponse {
