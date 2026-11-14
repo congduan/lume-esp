@@ -162,11 +162,20 @@ byte stream as app bundles (see `docs/build.md` for the wire table and
 `lume-hotreload/include/lume_cmd.h` for the grammar). `STORE` is the only
 command that writes an app; the firmware never parses `meta.json`.
 
-### Not verified
+### Verified on the board (r30)
+
+CI-built firmware flashed over USB; boot resumed `dashboard` from `/apps`,
+`lume apps list` listed three installed apps, `lume apps launch device_monitor`
+switched and the previous app's timers stopped, `lume apps home` returned to the
+grid and tapping a tile started that app again (a hardware reset then booted
+back into it). One defect only surfaced here: `LIST` ran a 2 KiB id table on
+the 4 KiB push-channel RX stack and reset the device before replying; the table
+now lives in PSRAM and both RX stacks are 8 KiB. Host halves stay covered by
+`tests/apps_protocol.c` (wire + grammar) and `tests/apps.js` (prelude +
+launcher over the extracted prelude).
+
+### Still deferred
 
 LittleFS write endurance under repeated `lume dev` installs, install time for a
-200 KiB bundle, switch latency, home-grid visuals/touch feel and real
-multi-app usage on the board are **deferred to board bring-up**. Only the host
-halves are checked: `tests/apps_protocol.c` (wire + grammar) and
-`tests/apps.js` (prelude + launcher over the extracted prelude). See
-`docs/KNOWN-SIMPLIFICATIONS.md` (r30).
+200 KiB bundle, switch latency numbers, home-grid visuals/touch feel and
+long-running memory fragmentation. See `docs/KNOWN-SIMPLIFICATIONS.md` (r30).
