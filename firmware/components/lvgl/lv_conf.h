@@ -29,17 +29,20 @@
  * (esp_timer based, 1 ms). Do not re-add the v8 macros here — LVGL 9 ignores
  * them and lv_tick_get() would stay 0, freezing every lv_timer. */
 
-/* Diagnostics: LVGL sysmon performance monitor in LOG mode, so FPS plus the
- * per-frame render / flush split go to the serial console instead of covering
- * the screen. lume_board.c registers an lv_log print callback that forwards to
- * ESP_LOGI("lvgl", ...) and stubs LV_SYSMON_GET_IDLE (CPU% is meaningless with
- * LV_USE_OS 0, which has no idle accounting). Set LV_USE_SYSMON 0 to drop the
- * 300 ms timer and the hidden label once measurements are done. */
-#define LV_USE_SYSMON 1
+/* Diagnostics: LVGL sysmon performance monitor, LOG mode (FPS + render/flush ms
+ * to the serial console instead of covering the screen). OFF by default: the
+ * 300 ms log stream floods the USB-Serial/JTAG console and can crowd out the
+ * hot-reload "RELOAD OK" ACK, which makes `lume deploy` time out even though
+ * the bundle did apply. Flip the three switches to 1 to measure again; see
+ * docs/KNOWN-SIMPLIFICATIONS.md r28 for the numbers it produced.
+ * lume_board.c registers the lv_log print callback and stubs
+ * LV_SYSMON_GET_IDLE (CPU% is meaningless with LV_USE_OS 0: no idle
+ * accounting, so the column always reads 100%). */
+#define LV_USE_SYSMON 0
 #define LV_SYSMON_GET_IDLE lume_sysmon_idle_percent
-#define LV_USE_PERF_MONITOR 1
-#define LV_USE_PERF_MONITOR_LOG_MODE 1
-#define LV_USE_LOG 1
+#define LV_USE_PERF_MONITOR 0
+#define LV_USE_PERF_MONITOR_LOG_MODE 0
+#define LV_USE_LOG 0
 #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
 
 /* Assertions: log and abort */

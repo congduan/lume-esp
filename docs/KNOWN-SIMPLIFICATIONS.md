@@ -642,3 +642,51 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 
   连续 6 s 采样：`E (` 开头日志 **0 条**、`ui queue full` **0 次**、`runtime up` 不再重复（无重启循环）；触摸 raw→panel 坐标映射与 PRESS 回传到 JS 事件循环的链路打通。
 - **仍未验收**：画面观感（颜色/朝向/亮度）、触摸手感与 tap/swipe/longpress/pan 识别、帧率与撕裂、PSRAM draw buffer 下 QSPI DMA 的长期稳定性、音频、WiFi/OTA、BLE、light sleep 电流。本次只证明"LVGL 渲染 + ui-bridge 排空 + 触摸事件"这条最小闭环在真机上跑通，不代表整机验收通过。
+
+## r28 / 真机渲染性能实测（LVGL perf monitor）
+
+- **背景**：真机上切 dark/light 主题时肉眼可见掉帧。分析指向整屏重绘（480x480 RGB565 = 460800 B），但需要客观数据确认瓶颈在渲染还是传输，因此临时启用 LVGL sysmon perf monitor（`LV_USE_SYSMON` + `LV_USE_PERF_MONITOR` + `LV_USE_PERF_MONITOR_LOG_MODE`），日志经 `lv_log_register_print_cb` 转发到 `ESP_LOGI("lvgl-perf")`，并补 `LV_SYSMON_GET_IDLE` 桩（`LV_USE_OS 0` 没有 idle 统计，CPU 列恒为 100%，不可用）。
+- **测量方法**：压测 app 每 2 s 自动 `lume.theme.set()` 切换一次主题（与 `examples/counter` 相同的 7 个节点），串口连续采样 24 s，取 12 个"发生重绘"的 300 ms 窗口。
+- **结果（12 次全部一致，非单次抖动）**：
+
+  ```
+  sysmon: 23 FPS (refr_cnt: 7 | redraw_cnt: 1), refr 9ms (render 39ms | flush 29ms), CPU 100%
+  sysmon: 20 FPS (refr_cnt: 7 | redraw_cnt: 1), refr 9ms (render 40ms | flush 28ms), CPU 100%
+  ```
+
+  | 指标 | 空闲（无重绘） | 切主题（整屏重绘） |
+  |---|---|---|
+  | FPS | 22–26 | 20 |
+  | render | 0 | **39–40 ms** |
+  | flush | 0 | **28–29 ms** |
+  | 合计 | – | **~68 ms**（帧预算 33 ms 的约 2 倍） |
+
+- **结论**：掉帧不是 bug，是当前管线的真实上限。flush 29 ms 对应 460800 B / 29 ms ≈ **15.9 MB/s**，已贴近 40 MHz QSPI × 4 线（理论 20 MB/s）的实用带宽；render 39 ms 是 160 MHz CPU + PSRAM draw buffer 下 480×480 软件渲染的开销。另外**空闲上限只有 22–26 FPS**（不是 30），因为 `lvgl_task` 是 `lv_timer_handler()` + `vTaskDelay(10ms)` 的轮询循环叠加 33 ms 刷新周期。
+- **可选优化（按预期收益排序，均未实施）**：① draw buffer 从 PSRAM 挪到内部 SRAM（render 预计降到 20–25 ms，代价是内部 RAM）；② QSPI 40 → 80 MHz（flush 预计减半到 ~15 ms，需先确认 CO5300 与走线能否稳定）；③ `CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ` 160 → 240（render 再快约 20–30%，功耗上升）。三项全做可把整屏重绘压到 ~30 ms 以内。
+- **副作用（已验证）**：perf monitor 每 300 ms 一条日志会把 USB-Serial/JTAG 控制台塞满，`RELOAD OK` ACK 被挤掉，`lume deploy` 会报 `did not ACK reload within 15000 ms` 但包其实已经生效。因此该开关**默认关闭**（`lv_conf.h` 中 `LV_USE_SYSMON 0`），`lume_board.c` 里的回调与桩用 `#if LV_USE_SYSMON` 保护；需要复测时把 `lv_conf.h` 里 `LV_USE_SYSMON` / `LV_USE_PERF_MONITOR` / `LV_USE_PERF_MONITOR_LOG_MODE` / `LV_USE_LOG` 改回 1 即可。
+- **另一条独立的 deploy 超时路径**：perf 关闭时也复现过——只要 `lume deploy` 紧跟在另一个进程刚关闭串口（例如用 `pyserial` 抓完启动日志）之后，第一次会超时，**原样重试即成功**（`Deployed 1040 bytes`）。所以 ACK 丢失有两个来源：控制台日志占满 CDC，以及端口重开后的时序，后者与 perf monitor 无关，重试即可。
+- **roadmap 不动**：本轮只做测量与开关，没有为性能新增里程碑，`docs/roadmap.md` 未修改。
+
+## r29 / 整屏刷新"线条扫过"：draw buffer 改内部 SRAM + CPU 240 MHz
+
+- **问题**：真机上整屏变色（dark/light 主题切换）能看到一条刷新线从上往下扫。r28 实测该次重绘 `render 39 ms + flush 29 ms ≈ 68 ms`。
+- **对照 esp-brookesia（同板 `waveshare/esp32_s3_touch_amoled_2_16`，源码 git clone 逐行读）**：① SPI/QSPI 总线分支**不设 tear_avoid_mode**（`display_source.cpp:433-452` 只在 MIPI/RGB 分支赋值），即它也没有 TE 防撕裂；② `buffer_height` 默认 **20 行**（`brookesia_gui_lvgl/include/brookesia/gui_lvgl/macro_configs.h:104`），Task 节拍 tick 5 ms + 自适应 delay 10–100 ms；③ 板级 `sdkconfig.defaults.board:15` 为 **CPU 240 MHz**；④ 用 `ESP_LV_ADAPTER_DISPLAY_SPI_WITHOUT_PSRAM_DEFAULT_CONFIG` 创建显示。`esp_lv_adapter` 是私有组件（不在仓库、公开组件仓库亦 `ComponentNotFoundError`），其 buffer 究竟落在 SRAM 还是 PSRAM**无法源码级确认**，只能从宏名推断为内部 SRAM。结论：Brookesia 不是"消除了扫过"，而是条带更细（24 条 × ~1.2 ms）+ 渲染更快，观感更接近整体刷新。
+- **尝试 A（失败，已回退）**：把 draw buffer 改成整屏 480 行 + `LV_DISPLAY_RENDER_MODE_FULL`，期望一帧一次提交。真机日志：
+  ```
+  I (2267) lume-display: CO5300 QSPI + LVGL display up (480x480 RGB565, 2x460800 B PSRAM draw buf)
+  E (2710) spi_master: setup_dma_priv_buffer(1214): Failed to allocate priv TX buffer
+  E (2710) lcd_panel.io.spi: panel_io_spi_tx_color(405): spi transmit (queue) color failed
+  E (2712) lume-display: QSPI flush failed: ESP_ERR_NO_MEM
+  ```
+  根因：在 PSRAM 里的 draw buffer 不是 DMA-capable，`spi_master` 每次传输都要先分配**内部** bounce buffer（`setup_dma_priv_buffer`）并拷贝；48 KB（50 行）能分配到，460800 B（整屏）直接 OOM。所以"全屏 buffer"这条路在 PSRAM 上走不通。
+- **尝试 B（采用）**：① `DRAW_BUF_LINES` 50 → **20**，buffer 改为 `heap_caps_malloc(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA)`（PSRAM 作为兜底），保持 `PARTIAL`——DMA 直接读内部 SRAM，去掉每帧的 bounce 拷贝，条带也从 10 条变 24 条细带；② `CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ` 160 → **240**（`sdkconfig` 与 `sdkconfig.defaults` 同步），降低整屏软件渲染耗时。改动文件：`firmware/components/lume-board/lume_display.c`、`firmware/sdkconfig`、`firmware/sdkconfig.defaults`。
+- **真机验证（构建 → 刷写 hash verified → 启动）**：
+  ```
+  I (886) cpu_start: cpu freq: 240000000 Hz
+  I (2267) lume-display: CO5300 QSPI + LVGL display up (480x480 RGB565, 2x19200 B SRAM draw buf)
+  I (2377) lume-board: board init done: CO5300 QSPI + CST9220 + LVGL pipeline up
+  I (2679) lume-engine: app eval ok; entering event loop
+  ```
+  `E (` 行 **0 条**、无 `QSPI flush failed`；`lume deploy examples/counter` 正常（`Deployed 1040 bytes`）。内部 RAM 代价为 2×19200 B。
+- **仍未验收/未量化**：① 观感上"扫过"是否消除——需要人眼确认，且**理论上仍会存在**：总线时间由 QSPI 40 MHz 决定（≈29 ms/整屏），无法靠缓冲切法消除；② 新配置的 render/flush 数字未复测（本轮结束时 perf monitor 已关闭），r28 的 39/29 ms 是老配置读数；③ 240 MHz 对功耗/发热的影响未测；④ 彻底消除需要 TE 引脚 + vsync 同步，尚未确认该板 TE 是否引到可用 GPIO。
+- **roadmap 不动**：`docs/roadmap.md` 未修改。

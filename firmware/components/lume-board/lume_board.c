@@ -44,8 +44,9 @@ static uint32_t lvgl_tick_get_cb(void)
     return (uint32_t)(esp_timer_get_time() / 1000LL);
 }
 
-/* LV_USE_SYSMON / LV_SYSMON_GET_IDLE. LVGL only implements idle accounting for
- * its OS backends, and this build uses LV_USE_OS 0, so the CPU column is not
+#if LV_USE_SYSMON
+/* LV_SYSMON_GET_IDLE. LVGL only implements idle accounting for its OS
+ * backends, and this build uses LV_USE_OS 0, so the CPU column is not
  * available: report 0% idle (the log line then always says CPU 100%). The
  * meaningful columns are FPS and the render / flush millisecond split.
  * Symbol must be non-static because lv_sysmon.c declares it locally. */
@@ -61,6 +62,7 @@ static void lvgl_log_print_cb(lv_log_level_t level, const char *buf)
     (void)level;
     ESP_LOGI("lvgl-perf", "%s", buf);
 }
+#endif /* LV_USE_SYSMON */
 
 /* M1: the JS demo owns the screen by default. Set LUME_BOARD_LEGACY_DEMO=1
  * to restore the original pure-LVGL proof screen (no JS handoff). */
@@ -188,10 +190,12 @@ esp_err_t lume_board_init(void)
      * JS messages pile up until "ui queue full". */
     lv_tick_set_cb(lvgl_tick_get_cb);
 
+#if LV_USE_SYSMON
     /* Diagnostics: LVGL perf monitor (FPS + render/flush ms) printed through
-     * ESP_LOGI("lvgl-perf") every 300 ms. LOG_MODE keeps the label hidden. */
+     * ESP_LOGI("lvgl-perf") every 300 ms. Off unless lv_conf.h turns it on. */
     lv_log_register_print_cb(lvgl_log_print_cb);
     lv_sysmon_show_performance(NULL);
+#endif
 
     lv_display_t *disp = NULL;
     ESP_RETURN_ON_ERROR(lume_display_init(&disp), TAG, "CO5300/LVGL display init failed");
