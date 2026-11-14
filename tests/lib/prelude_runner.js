@@ -85,6 +85,10 @@ function runApp(script, options = {}) {
       },
       mounted: () => true,
     },
+    gpio: {
+      setPin: () => 0, write: () => 0, read: () => 1, toggle: () => 0,
+      pwmAttach: () => 0, pwmDuty: () => 0, pwmFree: () => 0,
+    },
     image: { sizeOf: () => -1, _setSource: () => -1 },
   };
   const ctx = vm.createContext({ lume, Fs, console, setTimeout, clearTimeout, ArrayBuffer, Uint8Array });
