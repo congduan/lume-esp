@@ -20,6 +20,7 @@ const c = `
 #include <string.h>
 #include <stdio.h>
 #include <sched.h>
+#include <stdatomic.h>
 typedef pthread_mutex_t *SemaphoreHandle_t;
 typedef int *QueueHandle_t;
 typedef struct { int type, node_id; } lume_engine_evt_t;
@@ -37,7 +38,8 @@ static QueueHandle_t s_evt_queue = &queue_handle;
 static char *s_staged_src;
 static size_t s_staged_len;
 static bool s_reload_pending;
-static int frees, superseded, posts, post_result, block_post, entered_post, release_post;
+static int frees, superseded, posts, post_result, block_post;
+static atomic_int entered_post, release_post, b_started;
 static pthread_mutex_t alloc_mutex = PTHREAD_MUTEX_INITIALIZER;
 static void *live[8];
 static void *heap_caps_malloc(size_t n, int caps) {
@@ -63,25 +65,27 @@ static void (*s_result_cb)(bool,size_t,const char *) = result_cb;
 static void xSemaphoreTake(SemaphoreHandle_t m, int wait) { (void)wait; pthread_mutex_lock(m); }
 static void xSemaphoreGive(SemaphoreHandle_t m) { pthread_mutex_unlock(m); }
 static int xQueueSend(QueueHandle_t q, lume_engine_evt_t *e, int wait) {
-  (void)q; (void)e; (void)wait; posts++; entered_post = 1;
-  while (block_post && !release_post) sched_yield();
+  (void)q; (void)e; (void)wait; posts++; atomic_store(&entered_post, 1);
+  while (block_post && !atomic_load(&release_post)) sched_yield();
   return post_result;
 }
 ${body}
 static int a_result, b_result;
 static void *run_a(void *p) { (void)p; a_result = lume_engine_request_reload("A", 1); return NULL; }
-static void *run_b(void *p) { (void)p; b_result = lume_engine_request_reload("B", 1); return NULL; }
+static void *run_b(void *p) { (void)p; atomic_store(&b_started, 1); b_result = lume_engine_request_reload("B", 1); return NULL; }
 static void reset(void) {
   s_staged_src = NULL; s_staged_len = 0; s_reload_pending = false;
-  frees = superseded = posts = entered_post = release_post = 0;
+  frees = superseded = posts = 0;
+  atomic_store(&entered_post, 0); atomic_store(&release_post, 0); atomic_store(&b_started, 0);
 }
 int main(void) {
   pthread_t a, b;
   reset(); post_result = 0; block_post = 1;
   pthread_create(&a, NULL, run_a, NULL);
-  while (!entered_post) sched_yield();
+  while (!atomic_load(&entered_post)) sched_yield();
   pthread_create(&b, NULL, run_b, NULL);
-  release_post = 1;
+  while (!atomic_load(&b_started)) sched_yield();
+  atomic_store(&release_post, 1);
   pthread_join(a, NULL); pthread_join(b, NULL);
   assert(a_result == -1 && b_result == -1);
   assert(frees == 2 && !s_staged_src && !s_reload_pending && posts == 2);
@@ -89,9 +93,10 @@ int main(void) {
 
   reset(); post_result = 1; block_post = 1;
   pthread_create(&a, NULL, run_a, NULL);
-  while (!entered_post) sched_yield();
+  while (!atomic_load(&entered_post)) sched_yield();
   pthread_create(&b, NULL, run_b, NULL);
-  release_post = 1;
+  while (!atomic_load(&b_started)) sched_yield();
+  atomic_store(&release_post, 1);
   pthread_join(a, NULL); pthread_join(b, NULL);
   assert(a_result == 0 && b_result == 0);
   assert(frees == 1 && superseded == 1 && posts == 1);
