@@ -222,6 +222,22 @@ static JSValue js_power_wake(JSContext *ctx, JSValueConst self, int argc, JSValu
     return JS_NewInt32(ctx, lume_power_wake());
 }
 
+/* Board screen geometry as a JS global (__lumeScreen) for the prelude: canvas
+ * clamps and the PSRAM budget read it instead of hard-coded 480 literals.
+ * r31 left these as the one registered exception in the board profile sweep;
+ * C preprocessor macros cannot be interpolated into the lume_scripts.c string
+ * (the host extractor matches one quoted string per line), so the values cross
+ * as runtime properties, written before the prelude is evaluated. */
+static void inject_screen_globals(JSContext *ctx)
+{
+    JSValue global = JS_GetGlobalObject(ctx);
+    JSValue screen = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, screen, "w", JS_NewInt32(ctx, LUME_LCD_H_RES));
+    JS_SetPropertyStr(ctx, screen, "h", JS_NewInt32(ctx, LUME_LCD_V_RES));
+    JS_SetPropertyStr(ctx, global, "__lumeScreen", screen);
+    JS_FreeValue(ctx, global);
+}
+
 static void call_app_hook(const char *name)
 {
     JSValue global = JS_GetGlobalObject(s_ctx);
@@ -2394,6 +2410,7 @@ static void engine_task(void *arg)
         s_rt = rt;
         s_ctx = ctx;
         register_bindings(ctx);                              /* native lume.* */
+        inject_screen_globals(ctx);   /* __lumeScreen for the prelude (r32) */
         lume_ui_bridge_set_anim_sink(lume_engine_post_anim_complete);
         lume_ui_bridge_set_press_sink(lume_engine_post_press); /* re-wire sink */
         lume_ui_bridge_set_scroll_sink(lume_engine_post_scroll);
