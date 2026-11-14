@@ -19,7 +19,8 @@
  *        v
  *   [ Queue B: LVGL -> engine ]  -->  engine task -> JS onPress callback
  *
- * Both queues are single-direction and carry fixed-size, fully-copied records.
+ * Both queues are single-direction and carry fixed-size copied records. Queue
+ * A may also own a separate PSRAM text or image payload referenced by a record.
  * All lv_* calls live on the LVGL task; the bridge post()/sink() helpers only
  * touch FreeRTOS queues and are safe to call from the engine / event context.
  * ------------------------------------------------------------------------ */

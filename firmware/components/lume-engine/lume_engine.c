@@ -5,7 +5,8 @@
  *  - JS lives ONLY on the engine task (pinned to core 1). The runtime, context,
  *    eval and every JS callback execute here and nowhere else.
  *  - Native JS bindings (global `lume` object) never call lv_*. They build a
- *    fixed-size lume_ui_msg_t and post it to the ui-bridge Queue A.
+ *    fixed-size lume_ui_msg_t and post it to the ui-bridge Queue A (text and
+ *    image payloads may be separately owned by the queued record).
  *  - Press events arrive on Queue B (s_evt_queue) from the LVGL task; the
  *    engine loop dispatches them to the global JS function
  *    __lume_dispatchPress(nodeId) defined by the prelude.

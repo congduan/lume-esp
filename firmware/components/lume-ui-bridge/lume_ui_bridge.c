@@ -1166,9 +1166,16 @@ void lume_ui_bridge_drain(void)
     lume_ui_msg_t m;
     while (s_ui_queue != NULL &&
            xQueueReceive(s_ui_queue, &m, 0) == pdTRUE) {
-        /* The inline fallback is bounded; external payload was allocated by
-         * the engine and is freed after every apply path below. */
-        m.text[LUME_TEXT_MAX - 1] = '\0';
+        /* Use the explicit UTF-8 byte count to terminate either payload.
+         * The sender allocated text_len+1 bytes and Queue A owns the copy. */
+        if (m.text_len > LUME_TEXT_LIMIT ||
+            (m.text_heap == NULL && m.text_len >= LUME_TEXT_MAX)) {
+            ESP_LOGE(TAG, "drain: invalid text length %u", (unsigned)m.text_len);
+            heap_caps_free(m.text_heap);
+            continue;
+        }
+        if (m.text_heap) m.text_heap[m.text_len] = '\0';
+        else m.text[m.text_len] = '\0';
         switch (m.op) {
             case LUME_OP_RESET:     apply_reset();       break;
             case LUME_OP_CREATE:    apply_create(&m);    break;
