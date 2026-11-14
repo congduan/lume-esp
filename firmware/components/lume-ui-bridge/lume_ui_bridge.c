@@ -379,6 +379,15 @@ static void apply_create(const lume_ui_msg_t *m)
              * recognizer sees them; style.scroll re-adds the flag
              * (ATTR_SCROLL_DIR != 0 in apply_set_attr). */
             lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+            /* The default theme wraps every bare lv_obj in its `card` style,
+             * which on this panel (DISP_MEDIUM) adds 20px padding on all four
+             * sides plus 12px flex row/column gaps even when the app sets
+             * neither style.padding nor style.gap. Zero them like the
+             * background/border/radius defaults above: unset means 0, and
+             * local styles from PADDING/GAP override these anyway. */
+            lv_obj_set_style_pad_all(obj, 0, 0);
+            lv_obj_set_style_pad_row(obj, 0, 0);
+            lv_obj_set_style_pad_column(obj, 0, 0);
             break;
         case LUME_NODE_TEXT:
             obj = lv_label_create(parent);
