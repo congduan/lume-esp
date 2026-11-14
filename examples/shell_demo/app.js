@@ -15,6 +15,12 @@ View({ style: {
   Text({ text: () => 'page ' + (page() + 1) + ' / 3', style: {} }),
   Button({ title: 'Next', style: { width: 180, height: 48, borderRadius: 12 },
     onPress: () => page.set((page() + 1) % pages.length) }),
+  Button({ title: 'Dialog', style: { width: 180, height: 48 },
+    onPress: () => lume.ui.shell.Dialog({title:'Sample dialog',message:'A shell component demo.',
+      buttons:[{label:'Cancel',style:'plain'},
+        {label:'OK',style:'primary',onPress:() => lume.ui.shell.Toast.show('Confirmed')} ]}) }),
+  Button({ title: 'Toast', style: { width: 180, height: 48 },
+    onPress: () => lume.ui.shell.Toast.show('Saved', {durationMs:2000}) }),
 ]);
 
 lume.ui.shell.StatusBar({ left: 'Shell demo', right: () => 'page ' + (page() + 1),

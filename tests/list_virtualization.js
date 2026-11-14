@@ -104,7 +104,9 @@ ok('bridge throttle and overflow policy are present', () => {
 });
 ok('files example seeds 1000 entries without creating 1000 rows', () => {
   ctx.Fs = {list: () => [], exists: () => false, remove: () => 0};
-  vm.runInContext(fs.readFileSync('examples/files/app.js', 'utf8'), ctx);
+  const shell = fs.readFileSync('runtime/shell.js', 'utf8');
+  const app = fs.readFileSync('examples/files/app.js', 'utf8').replace(/^import '..\/..\/runtime\/shell.js';\n/m, '');
+  vm.runInContext(shell + '\n' + app, ctx);
   const before = creates.length;
   run('seedTestEntries(); __lume_tick()');
   const made = creates.length - before;

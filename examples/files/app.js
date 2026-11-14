@@ -4,16 +4,16 @@
  * Fs 目录浏览 + signals 列表渲染 + flex 相对布局 + 生命周期。
  * 布局为相对布局：根容器 flex column + padding 40（圆角屏安全区），
  * 列表高度固定，其余行高固定，间距由布局分配。
- * 删除为两段式确认 + 递归（POSIX remove() 对非空目录会失败）。
+ * 删除经 Dialog 确认 + 递归（POSIX remove() 对非空目录会失败）。
  */
-lume.theme.set({ colors: { primary: '#0B1724', surface: '#132436', text: '#FFFFFF' }, radius: 10 });
+import '../../runtime/shell.js';
+lume.theme.set({ colors: { primary: '#0B1724', surface: '#132436', text: '#FFFFFF', danger: '#B3261E' }, radius: 10 });
 
 /* ============ 状态 ============ */
 const cwd = signal('/');
 const entries = signal([]);
 const selected = signal(null);
 const status = signal('');
-const pendingDelete = signal(null);   // 待二次确认的条目名
 
 /* ============ 数据层 ============ */
 function isDirPath(p) {
@@ -37,7 +37,6 @@ function loadDir(path) {
   }));
   cwd.set(clean === '/' ? '/' : clean + '/');   /* keep the trailing-slash join convention */
   selected.set(null);
-  pendingDelete.set(null);
   status.set(list.length + ' items');
 }
 
@@ -69,28 +68,25 @@ function removeTree(path, isDirectory, depth) {
 
 function deleteEntry(name) {
   if (!name) {
-    status.set('select an item first');
+    lume.ui.shell.Toast.show('Select an item first');
     return;
   }
   const err = removeTree(cwd() + name, isDirPath(cwd() + name), 0);
-  pendingDelete.set(null);
-  status.set(err === 0 ? 'deleted ' + name : 'delete failed ' + err);
   loadDir(cwd());
+  if (err === 0) lume.ui.shell.Toast.show('Deleted ' + name);
+  else lume.ui.shell.Toast.show('Delete failed ' + err);
 }
 
 function askDelete(name) {
-  if (pendingDelete() === name) {
-    deleteEntry(name);
-    return;
-  }
-  pendingDelete.set(name);
-  status.set('press DEL again to delete ' + name);
+  lume.ui.shell.Dialog({title:'Delete ' + name + '?', message:name + ' cannot be recovered.',
+    buttons:[{label:'Cancel',style:'plain'},
+      {label:'Delete',style:'danger',onPress:function () { deleteEntry(name); }}]});
 }
 
 function removeSelected() {
   const name = selected();
   if (!name) {
-    status.set('select an item, or use the row DEL');
+    lume.ui.shell.Toast.show('Select an item or use row DEL');
     return;
   }
   askDelete(name);
@@ -139,7 +135,7 @@ View({ style: {
       Text({ text: e.isDir ? '[DIR]' : '[FILE]' }),
       Text({ text: e.name }),
       Button({
-        title: function () { return pendingDelete() === e.name ? 'SURE' : 'DEL'; },
+        title: 'DEL',
         style: { width: 56, height: 28, borderRadius: 7 },
         onPress: function () { askDelete(e.name); },
       }),
