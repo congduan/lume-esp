@@ -51,6 +51,14 @@ declare namespace lume.ui {
     textAlign?: 'left' | 'center' | 'right' | 'auto';
     /** Overflow behaviour of a label that is wider/taller than its box. */
     longMode?: 'wrap' | 'dots' | 'scroll' | 'scroll-circular' | 'clip';
+    /** Font size in px; snapped to the nearest bundled face (14/20/32) and
+     * multiplied by `lume.theme.get().fontScale` first. CJK glyphs fall back
+     * to the bundled simplified-Chinese face. */
+    fontSize?: number | (() => number);
+    /** Horizontal letter spacing in px (may be negative). */
+    letterSpacing?: number | (() => number);
+    /** Vertical line spacing in px (may be negative). */
+    lineHeight?: number | (() => number);
     /** Enables LVGL native scrolling on a View. */
     scroll?: 'vertical' | 'horizontal' | 'none';
     scrollbar?: 'off' | 'auto' | 'on';
