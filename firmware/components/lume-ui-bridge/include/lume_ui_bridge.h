@@ -44,7 +44,20 @@ typedef enum {
     LUME_ATTR_ALIGN,         /* msg.value (lume_align_t) */
     LUME_ATTR_VISIBLE,       /* msg.value (0/1) */
     LUME_ATTR_PARENT,        /* msg.value (parent node_id) */
+    LUME_ATTR_FLEX_FLOW, LUME_ATTR_FLEX_MAIN_ALIGN, LUME_ATTR_FLEX_CROSS_ALIGN,
+    LUME_ATTR_PADDING, LUME_ATTR_GAP, LUME_ATTR_RADIUS,
+    LUME_ATTR_BORDER_WIDTH, LUME_ATTR_BORDER_COLOR, LUME_ATTR_OPACITY,
+    LUME_ATTR_WIDTH_PCT, LUME_ATTR_HEIGHT_PCT,
 } lume_attr_t;
+
+/* Wire values are independent of LVGL's enum ordering. */
+typedef enum { LUME_FLEX_ROW = 0, LUME_FLEX_COLUMN,
+               LUME_FLEX_ROW_WRAP, LUME_FLEX_COLUMN_WRAP } lume_flex_flow_t;
+typedef enum { LUME_FLEX_START = 0, LUME_FLEX_END, LUME_FLEX_CENTER,
+               LUME_FLEX_SPACE_BETWEEN, LUME_FLEX_SPACE_AROUND,
+               LUME_FLEX_SPACE_EVENLY } lume_flex_align_t;
+/* Cross-axis wire value 3 means stretch; main-axis value 3 means space-between. */
+#define LUME_FLEX_CROSS_STRETCH 3
 
 typedef enum {
     LUME_ALIGN_CENTER = 0,

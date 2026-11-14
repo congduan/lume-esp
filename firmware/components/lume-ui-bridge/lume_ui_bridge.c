@@ -28,6 +28,9 @@ static const char *TAG = "lume-ui-bridge";
 static QueueHandle_t s_ui_queue;                  /* Queue A */
 static lv_obj_t *s_nodes[LUME_MAX_NODES];         /* id -> lv_obj* (LVGL task) */
 static uint8_t s_kinds[LUME_MAX_NODES];           /* id -> kind   (LVGL task) */
+static uint8_t s_flow[LUME_MAX_NODES];            /* wire flow, for stretch axis */
+static uint8_t s_main[LUME_MAX_NODES], s_cross[LUME_MAX_NODES];
+static uint8_t s_explicit_width[LUME_MAX_NODES], s_explicit_height[LUME_MAX_NODES];
 static lume_press_sink_fn s_press_sink;           /* set once by engine task */
 
 static lv_align_t map_align(int32_t v)
@@ -52,6 +55,50 @@ static lv_obj_t *get_node(uint16_t id)
         return NULL;
     }
     return s_nodes[id];
+}
+
+static lv_flex_flow_t map_flow(int32_t v)
+{
+    switch (v) {
+        case LUME_FLEX_COLUMN: return LV_FLEX_FLOW_COLUMN;
+        case LUME_FLEX_ROW_WRAP: return LV_FLEX_FLOW_ROW_WRAP;
+        case LUME_FLEX_COLUMN_WRAP: return LV_FLEX_FLOW_COLUMN_WRAP;
+        default: return LV_FLEX_FLOW_ROW;
+    }
+}
+
+static lv_flex_align_t map_flex_align(int32_t v)
+{
+    switch (v) {
+        case LUME_FLEX_END: return LV_FLEX_ALIGN_END;
+        case LUME_FLEX_CENTER: return LV_FLEX_ALIGN_CENTER;
+        case LUME_FLEX_SPACE_BETWEEN: return LV_FLEX_ALIGN_SPACE_BETWEEN;
+        case LUME_FLEX_SPACE_AROUND: return LV_FLEX_ALIGN_SPACE_AROUND;
+        case LUME_FLEX_SPACE_EVENLY: return LV_FLEX_ALIGN_SPACE_EVENLY;
+        default: return LV_FLEX_ALIGN_START;
+    }
+}
+
+/* LVGL has no cross-axis STRETCH enum. Size children on the cross axis,
+ * preserving a child's explicit width/height. */
+static void apply_stretch_child(lv_obj_t *child, uint16_t parent_id)
+{
+    if (s_cross[parent_id] != LUME_FLEX_CROSS_STRETCH) return;
+    uint16_t id = (uint16_t)(uintptr_t)lv_obj_get_user_data(child);
+    if (id == 0 || id >= LUME_MAX_NODES) return;
+    bool column = s_flow[parent_id] == LUME_FLEX_COLUMN ||
+                  s_flow[parent_id] == LUME_FLEX_COLUMN_WRAP;
+    if (column && !s_explicit_width[id]) lv_obj_set_width(child, lv_pct(100));
+    if (!column && !s_explicit_height[id]) lv_obj_set_height(child, lv_pct(100));
+}
+
+static void apply_flex_align(lv_obj_t *obj, uint16_t id)
+{
+    lv_obj_set_flex_align(obj, map_flex_align(s_main[id]),
+                          s_cross[id] == LUME_FLEX_CROSS_STRETCH ? LV_FLEX_ALIGN_START :
+                          map_flex_align(s_cross[id]), LV_FLEX_ALIGN_START);
+    uint32_t n = lv_obj_get_child_count(obj);
+    for (uint32_t i = 0; i < n; i++) apply_stretch_child(lv_obj_get_child(obj, i), id);
 }
 
 /* ------------------------------------------------------------------ */
@@ -98,7 +145,14 @@ static void apply_create(const lume_ui_msg_t *m)
 
     s_nodes[m->node_id] = obj;
     s_kinds[m->node_id] = m->kind;
+    s_flow[m->node_id] = LUME_FLEX_ROW;
+    s_main[m->node_id] = LUME_FLEX_START;
+    s_cross[m->node_id] = LUME_FLEX_START;
+    s_explicit_width[m->node_id] = 0;
+    s_explicit_height[m->node_id] = 0;
     lv_obj_set_user_data(obj, (void *)(uintptr_t)m->node_id);
+    if (m->parent_id > 0 && m->parent_id < LUME_MAX_NODES &&
+        s_nodes[m->parent_id] == parent) apply_stretch_child(obj, m->parent_id);
     ESP_LOGI(TAG, "create id=%u kind=%u parent=%u",
              (unsigned)m->node_id, (unsigned)m->kind, (unsigned)m->parent_id);
 }
@@ -128,10 +182,52 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
             break;
         case LUME_ATTR_WIDTH:
+            s_explicit_width[m->node_id] = 1;
             lv_obj_set_width(obj, m->value);
             break;
         case LUME_ATTR_HEIGHT:
+            s_explicit_height[m->node_id] = 1;
             lv_obj_set_height(obj, m->value);
+            break;
+        case LUME_ATTR_WIDTH_PCT:
+            s_explicit_width[m->node_id] = 1;
+            lv_obj_set_width(obj, lv_pct(m->value));
+            break;
+        case LUME_ATTR_HEIGHT_PCT:
+            s_explicit_height[m->node_id] = 1;
+            lv_obj_set_height(obj, lv_pct(m->value));
+            break;
+        case LUME_ATTR_FLEX_FLOW:
+            s_flow[m->node_id] = (uint8_t)m->value;
+            lv_obj_set_flex_flow(obj, map_flow(m->value));
+            apply_flex_align(obj, m->node_id);
+            break;
+        case LUME_ATTR_FLEX_MAIN_ALIGN:
+            s_main[m->node_id] = (uint8_t)m->value;
+            apply_flex_align(obj, m->node_id);
+            break;
+        case LUME_ATTR_FLEX_CROSS_ALIGN:
+            s_cross[m->node_id] = (uint8_t)m->value;
+            apply_flex_align(obj, m->node_id);
+            break;
+        case LUME_ATTR_PADDING:
+            lv_obj_set_style_pad_all(obj, m->value, 0);
+            break;
+        case LUME_ATTR_GAP:
+            lv_obj_set_style_pad_row(obj, m->value, 0);
+            lv_obj_set_style_pad_column(obj, m->value, 0);
+            break;
+        case LUME_ATTR_RADIUS:
+            lv_obj_set_style_radius(obj, m->value, 0);
+            break;
+        case LUME_ATTR_BORDER_WIDTH:
+            lv_obj_set_style_border_width(obj, m->value, 0);
+            break;
+        case LUME_ATTR_BORDER_COLOR:
+            lv_obj_set_style_border_color(obj, lv_color_hex((uint32_t)m->value), 0);
+            break;
+        case LUME_ATTR_OPACITY:
+            lv_obj_set_style_opa(obj, (lv_opa_t)m->value, 0);
             break;
         case LUME_ATTR_ALIGN:
             lv_obj_align(obj, map_align(m->value), 0, 0);
@@ -147,6 +243,7 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             lv_obj_t *p = get_node((uint16_t)m->value);
             if (p != NULL) {
                 lv_obj_set_parent(obj, p);   /* append child into parent */
+                apply_stretch_child(obj, (uint16_t)m->value);
             }
             break;
         }
@@ -175,6 +272,7 @@ static void clear_subtree(lv_obj_t *obj)
     if (id > 0 && id < LUME_MAX_NODES) {
         s_nodes[id] = NULL;
         s_kinds[id] = 0;
+        s_explicit_width[id] = s_explicit_height[id] = 0;
     }
 }
 
