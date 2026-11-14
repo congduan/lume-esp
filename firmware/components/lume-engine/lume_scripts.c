@@ -11,6 +11,7 @@
 
 const char lume_prelude_js[] =
 "/* ---- native binding constants (mirror lume_ui_bridge.h) ---- */\n"
+"var Fs = lume.storage ? lume.storage.Fs : undefined;   /* bare-Fs alias: image_gallery/files use it */\n"
 "var NODE_VIEW = 0, NODE_TEXT = 1, NODE_BUTTON = 2, NODE_CANVAS = 3, NODE_IMAGE = 4, NODE_ARC = 5;\n"
 "var ATTR_TEXT = 0, ATTR_BG_COLOR = 1, ATTR_WIDTH = 2, ATTR_HEIGHT = 3,\n"
 "    ATTR_ALIGN = 4, ATTR_VISIBLE = 5, ATTR_PARENT = 6;\n"
@@ -1146,6 +1147,5 @@ const char lume_home_js[] =
 "\n"
 "/* Home is the root: BACK must not tear the runtime down into itself. */\n"
 "lume.app.onBack(function () { return true; });\n"
-"var Fs = lume.storage.Fs;   /* bare-Fs alias: image_gallery/files use it */\n"
 
 ;
