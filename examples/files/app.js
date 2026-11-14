@@ -1,19 +1,19 @@
 /**
  * 示例：文件管理器（files app）
  *
- * 演示 Lume 全家桶在真实 app 场景的组合：Fs 目录浏览 + signals 列表渲染 +
- * flex 布局 + 生命周期（后台停刷新）+ 主题命名色。
- *
- * 运行环境：TF 卡已挂载（lume.storage.Fs.mounted()）。
+ * Fs 目录浏览 + signals 列表渲染 + flex 相对布局 + 生命周期。
+ * 布局为相对布局：根容器 flex column + padding 40（圆角屏安全区），
+ * 列表高度固定，其余行高固定，间距由布局分配。
+ * 删除为两段式确认 + 递归（POSIX remove() 对非空目录会失败）。
  */
-
-lume.theme.set({ colors: { primary: '#0B1E3F', text: '#FFFFFF' }, radius: 6 });
+lume.theme.set({ colors: { primary: '#0B1724', surface: '#132436', text: '#FFFFFF' }, radius: 10 });
 
 /* ============ 状态 ============ */
-const cwd = signal('/');            // 当前目录
-const entries = signal([]);         // 当前目录条目 [{name, isDir}]
-const selected = signal(null);      // 选中的条目名
-const status = signal('');          // 底部状态栏文字
+const cwd = signal('/');
+const entries = signal([]);
+const selected = signal(null);
+const status = signal('');
+const pendingDelete = signal(null);   // 待二次确认的条目名
 
 /* ============ 数据层 ============ */
 function isDirPath(p) {
@@ -22,11 +22,10 @@ function isDirPath(p) {
 
 function loadDir(path) {
   const list = Fs.list(path);
-  if (typeof list === 'number') {       // 负值 = 错误码（-2 IO 等）
+  if (typeof list === 'number') {
     status.set('read failed: ' + list);
     return;
   }
-  // 目录排前、名字排后
   list.sort(function (a, b) {
     const da = isDirPath(path + a), db = isDirPath(path + b);
     if (da !== db) return da ? -1 : 1;
@@ -36,6 +35,8 @@ function loadDir(path) {
     return { name: name, isDir: isDirPath(path + name) };
   }));
   cwd.set(path);
+  selected.set(null);
+  pendingDelete.set(null);
   status.set(list.length + ' items');
 }
 
@@ -50,70 +51,112 @@ function openEntry(name) {
   status.set(name + ' selected');
 }
 
+/* POSIX remove() 对目录等价 rmdir：目录非空时失败，所以自底向上递归。 */
+function removeTree(path, isDirectory, depth) {
+  if (depth > 8) return -1;
+  if (!isDirectory) return Fs.remove(path);
+  const list = Fs.list(path + '/');
+  if (typeof list !== 'number') {
+    for (let i = 0; i < list.length; i++) {
+      const child = path + '/' + list[i];
+      const err = removeTree(child, isDirPath(child), depth + 1);
+      if (err !== 0) return err;
+    }
+  }
+  return Fs.remove(path);
+}
+
+function deleteEntry(name) {
+  if (!name) {
+    status.set('select an item first');
+    return;
+  }
+  const err = removeTree(cwd() + name, isDirPath(cwd() + name), 0);
+  pendingDelete.set(null);
+  status.set(err === 0 ? 'deleted ' + name : 'delete failed ' + err);
+  loadDir(cwd());
+}
+
+function askDelete(name) {
+  if (pendingDelete() === name) {
+    deleteEntry(name);
+    return;
+  }
+  pendingDelete.set(name);
+  status.set('press DEL again to delete ' + name);
+}
+
 function removeSelected() {
   const name = selected();
-  if (!name) return;
-  Fs.remove(cwd() + name);
-  selected.set(null);
-  loadDir(cwd());                       // signals 重发列表，屏幕自动更新
+  if (!name) {
+    status.set('select an item, or use the row DEL');
+    return;
+  }
+  askDelete(name);
 }
 
-/* ============ UI：顶栏 ============ */
+/* ============ UI ============ */
 View({ style: {
-  display: 'flex', flexDirection: 'row', alignItems: 'center',
-  justifyContent: 'space-between', width: '100%', height: 48, padding: 8,
-  background: 'primary',                                // 主题命名色，一键换肤
+  width: '100%', height: '100%', background: 'primary', scroll: 'none',
+  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+  padding: 40
 }}, [
-  Button({
-    title: '<',
-    onPress: function () {
-      if (cwd() !== '/') loadDir(cwd().replace(/[^/]+\/$/, '') || '/');
-    },
-  }),
-  Text({ text: function () { return cwd(); }, style: { color: 'text' } }),
-  View({ style: { width: 40, height: 32 } }),           // 占位保持标题居中
-]);
-
-/* ============ UI：文件列表（固定 36px 行，窗口化渲染）============ */
-List({
-  items: entries, itemHeight: 36,
-  style: { width: '100%', height: 388, background: '#101828' },
-  renderItem: function (e) { return View({
-    style: {
-      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
-      width: '100%', height: 36, padding: 6, borderRadius: 6,
-      background: function () {
-        return selected() === e.name ? '#2A4A7A' : '#16233A';
+  /* 顶栏：返回 + 路径 + 占位 */
+  View({ style: {
+    display: 'flex', flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', width: '100%', height: 44,
+    background: 'surface', borderRadius: 10,
+    paddingLeft: 10, paddingRight: 10, scroll: 'none'
+  }}, [
+    Button({
+      title: '<',
+      style: { width: 44, height: 30, borderRadius: 8 },
+      onPress: function () {
+        if (cwd() !== '/') loadDir(cwd().replace(/[^/]+\/$/, '') || '/');
       },
-    },
-    onPress: function () { openEntry(e.name); },
-  }, [
-    Text({ text: e.isDir ? '[DIR]' : '[FILE]',
-           style: { color: e.isDir ? '#FFD866' : '#9AB4D8' } }),
-    Text({ text: e.name, style: { color: 'text' } }),
-  ]); },
-});
+    }),
+    Text({ text: function () { return cwd(); }, style: {} }),
+    View({ style: { width: 44, height: 30 } }),           // 占位保持路径居中
+  ]),
 
-/* 开发验证：在控制台调用 seedTestEntries()，用 1000 条模拟目录测试滚动。
- * 不写 TF 卡；重新 loadDir(cwd()) 即可恢复真实目录。 */
-function seedTestEntries() {
-  var test = [];
-  for (var i = 0; i < 1000; i++) test.push({name: 'dir-' + i, isDir: true});
-  entries.set(test);
-  status.set('1000 test directories');
-}
+  /* 文件列表（固定高度，窗口化渲染） */
+  List({
+    items: entries, itemHeight: 42,
+    style: { width: '100%', height: 260, background: 'surface', borderRadius: 10,
+             scrollbar: 'off' },
+    renderItem: function (e) { return View({
+      style: {
+        display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
+        width: '100%', height: 42, paddingLeft: 10, borderRadius: 8,
+        background: function () {
+          return selected() === e.name ? '#2A4A7A' : '#101828';
+        },
+        scroll: 'none'
+      },
+      onPress: function () { openEntry(e.name); },
+    }, [
+      Text({ text: e.isDir ? '[DIR]' : '[FILE]' }),
+      Text({ text: e.name }),
+      Button({
+        title: function () { return pendingDelete() === e.name ? 'SURE' : 'DEL'; },
+        style: { width: 56, height: 28, borderRadius: 7 },
+        onPress: function () { askDelete(e.name); },
+      }),
+    ]); },
+  }),
 
-/* ============ UI：底部状态栏 ============ */
-View({ style: {
-  display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
-  width: '100%', height: 44, padding: 8, background: '#101828',
-}}, [
-  Button({ title: 'del', onPress: removeSelected }),
-  Text({ text: function () { return status(); }, style: { color: '#8899AA' } }),
+  /* 底部操作行 */
+  View({ style: {
+    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
+    width: '100%', height: 44
+  }}, [
+    Button({ title: 'del selected', style: { width: 130, height: 40, borderRadius: 10 },
+             onPress: removeSelected }),
+    Text({ text: function () { return status(); }, style: { flexGrow: 1 } }),
+  ]),
 ]);
 
-/* ============ 生命周期：后台停刷新 ============ */
-lume.app.onPause(function () { status.set('paused'); });
+/* ============ 生命周期 ============ */
 lume.app.onResume(function () { loadDir(cwd()); });   // 回前台重读目录
 
 loadDir('/');

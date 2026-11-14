@@ -29,6 +29,7 @@ var entries = signal([]);
 var selected = signal('');
 var status = signal('loading...');
 var preview = signal(null);
+var pendingDelete = signal('');   /* name awaiting a second DEL press */
 
 /* --- data layer --------------------------------------------------------- */
 
@@ -109,15 +110,51 @@ function previewSelected() {
   status.set('preview: ' + name);
 }
 
-function removeSelected() {
-  var name = selected();
+/* Fs.remove() maps to POSIX remove(): files unlink, but a directory only
+ * rmdir's when EMPTY. So directories are walked bottom-up here. */
+function removeTree(path, isDirectory, depth) {
+  if (depth > 8) return -1;
+  if (!isDirectory) return Fs.remove(path);
+  var list = Fs.list(path + '/');
+  if (typeof list !== 'number') {
+    for (var i = 0; i < list.length; i++) {
+      var child = path + '/' + list[i];
+      var err = removeTree(child, Fs.exists(child + '/') === true, depth + 1);
+      if (err !== 0) return err;
+    }
+  }
+  return Fs.remove(path);
+}
+
+function deleteEntry(name) {
   if (!name) {
     status.set('select an item first');
     return;
   }
-  var err = Fs.remove(cwd() + name);
+  var path = cwd() + name;
+  var err = removeTree(path, isDir(path), 0);
+  pendingDelete.set('');
   status.set(err === 0 ? 'deleted ' + name : 'delete failed ' + err);
   loadDir(cwd());
+}
+
+/* Two-step delete: the first press arms the item, the second one removes it. */
+function askDelete(name) {
+  if (pendingDelete() === name) {
+    deleteEntry(name);
+    return;
+  }
+  pendingDelete.set(name);
+  status.set('press DEL again to delete ' + name);
+}
+
+function removeSelected() {
+  var name = selected();
+  if (!name) {
+    status.set('select an item, or use the row DEL');
+    return;
+  }
+  askDelete(name);
 }
 
 function makeDir() {
@@ -136,7 +173,7 @@ function makeDir() {
 /* --- UI ----------------------------------------------------------------- */
 
 var backdrop = View({ style: { x: 0, y: 0, width: 480, height: 480, background: 'primary',
-  borderWidth: 0, borderRadius: 0 } });
+  borderWidth: 0, borderRadius: 0, scroll: 'none' } });
 
 /* path bar */
 View({ style: {
@@ -156,15 +193,19 @@ List({
   itemHeight: ROW_H,
   style: { x: SAFE, y: LIST_Y, width: WIDE, height: LIST_H,
     background: 'surface', borderColor: '#22405A', borderWidth: 1, borderRadius: 10,
-    scrollbar: 'auto' },
+    scrollbar: 'off' },   /* the rail stole touches on the right edge */
   renderItem: function (entry) {
     return View({ style: {
-      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
+      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
       width: '100%', height: ROW_H, padding: 8, borderRadius: 8, scroll: 'none',
       background: function () { return selected() === entry.name ? '#1E3A5C' : '#101E2C'; }
     }, onPress: function () { open(entry); } }, [
-      Text({ text: entry.isDir ? 'DIR ' : 'FILE', style: {} }),
-      Text({ text: trim(entry.name, 28), style: {} })
+      Text({ text: entry.isDir ? 'DIR ' : 'FILE', style: { width: 40 } }),
+      Text({ text: trim(entry.name, 22), style: { width: 226 } }),
+      Button({ title: function () { return pendingDelete() === entry.name ? 'SURE' : 'DEL'; },
+        style: { width: 60, height: 30, background: '#7F1D1D',
+          borderColor: '#B91C1C', borderWidth: 1, borderRadius: 7 },
+        onPress: function () { askDelete(entry.name); } })
     ]);
   }
 });
@@ -203,8 +244,12 @@ action(340, 'VIEW', previewSelected);
 
 /* swipe up on the backdrop = leave the current folder (same target as UP) */
 lume.gesture.on(backdrop, 'swipe', function (e) {
-  if (e.dir === 'bottom') goUp();
+  if (e.dir === 'down') goUp();                  /* swipe down = parent folder */
 });
 
 lume.app.onStart(function () { loadDir(cwd()); });
 lume.app.onResume(function () { loadDir(cwd()); });
+
+/* Bottom indicator pill (swipe-up hint). */
+View({ style: { width: 64, height: 3, background: '#2E4761', borderRadius: 2 },
+  align: 'bottom-mid', alignOffset: { y: -10 } });

@@ -3,7 +3,12 @@
  * 可显示三张外部图片；无卡时仍显示内嵌 1×1 红色 PNG，验证字节到 Image 链路。
  */
 var redPng = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,207,192,240,31,0,5,0,1,255,137,153,61,29,0,0,0,0,73,69,78,68,174,66,96,130]).buffer;
-var tiles = [Image({src: redPng, style: {width: 80, height: 80}})];
+/* Image() can return -1 (invalid/decode failure). A -1 in the children array
+ * would make View() throw on its setAttr calls and fail the whole eval, so
+ * only collect valid nodes. */
+var tiles = [];
+var head = Image({src: redPng, style: {width: 80, height: 80}});
+if (head > 0) tiles.push(head);
 var paths = ['/gallery/photo.jpg', '/gallery/icon.png', '/gallery/alpha.png'];
 for (var i = 0; i < paths.length; i++) {
   var bytes = Fs.readBinary(paths[i]);

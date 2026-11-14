@@ -1,14 +1,10 @@
 /**
- * r21 gesture demo — 2x2 cards, one gesture each, plus a bottom status bar.
- *
- *   tap       -> increments a counter
- *   swipe     -> switches a "page" number by direction
- *   longpress -> toggles the card color (and never also fires tap/onPress)
- *   pan       -> drags a small square with incremental displacement
+ * r21 gesture demo — 2x2 cards (flex rows), one gesture each, plus a status
+ * bar. Pan is shown as a live bar (width signal) instead of a draggable
+ * square: x/y are ignored inside a flex container.
  *
  * Every gesture target is a NON-scrollable View (scroll:'none'). Inside a
- * scrollable container a drag belongs to LVGL List scrolling, so gestures
- * yield to it. Status-bar coordinates are absolute screen pixels.
+ * scrollable container a drag belongs to LVGL scrolling, so gestures yield.
  */
 lume.theme.set({
   colors: {
@@ -22,44 +18,37 @@ var status = signal('ready');
 var taps = signal(0);
 var page = signal(1);
 var hot = signal(false);
-var sqx = signal(24), sqy = signal(24);
+var panX = signal(0), panY = signal(0);
 
 function echo(e) {
   var s = e.type + ' (' + e.x + ',' + e.y + ')';
   if (e.dir) s += ' ' + e.dir;
   status.set(s);
 }
-function card(x, y, w, h, bg) {
+function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+function card(children) {
   return View({ style: {
-    x: x, y: y, width: w, height: h,
-    background: bg === undefined ? 'card' : bg,
-    borderColor: 'line', borderWidth: 1,
-    scroll: 'none'   /* gestures win; a List would scroll instead */
-  } });
+    flexGrow: 1, height: '100%',
+    background: 'card', borderColor: 'line', borderWidth: 1,
+    display: 'flex', flexDirection: 'column',
+    alignItems: 'start', justifyContent: 'start',
+    padding: 14, gap: 12, scroll: 'none'   /* gestures win over scrolling */
+  } }, children);
 }
-function title(t, x, y) {
-  return Text({ text: t, style: { x: x, y: y, width: 180, height: 24 } });
-}
+function title(t) { return Text({ text: t, style: {} }); }
 
 /* ---- tap: count ---- */
-var tapCard = View({ style: {
-  x: 16, y: 44, width: 216, height: 186,
-  background: 'card', borderColor: 'line', borderWidth: 1, scroll: 'none'
-} }, [
-  title('TAP', 16, 12),
-  Text({ text: function () { return 'count ' + taps(); },
-         style: { x: 16, y: 44, width: 180, height: 28 } })
+var tapCard = card([
+  title('TAP'),
+  Text({ text: function () { return 'count ' + taps(); }, style: {} })
 ]);
 lume.gesture.on(tapCard, 'tap', function (e) { taps.set(taps() + 1); echo(e); });
 
 /* ---- swipe: change page by direction ---- */
-var swipeCard = View({ style: {
-  x: 248, y: 44, width: 216, height: 186,
-  background: 'card', borderColor: 'line', borderWidth: 1, scroll: 'none'
-} }, [
-  title('SWIPE', 16, 12),
-  Text({ text: function () { return 'page ' + page() + '/4'; },
-         style: { x: 16, y: 44, width: 180, height: 28 } })
+var swipeCard = card([
+  title('SWIPE'),
+  Text({ text: function () { return 'page ' + page() + '/4'; }, style: {} })
 ]);
 lume.gesture.on(swipeCard, 'swipe', function (e) {
   var p = page();
@@ -71,43 +60,54 @@ lume.gesture.on(swipeCard, 'swipe', function (e) {
 });
 
 /* ---- longpress: toggle color. No double-trigger with tap/onPress. ---- */
-var longCard = View({ style: {
-  x: 16, y: 244, width: 216, height: 176,
-  background: function () { return hot() ? 'hot' : 'card'; },
-  borderColor: 'line', borderWidth: 1, scroll: 'none'
-} }, [
-  title('LONGPRESS', 16, 12),
-  Text({ text: function () { return hot() ? 'HOT' : 'hold me'; },
-         style: { x: 16, y: 44, width: 180, height: 28 } })
+var longCard = card([
+  title('LONGPRESS'),
+  Text({ text: function () { return hot() ? 'HOT' : 'hold me'; }, style: {} })
 ]);
 lume.gesture.on(longCard, 'longpress', function (e) { hot.set(!hot()); echo(e); });
 
-/* ---- pan: drag a small square (a non-clickable label, so it can't steal
- * the press from the card). Movement is the delta between consecutive pan
- * events, so the square tracks the finger relative to its current spot. ---- */
-var panCard = View({ style: {
-  x: 248, y: 244, width: 216, height: 176,
-  background: 'card', borderColor: 'line', borderWidth: 1, scroll: 'none'
-} }, [title('PAN', 16, 12)]);
+/* ---- pan: live displacement bars (width tracks the finger delta) ---- */
+var panCard = card([
+  title('PAN'),
+  Text({ text: function () { return 'dx ' + panX() + '  dy ' + panY(); }, style: {} }),
+  View({ style: { width: '100%', height: 12, background: '#16283A', scroll: 'none' } }, [
+    View({ style: { width: function () { return clamp(Math.abs(panX()) * 3, 2, 100); },
+      height: 12, background: '#F0A030' }, scroll: 'none' })
+  ]),
+  View({ style: { width: '100%', height: 12, background: '#16283A', scroll: 'none' } }, [
+    View({ style: { width: function () { return clamp(Math.abs(panY()) * 3, 2, 100); },
+      height: 12, background: '#38BDF8' }, scroll: 'none' })
+  ])
+]);
 var lastDx = 0, lastDy = 0;
-function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 lume.gesture.on(panCard, 'panstart', function (e) { lastDx = e.dx; lastDy = e.dy; echo(e); });
 lume.gesture.on(panCard, 'pan', function (e) {
-  sqx.set(clamp(sqx() + (e.dx - lastDx), 4, 168));
-  sqy.set(clamp(sqy() + (e.dy - lastDy), 4, 128));
+  panX.set(clamp(panX() + (e.dx - lastDx), -40, 40));
+  panY.set(clamp(panY() + (e.dy - lastDy), -40, 40));
   lastDx = e.dx; lastDy = e.dy;
   echo(e);
 });
 lume.gesture.on(panCard, 'panend', function (e) { echo(e); });
-/* Empty-text label with a fixed size + background = a draggable square. */
-Text({ text: '', parent: panCard,
-       style: { x: sqx, y: sqy, width: 40, height: 40, background: 'accent' } });
 
-/* ---- full-screen root + status bar ---- */
-View({ style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' } }, [
-  Text({ text: 'Gesture lab r21', style: { x: 16, y: 12, width: 300, height: 26 } }),
-  tapCard, swipeCard, longCard, panCard,
-  Text({ text: function () { return 'last: ' + status(); },
-         style: { x: 16, y: 432, width: 448, height: 36,
-                  background: 'card', borderColor: 'line', borderWidth: 1 } })
+/* ---- root: title + 2x2 grid + status bar, all flex ---- */
+var gridRow = function (a, b) {
+  return View({ style: {
+    width: '100%', flexGrow: 1,
+    display: 'flex', flexDirection: 'row', gap: 12
+  } }, [a, b]);
+};
+
+View({ style: {
+  width: '100%', height: '100%', background: 'bg', scroll: 'none',
+  display: 'flex', flexDirection: 'column', padding: 40, gap: 12
+} }, [
+  Text({ text: 'Gesture lab r21', style: {} }),
+  gridRow(tapCard, swipeCard),
+  gridRow(longCard, panCard),
+  View({ style: { width: '100%', height: 44,
+    background: 'card', borderColor: 'line', borderWidth: 1,
+    display: 'flex', flexDirection: 'row', alignItems: 'center',
+    paddingLeft: 12, scroll: 'none' } }, [
+    Text({ text: function () { return 'last: ' + status(); }, style: {} })
+  ])
 ]);

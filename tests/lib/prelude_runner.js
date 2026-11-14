@@ -26,7 +26,8 @@ function runApp(script, options = {}) {
     list: p => [...(files[p] || [])],
     exists: p => p in files || (!p.endsWith('/') && Object.values(files).some(a => a.includes(p.split('/').at(-1)))),
     remove: p => { const dir = p.slice(0, p.lastIndexOf('/') + 1); files[dir] = (files[dir] || []).filter(n => n !== p.slice(dir.length)); return 0; },
-    read: () => -2, write: () => -2,
+    read: () => -2, write: () => -2, append: () => -2, mkdir: () => 0,
+    readBinary: () => -2,
   };
   // r30 multi-app store stand-in: options.apps = { id: {label,icon,color} }.
   const installedApps = { ...(options.apps || {}) };

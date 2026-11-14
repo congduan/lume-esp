@@ -13,9 +13,7 @@ function poll() {
     stateText.set('BLE: error ' + st);
     return;
   }
-  stateText.set('BLE: ' + STATE_NAMES[st.state] +
-    (st.connected ? ' subscribed:' + (st.subscribed ? 'yes' : 'no') : '') +
-    ' pending:' + st.pending);
+  stateText.set('BLE: ' + STATE_NAMES[st.state] + (st.connected ? ' (paired)' : ''));
   var msg = lume.ble.read();
   if (typeof msg === 'number') {
     stateText.set('BLE read error: ' + msg);
@@ -53,12 +51,27 @@ lume.app.onStart(startBle);
 lume.app.onPause(stopBle);
 lume.app.onResume(startBle);
 
-View({style: {display: 'flex', flexDirection: 'column', gap: 10,
-  padding: 10, width: 240, height: 300, background: '#0B1724',
-  scroll: 'none'}}, [
-  Text({text: function () { return stateText(); }}),
-  Text({text: function () { return 'last: ' + lastText(); }}),
-  Text({text: function () { return 'pings sent: ' + sentCount(); }}),
-  Button({title: 'Ping', onPress: sendPing}),
-  Text({text: 'Connect with any NUS BLE console'})
+function row(label, value) {
+  return View({ style: {
+    width: '100%', height: 56, background: '#132436', borderRadius: 12,
+    borderWidth: 0, display: 'flex', flexDirection: 'row',
+    justifyContent: 'space-between', alignItems: 'center', padding: 10,
+    scroll: 'none' } }, [
+    Text({ text: label, style: {} }),
+    Text({ text: value, style: {} })
+  ]);
+}
+
+View({ style: {
+  width: '100%', height: '100%', background: '#0B1724',
+  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+  padding: 40, gap: 12
+} }, [
+  Text({ text: 'BLE UART', style: {} }),
+  row('state', function () { return stateText(); }),
+  row('last', function () { return lastText(); }),
+  row('pings', function () { return String(sentCount()); }),
+  Button({ title: 'Ping', style: { width: '100%', height: 56, borderRadius: 12 },
+    onPress: sendPing }),
+  Text({ text: 'Connect with any NUS BLE console', style: {} })
 ]);

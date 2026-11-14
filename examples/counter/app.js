@@ -7,23 +7,31 @@ var lightTheme = { colors: {
 }, radius: 12, fontScale: 1 };
 lume.theme.set(darkTheme);
 var count = signal(0);
-var cardY = signal(110);
+var dim = signal(false);
+
+/* Layout: one flex column fills the panel; the 40 px padding is the
+ * round-corner safe inset, and the theme buttons share the row evenly. */
 var card = View({ style: {
-  x: 24, y: cardY, width: 192, height: 80,
-  background: 'surface', borderColor: 'text', borderWidth: 2, opacity: 1,
-  transition: { property: 'y', durationMs: 300, easing: 'ease-out' }
-} }, [Text({ text: function () { return 'taps: ' + count(); } })]);
-var darkButton = Button({ title: 'Dark', style: {
-  x: 16, y: 14, width: 96, height: 48, background: 'accent', borderColor: 'text', borderWidth: 1
-}, onPress: function () { lume.theme.set(darkTheme); } });
-var lightButton = Button({ title: 'Light', style: {
-  x: 128, y: 14, width: 96, height: 48, background: 'accent', borderColor: 'text', borderWidth: 1
-}, onPress: function () { lume.theme.set(lightTheme); } });
-var countButton = Button({ title: 'Count', style: {
-  x: 48, y: 220, width: 144, height: 48, background: 'accent', borderColor: 'text', borderWidth: 1
-}, onPress: function () {
-  count.set(count() + 1);
-  cardY.set(count() % 2 ? 125 : 110);
-} });
-View({ style: { width: '100%', height: '100%', background: 'primary' } },
-  [card, darkButton, lightButton, countButton]);
+  width: '100%', height: 120, background: 'surface', borderRadius: 12,
+  display: 'flex', flexDirection: 'column', alignItems: 'center',
+  justifyContent: 'center', gap: 6,
+  opacity: function () { return dim() ? 0.55 : 1; }
+} }, [
+  Text({ text: function () { return 'taps: ' + count(); }, style: {} })
+]);
+
+View({ style: {
+  width: '100%', height: '100%', background: 'primary',
+  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+  padding: 40, gap: 12
+} }, [
+  card,
+  View({ style: { display: 'flex', flexDirection: 'row', gap: 12, width: '100%', height: 56 } }, [
+    Button({ title: 'Dark', style: { flexGrow: 1, height: 56, borderRadius: 12 },
+             onPress: function () { lume.theme.set(darkTheme); } }),
+    Button({ title: 'Light', style: { flexGrow: 1, height: 56, borderRadius: 12 },
+             onPress: function () { lume.theme.set(lightTheme); } })
+  ]),
+  Button({ title: 'Count', style: { width: '100%', height: 64, borderRadius: 12 },
+           onPress: function () { count.set(count() + 1); dim.set(count() % 2 === 1); } })
+]);

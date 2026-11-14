@@ -94,7 +94,7 @@ var storageText = '--';
  * 400x360 content area, so without this the inset showed the screen's own
  * black. Created first so it stays the bottom-most node. */
 var backdrop = View({ style: { x: 0, y: 0, width: 480, height: 480, background: '#0B1622',
-  borderWidth: 0, borderRadius: 0 } });
+  borderWidth: 0, borderRadius: 0, scroll: 'none' } });
 
 var canvas = Canvas({ width: W, height: H, style: { x: SAFE, y: SAFE, borderRadius: 0 },
   onDraw: function (ctx) {
@@ -352,3 +352,7 @@ function tab(x, index, label) {
 tab(SAFE, 0, 'GAUGE');
 tab(176, 1, 'TRACE');
 tab(312, 2, 'SYSTEM');
+
+/* Bottom indicator pill: a quiet hint that an upward swipe leaves the app. */
+View({ style: { width: 64, height: 3, background: '#2E4761', borderRadius: 2 },
+  align: 'bottom-mid', alignOffset: { y: -10 } });
