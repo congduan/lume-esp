@@ -34,6 +34,7 @@ declare namespace lume.ui {
   interface ListProps<T> { style: Style & { height: number }; parent?: Node; items: T[] | (() => T[]); itemHeight: number; overscan?: number; renderItem(item: T, index: number): Node }
   interface TextProps extends ViewProps { text?: string | (() => string) }
   interface ButtonProps extends ViewProps { title?: string | (() => string); onPress?: () => void }
+  interface ImageProps { src: ArrayBuffer; style?: Style; parent?: Node }
   /** RGB565 canvas, fixed size. All coordinates use canvas-local integer pixels. */
   interface CanvasContext {
     fillColor(color: `#${string}` | number): void;
@@ -62,6 +63,8 @@ declare namespace lume.ui {
   function List<T>(props: ListProps<T>): Node;
   function Text(props: TextProps): Node;
   function Button(props: ButtonProps): Node;
+  /** Returns a node id, or -1 invalid/oversize, -2 decode failure, -3 OOM/queue failure. */
+  function Image(props: ImageProps): Node;
   function Canvas(props: CanvasProps): Node;
 }
 
@@ -70,6 +73,12 @@ declare function View(props: lume.ui.ViewProps, children?: lume.ui.Node[]): lume
 declare function List<T>(props: lume.ui.ListProps<T>): lume.ui.Node;
 declare function Text(props: lume.ui.TextProps): lume.ui.Node;
 declare function Button(props: lume.ui.ButtonProps): lume.ui.Node;
+declare function Image(props: lume.ui.ImageProps): lume.ui.Node;
+
+declare namespace lume.image {
+  /** Reads PNG IHDR or JPEG SOF only. -1 invalid/oversize (>480x480); -2 corrupt/unsupported. */
+  function sizeOf(bytes: ArrayBuffer): { width: number; height: number } | -1 | -2;
+}
 declare function Canvas(props: lume.ui.CanvasProps): lume.ui.Node;
 declare function signal<T>(initial: T): (() => T) & { set(value: T): void };
 
