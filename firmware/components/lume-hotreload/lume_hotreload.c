@@ -71,11 +71,13 @@ static const char *OTA_TAG = "lume-ota";
 #define CONFIG_LUME_OTA_PORT 8765
 #endif
 #define OTA_PORT           CONFIG_LUME_OTA_PORT
-#define OTA_TASK_STACK     4096
+/* Both RX tasks run the command parser (STORE/LIST/...) and LittleFS calls,
+ * not just memcpy, so they need more than the frame-copy footprint. */
+#define OTA_TASK_STACK     8192
 #define OTA_IO_TIMEOUT_S   5
 #define OTA_RECV_CHUNK     512
 #define OTA_BACKLOG        1
-#define USB_RX_STACK       4096
+#define USB_RX_STACK       8192
 #define USB_RX_CHUNK       128
 #define USJ_RX_BUFFER      1024   /* driver requires > 64 */
 #define USJ_TX_BUFFER      512

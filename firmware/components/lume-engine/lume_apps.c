@@ -110,31 +110,41 @@ int lume_apps_list(lume_apps_emit_fn emit, void *arg)
         return LUME_FS_ERR_STATE;
     }
     xSemaphoreTakeRecursive(s_lock, portMAX_DELAY);
-    id_list_t list;
-    memset(&list, 0, sizeof(list));
-    int r = lume_fs_list(APPS_DIR, collect, &list);
+    /* 2 KiB of ids: keep it off the caller's stack. LIST runs on the push
+     * channel's RX task (4 KiB stack) and a stack copy overflows it, which
+     * looked like "the device never answers LIST". */
+    id_list_t *list = heap_caps_malloc(sizeof(id_list_t), MALLOC_CAP_SPIRAM);
+    if (list == NULL) {
+        xSemaphoreGiveRecursive(s_lock);
+        return LUME_FS_ERR_STATE;
+    }
+    memset(list, 0, sizeof(*list));
+    int r = lume_fs_list(APPS_DIR, collect, list);
     if (r < 0) {
+        heap_caps_free(list);
         xSemaphoreGiveRecursive(s_lock);
         return r;
     }
     /* Stable order for the CLI / launcher grid: insertion sort by id. */
-    for (int i = 1; i < list.count; i++) {
+    for (int i = 1; i < list->count; i++) {
         char key[LUME_APP_ID_MAX];
-        memcpy(key, list.ids[i], sizeof(key));
+        memcpy(key, list->ids[i], sizeof(key));
         int j = i - 1;
-        while (j >= 0 && strcmp(list.ids[j], key) > 0) {
-            memcpy(list.ids[j + 1], list.ids[j], sizeof(key));
+        while (j >= 0 && strcmp(list->ids[j], key) > 0) {
+            memcpy(list->ids[j + 1], list->ids[j], sizeof(key));
             j--;
         }
-        memcpy(list.ids[j + 1], key, sizeof(key));
+        memcpy(list->ids[j + 1], key, sizeof(key));
     }
-    for (int i = 0; i < list.count; i++) {
+    const int count = list->count;
+    for (int i = 0; i < count; i++) {
         if (emit != NULL) {
-            emit(arg, list.ids[i]);
+            emit(arg, list->ids[i]);
         }
     }
+    heap_caps_free(list);
     xSemaphoreGiveRecursive(s_lock);
-    return list.count;
+    return count;
 }
 
 /* ------------------------------------------------------------------ */
