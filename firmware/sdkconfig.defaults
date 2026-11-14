@@ -22,6 +22,10 @@ CONFIG_SPIRAM_USE_MALLOC=y
 # FreeRTOS tick for smooth UI
 CONFIG_FREERTOS_HZ=1000
 
+# 240 MHz: a full-screen repaint is dominated by LVGL software rendering
+# (~39 ms at 160 MHz vs ~16 MB/s QSPI flush, measured in docs r28).
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+
 # USB CDC console (hot-reload channel + logs)
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
