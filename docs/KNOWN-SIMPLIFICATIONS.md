@@ -706,3 +706,49 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - **已做的主机侧验证**：`tests/apps_protocol.c` 35 项（LUMC 识别/交错流/逐字节喂入/CRC 重同步/STORE 元数据与源码切分/id 校验/CLI 字节往返）；`tests/apps.js` 9 项（真实 prelude 抽取 + `entries()` 合并 meta/坏 JSON/无 native 降级/Launcher 默认列表与默认 launch/显式覆盖）；`npm test --prefix tools/lume` 14 项（cmdFrame 字节、STORE 布局、OTA 命令往返 `STORE`+`LIST`+`LAUNCH`、CLI 子命令与 id 校验）。既有 harness 全绿，其中 `tests/style_mapping.js` / `tests/theme_mapping.js` 的 demo 提取正则从 `;\s*$` 改为 `;\n`（脚本文件末尾新增了 `lume_home_js`）。
 - **未验证（全部留接板轮）**：① 真机 LittleFS 写入/擦除耗时与 `lume dev` 反复安装的寿命影响；② 200 KiB 级 bundle 的 `STORE` 耗时与安装失败的掉电表现；③ 切换延迟、切换时的闪烁/黑屏；④ home 网格的观感、点击手感、图标尺寸；⑤ 多 app 实际使用下的内存碎片与长时间稳定性；⑥ `lume-hotreload`/`lume-engine` 的新增代码尚未在 ESP-IDF v5.5 下编译（本轮在 macOS 主机，无法 `idf.py build`），首次构建需注意 `lume_apps.c` 的 include/CMake 依赖。
 - **roadmap 不动**：`docs/roadmap.md` 未修改；多 app 属于 M5 组件库/启动器方向的落地，里程碑定义与验收项仍由接板轮维护。
+## r31 / M5 Board abstraction 第一刀（编译期单板 profile）
+
+- **范围 = 编译期 profile，仅一块板**。本轮把「换一块板要改哪些文件」收敛到
+  `firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/`：`lume_board_profile.h`
+  （引脚 / 分辨率 / I2C 地址 / QSPI 时序 / CO5300 init 序列 / 触摸方向映射，
+  全部编译期宏）、`sdkconfig.defaults`（板级 flash/PSRAM/console/partition/
+  LVGL 值 + `CONFIG_LUME_BOARD_*` 选择）、`partitions.csv`（板级 flash 布局）。
+  `lume_pins.h` 退化为 re-export shim；`firmware/boards/README.md` 写清新增板的步骤。
+  默认板 = Waveshare，**行为零变化**（所有值不变，仅来源变了）。
+- **机制取舍（以 ESP-IDF v5.5.5 实证为准）**：`Kconfig.projbuild` 的
+  `choice LUME_BOARD` + 派生的隐藏 `LUME_BOARD_DIR` 字符串，驱动
+  `lume-board/CMakeLists.txt` 的 `INCLUDE_DIRS`；顶层 CMake 用
+  `SDKCONFIG_DEFAULTS` **列表**（`project.cmake:680-686` 实证支持多文件）叠加
+  common + 板级 defconfig。未发明私有格式，未改动 `idf.py build` 默认命令。
+  另一条 `-DSDKCONFIG_DEFAULTS="sdkconfig.defaults;boards/<name>/sdkconfig.defaults"`
+  路线已写入文档，但**无第二块板可实测**，仅验证过默认列表生效。
+- **不做运行时热切板 / 多板 CI 矩阵 / 真实第二块板**：profile 全是编译期常量，
+  没有链接任何运行时切换代码；「additional targets」尚未有第二块板实证，
+  `docs/roadmap.md` 的 M5 Board abstraction **保持未勾选**。
+- **IRAM 已满的硬约束（逐项对比）**：基线 `eb1345f` → r31 最终：
+  Flash Code 1665362→1665370（+8，日志格式串多一个参数）、Flash Data
+  378396→378348（−48，缩短日志/错误串）、DIRAM 228191→228191（0）、
+  **IRAM 16384/16384→16384/16384（100%，Remain 0，无溢出）**、
+  Total 2191757→2191717（−40，更小）；`lume.bin` 0x217210→0x2171e0，
+  app 分区仍余 67%。Kconfig choice / defconfig / 分区表路径整层是配置改动，
+  **零代码字节增量**（task 2 与 task 3 之后 size 完全一致），未拉入任何
+  `noflash`/IRAM 符号。Flash Code 的 +8 字节来自把两处日志里的地址字面量
+  改成 `%02x` 格式串（多传一个参数），属可解释的近似零增量。
+- **JS prelude 的 `480` 是明确的例外**：`firmware/components/lume-engine/
+  lume_scripts.c` 内嵌 JS 的 canvas 坐标钳位（`__canvasInt(...,-480,480)`、
+  `480*480*2` 预算）仍为字面量。该字符串由 `tests/lib/prelude_runner.js`
+  按「每行一个字符串字面量」正则逐字提取，C 宏插值会破坏提取；且 r31 明确
+  「JS 层不应有行为变化」。**所有 C 侧**分辨率/引脚/地址字面量已引用 profile，
+  `git grep` 在 main/components 的 C 代码中无游离板级魔数。prelude 收敛留后续轮。
+- **tracked `sdkconfig` 与 defconfig 的优先级**：ESP-IDF 里已有 `sdkconfig` 的
+  已存值优先于 defaults。移动分区表后必须同步改 `firmware/sdkconfig` 里的
+  `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME` / `FILENAME`（本轮已改并提交，
+  diff 仅 2 行路径 + 新增的 Lume board 菜单符号）。新板切换时也要更新这两行
+  或删除 `sdkconfig` 重新生成，否则仍指向旧板分区表——已写入 `boards/README.md`。
+- **验证范围（无板，均为宿主机）**：ESP-IDF v5.5.5 完整 `idf.py build` +
+  `idf.py size`（绿，IRAM 达标）；11 个 JS host harness 全绿、
+  `npm test --prefix tools/lume` 10/10、`bridge_protocol.c` / `ota_protocol.c` /
+  `image_header.c` 三个 C 宿主断言全绿、`python3 scripts/check_website.py`
+  81/81 绿（补齐 4 条 `lume.ui.shell.*` + 实证多出的 `lume.net.otaStatus`，
+  并补上 gallery 的 `examples/shell_demo/`）。真机显示/触摸方向、bundle 推送、
+  音频、睡眠电流、radio、持久化等一律留接板验收。
