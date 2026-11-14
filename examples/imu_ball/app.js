@@ -85,6 +85,23 @@ var frame = signal(0), levelIndex = 0, ball = startBall(LEVELS[0]);
 var elapsed = 0, totalElapsed = 0, best = [], deaths = 0, finished = false;
 var hintUntil = Date.now() + 2000, notice = '', noticeUntil = 0;
 var lastTick = Date.now(), timer = null, paused = false, lastWallSound = 0;
+for (var bi = 0; bi < LEVELS.length; bi++) {
+  var saved = lume.storage.kv.get('maze.best.' + (bi + 1));
+  best[bi] = typeof saved === 'number' && saved > 0 ? saved : 0;
+}
+function beep(hz, ms, endHz) {
+  if (!lume.audio || !lume.audio.play) return;
+  var count = Math.floor(16000 * ms / 1000), pcm = new ArrayBuffer(count * 4);
+  var data = new DataView(pcm), phase = 0;
+  for (var i = 0; i < count; i++) {
+    var freq = hz + (endHz - hz) * i / count;
+    phase += freq / 16000;
+    var amp = i < 80 || i > count - 80 ? 900 : 1800;
+    var sample = phase % 1 < 0.5 ? amp : -amp;
+    data.setInt16(i * 4, sample, true); data.setInt16(i * 4 + 2, sample, true);
+  }
+  lume.audio.play(pcm);
+}
 function mappedAcceleration(sample, axis, sign) {
   var value = sample[axis] * sign;
   return Math.abs(value) < DEAD_ZONE ? 0 : value * GAIN;
@@ -105,14 +122,22 @@ function tick() {
   if (result.hole) {
     deaths++; ball = startBall(LEVELS[levelIndex]);
     notice = 'HOLE - TRY AGAIN'; noticeUntil = now + 900;
+    beep(500, 65, 160);
   } else if (result.goal) {
     var seconds = Math.round(elapsed * 10) / 10;
+    if (!best[levelIndex] || seconds < best[levelIndex]) {
+      best[levelIndex] = seconds;
+      lume.storage.kv.set('maze.best.' + (levelIndex + 1), seconds);
+    }
+    beep(660, 40, 660); beep(990, 40, 990);
     if (levelIndex === LEVELS.length - 1) {
       finished = true; notice = 'FINISH ' + totalElapsed.toFixed(1) + 's'; noticeUntil = Infinity;
     } else {
       levelIndex++; elapsed = 0; ball = startBall(LEVELS[levelIndex]);
       notice = 'LEVEL ' + (levelIndex + 1); noticeUntil = now + 1200;
     }
+  } else if (result.hitWall && now - lastWallSound > 120) {
+    lastWallSound = now; beep(180, 25, 180);
   }
   frame.set(frame() + 1);
 }
