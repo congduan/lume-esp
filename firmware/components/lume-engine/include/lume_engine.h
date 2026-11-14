@@ -12,14 +12,17 @@ void lume_engine_start(void);
  * On receipt the engine tears down its current QuickJS runtime and starts a
  * fresh iteration with the staged app source (see lume_engine_request_reload). */
 #define LUME_EVT_RELOAD 2
+#define LUME_EVT_ANIM_COMPLETE 3
 typedef struct {
     uint8_t  type;        /* LUME_EVT_* */
     uint16_t node_id;
+    uint32_t token;
 } lume_engine_evt_t;
 
 /* Reverse-channel sink: called by the ui-bridge press callback (LVGL task)
  * to enqueue a CLICKED event into s_evt_queue. Pure queue op, no lv_* call. */
 void lume_engine_post_press(uint16_t node_id);
+void lume_engine_post_anim_complete(uint32_t token);
 
 /* r4 P2: called by the ui-bridge remove path (LVGL task) after a subtree was
  * deleted. Latches node_id into a lock-protected pending-removal bitmap; the

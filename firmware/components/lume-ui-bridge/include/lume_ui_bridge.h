@@ -48,6 +48,7 @@ typedef enum {
     LUME_ATTR_PADDING, LUME_ATTR_GAP, LUME_ATTR_RADIUS,
     LUME_ATTR_BORDER_WIDTH, LUME_ATTR_BORDER_COLOR, LUME_ATTR_OPACITY,
     LUME_ATTR_WIDTH_PCT, LUME_ATTR_HEIGHT_PCT,
+    LUME_ATTR_X, LUME_ATTR_Y,
 } lume_attr_t;
 
 /* Wire values are independent of LVGL's enum ordering. */
@@ -77,7 +78,12 @@ typedef enum {
     LUME_OP_SET_ATTR,        /* attr + value / text on node_id */
     LUME_OP_REMOVE,          /* delete node_id (and its LVGL subtree) */
     LUME_OP_SET_PRESS,       /* register CLICKED callback on node_id */
+    LUME_OP_ANIMATE,        /* numeric attr, optional from, to, duration, easing, token */
+    LUME_OP_ANIMATE_CANCEL, /* stop one node/attr animation */
 } lume_op_t;
+
+typedef enum { LUME_EASE_LINEAR = 0, LUME_EASE_IN, LUME_EASE_OUT,
+               LUME_EASE_IN_OUT } lume_easing_t;
 
 /* Fixed-size UI message. Text is inlined (char[64]); the native binding
  * rejects strings >= LUME_TEXT_MAX so this buffer is always NUL-terminated.
@@ -90,11 +96,18 @@ typedef struct {
     uint8_t  attr;                     /* lume_attr_t (SET_ATTR) */
     int32_t  value;                    /* numeric attr value */
     char     text[LUME_TEXT_MAX];      /* inline, NUL-terminated string */
+    /* Animation extension: entire sizeof(lume_ui_msg_t) is copied by Queue A;
+     * this protocol is 96 bytes on ESP32 (76-byte base + 20-byte extension). */
+    int32_t  from, to;                 /* from ignored when has_from == 0 */
+    uint32_t duration_ms, token;       /* token 0 means no completion event */
+    uint8_t  easing, has_from;
 } lume_ui_msg_t;
 
 /* How the bridge hands a CLICKED event back to the engine task. Registered by
  * the engine at startup; keeps lume-ui-bridge free of any lume-engine link. */
 typedef void (*lume_press_sink_fn)(uint16_t node_id);
+typedef void (*lume_anim_sink_fn)(uint32_t token);
+void lume_ui_bridge_set_anim_sink(lume_anim_sink_fn fn);
 void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn);
 
 /* Init: creates Queue A + the LVGL drain timer. Must be called once from board

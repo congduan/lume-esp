@@ -257,6 +257,58 @@ static JSValue js_set_attr(JSContext *ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
+static uint32_t s_next_anim_token;
+static JSValue js_animate(JSContext *ctx, JSValueConst this_val,
+                          int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t id, attr, to, duration, easing, from = 0;
+    if (argc < 6 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &attr, argv[1]) < 0 ||
+        JS_ToInt32(ctx, &to, argv[3]) < 0 ||
+        JS_ToInt32(ctx, &duration, argv[4]) < 0 ||
+        JS_ToInt32(ctx, &easing, argv[5]) < 0) return JS_EXCEPTION;
+    bool has_from = !JS_IsNull(argv[2]) && !JS_IsUndefined(argv[2]);
+    if (has_from && JS_ToInt32(ctx, &from, argv[2]) < 0) return JS_EXCEPTION;
+    if (id <= 0 || id >= LUME_MAX_NODES ||
+        (attr != LUME_ATTR_X && attr != LUME_ATTR_Y &&
+         attr != LUME_ATTR_WIDTH && attr != LUME_ATTR_HEIGHT &&
+         attr != LUME_ATTR_OPACITY) || duration <= 0 || duration > 60000 ||
+        easing < LUME_EASE_LINEAR || easing > LUME_EASE_IN_OUT ||
+        ((attr == LUME_ATTR_OPACITY) &&
+         (to < 0 || to > 255 || (has_from && (from < 0 || from > 255)))))
+        return JS_ThrowRangeError(ctx, "lume: invalid animation arguments");
+    lume_ui_msg_t m;
+    msg_init(&m);
+    m.op = LUME_OP_ANIMATE; m.node_id = (uint16_t)id; m.attr = (uint8_t)attr;
+    m.from = from; m.has_from = has_from; m.to = to;
+    m.duration_ms = (uint32_t)duration; m.easing = (uint8_t)easing;
+    m.token = ++s_next_anim_token;
+    if (m.token == 0) m.token = ++s_next_anim_token;
+    if (lume_ui_bridge_post(&m) != 0)
+        return JS_ThrowInternalError(ctx, "lume: ui queue full");
+    return JS_NewUint32(ctx, m.token);
+}
+static JSValue js_animate_cancel(JSContext *ctx, JSValueConst this_val,
+                                 int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t id, attr;
+    if (argc < 2 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &attr, argv[1]) < 0) return JS_EXCEPTION;
+    if (id <= 0 || id >= LUME_MAX_NODES ||
+        (attr != LUME_ATTR_X && attr != LUME_ATTR_Y &&
+         attr != LUME_ATTR_WIDTH && attr != LUME_ATTR_HEIGHT &&
+         attr != LUME_ATTR_OPACITY))
+        return JS_ThrowRangeError(ctx, "lume: invalid animation cancel");
+    lume_ui_msg_t m;
+    msg_init(&m);
+    m.op = LUME_OP_ANIMATE_CANCEL; m.node_id = (uint16_t)id; m.attr = (uint8_t)attr;
+    if (lume_ui_bridge_post(&m) != 0)
+        return JS_ThrowInternalError(ctx, "lume: ui queue full");
+    return JS_UNDEFINED;
+}
+
 static JSValue js_set_press_event(JSContext *ctx, JSValueConst this_val,
                                   int argc, JSValueConst *argv)
 {
@@ -1192,6 +1244,10 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_create_node, "createNode", 2));
     JS_SetPropertyStr(ctx, lume, "setAttr",
                       JS_NewCFunction(ctx, js_set_attr, "setAttr", 3));
+    JS_SetPropertyStr(ctx, lume, "nativeAnimate",
+                      JS_NewCFunction(ctx, js_animate, "nativeAnimate", 6));
+    JS_SetPropertyStr(ctx, lume, "nativeAnimateCancel",
+                      JS_NewCFunction(ctx, js_animate_cancel, "nativeAnimateCancel", 2));
     JS_SetPropertyStr(ctx, lume, "setPressEvent",
                       JS_NewCFunction(ctx, js_set_press_event, "setPressEvent", 1));
     JS_SetPropertyStr(ctx, lume, "removeChild",
@@ -1365,6 +1421,28 @@ void lume_engine_post_press(uint16_t node_id)
                      (unsigned)node_id, (unsigned)s_evt_dropped);
         }
     }
+}
+
+void lume_engine_post_anim_complete(uint32_t token)
+{
+    lume_engine_evt_t evt = { .type = LUME_EVT_ANIM_COMPLETE, .token = token };
+    if (s_evt_queue == NULL || xQueueSend(s_evt_queue, &evt, 0) != pdTRUE)
+        ESP_LOGW(TAG, "animation complete token=%lu dropped: evt queue full",
+                 (unsigned long)token);
+}
+static void dispatch_anim_complete(uint32_t token)
+{
+    JSValue global = JS_GetGlobalObject(s_ctx);
+    JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_dispatchAnimComplete");
+    if (JS_IsFunction(s_ctx, fn)) {
+        JSValue arg = JS_NewUint32(s_ctx, token);
+        JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 1, &arg);
+        if (JS_IsException(ret)) dump_js_exception(s_ctx, "__lume_dispatchAnimComplete");
+        JS_FreeValue(s_ctx, ret);
+        JS_FreeValue(s_ctx, arg);
+    }
+    JS_FreeValue(s_ctx, fn);
+    JS_FreeValue(s_ctx, global);
 }
 
 /* __lume_dispatchPress: press event -> JS handler.
@@ -1597,6 +1675,7 @@ static void engine_task(void *arg)
         s_rt = rt;
         s_ctx = ctx;
         register_bindings(ctx);                              /* native lume.* */
+        lume_ui_bridge_set_anim_sink(lume_engine_post_anim_complete);
         lume_ui_bridge_set_press_sink(lume_engine_post_press); /* re-wire sink */
         /* Fresh JS-side id allocator. NOTE: the LVGL s_nodes[] table is NOT
          * cleared (drivers don't restart), so ids are reused across reloads;
@@ -1676,6 +1755,8 @@ static void engine_task(void *arg)
                     ESP_LOGI(TAG, "engine recv PRESS id=%u",
                              (unsigned)evt.node_id);
                     dispatch_press(evt.node_id);
+                } else if (evt.type == LUME_EVT_ANIM_COMPLETE) {
+                    dispatch_anim_complete(evt.token);
                 }
             }
             drain_removals();

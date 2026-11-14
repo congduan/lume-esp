@@ -31,6 +31,7 @@ static uint8_t s_kinds[LUME_MAX_NODES];           /* id -> kind   (LVGL task) */
 static uint8_t s_flow[LUME_MAX_NODES];            /* wire flow, for stretch axis */
 static uint8_t s_main[LUME_MAX_NODES], s_cross[LUME_MAX_NODES];
 static uint8_t s_explicit_width[LUME_MAX_NODES], s_explicit_height[LUME_MAX_NODES];
+static lume_anim_sink_fn s_anim_sink;
 static lume_press_sink_fn s_press_sink;           /* set once by engine task */
 
 static lv_align_t map_align(int32_t v)
@@ -101,6 +102,91 @@ static void apply_flex_align(lv_obj_t *obj, uint16_t id)
     for (uint32_t i = 0; i < n; i++) apply_stretch_child(lv_obj_get_child(obj, i), id);
 }
 
+/* One stable slot per node/attribute gives lv_anim a unique var identity.
+ * Slots are touched only by the LVGL task; no per-frame engine work. */
+#define ANIM_ATTRS 5
+static uint8_t s_anim_slots[LUME_MAX_NODES][ANIM_ATTRS];
+static uint32_t s_anim_tokens[LUME_MAX_NODES][ANIM_ATTRS];
+static int anim_index(uint8_t attr)
+{
+    switch (attr) {
+        case LUME_ATTR_X: return 0;
+        case LUME_ATTR_Y: return 1;
+        case LUME_ATTR_WIDTH: return 2;
+        case LUME_ATTR_HEIGHT: return 3;
+        case LUME_ATTR_OPACITY: return 4;
+        default: return -1;
+    }
+}
+static void anim_exec(void *var, int32_t value)
+{
+    uint8_t *slot = var;
+    size_t index = (size_t)(slot - &s_anim_slots[0][0]);
+    uint16_t id = index / ANIM_ATTRS;
+    lv_obj_t *obj = s_nodes[id];
+    if (!obj) return;
+    switch (index % ANIM_ATTRS) {
+        case 0: lv_obj_set_x(obj, value); break;
+        case 1: lv_obj_set_y(obj, value); break;
+        case 2: lv_obj_set_width(obj, value); break;
+        case 3: lv_obj_set_height(obj, value); break;
+        case 4: lv_obj_set_style_opa(obj, (lv_opa_t)value, 0); break;
+    }
+}
+static void anim_completed(lv_anim_t *a)
+{
+    uint8_t *slot = lv_anim_get_user_data(a);
+    size_t index = (size_t)(slot - &s_anim_slots[0][0]);
+    uint32_t token = s_anim_tokens[index / ANIM_ATTRS][index % ANIM_ATTRS];
+    s_anim_tokens[index / ANIM_ATTRS][index % ANIM_ATTRS] = 0;
+    if (token && s_anim_sink) s_anim_sink(token);
+}
+static void cancel_anim(uint16_t id, uint8_t attr)
+{
+    int i = anim_index(attr);
+    if (i < 0 || id == 0 || id >= LUME_MAX_NODES) return;
+    s_anim_tokens[id][i] = 0;
+    lv_anim_delete(&s_anim_slots[id][i], anim_exec);
+}
+static void apply_animate(const lume_ui_msg_t *m)
+{
+    int i = anim_index(m->attr);
+    lv_obj_t *obj = get_node(m->node_id);
+    if (i < 0 || !obj || m->duration_ms == 0 || m->easing > LUME_EASE_IN_OUT) return;
+    /* Delete first, then sample current LVGL value: replacements start at the
+     * visible in-flight value when from is omitted. */
+    cancel_anim(m->node_id, m->attr);
+    int32_t from = m->from;
+    if (!m->has_from) {
+        switch (m->attr) {
+            case LUME_ATTR_X: from = lv_obj_get_x(obj); break;
+            case LUME_ATTR_Y: from = lv_obj_get_y(obj); break;
+            case LUME_ATTR_WIDTH: from = lv_obj_get_width(obj); break;
+            case LUME_ATTR_HEIGHT: from = lv_obj_get_height(obj); break;
+            case LUME_ATTR_OPACITY: from = lv_obj_get_style_opa(obj, 0); break;
+        }
+    }
+    if (m->attr == LUME_ATTR_WIDTH) s_explicit_width[m->node_id] = 1;
+    if (m->attr == LUME_ATTR_HEIGHT) s_explicit_height[m->node_id] = 1;
+    uint8_t *slot = &s_anim_slots[m->node_id][i];
+    s_anim_tokens[m->node_id][i] = m->token;
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, slot);
+    lv_anim_set_exec_cb(&a, anim_exec);
+    lv_anim_set_values(&a, from, m->to);
+    lv_anim_set_duration(&a, m->duration_ms);
+    lv_anim_set_user_data(&a, slot);
+    lv_anim_set_completed_cb(&a, anim_completed);
+    switch (m->easing) {
+        case LUME_EASE_IN: lv_anim_set_path_cb(&a, lv_anim_path_ease_in); break;
+        case LUME_EASE_OUT: lv_anim_set_path_cb(&a, lv_anim_path_ease_out); break;
+        case LUME_EASE_IN_OUT: lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out); break;
+        default: lv_anim_set_path_cb(&a, lv_anim_path_linear); break;
+    }
+    lv_anim_start(&a);
+}
+
 /* ------------------------------------------------------------------ */
 /* Queue A apply functions — LVGL task context only                    */
 /* ------------------------------------------------------------------ */
@@ -144,6 +230,7 @@ static void apply_create(const lume_ui_msg_t *m)
     }
 
     s_nodes[m->node_id] = obj;
+    for (int i = 0; i < ANIM_ATTRS; i++) cancel_anim(m->node_id, (uint8_t)(i == 0 ? LUME_ATTR_X : i == 1 ? LUME_ATTR_Y : i == 2 ? LUME_ATTR_WIDTH : i == 3 ? LUME_ATTR_HEIGHT : LUME_ATTR_OPACITY));
     s_kinds[m->node_id] = m->kind;
     s_flow[m->node_id] = LUME_FLEX_ROW;
     s_main[m->node_id] = LUME_FLEX_START;
@@ -164,7 +251,10 @@ static void apply_set_attr(const lume_ui_msg_t *m)
         ESP_LOGW(TAG, "set-attr: unknown node_id %u", (unsigned)m->node_id);
         return;
     }
+    cancel_anim(m->node_id, m->attr);
     switch (m->attr) {
+        case LUME_ATTR_X: lv_obj_set_x(obj, m->value); break;
+        case LUME_ATTR_Y: lv_obj_set_y(obj, m->value); break;
         case LUME_ATTR_TEXT: {
             /* A BUTTON renders its text in a child label; TEXT is the label. */
             lv_obj_t *target = obj;
@@ -270,6 +360,10 @@ static void clear_subtree(lv_obj_t *obj)
     }
     uint16_t id = (uint16_t)(uintptr_t)lv_obj_get_user_data(obj);
     if (id > 0 && id < LUME_MAX_NODES) {
+        for (int i = 0; i < ANIM_ATTRS; i++) {
+            s_anim_tokens[id][i] = 0;
+            lv_anim_delete(&s_anim_slots[id][i], anim_exec);
+        }
         s_nodes[id] = NULL;
         s_kinds[id] = 0;
         s_explicit_width[id] = s_explicit_height[id] = 0;
@@ -362,6 +456,8 @@ void lume_ui_bridge_drain(void)
             case LUME_OP_SET_ATTR:  apply_set_attr(&m);  break;
             case LUME_OP_REMOVE:    apply_remove(&m);    break;
             case LUME_OP_SET_PRESS: apply_set_press(&m); break;
+            case LUME_OP_ANIMATE: apply_animate(&m); break;
+            case LUME_OP_ANIMATE_CANCEL: cancel_anim(m.node_id, m.attr); break;
             default:
                 ESP_LOGW(TAG, "drain: unknown op %u", (unsigned)m.op);
                 break;
@@ -379,6 +475,11 @@ static void drain_timer_cb(lv_timer_t *timer)
 /* ------------------------------------------------------------------ */
 /* Cross-thread entry points                                          */
 /* ------------------------------------------------------------------ */
+
+void lume_ui_bridge_set_anim_sink(lume_anim_sink_fn fn)
+{
+    s_anim_sink = fn;
+}
 
 void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn)
 {
