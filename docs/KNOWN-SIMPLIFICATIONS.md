@@ -616,3 +616,29 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - **验证范围**：主机侧 `tests/ble.js`（接线一致性 + 示例 app 在注入 stub 下的行为）、10 个既有 harness 全绿、`npm test --prefix tools/lume` 4/4、`python3 scripts/check_website.py`（新增 6 条 `lume.ble` 目录已同步；仍报 4 条仓库原有的 `lume.ui.shell.*` 缺失，与本轮无关）、`lume_ble.h` C11 语法/静态断言、既有 `tests/bridge_protocol.c` ABI 断言，以及 **ESP-IDF v5.5.5 完整 `idf.py build`（链接通过）+ `idf.py size`**。首轮编译只发现并修正了 `nimble_port_freertos_init()` 返回 `void` 的一处误用。**没有开发板**，所有射频行为仍未验收。
 - **无板验收项**：① 手机能否发现/连接、GATT service 与 RX/TX 特征发现；② 订阅 notify、20 字节收发与 FIFO 丢弃行为；③ 断开后自动重新广播；④ `start()` 在 host sync 前后的时序；⑤ WiFi 与 BLE 同时开启的吞吐/稳定性（Flash/IRAM/DIRAM 体积已实测，不在此列）；⑥ 蓝牙对 light sleep 电流的影响；⑦ 无配对链路的安全边界。
 - **roadmap 不动**：`docs/roadmap.md` 的里程碑定义不因本轮修改，也没有为 BLE 新增/勾选里程碑；真机验收留主控接板轮，与 r11/r13 的处理一致。
+
+## r27 / 首次真机 bring-up：LVGL 9 tick 缺失（已修）
+
+- **现象（真机 Waveshare ESP32-S3-Touch-AMOLED-2.16，MAC `28:84:85:90:7e:64`，chip rev v0.2 / 8MB PSRAM）**：刷入 0.1.0 release 包后板级初始化全绿（AXP2101 `0x4a`、CO5300 QSPI 480x480、CST9220 480x480、QMI8658、LittleFS、NVS KV、WiFi station、hot-reload、OTA token），但应用永远进不去：屏幕无内容，`lume-engine` 每 ~350 ms 重启一次。
+
+  ```
+  I (2470) lume-engine: runtime up; eval embedded/last-good app (1575 bytes)
+  E (2726) lume-ui-bridge: post: ui queue full after 8 attempts (op=1 id=4)
+  E (2730) lume-engine: JS exception [<lume-app>]: InternalError: lume: ui queue full
+  E (2735) lume-engine: embedded/last-good app eval failed (unexpected)
+  ```
+
+- **根因**：`firmware/components/lvgl/lv_conf.h` 仍按 LVGL **v8** 写 `LV_TICK_CUSTOM` / `LV_TICK_CUSTOM_INCLUDE` / `LV_TICK_CUSTOM_SYS_TIME_EXPR`。vendored LVGL 是 **9.3.0**，v9 已移除这三个宏，配置被静默忽略；`lume-board` 里也没有任何 `lv_tick_set_cb()` / `lv_tick_inc()` 调用，于是 `lv_tick_get()` 恒为 0。`lv_timer_handler()` 中所有 timer 都"未到期"：display refresh timer 不刷屏（所以日志里连一条 `QSPI flush failed` 都没有，PSRAM draw buffer / QSPI DMA 从未被调用），ui-bridge 的 5 ms drain timer 也不执行 —— 队列 32 条塞满后 JS 侧 post（8 次 × 2 ms 重试）必然失败。
+- **修复**：`lume_board_init()` 在 `lv_init()` 之后注册 tick 源 `lv_tick_set_cb(lvgl_tick_get_cb)`，回调返回 `esp_timer_get_time() / 1000`（1 ms 单调时钟）；`lv_conf.h` 中三行失效宏替换为说明性注释，避免后人再按 v8 方式配置。改动文件只有 `firmware/components/lume-board/lume_board.c` 和 `firmware/components/lvgl/lv_conf.h`。
+- **真机验证（ESP-IDF v5.5.5 全量构建 → esptool 刷写 → `Hash of data verified`）**：
+
+  ```
+  I (2511) lume-engine: runtime up; eval embedded/last-good app (1575 bytes)
+  I (2754) lume-ui-bridge: create id=3 kind=2 parent=0
+  I (2794) lume-engine: app eval ok; entering event loop
+  I (6835) lume-ui-bridge: LVGL CLICKED id=3 -> post to engine queue
+  I (6837) lume-engine: engine recv PRESS id=3
+  ```
+
+  连续 6 s 采样：`E (` 开头日志 **0 条**、`ui queue full` **0 次**、`runtime up` 不再重复（无重启循环）；触摸 raw→panel 坐标映射与 PRESS 回传到 JS 事件循环的链路打通。
+- **仍未验收**：画面观感（颜色/朝向/亮度）、触摸手感与 tap/swipe/longpress/pan 识别、帧率与撕裂、PSRAM draw buffer 下 QSPI DMA 的长期稳定性、音频、WiFi/OTA、BLE、light sleep 电流。本次只证明"LVGL 渲染 + ui-bridge 排空 + 触摸事件"这条最小闭环在真机上跑通，不代表整机验收通过。

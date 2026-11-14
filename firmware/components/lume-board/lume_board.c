@@ -8,9 +8,11 @@
  *   4. CST9220 touch -> LVGL indev
  *   5. TF card (SPI/FATFS)                                    (later)
  *
- * LVGL: lv_init -> lv_display_create -> flush_cb(QSPI DMA) -> pure-LVGL proof
- * screen -> lv_timer_handler task. lv_tick comes from LV_TICK_CUSTOM
- * (esp_timer) in lv_conf.h, so only lv_timer_handler() needs driving.
+ * LVGL: lv_init -> lv_tick_set_cb(esp_timer) -> lv_display_create ->
+ * flush_cb(QSPI DMA) -> lv_timer_handler task. LVGL 9 dropped LV_TICK_CUSTOM,
+ * so the 1 ms tick source must be registered at runtime; without it
+ * lv_tick_get() stays 0 and no lv_timer (render refresh, ui-bridge drain)
+ * ever fires.
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -19,6 +21,7 @@
 #include "driver/i2c_master.h"
 #include "esp_check.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "lvgl.h"
 #include "lume_pins.h"
 #include "lume_board.h"
@@ -33,6 +36,31 @@ static atomic_bool s_frame_paused;
 static atomic_bool s_redraw_pending;
 static SemaphoreHandle_t s_pause_ack;
 static bool s_panel_asleep;
+
+/* LVGL 9 tick source: monotonic milliseconds from esp_timer (already running
+ * this early in boot). Registered in lume_board_init() after lv_init(). */
+static uint32_t lvgl_tick_get_cb(void)
+{
+    return (uint32_t)(esp_timer_get_time() / 1000LL);
+}
+
+/* LV_USE_SYSMON / LV_SYSMON_GET_IDLE. LVGL only implements idle accounting for
+ * its OS backends, and this build uses LV_USE_OS 0, so the CPU column is not
+ * available: report 0% idle (the log line then always says CPU 100%). The
+ * meaningful columns are FPS and the render / flush millisecond split.
+ * Symbol must be non-static because lv_sysmon.c declares it locally. */
+uint32_t lume_sysmon_idle_percent(void)
+{
+    return 0;
+}
+
+/* Forward LVGL's own log stream (perf monitor log mode) into ESP-IDF logging so
+ * it carries boot timestamps and lands in the same capture as lume-* lines. */
+static void lvgl_log_print_cb(lv_log_level_t level, const char *buf)
+{
+    (void)level;
+    ESP_LOGI("lvgl-perf", "%s", buf);
+}
 
 /* M1: the JS demo owns the screen by default. Set LUME_BOARD_LEGACY_DEMO=1
  * to restore the original pure-LVGL proof screen (no JS handoff). */
@@ -154,6 +182,16 @@ esp_err_t lume_board_init(void)
 
     /* 3. LVGL core must be up before any display / indev / widget. */
     lv_init();
+    /* LVGL 9: the tick source is runtime-registered. Without this call
+     * lv_tick_get() stays 0, so every lv_timer (display refresh and the
+     * ui-bridge drain timer) never becomes due: the screen stays blank and
+     * JS messages pile up until "ui queue full". */
+    lv_tick_set_cb(lvgl_tick_get_cb);
+
+    /* Diagnostics: LVGL perf monitor (FPS + render/flush ms) printed through
+     * ESP_LOGI("lvgl-perf") every 300 ms. LOG_MODE keeps the label hidden. */
+    lv_log_register_print_cb(lvgl_log_print_cb);
+    lv_sysmon_show_performance(NULL);
 
     lv_display_t *disp = NULL;
     ESP_RETURN_ON_ERROR(lume_display_init(&disp), TAG, "CO5300/LVGL display init failed");
