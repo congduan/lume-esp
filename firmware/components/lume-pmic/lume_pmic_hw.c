@@ -6,7 +6,8 @@
  * 01_AXP2101 copy is a +21-line-offset revision with IDENTICAL semantics for
  * every function below; the AXP2101 datasheet (REG 00/01/10/30/34-3D/A4
  * descriptions) was also cross-checked where noted.
- *   - AXP2101Constants.h:3  AXP2101_SLAVE_ADDRESS (0x34), 7-bit I2C addr.
+ *   - AXP2101Constants.h:3  AXP2101_SLAVE_ADDRESS (now in the board profile),
+ *     7-bit I2C addr.
  *   - AXP2101Constants.h:5  XPOWERS_AXP2101_CHIP_ID (0x4A), read at
  *                     :9    XPOWERS_AXP2101_IC_TYPE (0x03). Already used by
  *                           lume-board/lume_pmic.c:32-34 for display rails.
@@ -83,11 +84,14 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "lume_board.h"
+#include "lume_pins.h"
 #include "lume_pmic_hw.h"
 
 static const char *TAG = "lume-pmic-hw";
 
-#define AXP_I2C_ADDR       0x34
+/* Board profile owns the AXP2101 I2C address; the registers below are
+ * AXP2101 chip-level constants. */
+#define AXP_I2C_ADDR       LUME_I2C_ADDR_AXP2101
 #define AXP_I2C_TIMEOUT_MS 200
 #define AXP_IC_TYPE_REG    0x03
 #define AXP_CHIP_ID        0x4A
@@ -244,7 +248,8 @@ int lume_pmic_hw_init(void)
     i2c_master_dev_handle_t dev = NULL;
     esp_err_t err = i2c_master_bus_add_device(bus, &dev_cfg, &dev);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "init: add_device(0x34) failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "init: add_device(0x%02x) failed: %s",
+                 (unsigned)AXP_I2C_ADDR, esp_err_to_name(err));
         return LUME_PMIC_ERR_DRIVER;
     }
 

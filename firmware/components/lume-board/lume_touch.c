@@ -12,9 +12,9 @@
  *      :210-242 -> read_config(): command-mode entry + checkcode/resolution/id
  *      :244-302 -> read_reg()/write_reg(): 16-bit big-endian register address,
  *                  2ms settle, then read/write payload
- *  - include/esp_lcd_touch_cst9217.h:24-36 -> I2C addr 0x5A
+ *  - include/esp_lcd_touch_cst9217.h:24-36 -> I2C address (now in profile)
  *  - waveshare BSP v1.0.0 esp32_s3_touch_amoled_2_16.c:470-497,566-569
- *      -> rst=40, int=11 (active low), touch_flags swap_xy=1 mirror_y=1
+ *      -> RST/INT pins and orientation flags (now in lume_board_profile.h)
  *  - espressif/esp_lcd_touch v1.2.1 esp_lcd_touch.c:92-106
  *      -> coordinate transform order: mirror_x, mirror_y (y=max-y), swap_xy
  *
@@ -37,7 +37,9 @@
 #include "lume_pins.h"
 #include "lume_board_internal.h"
 
-#define TP_I2C_ADDR        0x5A
+/* Board profile owns the touch I2C address; chip-level registers below are
+ * CST9220/cst9217 family constants, not board-wiring values. */
+#define TP_I2C_ADDR        LUME_I2C_ADDR_CST9220
 #define TP_I2C_TIMEOUT_MS  200
 
 #define TP_DATA_REG        0xD000
@@ -175,11 +177,11 @@ static void indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
     const uint16_t tx = (uint16_t)(((uint16_t)frame[1] << 4) | (frame[3] >> 4));
     const uint16_t ty = (uint16_t)(((uint16_t)frame[2] << 4) | (frame[3] & 0x0F));
 
-    /* BSP touch_flags swap_xy=1 mirror_x=0 mirror_y=1 (BSP:566-569), applied
-     * in the esp_lcd_touch order (mirror_y: y=max-y, then swap_xy).
-     * TODO(M1 / hardware verify): confirm orientation on the real panel. */
-    int32_t px = (int32_t)(LUME_LCD_V_RES - ty);
-    int32_t py = (int32_t)tx;
+    /* Board orientation (mirror_y + swap_xy) is defined by the profile's
+     * LUME_TOUCH_MAP_X/Y (Waveshare BSP:566-569). Clamp to the profile
+     * geometry. TODO(M1 / hardware verify): confirm on the real panel. */
+    int32_t px = LUME_TOUCH_MAP_X(tx, ty);
+    int32_t py = LUME_TOUCH_MAP_Y(tx, ty);
     if (px < 0) px = 0;
     if (py < 0) py = 0;
     if (px >= LUME_LCD_H_RES) px = LUME_LCD_H_RES - 1;
@@ -214,7 +216,7 @@ esp_err_t lume_touch_init(i2c_master_bus_handle_t bus, lv_display_t *disp)
     const i2c_device_config_t dev_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = TP_I2C_ADDR,
-        .scl_speed_hz = 400000,
+        .scl_speed_hz = LUME_TOUCH_I2C_SPEED_HZ,
     };
     ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(bus, &dev_cfg, &s_tp),
                         TAG, "CST9220 add_device failed");

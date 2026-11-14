@@ -6,8 +6,8 @@
 #include "driver/i2c_master.h"
 #include "esp_err.h"
 
-/* The shared I2C master bus created by lume_board_init() (AXP2101 0x34,
- * CST9220 0x5A, IMU, codec, RTC). Returns NULL before board init succeeds.
+/* The shared I2C master bus created by lume_board_init() (AXP2101, CST9220,
+ * IMU, codec, RTC — addresses in the board profile). Returns NULL before init.
  * The handle is owned by the board component and kept for the app lifetime;
  * callers add their own devices with i2c_master_bus_add_device() and must NOT
  * delete the bus. ESP-IDF v5.5.5 i2c_master operation functions are

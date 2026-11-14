@@ -10,8 +10,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#define ES8311 0x18
-#define ES7210 0x40
+/* Codec I2C addresses come from the board profile (lume_pins.h). */
+#define ES8311 LUME_I2C_ADDR_ES8311
+#define ES7210 LUME_I2C_ADDR_ES7210
 static const char *TAG = "lume-audio";
 static i2c_master_dev_handle_t s_dac, s_adc;
 static i2s_chan_handle_t s_tx, s_rx;
@@ -142,7 +143,8 @@ int lume_audio_init(void)
     /* Vendor enables PA after I2S setup and before codec setup. */
     esp_err_t pa = gpio_set_direction(LUME_PIN_AUDIO_PA, GPIO_MODE_OUTPUT);
     if (pa == ESP_OK) gpio_set_level(LUME_PIN_AUDIO_PA, 1);
-    else ESP_LOGW(TAG, "PA GPIO46 output unavailable: %s", esp_err_to_name(pa));
+    else ESP_LOGW(TAG, "PA GPIO%d output unavailable: %s",
+                  LUME_PIN_AUDIO_PA, esp_err_to_name(pa));
     if (codecs_init() < 0) return LUME_AUDIO_ERR_DRIVER;
     s_ready = true;
     return 0;

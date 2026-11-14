@@ -8,9 +8,10 @@
  * qmi.begin()) and polls qmi.getDataReady() -- i.e. it is polled, not
  * interrupt-driven. file:line refs below are to that tree.
  *
- *  - QMI8658Constants.h:35-36  QMI8658_L_SLAVE_ADDRESS = 0x6B (7-bit I2C addr
- *    when SA0/SDO is tied LOW; datasheet 1.6 p.10: float/HIGH -> 0x6A, LOW ->
- *    0x6B). lume_pins.h:22 already lists QMI8658 on the shared I2C bus.
+ *  - QMI8658Constants.h:35-36  QMI8658_L_SLAVE_ADDRESS (7-bit I2C addr when
+ *    SA0/SDO is tied LOW; datasheet 1.6 p.10 documents the alternate address
+ *    for HIGH). The selected address now lives in the board profile
+ *    (lume_pins.h), which lists QMI8658 on the shared I2C bus.
  *  - QMI8658Constants.h:43  WHOAMI_DEFAULT = 0x05; SensorQMI8658.hpp:2000-2004
  *    initImpl() checks whoAmI() == 0x05; datasheet Table 21 (p.29) "Device
  *    identifier 0x05 - to identify the device is a QST sensor".
@@ -70,7 +71,7 @@
  *    gate read(): an on-demand JS read should always return the latest sample,
  *    and gating would make two back-to-back read() calls return failure.
  *  - INT / motion: the schematic (ESP32-S3-Touch-AMOLED-2.16-Schematic.pdf)
- *    DOES route QMI_INT1 -> GPIO17 and QMI_INT2 -> GPIO21, BUT lume_pins.h
+ *    DOES route two QMI INT lines, BUT lume_pins.h
  *    defines NO IMU INT pin, Mylibrary/pin_config.h defines none either, and
  *    the Waveshare official example for THIS board is pure polled (no
  *    enableINT). The generic InterruptExample.ino uses IMU_IRQ=33, which is
@@ -94,11 +95,13 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lume_board.h"
+#include "lume_pins.h"
 #include "lume_imu_hw.h"
 
 static const char *TAG = "lume-imu-hw";
 
-#define QMI_I2C_ADDR       0x6B
+/* Board profile owns the QMI8658 I2C address; registers below are chip-level. */
+#define QMI_I2C_ADDR       LUME_I2C_ADDR_QMI8658
 #define QMI_I2C_TIMEOUT_MS 200
 
 /* Registers (QMI8658Constants.h). STATUS0 is documented in the head comment;
@@ -224,7 +227,8 @@ int lume_imu_hw_init(void)
 
     esp_err_t err = i2c_master_bus_add_device(bus, &dev_cfg, &dev);
     if (err != ESP_OK) {
-        ESP_LOGW(TAG, "init: add_device(0x6B) failed: %s", esp_err_to_name(err));
+        ESP_LOGW(TAG, "init: add_device(0x%02x) failed: %s",
+                 (unsigned)QMI_I2C_ADDR, esp_err_to_name(err));
         return LUME_IMU_ERR_DRIVER;
     }
 

@@ -2,7 +2,7 @@
  * Board init — M1 bring-up.
  *
  * Order (each step verified against vendor examples):
- *   1. I2C master on 15/14 — shared by touch/PMIC/IMU/codecs
+ *   1. I2C master on the profile's SDA/SCL — shared by touch/PMIC/IMU/codecs
  *   2. AXP2101: assert display/touch rails (isolated, non-fatal)
  *   3. CO5300 QSPI panel via esp_lcd + LVGL display
  *   4. CST9220 touch -> LVGL indev
@@ -160,7 +160,8 @@ i2c_master_bus_handle_t lume_board_get_i2c_bus(void)
 
 esp_err_t lume_board_init(void)
 {
-    /* 1. Shared I2C master bus: AXP2101(0x34), CST9220(0x5A), IMU, codec, RTC. */
+    /* 1. Shared I2C master bus: AXP2101 / CST9220 / IMU / codec / RTC all use
+     * the addresses from the board profile (lume_pins.h). */
     const i2c_master_bus_config_t i2c_cfg = {
         .i2c_port = -1,
         .sda_io_num = LUME_PIN_I2C_SDA,

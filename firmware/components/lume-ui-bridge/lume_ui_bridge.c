@@ -20,6 +20,7 @@
 #include "lvgl.h"
 #include "lume_ui_bridge.h"
 #include "lume_engine.h"     /* r4 P2: lume_engine_notify_removed() */
+#include "lume_pins.h"       /* r27: display geometry from the board profile */
 
 _Static_assert(sizeof(lume_ui_msg_t) <= 112, "UI queue record size budget");
 
@@ -51,7 +52,9 @@ static uint16_t s_canvas_w[LUME_MAX_NODES], s_canvas_h[LUME_MAX_NODES];
 static uint16_t s_canvas_stride[LUME_MAX_NODES]; /* RGB565 pixels per row */
 static int16_t s_arc_start[LUME_MAX_NODES], s_arc_end[LUME_MAX_NODES]; /* LUME_NODE_ARC sweep */
 static size_t s_canvas_bytes;
-#define CANVAS_BUDGET (480u * 480u * 2u)
+/* r27: canvas budget is one full framebuffer; geometry comes from the board
+ * profile instead of a hardcoded frame size. */
+#define CANVAS_BUDGET ((size_t)LUME_LCD_H_RES * LUME_LCD_V_RES * (LUME_LCD_BPP / 8u))
 static void clear_subtree(lv_obj_t *obj);
 static void release_dead_canvases(void);
 static void release_dead_images(void)
@@ -321,7 +324,7 @@ static void apply_create(const lume_ui_msg_t *m)
         }
         case LUME_NODE_CANVAS: {
             int32_t w = m->from, h = m->to;
-            if (w < 1 || h < 1 || w > 480 || h > 480 ||
+            if (w < 1 || h < 1 || w > LUME_LCD_H_RES || h > LUME_LCD_V_RES ||
                 (size_t)w * h * 2u > CANVAS_BUDGET - s_canvas_bytes) {
                 ESP_LOGE(TAG, "canvas id=%u invalid dimensions/budget %ldx%ld", m->node_id, (long)w, (long)h);
                 return;

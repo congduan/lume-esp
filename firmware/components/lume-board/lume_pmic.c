@@ -3,7 +3,7 @@
  *
  * Evidence (pulled and read before writing, not from memory):
  *   - examples/esp-idf/01_AXP2101/main/main.cpp:51-58
- *       -> AXP2101 I2C address 0x34, 7-bit, 400 kHz class bus.
+ *       -> AXP2101 7-bit I2C address (in the board profile), 400 kHz class bus.
  *   - examples/esp-idf/01_AXP2101/main/port_axp2101.cpp:66-76
  *       -> rail comments: ALDO3 3300 mV, BLDO1 ("OLED VDD") 3300 mV,
  *          BLDO2 3300 mV.
@@ -27,9 +27,10 @@
 #include "driver/i2c_master.h"
 #include "esp_check.h"
 #include "esp_log.h"
+#include "lume_pins.h"
 #include "lume_board_internal.h"
 
-#define AXP2101_I2C_ADDR    0x34
+#define AXP2101_I2C_ADDR    LUME_I2C_ADDR_AXP2101
 #define AXP2101_IC_TYPE_REG 0x03
 #define AXP2101_CHIP_ID     0x4A
 #define AXP2101_ONOFF_CTRL0 0x90

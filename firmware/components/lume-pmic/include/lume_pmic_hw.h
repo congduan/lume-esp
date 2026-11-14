@@ -35,7 +35,7 @@
 #define LUME_PMIC_ERR_DRIVER  (-2)  /* ESP-IDF i2c_master call failed */
 #define LUME_PMIC_ERR_STATE   (-3)  /* PMIC not detected, or required source absent */
 
-/* One-time AXP2101 setup: add device 0x34 @ 400 kHz on the shared bus, verify
+/* One-time AXP2101 setup: add the profile's device @ 400 kHz on the shared bus, verify
  * CHIP_ID 0x4A @ reg 0x03, then (idempotently) enable battery detection and
  * the VBAT / VBUS / die-temperature ADC channels. A SUCCESSFUL init is
  * latched for the process lifetime; any FAILURE (including partial failures

@@ -1,4 +1,5 @@
 #include "lume_image.h"
+#include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include <string.h>
 
 static uint32_t be32(const uint8_t *p)
@@ -35,7 +36,7 @@ int lume_image_size_of(const uint8_t *b, size_t n, uint16_t *w, uint16_t *h)
         }
     } else return -2;
     if (!width || !height) return -2;
-    if (width > 480 || height > 480) return -1;
+    if (width > LUME_LCD_H_RES || height > LUME_LCD_V_RES) return -1;
     *w = width; *h = height;
     return 0;
 }

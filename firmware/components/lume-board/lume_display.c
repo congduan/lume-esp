@@ -1,24 +1,23 @@
 /**
- * CO5300 480x480 QSPI AMOLED — clean-room esp_lcd bring-up + LVGL display.
+ * CO5300 QSPI AMOLED — clean-room esp_lcd bring-up + LVGL display.
  *
- * All wiring below was read from real vendor / IDF source before writing
- * (task discipline: no CO5300 command sequence from memory):
+ * Board wiring, geometry, QSPI timing, opcodes and the vendor init command
+ * table all come from the selected board profile (lume_board_profile.h, via
+ * lume_pins.h); see firmware/boards/README.md and docs/r27-board-param-audit.md.
+ * The driver below deliberately contains no board-specific literals.
  *
- *  - schematic/ESP32-S3-Touch-AMOLED-2.16-Schematic.pdf, J4 connector net
- *    list: QSPI_SCL=38, SIO0/SI1/SI2/SI3=4/5/6/7, LCD_CS=12, LCD_RESET=39.
+ * Protocol evidence (read from vendor / IDF source before writing):
  *  - waveshare/esp32_s3_touch_amoled_2_16 BSP v1.0.0 AND v2.0.1,
  *      esp32_s3_touch_amoled_2_16.c:53-71   -> CO5300 init command table
  *      esp32_s3_touch_amoled_2_16.c:424-468 -> bsp_display_new(): QSPI bus
  *        config, panel-io config, vendor flags, reset/init/display-on order
- *      esp32_s3_touch_amoled_2_16.c:499-542 -> LVGL display: 480x480,
- *        buffer_height=50, use_psram=true, double buffer
+ *      esp32_s3_touch_amoled_2_16.c:499-542 -> LVGL display: double PSRAM buffer
  *  - espressif/esp_lcd_co5300 v1.0.0,
- *      esp_lcd_co5300_spi.c:23-25    -> QSPI opcodes 0x02/0x03/0x32
+ *      esp_lcd_co5300_spi.c:23-25    -> QSPI opcodes
  *      esp_lcd_co5300_spi.c:142-160  -> tx_param()/tx_color() encode a 32-bit
  *        QSPI command word: (reg<<8) | (opcode<<24), with lcd_cmd_bits=32
  *      esp_lcd_co5300_spi.c:174-190  -> hardware reset timings
  *      esp_lcd_co5300_spi.c:261-290  -> draw_bitmap(): CASET/RASET/RAMWR
- *      include/esp_lcd_co5300.h:91-99,117-131 -> QSPI bus/panel-io macros
  *  - ESP-IDF v5.5.5 esp_lcd/spi/esp_lcd_panel_io_spi.c:398-401 -> quad_mode
  *    sets SPI_TRANS_MODE_QIO on the color phase (that is the QSPI data path)
  *
@@ -40,28 +39,28 @@
 #include "lume_pins.h"
 #include "lume_board_internal.h"
 
+/* Board profile (lume_board_profile.h, re-exported by lume_pins.h) supplies
+ * geometry, QSPI bus timing, opcodes and DCS registers. Local aliases keep the
+ * driver readable without restating any board value in this file. */
 #define LCD_H_RES       LUME_LCD_H_RES
 #define LCD_V_RES       LUME_LCD_V_RES
 #define LCD_BPP         LUME_LCD_BPP
-#define LCD_SPI_HOST    SPI2_HOST
-#define LCD_PCLK_HZ     (40 * 1000 * 1000)
-/* Draw buffer height in lines. buf stay in INTERNAL SRAM (see lume_display_init):
- * the SPI driver copies a non-DMA-capable PSRAM buffer into an internal bounce
- * buffer for every transaction, and a full-frame (460800 B) bounce allocation
- * fails with ESP_ERR_NO_MEM. 20 lines = 19200 B per buffer, 38400 B for double
- * buffering, which fits internal RAM and lets the DMA read the draw buffer
- * directly. It also matches the granularity esp-brookesia uses on this board
+/* Draw buffer height in lines (profile value: 20). Buffers stay in INTERNAL
+ * SRAM (see lume_display_init): the SPI driver copies a non-DMA-capable PSRAM
+ * buffer into an internal bounce buffer for every transaction, and a
+ * full-frame (460800 B) bounce allocation fails with ESP_ERR_NO_MEM. 20 lines
+ * = 19200 B per buffer, 38400 B for double buffering, which fits internal RAM
+ * and lets the DMA read the draw buffer directly. It also matches the
+ * granularity esp-brookesia uses on this board
  * (BROOKESIA_GUI_LVGL_DISPLAY_SOURCE_DEFAULT_BUFFER_HEIGHT = 20). */
-#define DRAW_BUF_LINES  20
+#define DRAW_BUF_LINES  LUME_LCD_DRAW_BUF_LINES
 
-/* CO5300 QSPI opcodes — esp_lcd_co5300_spi.c:23-25 */
-#define QSPI_OP_WRITE_CMD     0x02
-#define QSPI_OP_WRITE_COLOR   0x32
+#define QSPI_OP_WRITE_CMD   LUME_LCD_QSPI_OP_WRITE_CMD
+#define QSPI_OP_WRITE_COLOR LUME_LCD_QSPI_OP_WRITE_COLOR
 
-/* MIPI DCS registers used by the CO5300 draw path */
-#define LCD_CMD_CASET         0x2A
-#define LCD_CMD_RASET         0x2B
-#define LCD_CMD_RAMWR         0x2C
+#define LCD_CMD_CASET   LUME_LCD_CMD_CASET
+#define LCD_CMD_RASET   LUME_LCD_CMD_RASET
+#define LCD_CMD_RAMWR   LUME_LCD_CMD_RAMWR
 
 /* Build the 32-bit QSPI command word (esp_lcd_co5300_spi.c:142-160). */
 static inline int qspi_cmd(uint8_t reg, uint8_t opcode)
@@ -76,23 +75,11 @@ typedef struct {
     uint16_t delay_ms;
 } lume_init_cmd_t;
 
-/* BSP 1.0.0/2.0.1 esp32_s3_touch_amoled_2_16.c:53-71 (identical tables). */
+/* Board profile owns the CO5300 vendor init sequence (Waveshare BSP
+ * 1.0.0/2.0.1 esp32_s3_touch_amoled_2_16.c:53-71). CASET/RASET bounds are
+ * derived from LUME_LCD_H_RES/V_RES in the profile. */
 static const lume_init_cmd_t s_init_cmds[] = {
-    {0x11, (uint8_t[]){0x00}, 0, 600},                   /* sleep out */
-    {0xFE, (uint8_t[]){0x20}, 1, 0},
-    {0x19, (uint8_t[]){0x10}, 1, 0},
-    {0x1C, (uint8_t[]){0xA0}, 1, 0},
-    {0xFE, (uint8_t[]){0x00}, 1, 0},
-    {0xC4, (uint8_t[]){0x80}, 1, 0},                     /* SPI mode ctl */
-    {0x3A, (uint8_t[]){0x55}, 1, 0},                     /* RGB565 */
-    {0x35, (uint8_t[]){0x00}, 1, 0},                     /* TE on */
-    {0x53, (uint8_t[]){0x20}, 1, 0},
-    {0x51, (uint8_t[]){0xFF}, 1, 0},                     /* brightness */
-    {0x63, (uint8_t[]){0xFF}, 1, 0},
-    {0x2A, (uint8_t[]){0x00, 0x00, 0x01, 0xDF}, 4, 0},  /* CASET 0..479 */
-    {0x2B, (uint8_t[]){0x00, 0x00, 0x01, 0xDF}, 4, 0},  /* RASET 0..479 */
-    {0x36, (uint8_t[]){0xA0}, 1, 0},                     /* MADCTL */
-    {0x29, (uint8_t[]){0x00}, 0, 600},                   /* display on */
+    LUME_LCD_INIT_CMDS
 };
 
 static const char *TAG = "lume-display";
@@ -102,18 +89,20 @@ static lv_display_t *s_disp;
 esp_err_t lume_panel_sleep(void)
 {
     if (s_io == NULL) return ESP_ERR_INVALID_STATE;
-    /* MIPI DCS 0x10; keep the panel powered so touch stays alive. */
-    esp_err_t err = esp_lcd_panel_io_tx_param(s_io, qspi_cmd(0x10, QSPI_OP_WRITE_CMD), NULL, 0);
-    if (err == ESP_OK) vTaskDelay(pdMS_TO_TICKS(150));
+    /* MIPI DCS sleep-in; keep the panel powered so touch stays alive. */
+    esp_err_t err = esp_lcd_panel_io_tx_param(s_io,
+                        qspi_cmd(LUME_LCD_CMD_SLEEP_IN, QSPI_OP_WRITE_CMD), NULL, 0);
+    if (err == ESP_OK) vTaskDelay(pdMS_TO_TICKS(LUME_LCD_SLEEP_IN_SETTLE_MS));
     return err;
 }
 
 esp_err_t lume_panel_wake(void)
 {
     if (s_io == NULL) return ESP_ERR_INVALID_STATE;
-    /* The vendor init table waits 600 ms after the same sleep-out command. */
-    esp_err_t err = esp_lcd_panel_io_tx_param(s_io, qspi_cmd(0x11, QSPI_OP_WRITE_CMD), NULL, 0);
-    if (err == ESP_OK) vTaskDelay(pdMS_TO_TICKS(600));
+    /* The vendor init table waits after the same sleep-out command. */
+    esp_err_t err = esp_lcd_panel_io_tx_param(s_io,
+                        qspi_cmd(LUME_LCD_CMD_SLEEP_OUT, QSPI_OP_WRITE_CMD), NULL, 0);
+    if (err == ESP_OK) vTaskDelay(pdMS_TO_TICKS(LUME_LCD_SLEEP_OUT_SETTLE_MS));
     return err;
 }
 
@@ -206,17 +195,17 @@ static esp_err_t panel_io_init(void)
                         TAG, "spi_bus_initialize(QSPI) failed");
 
     /* CO5300_PANEL_IO_QSPI_CONFIG — esp_lcd_co5300.h:117-131.
-     * BSP overrides trans_queue_depth 10 -> 3 (BSP:439). */
+     * Queue depth / cmd-width / param-width come from the board profile. */
     const esp_lcd_panel_io_spi_config_t io_cfg = {
         .cs_gpio_num = LUME_PIN_LCD_CS,
         .dc_gpio_num = -1,                 /* QSPI: command encoded in the 32-bit word */
-        .spi_mode = 0,
+        .spi_mode = LUME_LCD_SPI_MODE,
         .pclk_hz = LCD_PCLK_HZ,
-        .trans_queue_depth = 3,
+        .trans_queue_depth = LUME_LCD_TRANS_QUEUE_DEPTH,
         .on_color_trans_done = flush_ready_cb,
         .user_ctx = NULL,
-        .lcd_cmd_bits = 32,
-        .lcd_param_bits = 8,
+        .lcd_cmd_bits = LUME_LCD_CMD_BITS,
+        .lcd_param_bits = LUME_LCD_PARAM_BITS,
         .flags = {
             .quad_mode = true,
         },
@@ -229,16 +218,16 @@ static esp_err_t panel_io_init(void)
 
 static esp_err_t panel_init(void)
 {
-    /* Hardware reset — esp_lcd_co5300_spi.c:174-190 (10ms low, 150ms high). */
+    /* Hardware reset — esp_lcd_co5300_spi.c:174-190; timings from profile. */
     const gpio_config_t rst_cfg = {
         .mode = GPIO_MODE_OUTPUT,
         .pin_bit_mask = 1ULL << LUME_PIN_LCD_RST,
     };
     ESP_RETURN_ON_ERROR(gpio_config(&rst_cfg), TAG, "LCD RST gpio config failed");
     ESP_RETURN_ON_ERROR(gpio_set_level(LUME_PIN_LCD_RST, 0), TAG, "LCD RST low failed");
-    vTaskDelay(pdMS_TO_TICKS(10));
+    vTaskDelay(pdMS_TO_TICKS(LUME_LCD_RST_LOW_MS));
     ESP_RETURN_ON_ERROR(gpio_set_level(LUME_PIN_LCD_RST, 1), TAG, "LCD RST high failed");
-    vTaskDelay(pdMS_TO_TICKS(150));
+    vTaskDelay(pdMS_TO_TICKS(LUME_LCD_RST_HIGH_MS));
 
     for (size_t i = 0; i < sizeof(s_init_cmds) / sizeof(s_init_cmds[0]); i++) {
         const lume_init_cmd_t *c = &s_init_cmds[i];

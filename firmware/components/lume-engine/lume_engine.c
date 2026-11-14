@@ -39,6 +39,7 @@
 #include "lume_audio.h"
 #include "lume_power.h"
 #include "lume_image.h"
+#include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -263,9 +264,11 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
         if (argc < 4) return JS_ThrowTypeError(ctx, "lume: canvas width and height required");
         if (JS_ToInt32(ctx, &canvas_w, argv[2]) < 0 ||
             JS_ToInt32(ctx, &canvas_h, argv[3]) < 0) return JS_EXCEPTION;
-        if (canvas_w < 1 || canvas_h < 1 || canvas_w > 480 || canvas_h > 480 ||
-            (size_t)canvas_w * canvas_h * 2u > 480u * 480u * 2u)
-            return JS_ThrowRangeError(ctx, "lume: canvas dimensions exceed 480x480 budget");
+        if (canvas_w < 1 || canvas_h < 1 ||
+            canvas_w > LUME_LCD_H_RES || canvas_h > LUME_LCD_V_RES ||
+            (size_t)canvas_w * canvas_h * (LUME_LCD_BPP / 8u) >
+                (size_t)LUME_LCD_H_RES * LUME_LCD_V_RES * (LUME_LCD_BPP / 8u))
+            return JS_ThrowRangeError(ctx, "lume: canvas dimensions exceed display budget");
     }
     uint16_t id = 0;
     for (uint16_t i = 1; i < LUME_MAX_NODES; i++)
@@ -336,8 +339,11 @@ static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, J
         JS_ToInt32(ctx,&a,argv[4]) < 0 || JS_ToInt32(ctx,&b,argv[5]) < 0 ||
         JS_ToInt32(ctx,&color,argv[6]) < 0 || JS_ToInt32(ctx,&width,argv[7]) < 0) return JS_EXCEPTION;
     if (id < 1 || id >= LUME_MAX_NODES || op < LUME_DRAW_CLEAR || op > LUME_DRAW_TEXT ||
-        width < 1 || width > 16 || x < -480 || x > 480 || y < -480 || y > 480 ||
-        a < -480 || a > 480 || b < -480 || b > 480)
+        width < 1 || width > 16 ||
+        x < -LUME_LCD_H_RES || x > LUME_LCD_H_RES ||
+        y < -LUME_LCD_V_RES || y > LUME_LCD_V_RES ||
+        a < -LUME_LCD_H_RES || a > LUME_LCD_H_RES ||
+        b < -LUME_LCD_V_RES || b > LUME_LCD_V_RES)
         return JS_ThrowRangeError(ctx, "lume: canvas draw argument out of range");
     lume_ui_msg_t m; msg_init(&m);
     m.op = LUME_OP_CANVAS_DRAW; m.node_id = id; m.attr = op;
