@@ -40,10 +40,17 @@ static int full_path(const char *path, char *out, bool allow_root)
             (seg == 1 && p[0] == '.')) return LUME_FS_ERR_ARG;
         if (!end) break;
         p = end + 1;
-        if (!*p) return LUME_FS_ERR_ARG;
+        /* A trailing '/' is a directory convention -- apps classify entries
+         * with exists(path + '/'). Normalize it instead of rejecting: "x/"
+         * means the same node as "x". Interior empty segments stay invalid. */
     }
+    char clean[LUME_FS_PATH_MAX + 1];
+    size_t plen = strlen(path);
+    if (plen == 0 || plen >= sizeof(clean)) return LUME_FS_ERR_ARG;
+    memcpy(clean, path, plen + 1);
+    while (plen > 1 && clean[plen - 1] == '/') clean[--plen] = '\0';
     if (snprintf(out, sizeof(FS_BASE) + LUME_FS_PATH_MAX + 1, "%s%s%s",
-                 FS_BASE, path[0] == '/' ? "" : "/", path) < 0)
+                 FS_BASE, clean[0] == '/' ? "" : "/", clean) < 0)
         return LUME_FS_ERR_ARG;
     return LUME_FS_OK;
 }
@@ -149,6 +156,11 @@ int lume_fs_remove(const char *path)
     int r = full_path(path, full, false);
     if (r < 0) return r;
     if (remove(full) == 0 || errno == ENOENT) return LUME_FS_OK;
+    /* ESP-IDF routes remove() to the VFS unlink hook, and esp_littlefs rejects
+     * directories with EISDIR (errno 21) even when empty -- it has a separate
+     * rmdir hook. Retry once as rmdir so empty directories can be deleted;
+     * apps do recursive removeTree() over children first, then hit this. */
+    if (rmdir(full) == 0) return LUME_FS_OK;
     return io_error("remove");
 }
 
@@ -185,7 +197,16 @@ int lume_fs_exists(const char *path, bool *exists)
     int r = full_path(path, full, true);
     if (r < 0) return r;
     struct stat st;
-    if (stat(full, &st) == 0) { *exists = true; return LUME_FS_OK; }
+    if (stat(full, &st) == 0) {
+        /* full_path() strips a trailing slash so the VFS call succeeds, but
+         * apps use exists(path + '/') as the "is a directory" test (there is
+         * no stat-mode binding). Honor the convention: a trailing slash on a
+         * regular file must report false, not true. */
+        size_t plen = strlen(path);
+        bool wants_dir = plen > 0 && path[plen - 1] == '/';
+        *exists = wants_dir ? S_ISDIR(st.st_mode) : true;
+        return LUME_FS_OK;
+    }
     return errno == ENOENT ? LUME_FS_OK : io_error("exists");
 }
 

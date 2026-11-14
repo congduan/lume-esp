@@ -43,7 +43,10 @@ function trim(text, max) {
 }
 
 function loadDir(path) {
-  var list = Fs.list(path);
+  /* LittleFS does not normalize a trailing slash: opendir("/x/y/") returns
+   * ENOENT (-2). openEntry() hands us path + '/', so strip it here. */
+  var clean = path.replace(/\/+$/, '') || '/';
+  var list = Fs.list(clean);
   if (typeof list === 'number') {
     status.set('list failed ' + list);
     return;
@@ -56,7 +59,7 @@ function loadDir(path) {
   entries.set(list.map(function (name) {
     return { name: name, isDir: isDir(path + name) };
   }));
-  cwd.set(path);
+  cwd.set(clean === '/' ? '/' : clean + '/');   /* keep the trailing-slash join convention */
   selected.set('');
   preview.set(null);
   lume.setAttr(previewCanvas, 5, 0);
@@ -72,6 +75,9 @@ function goUp() {
 }
 
 function open(entry) {
+  var path = cwd() + entry.name;
+  lume.system.log('fm open name=' + entry.name + ' path=' + path +
+    ' exists-slash=' + Fs.exists(path + '/') + ' exists-plain=' + Fs.exists(path));
   if (entry.isDir) {
     loadDir(cwd() + entry.name + '/');
     return;
@@ -132,7 +138,12 @@ function deleteEntry(name) {
     return;
   }
   var path = cwd() + name;
-  var err = removeTree(path, isDir(path), 0);
+  /* `var isDir` would hoist and shadow the isDir() function itself, turning
+   * the call into "undefined(...)" -- name the local differently. */
+  var targetIsDir = isDir(path);
+  lume.system.log('fm deleteEntry path=' + path + ' isDir=' + targetIsDir);
+  var err = removeTree(path, targetIsDir, 0);
+  lume.system.log('fm removeTree err=' + err + ' exists-after=' + Fs.exists(path));
   pendingDelete.set('');
   status.set(err === 0 ? 'deleted ' + name : 'delete failed ' + err);
   loadDir(cwd());
@@ -140,6 +151,7 @@ function deleteEntry(name) {
 
 /* Two-step delete: the first press arms the item, the second one removes it. */
 function askDelete(name) {
+  lume.system.log('fm askDelete ' + name + ' pending=' + pendingDelete() + ' cwd=' + cwd());
   if (pendingDelete() === name) {
     deleteEntry(name);
     return;

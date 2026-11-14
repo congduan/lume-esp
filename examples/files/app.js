@@ -21,7 +21,8 @@ function isDirPath(p) {
 }
 
 function loadDir(path) {
-  const list = Fs.list(path);
+  const clean = path.replace(/\/+$/, '') || '/';   // LittleFS rejects trailing '/'
+  const list = Fs.list(clean);
   if (typeof list === 'number') {
     status.set('read failed: ' + list);
     return;
@@ -34,7 +35,7 @@ function loadDir(path) {
   entries.set(list.map(function (name) {
     return { name: name, isDir: isDirPath(path + name) };
   }));
-  cwd.set(path);
+  cwd.set(clean === '/' ? '/' : clean + '/');   /* keep the trailing-slash join convention */
   selected.set(null);
   pendingDelete.set(null);
   status.set(list.length + ' items');
