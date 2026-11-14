@@ -14,7 +14,7 @@
  * asserts:
  *   1. "LUMC" frames are recognised and distinguished from "LUME" app frames
  *      in one interleaved byte stream, including byte-at-a-time feeding;
- *   2. the text grammar of STORE/LAUNCH/REMOVE/META/LIST/HOME;
+ *   2. the text grammar of STORE/LAUNCH/REMOVE/META/LIST/HOME/SHOT;
  *   3. id validation (reserved ".current", traversal, length, charset);
  *   4. CRC / resync behaviour is unchanged for both frame kinds.
  *
@@ -176,6 +176,9 @@ static void test_cmd_parse(void)
                NULL, NULL, "META");
     parse_case("LIST", 4, LUME_CMD_OK, LUME_CMD_LIST, "", NULL, NULL, "LIST");
     parse_case("HOME\n", 5, LUME_CMD_OK, LUME_CMD_HOME, "", NULL, NULL, "HOME");
+    parse_case("SHOT", 4, LUME_CMD_OK, LUME_CMD_SHOT, "", NULL, NULL, "SHOT");
+    parse_case("SHOT\n", 5, LUME_CMD_OK, LUME_CMD_SHOT, "", NULL, NULL,
+               "SHOT with trailing newline");
 
     parse_case("", 0, LUME_CMD_ERR_ARG, 0, "", NULL, NULL, "empty payload rejected");
     parse_case("FLY\tclock", 10, LUME_CMD_ERR_VERB, 0, "", NULL, NULL,

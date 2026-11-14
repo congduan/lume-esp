@@ -15,6 +15,7 @@
  *   META\t<id>
  *   LIST
  *   HOME
+ *   SHOT
  *
  * Rules:
  *   - The first '\n' ends the first line. Verbs are case-sensitive.
@@ -42,6 +43,7 @@ typedef enum {
     LUME_CMD_META,
     LUME_CMD_LIST,
     LUME_CMD_HOME,
+    LUME_CMD_SHOT,
 } lume_cmd_kind_t;
 
 #define LUME_CMD_OK          0

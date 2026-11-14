@@ -5,6 +5,7 @@
 // same RELOAD OK/ERR reply lines. Only the transport + AUTH handshake differ.
 import net from 'node:net';
 import { frame, cmdFrame } from './protocol.js';
+import { decodeShot } from './shot.js';
 
 export const OTA_PORT_DEFAULT = 8765;
 const CONNECT_TIMEOUT_MS = 5000;
@@ -48,14 +49,23 @@ function connect(ip, port) {
   });
 }
 
-/* Line reader: the device sends ONLY lines (AUTH OK/ERR, RELOAD OK/ERR), never
- * binary. waitLine(predicate, ms, what) resolves with the first matching line
- * (queued or future) or rejects on timeout / socket close / error. */
+/* Line reader: the device sends ONLY lines (AUTH OK/ERR, RELOAD OK/ERR, SHOT
+ * screenshot replies), never raw binary. waitLine(predicate, ms, what)
+ * resolves with the first matching line (queued or future);
+ * collect(start, stop, ms, what) gathers a multi-line reply (SHOT header ->
+ * footer). Both reject on timeout / socket close / error. */
 function lineReader(socket, address) {
   let buf = '';
   const queue = [];
   let waiter = null;
+  let collector = null;
   const fail = err => {
+    if (collector) {
+      const c = collector;
+      collector = null;
+      clearTimeout(c.timer);
+      c.reject(err);
+    }
     if (!waiter) return;
     const w = waiter;
     waiter = null;
@@ -70,6 +80,7 @@ function lineReader(socket, address) {
       let line = buf.slice(0, i);
       buf = buf.slice(i + 1);
       if (line.endsWith('\r')) line = line.slice(0, -1);
+      if (collector) { collector.feed(line); continue; }
       if (waiter && waiter.predicate(line)) {
         const w = waiter;
         waiter = null;
@@ -93,6 +104,32 @@ function lineReader(socket, address) {
           reject(new Error(`${what} timed out after ${ms} ms on ${address}`));
         }, ms);
         waiter = { resolve, reject, timer, predicate };
+      });
+    },
+    /** Collect the lines of one multi-line reply: start at the first line
+     * matching startPred, resolve with ALL collected lines (inclusive) once
+     * stopPred matches, reject on timeout / close / error. */
+    collect(startPred, stopPred, ms, what) {
+      return new Promise((resolve, reject) => {
+        const c = {
+          lines: [],
+          timer: setTimeout(() => {
+            collector = null;
+            reject(new Error(`${what} timed out after ${ms} ms on ${address}`));
+          }, ms),
+          feed(line) {
+            if (this.lines.length === 0 && !startPred(line)) return;   // log noise
+            this.lines.push(line);
+            if (stopPred(line)) {
+              collector = null;
+              clearTimeout(this.timer);
+              resolve(this.lines);
+            }
+          },
+          reject,
+        };
+        collector = c;
+        for (const line of queue.splice(0, queue.length)) c.feed(line);
       });
     },
   };
@@ -174,6 +211,18 @@ export async function openOta(ip, token, port = OTA_PORT_DEFAULT) {
     async commandReload(text) {
       await write(cmdFrame(text));
       return awaitReload(null);   // the launched app reports its own length
+    },
+    /** SHOT command: full-frame RGB565 screenshot streamed back as S64 lines. */
+    async screenshot() {
+      await write(cmdFrame('SHOT'));
+      const lines = await reader.collect(
+        l => /^SHOT \d+ \d+ \d+ [0-9a-f]{8}$/.test(l),
+        l => l === 'SHOT OK' || /^CMD ERR /.test(l),
+        ACK_TIMEOUT_MS, 'OTA screenshot');
+      if (lines[lines.length - 1].startsWith('CMD ERR ')) {
+        throw new Error(`device rejected screenshot: ${lines[lines.length - 1].slice('CMD ERR '.length)}`);
+      }
+      return decodeShot(lines);
     },
     write,
     close: () => new Promise(resolve => { socket.destroy(); resolve(); }),

@@ -12,6 +12,7 @@ import { bundle } from './bundle.js';
 import { create } from './create.js';
 import { frame, cmdFrame, storeCommand, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD } from './protocol.js';
 import { openOta, otaAuthLine, OTA_PORT_DEFAULT } from './ota.js';
+import { decodeShot, bmpFromRgb565 } from './shot.js';
 
 const execFileAsync = promisify(execFile);
 const OTA_TOKEN = '0123456789abcdef0123456789abcdef';
@@ -104,6 +105,21 @@ function mockOtaDevice(token) {
               socket.write('APP\tclock\nMETA\tclock\t{"label":"Clock"}\nCMD OK list 1\n');
             } else if (payload.startsWith('LAUNCH')) {
               socket.write('RELOAD OK 7\n');
+            } else if (payload === 'SHOT') {
+              // Same grammar as lume_hotreload.c handle_shot(): header,
+              // S64 base64 data lines (240 raw bytes each), footer. Junk
+              // log lines between replies must be ignored by the CLI.
+              const w = 4, h = 3;
+              const raw = Buffer.alloc(w * h * 2);
+              for (let i = 0; i < raw.length; i += 2) raw.writeUInt16LE((i / 2) & 0xffff, i);
+              socket.write(`SHOT ${w} ${h} ${raw.length} ${crc32(raw).toString(16).padStart(8, '0')}\n`);
+              socket.write('I (1234) lume: noisy device log line\n');
+              for (let off = 0; off < raw.length; off += 240) {
+                const end = Math.min(off + 240, raw.length);
+                socket.write('S64' + raw.subarray(off, end).toString('base64') + '\n');
+                socket.write('I (1235) lume: another log line\n');
+              }
+              socket.write('SHOT OK\n');
             } else {
               socket.write('CMD OK home\n');
             }
@@ -152,6 +168,54 @@ test('OTA wrong token is rejected (AUTH ERR path)', async () => {
     await assert.rejects(openOta('127.0.0.1', 'f'.repeat(32), dev.port),
       /rejected the token/);
   } finally { await dev.close(); }
+});
+
+/* ---- r35 screenshot reply (SHOT command, host mock device) ---- */
+
+test('OTA screenshot round trips the RGB565 frame past log noise', async () => {
+  const dev = await mockOtaDevice(OTA_TOKEN);
+  try {
+    const device = await openOta('127.0.0.1', OTA_TOKEN, dev.port);
+    const shot = await device.screenshot();
+    await device.close();
+    assert.deepEqual(dev.commands, ['SHOT'], 'device received the SHOT command');
+    assert.equal(shot.width, 4);
+    assert.equal(shot.height, 3);
+    assert.equal(shot.data.length, 24);
+    assert.equal(shot.data.readUInt16LE(0), 0);      // first pixel
+    assert.equal(shot.data.readUInt16LE(20), 10);    // last pixel (i/2 = 10)
+  } finally { await dev.close(); }
+});
+
+test('decodeShot rejects a corrupted payload and a CRC mismatch', () => {
+  const raw = Buffer.alloc(8, 0xab);
+  const crc = crc32(raw).toString(16).padStart(8, '0');
+  assert.throws(() => decodeShot(['SHOT 2 2 8 deadbeef', 'S64' + raw.toString('base64'), 'SHOT OK']),
+    /CRC mismatch/);
+  assert.throws(() => decodeShot([`SHOT 2 2 8 ${crc}`, 'S64' + raw.subarray(0, 4).toString('base64'), 'SHOT OK']),
+    /truncated/);
+  assert.throws(() => decodeShot(['I (1) tag: log only']), /no SHOT header/);
+});
+
+test('bmpFromRgb565 produces a valid bottom-up 24-bit BMP', () => {
+  // 3x2 frame: top row = pure red (0xF800), bottom row = pure blue (0x001F).
+  const w = 3, h = 2;
+  const data = Buffer.alloc(w * h * 2);
+  for (let x = 0; x < w; x++) data.writeUInt16LE(0xf800, x * 2);
+  for (let x = 0; x < w; x++) data.writeUInt16LE(0x001f, w * 2 + x * 2);
+  const bmp = bmpFromRgb565(data, w, h);
+  assert.equal(bmp.toString('ascii', 0, 2), 'BM');
+  assert.equal(bmp.readUInt32LE(2), bmp.length);
+  assert.equal(bmp.readUInt32LE(10), 54);
+  assert.equal(bmp.readInt32LE(18), w);
+  assert.equal(bmp.readInt32LE(22), h);
+  assert.equal(bmp.readUInt16LE(28), 24);
+  // Row stride is padded to 4 bytes (w*3 = 9 -> pad 3); BMP rows run
+  // bottom-up, so the BMP's first pixel row is the frame's LAST row (blue).
+  const stride = w * 3 + 3;
+  assert.deepEqual([...bmp.subarray(54, 57)], [31 << 3, 0, 0]);
+  // 5-bit channels quantize 0x1f to 31<<3 = 248 (not 255).
+  assert.deepEqual([...bmp.subarray(54 + stride * (h - 1), 54 + stride * (h - 1) + 3)], [0, 0, 31 << 3]);
 });
 
 test('OTA RELOAD ERR is surfaced as a push error', async () => {

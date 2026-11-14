@@ -65,10 +65,29 @@ Source of truth: the shared portable codec [lume_frame.h](../firmware/components
 | `BACK`, `PAUS`, `RESM` four-byte controls | `LUME_FRAME_CTRL_*` | `protocol.js:3` |
 | Final `RELOAD OK/ERR` line | `lume_ota_reply()` (shared by USB + OTA) | `transport.js:24`, `ota.js` |
 | Command magic `LUMC`, same 12-byte header + CRC | `LUME_FRAME_CMD_MAGIC`, `LUME_FRAME_EV_CMD` | `protocol.js:cmdFrame()` |
-| Command text grammar (`STORE`/`LAUNCH`/`REMOVE`/`META`/`LIST`/`HOME`) | `lume_cmd.h` / `lume_cmd.c` | `protocol.js:storeCommand()/simpleCommand()` |
+| Command text grammar (`STORE`/`LAUNCH`/`REMOVE`/`META`/`LIST`/`HOME`/`SHOT`) | `lume_cmd.h` / `lume_cmd.c` | `protocol.js:storeCommand()/simpleCommand()` |
 | `CMD OK` / `CMD ERR` lines | `lume_hotreload.c:cmd_reply()` | `transport.js`, `ota.js` |
+| Screenshot reply (`SHOT <w> <h> <bytes> <crc>` + `S64<base64>` lines + `SHOT OK`) | `lume_hotreload.c:handle_shot()`, `lume_display.c` | `shot.js:decodeShot()` |
 
 Two frame kinds share one byte stream: `LUME` payloads are evaluated as app source, `LUMC` payloads are management commands and are never evaluated. A command frame is answered with `CMD OK …` / `CMD ERR <reason>`; `LAUNCH`/`HOME` are answered with the engine's `RELOAD OK/ERR` because the outcome is only known after the target app evaluated. `LIST` sends one `APP\t<id>\nMETA\t<id>\t<json>\n` block per app before `CMD OK list <n>`.
+
+## Debug screenshot (`lume screenshot`)
+
+The `SHOT` command captures one full-frame RGB565 snapshot of what the panel is currently showing and streams it back as text lines on the same channel (USB serial or WiFi TCP), so no extra port or protocol is needed:
+
+```bash
+node tools/lume/lume.js screenshot                      # -> ./screenshot.bmp
+node tools/lume/lume.js screenshot shot.bmp --port /dev/ttyACM0
+node tools/lume/lume.js screenshot shot.bmp --ota <ip> --token <t>
+```
+
+Reply grammar (firmware `lume_hotreload.c:handle_shot()`, decoder `tools/lume/shot.js`):
+
+- `SHOT <w> <h> <bytes> <crc32-8hex>\n` — header, always the first line.
+- `S64<base64>\n` — one data line per 240 raw bytes (320 base64 chars; the `S64` sentinel keeps interleaved device log lines out of the payload).
+- `SHOT OK\n` — footer. Any `CMD ERR <reason>` line aborts (`shot-busy` / `shot-oom` / `shot-timeout` / `shot-failed` / `shot-encode`).
+
+The payload is little-endian row-major RGB565, `w*h*2` bytes, no stride padding: `flush_cb` copies each flushed area into a PSRAM shadow buffer BEFORE the panel byte swap (see `lume_display.c:capture_copy_area`). The capture is armed from the CLI, completed on the LVGL task's next refresh cycle (`LV_EVENT_REFR_READY`, forced by a full-screen invalidate). A paused display completes the capture only after wake; the CLI surfaces the device's `shot-timeout` after 5 s. The CLI verifies the CRC and writes a 24-bit BMP.
 
 The C host harnesses are compiled on the host (no ESP-IDF stubs):
 

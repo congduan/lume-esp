@@ -57,12 +57,14 @@
 #include "lwip/sockets.h"
 #include "driver/usb_serial_jtag.h"
 #include "driver/usb_serial_jtag_vfs.h"
+#include "mbedtls/base64.h"
 #include "lume_engine.h"
 #include "lume_net.h"
 #include "lume_hotreload.h"
 #include "lume_frame.h"
 #include "lume_cmd.h"
 #include "lume_apps.h"
+#include "lume_board.h"
 
 static const char *TAG     = "lume-hotreload";
 static const char *OTA_TAG = "lume-ota";
@@ -205,6 +207,86 @@ typedef struct {
     int          count;
 } list_reply_t;
 
+/* ---- Screen capture reply (SHOT command, r35) ----
+ * Debug screenshot: captures one full-frame RGB565 snapshot (lume_board.h)
+ * and streams it back as TEXT lines on the pushing channel, so the same
+ * reply path works for USB (log lines may interleave BETWEEN our lines) and
+ * TCP. Grammar, one line per reply_write():
+ *   SHOT <w> <h> <bytes> <crc32-8hex>\n   header (always first)
+ *   S64<base64, 320 chars per 240 raw bytes>\n   data lines
+ *   SHOT OK\n                             footer
+ * or a single "CMD ERR <reason>\n" line with reason shot-busy / shot-oom /
+ * shot-timeout / shot-failed / shot-encode. The payload is little-endian
+ * row-major RGB565 (pre-swap flush copy), w*h*2 bytes, no stride padding.
+ * The CLI collects S64 lines between the header and the footer and verifies
+ * the CRC — interleaved device log lines are simply skipped. */
+#define SHOT_CHUNK        240       /* multiple of 3 -> clean base64 lines */
+#define SHOT_TIMEOUT_MS   5000
+
+static void handle_shot(reply_sink_t sink)
+{
+    SemaphoreHandle_t done = xSemaphoreCreateBinary();
+    if (done == NULL) {
+        cmd_reply(sink, false, NULL, NULL, 0, "shot-oom");
+        return;
+    }
+    uint16_t w = 0, h = 0;
+    esp_err_t r = lume_display_capture(done, &w, &h);
+    if (r != ESP_OK) {
+        vSemaphoreDelete(done);
+        cmd_reply(sink, false, NULL, NULL, 0,
+                  r == ESP_ERR_NO_MEM ? "shot-oom" : "shot-busy");
+        return;
+    }
+    /* A paused display finishes the capture only after wake; a bounded wait
+     * + cancel keeps the rx task responsive. */
+    if (xSemaphoreTake(done, pdMS_TO_TICKS(SHOT_TIMEOUT_MS)) != pdTRUE) {
+        lume_display_capture_cancel();
+        vSemaphoreDelete(done);
+        cmd_reply(sink, false, NULL, NULL, 0, "shot-timeout");
+        return;
+    }
+    vSemaphoreDelete(done);
+
+    uint16_t bw = 0, bh = 0;
+    const uint8_t *frame = lume_display_capture_buf(&bw, &bh);
+    const size_t total = (size_t)bw * bh * 2;
+    if (frame == NULL || total == 0) {
+        cmd_reply(sink, false, NULL, NULL, 0, "shot-failed");
+        return;
+    }
+    char line[48];
+    int n = snprintf(line, sizeof(line), "SHOT %u %u %u %08x\n",
+                     bw, bh, (unsigned)total,
+                     (unsigned)lume_frame_crc32(frame, total));
+    if (n <= 0 || (size_t)n >= sizeof(line)) {
+        cmd_reply(sink, false, NULL, NULL, 0, "shot-encode");
+        return;
+    }
+    reply_write(sink, line, (size_t)n);
+
+    /* 240 bytes -> 320 base64 chars, no padding except on the last chunk. */
+    unsigned char b64[SHOT_CHUNK / 3 * 4 + 4];
+    for (size_t off = 0; off < total; off += SHOT_CHUNK) {
+        const size_t chunk = total - off < SHOT_CHUNK ? total - off : SHOT_CHUNK;
+        size_t olen = 0;
+        if (mbedtls_base64_encode(b64, sizeof(b64), &olen,
+                                  frame + off, chunk) != 0) {
+            cmd_reply(sink, false, NULL, NULL, 0, "shot-encode");
+            return;
+        }
+        b64[olen] = 0;   /* keep the buffer NUL-terminated for memmove headroom */
+        /* Prepend the "S64" sentinel (overlapping shift, O(chunk)). */
+        memmove(b64 + 3, b64, olen);
+        b64[0] = 'S';
+        b64[1] = '6';
+        b64[2] = '4';
+        b64[olen + 3] = '\n';
+        reply_write(sink, (const char *)b64, olen + 4);
+    }
+    reply_write(sink, "SHOT OK\n", 8);
+}
+
 static void list_emit(void *arg, const char *id)
 {
     list_reply_t *l = (list_reply_t *)arg;
@@ -323,6 +405,9 @@ static void handle_cmd(reply_sink_t sink, const uint8_t *payload, size_t len)
         }
         break;
     }
+    case LUME_CMD_SHOT:
+        handle_shot(sink);
+        break;
     }
 }
 

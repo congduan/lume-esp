@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-import { readFile, readdir, stat } from 'node:fs/promises';
+import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
 import { CONTROL, storeCommand, simpleCommand } from './protocol.js';
 import { openPort } from './transport.js';
 import { openOta, OTA_PORT_DEFAULT } from './ota.js';
+import { bmpFromRgb565 } from './shot.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>] [--id <app-id>]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n`;
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>] [--id <app-id>]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n`;
 
 const APP_COMMANDS = new Set(['list', 'launch', 'remove', 'home']);
 
@@ -16,14 +17,14 @@ function parse(args) {
   const [command, ...rest] = args;
   if (command === '--help' || command === '-h' || !command) return { command: 'help' };
   if (command === '--version' || command === '-v') return { command: 'version' };
-  if (!['create', 'dev', 'deploy', 'apps'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
+  if (!['create', 'dev', 'deploy', 'apps', 'screenshot'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
   let dir, port, ota, token, otaPort, id, sub, subArg, ephemeral = false;
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     if (a === '--port' && command !== 'create' && rest[i + 1]) port = rest[++i];
-    else if (a === '--ota' && command === 'deploy' && rest[i + 1]) ota = rest[++i];
-    else if (a === '--token' && command === 'deploy' && rest[i + 1]) token = rest[++i];
-    else if (a === '--ota-port' && command === 'deploy' && rest[i + 1]) otaPort = rest[++i];
+    else if (a === '--ota' && (command === 'deploy' || command === 'screenshot') && rest[i + 1]) ota = rest[++i];
+    else if (a === '--token' && (command === 'deploy' || command === 'screenshot') && rest[i + 1]) token = rest[++i];
+    else if (a === '--ota-port' && (command === 'deploy' || command === 'screenshot') && rest[i + 1]) otaPort = rest[++i];
     else if (a === '--id' && (command === 'dev' || command === 'deploy') && rest[i + 1]) id = rest[++i];
     else if (a === '--ephemeral' && (command === 'dev' || command === 'deploy')) ephemeral = true;
     else if (!a.startsWith('-') && command === 'apps' && !sub) sub = a;
@@ -148,6 +149,18 @@ async function runApps(sub, subArg, options) {
   } finally { await device.close(); }
 }
 
+/* SHOT -> RGB565 frame -> 24-bit BMP on disk. The device captures the frame
+ * the panel is currently showing; if the display is asleep the capture only
+ * completes after wake (the CLI errors out on the device's shot-timeout). */
+async function runScreenshot(outPath, options) {
+  const device = await openDevice(options);
+  try {
+    const shot = await device.screenshot();
+    await writeFile(outPath, bmpFromRgb565(shot.data, shot.width, shot.height));
+    process.stdout.write(`Screenshot ${shot.width}x${shot.height} -> ${outPath}\n`);
+  } finally { await device.close(); }
+}
+
 async function runDev(dir, portPath, id, ephemeral) {
   const root = resolve(dir);
   const first = await bundle(root, { minify: false });
@@ -226,6 +239,7 @@ try {
   else if (command === 'create') process.stdout.write(`Created ${await create(dir)}\n`);
   else if (command === 'dev') await runDev(dir, port, id, ephemeral);
   else if (command === 'apps') await runApps(sub, subArg, { port, ota, token, otaPort });
+  else if (command === 'screenshot') await runScreenshot(dir && dir !== '.' ? dir : 'screenshot.bmp', { port, ota, token, otaPort });
   else {
     const source = await bundle(dir);
     const appId = id ?? defaultId(dir);

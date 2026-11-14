@@ -28,6 +28,7 @@
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_check.h"
@@ -37,7 +38,9 @@
 #include "esp_log.h"
 #include "lvgl.h"
 #include "lume_pins.h"
+#include "lume_board.h"
 #include "lume_board_internal.h"
+#include <string.h>
 
 /* Board profile (lume_board_profile.h, re-exported by lume_pins.h) supplies
  * geometry, QSPI bus timing, opcodes and DCS registers. Local aliases keep the
@@ -87,6 +90,166 @@ static const lume_init_cmd_t s_init_cmds[] = {
 static const char *TAG = "lume-display";
 static esp_lcd_panel_io_handle_t s_io;
 static lv_display_t *s_disp;
+
+/* ------------------------------------------------------------------ */
+/* Debug screen capture (r35) — see lume_board.h for the contract.     */
+/*                                                                      */
+/* Cross-thread model (same discipline as the rest of the file,         */
+/* LV_USE_OS == LV_OS_NONE): flush_cb, capture_refr_event_cb and        */
+/* capture_tick() run ONLY on the LVGL task. The requesting task        */
+/* (lume-hotreload) touches the state only under s_cap_lock, waits on   */
+/* its own semaphore and then reads the finished shadow buffer. The     */
+/* shadow buffer is allocated once and never freed, so flush_cb can     */
+/* never copy into released memory even if a capture is cancelled       */
+/* mid-flight (docs/KNOWN-SIMPLIFICATIONS.md).                          */
+static SemaphoreHandle_t s_cap_lock;   /* guards done/cancel/req        */
+static uint8_t *s_cap_buf;             /* PSRAM shadow, w*h*2 bytes     */
+static size_t   s_cap_stride;          /* destination row bytes (w*2)   */
+static uint16_t s_cap_w, s_cap_h;
+static SemaphoreHandle_t s_cap_done;   /* non-NULL <=> capture pending  */
+static volatile bool s_cap_req;        /* request -> LVGL tick          */
+static volatile bool s_cap_cancel;     /* cancel   -> LVGL tick         */
+static volatile bool s_cap_copying;    /* LVGL task: flush_cb copies    */
+static const uint8_t *s_cap_ready;     /* fresh frame, NULL when armed  */
+
+/* flush_cb hook (LVGL task): copy the flushed area into the shadow buffer
+ * BEFORE the panel byte swap, so the shadow holds host-order (little-endian)
+ * RGB565 — the layout a BMP/PNG encoder on the host expects. */
+static void capture_copy_area(const lv_area_t *area, const uint8_t *px_map)
+{
+    if (!s_cap_copying || s_cap_buf == NULL) {
+        return;
+    }
+    int32_t x1 = area->x1, x2 = area->x2;
+    int32_t y1 = area->y1, y2 = area->y2;
+    if (x2 >= s_cap_w) x2 = (int32_t)s_cap_w - 1;
+    if (y2 >= s_cap_h) y2 = (int32_t)s_cap_h - 1;
+    if (x1 < 0 || y1 < 0 || x1 > x2 || y1 > y2) {
+        return;
+    }
+    const uint32_t src_stride = lv_draw_buf_width_to_stride(
+        lv_area_get_width(area), lv_display_get_color_format(s_disp));
+    const size_t row_bytes = (size_t)(x2 - x1 + 1) * (LCD_BPP / 8);
+    for (int32_t y = y1; y <= y2; y++) {
+        memcpy(s_cap_buf + (size_t)y * s_cap_stride + (size_t)x1 * (LCD_BPP / 8),
+               px_map + (size_t)(y - y1) * src_stride, row_bytes);
+    }
+}
+
+/* LV_EVENT_REFR_READY (LVGL task): every flush_cb of the refresh cycle ran
+ * before this point (lv_refr.c: refr_invalid_areas -> REFR_READY), so the
+ * shadow buffer is complete. Never signals a capture the caller cancelled
+ * (s_cap_done already cleared under the lock). */
+static void capture_refr_event_cb(lv_event_t *e)
+{
+    (void)e;
+    if (!s_cap_copying || s_cap_lock == NULL) {
+        return;
+    }
+    s_cap_copying = false;
+    s_cap_ready = s_cap_buf;
+    xSemaphoreTake(s_cap_lock, portMAX_DELAY);
+    SemaphoreHandle_t done = s_cap_done;
+    s_cap_done = NULL;
+    xSemaphoreGive(s_cap_lock);
+    if (done != NULL) {
+        xSemaphoreGive(done);
+    }
+}
+
+void lume_display_capture_tick(void)
+{
+    /* LVGL task only (lume_board.c lvgl_task loop, never while paused). */
+    if (s_cap_lock == NULL) {
+        return;
+    }
+    bool start = false;
+    xSemaphoreTake(s_cap_lock, portMAX_DELAY);
+    if (s_cap_cancel) {
+        s_cap_cancel = false;
+        s_cap_req = false;
+        s_cap_copying = false;
+        s_cap_done = NULL;      /* caller already gave up; drop its handle */
+    } else if (s_cap_req && s_cap_done != NULL) {
+        s_cap_req = false;
+        s_cap_ready = NULL;
+        start = true;
+    }
+    xSemaphoreGive(s_cap_lock);
+    if (start) {
+        s_cap_copying = true;
+        /* Force a full-frame refresh: with no dirty areas LVGL emits
+         * REFR_REQUEST only (lv_refr.c), never START/READY + flushes. */
+        lume_display_invalidate_all();
+    }
+}
+
+esp_err_t lume_display_capture(SemaphoreHandle_t done,
+                               uint16_t *out_w, uint16_t *out_h)
+{
+    if (s_disp == NULL || done == NULL || s_cap_lock == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    esp_err_t err = ESP_OK;
+    xSemaphoreTake(s_cap_lock, portMAX_DELAY);
+    if (s_cap_done != NULL) {
+        err = ESP_ERR_INVALID_STATE;    /* one capture at a time */
+    } else {
+        if (s_cap_buf == NULL) {
+            const uint16_t w =
+                (uint16_t)lv_display_get_horizontal_resolution(s_disp);
+            const uint16_t h =
+                (uint16_t)lv_display_get_vertical_resolution(s_disp);
+            uint8_t *buf = heap_caps_malloc(
+                (size_t)w * h * (LCD_BPP / 8), MALLOC_CAP_SPIRAM);
+            if (buf == NULL) {
+                ESP_LOGE(TAG, "capture shadow alloc failed (%ux%u RGB565)",
+                         w, h);
+                err = ESP_ERR_NO_MEM;
+            } else {
+                s_cap_buf = buf;
+                s_cap_w = w;
+                s_cap_h = h;
+                s_cap_stride = (size_t)w * (LCD_BPP / 8);
+                ESP_LOGI(TAG, "capture shadow ready (%ux%u RGB565, %u B PSRAM)",
+                         w, h, (unsigned)((size_t)w * h * (LCD_BPP / 8)));
+            }
+        }
+        if (err == ESP_OK) {
+            s_cap_ready = NULL;
+            s_cap_done = done;
+            s_cap_req = true;
+        }
+    }
+    xSemaphoreGive(s_cap_lock);
+    if (err == ESP_OK) {
+        if (out_w != NULL) *out_w = s_cap_w;
+        if (out_h != NULL) *out_h = s_cap_h;
+    }
+    return err;
+}
+
+const uint8_t *lume_display_capture_buf(uint16_t *out_w, uint16_t *out_h)
+{
+    if (out_w != NULL) *out_w = s_cap_w;
+    if (out_h != NULL) *out_h = s_cap_h;
+    return s_cap_ready;
+}
+
+void lume_display_capture_cancel(void)
+{
+    if (s_cap_lock == NULL) {
+        return;
+    }
+    /* Synchronously invalidate the pending capture so the REFR callback can
+     * never signal a semaphore the caller is about to delete (a refresh cycle
+     * completing between cancel() and the LVGL task's next tick would still
+     * see s_cap_done set otherwise). The tick later resets copying/req. */
+    xSemaphoreTake(s_cap_lock, portMAX_DELAY);
+    s_cap_cancel = s_cap_done != NULL;
+    s_cap_done = NULL;
+    xSemaphoreGive(s_cap_lock);
+}
 
 esp_err_t lume_panel_sleep(void)
 {
@@ -156,6 +319,7 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
      * Swap in place before DMA, same as esp_lvgl_port_disp.c:739-741 does when
      * swap_bytes is set. Safe with PARTIAL render mode: LVGL rewrites the whole
      * area on the next frame before flushing again. */
+    capture_copy_area(area, px_map);   /* debug capture: pre-swap LE copy */
     lv_draw_sw_rgb565_swap(px_map, (uint32_t)px_count);
 
     const uint8_t col[4] = {(uint8_t)(x1 >> 8), (uint8_t)x1,
@@ -288,6 +452,14 @@ esp_err_t lume_display_init(lv_display_t **out_disp)
     /* Vendor BSP registers the same rounder right after display creation
      * (bsp v2.0.1 esp32_s3_touch_amoled_2_16.c:532). */
     lv_display_add_event_cb(disp, rounder_event_cb, LV_EVENT_INVALIDATE_AREA, NULL);
+    /* Screen capture completion point: REFR_READY closes every refresh cycle
+     * (lv_refr.c:429), after all flush_cb calls of that cycle. */
+    lv_display_add_event_cb(disp, capture_refr_event_cb, LV_EVENT_REFR_READY, NULL);
+
+    s_cap_lock = xSemaphoreCreateMutex();
+    if (s_cap_lock == NULL) {
+        ESP_LOGE(TAG, "capture lock alloc failed (captures disabled)");
+    }
 
     *out_disp = disp;
     ESP_LOGI(TAG, "CO5300 QSPI + LVGL display up (%dx%d RGB565, 2x%u B %s draw buf)",

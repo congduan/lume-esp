@@ -2,12 +2,13 @@
 # lume_frame.c is portable C (no RTOS/ESP deps); both transports feed it.
 # Dependency direction (one-way, no cycle):
 #   lume-hotreload -> lume-engine (reload chain), lume-net (WiFi gate),
-#                     esp_driver_usb_serial_jtag (USB), nvs_flash (token),
-#                     lwip (TCP sockets), esp_hw_support (esp_fill_random).
+#                     lume-board (SHOT screen capture), esp_driver_usb_serial_jtag (USB),
+#                     nvs_flash (token), lwip (TCP sockets),
+#                     esp_hw_support (esp_fill_random), mbedtls (base64 reply lines).
 # The engine reaches otaStatus via a registered function pointer, NOT a link
 # dependency, so lume-engine does NOT need lume-hotreload in REQUIRES.
 idf_component_register(
     SRCS "lume_hotreload.c" "lume_frame.c" "lume_cmd.c"
     INCLUDE_DIRS "include"
-    REQUIRES lume-engine lume-net esp_driver_usb_serial_jtag nvs_flash lwip esp_hw_support
+    REQUIRES lume-engine lume-net lume-board esp_driver_usb_serial_jtag nvs_flash lwip esp_hw_support mbedtls
 )

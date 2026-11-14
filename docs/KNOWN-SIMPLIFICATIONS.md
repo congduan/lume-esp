@@ -835,3 +835,29 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - TLS uses IDF's certificate bundle or a caller-provided CA. Explicit `httpsInsecure` skips validation and is unsafe. A verified TLS handshake requires correct time; SNTP provisioning is a board prerequisite. If clock setup fails, use a local HTTP test server or controlled test-only insecure mode, never production credentials.
 - Host harnesses check request shape, key storage, response/error handling, and a Node local HTTP POST round trip. The latter does not execute ESP-IDF C transport. Real WiFi, TLS, DeepSeek response, and on-device UI behavior await board acceptance.
 
+## r35 / 真机截图调试通道（SHOT 命令）
+
+- `lume screenshot [file.bmp] [--port|--ota --token]`：向设备发 `SHOT` 命令帧
+  （`lume_cmd.h` 新动词），设备抓一帧当前屏幕并以文本行回传（`SHOT <w> <h>
+  <bytes> <crc>` 头 + `S64<base64>` 数据行 + `SHOT OK` 尾），CLI 校验 CRC 后
+  写 24 位 BMP。语法与协议见 `docs/build.md` "Debug screenshot"。
+- 抓帧方式：`lume_display.c` 的 `flush_cb` 在面板字节交换**之前**把每个刷新
+  区域拷入 PSRAM 影子缓冲（小端 RGB565，无 stride padding），`REFR_READY`
+  事件点整帧完整；布防时由 LVGL 任务整屏 invalidate 强制一次全帧刷新。
+  未采用 `lv_snapshot`（避免依赖 LV_USE_SNAPSHOT 配置，且直接捕获面板实际
+  合成结果）。
+- **接受的本轮简化**：(1) 影子缓冲 460800 B（480x480 RGB565）首次截图时分配
+  并常驻 PSRAM 不释放，换取取消/竞态下的内存安全（flush_cb 永不写入已释放
+  内存）；(2) 同一时间只允许一次截图（USB 与 TCP 并发 SHOT 返回
+  `CMD ERR shot-busy`）；(3) 显示暂停（panel asleep）期间截图挂起，设备侧
+  5 s 超时回 `shot-timeout`，唤醒后才补拍；(4) 每帧 240 B 一行 base64 传输
+  （~614 KB 行流量，USB 全速下约 1 s），未做二进制帧；(5) 仅 CLI 触发，尚未
+  暴露 `lume.screen.capture()` JS API。
+- 宿主验证：`tests/apps_protocol.c` SHOT 解析用例（37 checks 全绿）、
+  `npm test --prefix tools/lume` 17 项全绿（含 mock 设备的 SHOT 往返、日志
+  噪声过滤、CRC/截断错误路径、BMP 编码像素序）。
+- **真机验收（通过，2026-11-14，USB 通道）**：固件烧录后连续两次
+  `lume screenshot` 成功，各 ~1 s；480x480 BMP 内容与面板一致（home 启动器
+  网格 + 状态栏时钟/电池，首拍 01:47），第二次拍摄验证了影子缓冲复用路径
+  （两帧差异仅为时钟分钟数变化）。仍待验收：休眠/唤醒期间的 `shot-timeout`
+  补拍行为、WiFi TCP 通道截图、与高频日志应用的并发噪声。

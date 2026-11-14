@@ -120,6 +120,7 @@ static void lvgl_task(void *arg)
             continue;
         }
         if (atomic_exchange(&s_redraw_pending, false)) lume_display_invalidate_all();
+        lume_display_capture_tick();
         lv_timer_handler();
         vTaskDelay(pdMS_TO_TICKS(10));
     }

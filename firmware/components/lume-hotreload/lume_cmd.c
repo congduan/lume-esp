@@ -50,6 +50,10 @@ int lume_cmd_parse(const uint8_t *payload, size_t len, lume_cmd_t *out)
         out->kind = LUME_CMD_LIST;
         return LUME_CMD_OK;
     }
+    if (verb_end == 4 && memcmp(p, "SHOT", 4) == 0) {
+        out->kind = LUME_CMD_SHOT;
+        return LUME_CMD_OK;
+    }
 
     lume_cmd_kind_t kind;
     if (verb_end == 6 && memcmp(p, "LAUNCH", 6) == 0) {

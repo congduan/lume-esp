@@ -1,5 +1,6 @@
 import { SerialPort } from 'serialport';
 import { frame, cmdFrame } from './protocol.js';
+import { decodeShot } from './shot.js';
 
 const ACK_TIMEOUT_MS = 15000;
 
@@ -38,6 +39,17 @@ export async function openPort(path, { monitor = false } = {}) {
   const consumeLine = line => {
     if (!pending) {
       if (monitor) process.stdout.write(line + '\n');
+      return;
+    }
+    if (pending.kind === 'shot') {
+      if (line === 'SHOT OK' || CMD_ERR_LINE.test(line)) {
+        if (CMD_ERR_LINE.test(line)) return finish(false, new Error(`device rejected screenshot: ${line.slice('CMD ERR '.length)}`));
+        try { return finish(true, decodeShot(pending.shotLines)); }
+        catch (err) { return finish(false, err); }
+      }
+      // Device log lines interleaving with the reply are skipped; every line
+      // between the header and the footer is kept for decodeShot to sort out.
+      pending.shotLines.push(line);
       return;
     }
     if (pending.kind === 'cmd' && (line.startsWith('APP\t') || line.startsWith('META\t'))) {
@@ -118,6 +130,13 @@ export async function openPort(path, { monitor = false } = {}) {
       const result = startPending('launch', {});
       result.catch(() => {});
       try { await write(bytes); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
+      return result;
+    },
+    /** SHOT command: full-frame RGB565 screenshot streamed back as S64 lines. */
+    async screenshot() {
+      const result = startPending('shot', { shotLines: [] });
+      result.catch(() => {});
+      try { await write(cmdFrame('SHOT')); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
       return result;
     },
     write,
