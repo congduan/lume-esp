@@ -813,3 +813,16 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   机上执行，本机无法编译验证**——esp_wifi_scan_* 的 API 形状已按 IDF v5.5 头文
   件书写，`lume_net.h` 注释中标注了上线前需对照构建机源码复核。
 
+## r34 / 启动器状态栏 WiFi 标志（内置 home）
+
+- `lume_home_js` 状态栏在时钟与电池之间新增一个 WiFi 文本标志（+1 节点，9 个
+  app 时 home 共 47 节点，远低于 128 上限）：`wifi`（GOT_IP）/ `wifi~`（已关联
+  待 DHCP）/ `wifi..`（连接中）/ 空隐藏（station 未初始化或空闲未连接）。
+- 只读设计：30 秒随时钟轮询 `lume.net.status()`，**绝不调用 init()/connect()**
+  ——启动器不会拉起 WiFi，也不会打扰任何应用的连接状态。未初始化时 status()
+  返回负数 → 标志隐藏（每 30s 一条 ESP_LOGW 属预期日志）。
+- ASCII 文本：默认 LVGL 字体无 Unicode 图形，图标样式留待字体轮次。
+- 宿主验证：5 种 net 状态的标志文本、响应式 attr 更新、节点预算（47/128）。
+  **板上验证随下次 Linux 固件构建**：状态栏布局（3 元素 space-between 在空标志
+  时的表现）与真实 net 状态切换需真机确认。
+
