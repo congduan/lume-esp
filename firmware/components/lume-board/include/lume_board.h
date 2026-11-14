@@ -6,6 +6,9 @@
 #include "driver/i2c_master.h"
 #include "esp_err.h"
 
+/* Board bring-up entry point (called once from app_main). */
+esp_err_t lume_board_init(void);
+
 /* The shared I2C master bus created by lume_board_init() (AXP2101, CST9220,
  * IMU, codec, RTC — addresses in the board profile). Returns NULL before init.
  * The handle is owned by the board component and kept for the app lifetime;
