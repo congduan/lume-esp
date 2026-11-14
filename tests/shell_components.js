@@ -107,6 +107,10 @@ check('danger button follows theme danger token', () => {
   evalIn(s, 'lume.theme.set({colors:{danger:"#BB2233"}})');
   assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 1 && m[3] === 0xBB2233));
 });
+check('primary button follows theme primary token', () => {
+  const s = app('lume.theme.set({colors:{primary:"#123456"}});lume.ui.shell.Dialog({title:"Choice",buttons:[{label:"OK",style:"primary"}]});');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 1 && m[3] === 0x123456));
+});
 check('Toast replaces current and resets timer', () => {
   const s = app('lume.ui.shell.Toast.show("one",{durationMs:100});');
   const first = s.messages.find(m => m[0] === 'create')[1];

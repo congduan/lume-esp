@@ -153,9 +153,10 @@ PASS shell Dialog opens and close is idempotent
 PASS shell Dialog stack ignores covered button and closes top first
 PASS shell Dialog lifecycle pause removes overlays
 PASS shell danger button follows theme danger token
+PASS shell primary button follows theme primary token
 PASS shell Toast replaces current and resets timer
 PASS shell Toast fades then removes itself
-PASS 16 shell component cases
+PASS 17 shell component cases
 PASS column + dimensions + color: [[1,728639],[16,100],[17,50],[7,1]]
 PASS row: [[7,0]]
 PASS row wrap: [[7,2]]

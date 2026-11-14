@@ -76,7 +76,7 @@
         display:'flex',alignItems:'center',justifyContent:'center',padding:0,gap:0},onPress:press},
         [Text({text:String(button.label),style:{}})]));
       else children.push(Button({title:String(button.label),style:{width:'100%',height:44,
-        background:color(button.style === 'danger' ? 'danger' : 'accent', button.style === 'danger' ? '#C62828' : '#385CA5')},onPress:press}));
+        background:color(button.style === 'danger' ? 'danger' : 'primary', button.style === 'danger' ? '#C62828' : '#385CA5')},onPress:press}));
     });
     entry.card = View({style:{width:360,height:'auto',alignItems:'stretch',display:'flex',
       flexDirection:'column',background:color('surface','#202632'),padding:16,gap:12,scroll:'none'},
