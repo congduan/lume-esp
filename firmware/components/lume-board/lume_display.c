@@ -92,6 +92,29 @@ static const char *TAG = "lume-display";
 static esp_lcd_panel_io_handle_t s_io;
 static lv_display_t *s_disp;
 
+esp_err_t lume_panel_sleep(void)
+{
+    if (s_io == NULL) return ESP_ERR_INVALID_STATE;
+    /* MIPI DCS 0x10; keep the panel powered so touch stays alive. */
+    esp_err_t err = esp_lcd_panel_io_tx_param(s_io, qspi_cmd(0x10, QSPI_OP_WRITE_CMD), NULL, 0);
+    if (err == ESP_OK) vTaskDelay(pdMS_TO_TICKS(150));
+    return err;
+}
+
+esp_err_t lume_panel_wake(void)
+{
+    if (s_io == NULL) return ESP_ERR_INVALID_STATE;
+    /* The vendor init table waits 600 ms after the same sleep-out command. */
+    esp_err_t err = esp_lcd_panel_io_tx_param(s_io, qspi_cmd(0x11, QSPI_OP_WRITE_CMD), NULL, 0);
+    if (err == ESP_OK) vTaskDelay(pdMS_TO_TICKS(600));
+    return err;
+}
+
+void lume_display_invalidate_all(void)
+{
+    if (s_disp != NULL) lv_obj_invalidate(lv_screen_active());
+}
+
 /* CO5300 quirk kept from the vendor BSP (bsp v2.0.1 rounder_event_cb:391-405):
  * round the area start down to even and the end up to odd (2-pixel window).
  * Partial updates at odd boundaries render incorrectly on this panel.

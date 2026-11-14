@@ -7,6 +7,9 @@
 
 /* lume_display.c — CO5300 QSPI bring-up + LVGL display registration. */
 esp_err_t lume_display_init(lv_display_t **out_disp);
+esp_err_t lume_panel_sleep(void);
+esp_err_t lume_panel_wake(void);
+void lume_display_invalidate_all(void);
 
 /* lume_pmic.c — AXP2101 display/touch power rails (isolated, see TODO there). */
 esp_err_t lume_pmic_display_power_on(i2c_master_bus_handle_t bus);

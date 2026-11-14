@@ -4,6 +4,7 @@
  * via `REQUIRES lume-board`. Board-internal helpers stay in the private
  * lume_board_internal.h at the component root. */
 #include "driver/i2c_master.h"
+#include "esp_err.h"
 
 /* The shared I2C master bus created by lume_board_init() (AXP2101 0x34,
  * CST9220 0x5A, IMU, codec, RTC). Returns NULL before board init succeeds.
@@ -13,3 +14,8 @@
  * thread-safe via the bus operation semaphore, so the LVGL task (touch poll)
  * and the engine task (PMIC telemetry) may use the same bus concurrently. */
 i2c_master_bus_handle_t lume_board_get_i2c_bus(void);
+
+/* Called from the engine task. The LVGL task acknowledges a stopped frame
+ * before the panel receives DCS sleep-in; wake schedules a full redraw. */
+esp_err_t lume_display_sleep(void);
+esp_err_t lume_display_wake(void);

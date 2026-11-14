@@ -14,6 +14,8 @@
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
+#include <stdatomic.h>
 #include "driver/i2c_master.h"
 #include "esp_check.h"
 #include "esp_log.h"
@@ -27,6 +29,10 @@ static const char *TAG = "lume-board";
 /* Shared I2C bus handle, published for other components (lume-pmic) via
  * lume_board_get_i2c_bus(). Set once by lume_board_init(), never deleted. */
 static i2c_master_bus_handle_t s_i2c_bus = NULL;
+static atomic_bool s_frame_paused;
+static atomic_bool s_redraw_pending;
+static SemaphoreHandle_t s_pause_ack;
+static bool s_panel_asleep;
 
 /* M1: the JS demo owns the screen by default. Set LUME_BOARD_LEGACY_DEMO=1
  * to restore the original pure-LVGL proof screen (no JS handoff). */
@@ -78,9 +84,43 @@ static void lvgl_task(void *arg)
 {
     (void)arg;
     for (;;) {
+        if (atomic_load(&s_frame_paused)) {
+            xSemaphoreGive(s_pause_ack);
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
+        if (atomic_exchange(&s_redraw_pending, false)) lume_display_invalidate_all();
         lv_timer_handler();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
+}
+
+esp_err_t lume_display_sleep(void)
+{
+    if (s_pause_ack == NULL) return ESP_ERR_INVALID_STATE;
+    if (s_panel_asleep) return ESP_OK;
+    xSemaphoreTake(s_pause_ack, 0); /* discard an old acknowledgement */
+    atomic_store(&s_frame_paused, true);
+    if (xSemaphoreTake(s_pause_ack, pdMS_TO_TICKS(1000)) != pdTRUE) {
+        atomic_store(&s_frame_paused, false);
+        return ESP_ERR_TIMEOUT;
+    }
+    esp_err_t err = lume_panel_sleep();
+    if (err != ESP_OK) atomic_store(&s_frame_paused, false);
+    else s_panel_asleep = true;
+    return err;
+}
+
+esp_err_t lume_display_wake(void)
+{
+    if (!s_panel_asleep) return ESP_OK;
+    esp_err_t err = lume_panel_wake();
+    if (err == ESP_OK) {
+        s_panel_asleep = false;
+        atomic_store(&s_redraw_pending, true);
+        atomic_store(&s_frame_paused, false);
+    }
+    return err;
 }
 
 i2c_master_bus_handle_t lume_board_get_i2c_bus(void)
@@ -122,6 +162,9 @@ esp_err_t lume_board_init(void)
     ESP_RETURN_ON_ERROR(lume_touch_init(bus, disp), TAG, "CST9220/LVGL indev init failed");
 
     create_demo_ui();
+
+    s_pause_ack = xSemaphoreCreateBinary();
+    ESP_RETURN_ON_FALSE(s_pause_ack != NULL, ESP_ERR_NO_MEM, TAG, "pause semaphore alloc failed");
 
     BaseType_t task_ok = xTaskCreate(lvgl_task, "lume-lvgl", 8192, NULL, 5, NULL);
     if (task_ok != pdPASS) {
