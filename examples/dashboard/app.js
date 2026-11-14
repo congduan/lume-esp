@@ -93,7 +93,7 @@ var storageText = '--';
 /* Full-bleed backdrop: the panel is 480x480 and the canvas only covers the
  * 400x360 content area, so without this the inset showed the screen's own
  * black. Created first so it stays the bottom-most node. */
-View({ style: { x: 0, y: 0, width: 480, height: 480, background: '#0B1622',
+var backdrop = View({ style: { x: 0, y: 0, width: 480, height: 480, background: '#0B1622',
   borderWidth: 0, borderRadius: 0 } });
 
 var canvas = Canvas({ width: W, height: H, style: { x: SAFE, y: SAFE, borderRadius: 0 },
@@ -107,28 +107,26 @@ var canvas = Canvas({ width: W, height: H, style: { x: SAFE, y: SAFE, borderRadi
     else drawGauge(ctx, v);
   } });
 
+/* Native ring gauge. Sized so its stroke centre lines up with the canvas
+ * readout at (112,132) local -> (152,172) on screen. */
+var battArc = Arc({
+  style: { x: 78, y: 98, width: 148, height: 148, borderRadius: 0,
+    background: function () {
+      var p = view().pct;
+      return p >= 60 ? C_GREEN : p >= 25 ? C_AMBER : C_RED;
+    } },
+  value: function () { return view().pct; },
+  start: 135, end: 45, thickness: 10, track: C_TRACK
+});
+
 function drawGauge(ctx, v) {
   var cx = 112, cy = 132, r = 64;
   ctx.text(16, 8, 'BATTERY', C_DIM, 14);
 
-  /* recessed dial face + tick ring */
-  for (var t = 0; t < 5; t++) {
-    var deg = 135 + 270 * t / 4;
-    ctx.fillColor(t === 0 || t === 4 ? '#3E6484' : '#24405A');
-    ctx.fillRect(polarX(cx, r + 11, deg) - 1, polarY(cy, r + 11, deg) - 1, 3, 3);
-  }
-  ctx.circle(cx, cy, r, C_TRACK);
-  ctx.circle(cx, cy, r - 2, C_TRACK);
-  ctx.circle(cx, cy, r - 4, C_TRACK);
-
+  /* The ring itself is a native Arc node layered above this canvas: LVGL draws
+   * it with coverage, so it stays smooth instead of stair-stepping like the
+   * Canvas rasteriser. Only the centred readout is painted here. */
   var pct = clamp(v.pct, 0, 100);
-  var sweep = 270 * pct / 100;
-  if (sweep > 1) {
-    var color = pct >= 60 ? C_GREEN : pct >= 25 ? C_AMBER : C_RED;
-    arc(ctx, cx, cy, r, 135, 135 + sweep, color, 6, 3);
-    ctx.circle(polarX(cx, r, 135), polarY(cy, r, 135), 4, color);
-    ctx.circle(polarX(cx, r, 135 + sweep), polarY(cy, r, 135 + sweep), 4, color);
-  }
   ctx.text(cx - 20, cy - 18, Math.round(pct) + '%', C_TEXT, 14);
   ctx.text(cx - 24, cy + 4, v.volts, '#8FA6BC', 14);
 
@@ -306,6 +304,9 @@ function loop() {
 
 function go(page) {
   currentPage = page;
+  /* The arc is a native node layered over the canvas, so it does not get
+   * erased by a canvas repaint: hide it explicitly off page 0. */
+  if (typeof battArc === 'number') lume.setAttr(battArc, 5, page === 0 ? 1 : 0);
   if (page === 1) {
     buf = [];
     for (var i = 0; i < 6; i++) buf.push([0, 0, 0]);
@@ -330,8 +331,10 @@ lume.app.onStart(start);
 lume.app.onPause(stop);
 lume.app.onResume(start);
 
-/* swipe anywhere on the canvas to move between pages */
-lume.gesture.on(canvas, 'swipe', function (e) {
+/* Swipe anywhere to change page. Bound to the backdrop, not the canvas: a
+ * canvas is an lv_image and does not accept input, so pointer events fall
+ * through to the clickable View underneath it. */
+lume.gesture.on(backdrop, 'swipe', function (e) {
   if (e.dir === 'left') go((currentPage + 1) % 3);
   else if (e.dir === 'right') go((currentPage + 2) % 3);
 });

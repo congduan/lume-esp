@@ -31,6 +31,36 @@ check('pixel + legacy bg', {width:240,height:120,background:0x112233}, [[1,0x112
 check('vertical scroll + auto scrollbar', {scroll:'vertical',scrollbar:'auto'}, [[20,1],[21,1]]);
 check('horizontal scroll + on scrollbar', {scroll:'horizontal',scrollbar:'on'}, [[20,2],[21,2]]);
 check('scroll disabled + scrollbar off', {scroll:'none',scrollbar:'off'}, [[20,0],[21,0]]);
+check('per-side padding overrides box shorthand', {padding:8,paddingTop:2,paddingRight:4,paddingBottom:6,paddingLeft:10}, [[10,8],[30,2],[31,4],[32,6],[33,10]]);
+check('margin box + per-side margin', {margin:4,marginLeft:12}, [[34,4],[38,12]]);
+check('margin sides only', {marginTop:2,marginRight:3,marginBottom:5,marginLeft:7}, [[35,2],[36,3],[37,5],[38,7]]);
+check('flex grow inside a flex row', {display:'flex',flexGrow:1}, [[7,0],[39,1]]);
+function checkProps(name, props, expected) {
+  messages = [];
+  vm.runInContext(`View(${JSON.stringify(props)})`, ctx);
+  const got = messages.map(([, attr, value]) => [attr, value]);
+  assert.deepStrictEqual(got, expected, name);
+  console.log(`PASS ${name}: ${JSON.stringify(got)}`);
+}
+checkProps('align string + alignTo + alignOffset', {align:'bottom-right',alignTo:5,alignOffset:{x:-8,y:-4}}, [[40,5],[41,-8],[42,-4],[4,6]]);
+for (const [value, wire] of [['center',0],['top-left',1],['top-mid',2],['top-right',3],['bottom-mid',4],['bottom-left',5],['bottom-right',6],['left-mid',7],['right-mid',8]]) {
+  checkProps('align '+value, {align:value}, [[4,wire]]);
+}
+checkProps('align numeric constant', {align:4}, [[4,4]]);
+checkProps('aligned to parent with an offset', {align:'top-mid',alignTo:0,alignOffset:{y:12}}, [[40,0],[42,12],[4,2]]);
+for (const props of [{align:9},{align:'middle'},{alignTo:'parent'},{alignOffset:4},{alignOffset:{x:1.5}},{style:{flexGrow:256}},{style:{margin:-1}}]) {
+  assert.throws(() => vm.runInContext(`View(${JSON.stringify(props)})`, ctx));
+}
+console.log('PASS invalid align/alignTo/alignOffset/flexGrow/margin rejected in prelude');
+function checkLayout(name, expr, expected) {
+  messages = [];
+  vm.runInContext(expr, ctx);
+  const got = messages.map(([, attr, value]) => [attr, value]);
+  assert.deepStrictEqual(got, expected, name);
+  console.log(`PASS ${name}: ${JSON.stringify(got)}`);
+}
+checkLayout('Row presets flex row', 'Row({})', [[7,0]]);
+checkLayout('Column presets flex column', "Column({style:{width:'100%'}})", [[16,100],[7,1]]);
 for (const style of [{width:'101%'}, {padding:'8'}, {background:'#bad'}, {opacity:2}]) {
   assert.throws(() => vm.runInContext(`View({style:${JSON.stringify(style)}})`, ctx));
 }

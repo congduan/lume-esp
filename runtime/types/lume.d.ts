@@ -10,7 +10,20 @@ declare namespace lume.ui {
     justifyContent?: 'start' | 'end' | 'center' | 'space-between' | 'space-around' | 'space-evenly';
     alignItems?: 'start' | 'end' | 'center' | 'stretch';
     gap?: number;
+    /** All four sides; `paddingTop`/`Right`/`Bottom`/`Left` override one edge. */
     padding?: number;
+    paddingTop?: number;
+    paddingRight?: number;
+    paddingBottom?: number;
+    paddingLeft?: number;
+    /** Outer spacing, all four sides; per-side keys override one edge. */
+    margin?: number;
+    marginTop?: number;
+    marginRight?: number;
+    marginBottom?: number;
+    marginLeft?: number;
+    /** 0..255 LVGL flex grow factor; needs a flex parent with free main-axis space. */
+    flexGrow?: number;
     borderRadius?: number;
     borderWidth?: number;
     /** #RRGGBB or a key in lume.theme.get().colors. */
@@ -30,7 +43,23 @@ declare namespace lume.ui {
 
   /** Nodes are numeric ids returned by the embedded prelude. */
   type Node = number;
-  interface ViewProps { style?: Style; parent?: Node; bg?: number | (() => number); w?: number; h?: number; align?: number; visible?: boolean; onPress?: () => void; onScroll?: (offsetPx: number) => void }
+  /** LVGL alignment, as an ALIGN_* constant (0..8) or its kebab-case name. */
+  type Align = number | 'center' | 'top-left' | 'top-mid' | 'top-right' | 'bottom-mid' | 'bottom-left' | 'bottom-right' | 'left-mid' | 'right-mid';
+  interface ViewProps {
+    style?: Style;
+    parent?: Node;
+    bg?: number | (() => number);
+    w?: number;
+    h?: number;
+    /** Aligned inside `alignTo` (or the parent) with `alignOffset` applied. */
+    align?: Align;
+    /** Node to align against; 0 or omitted means the parent. */
+    alignTo?: Node;
+    alignOffset?: { x?: number; y?: number };
+    visible?: boolean;
+    onPress?: () => void;
+    onScroll?: (offsetPx: number) => void;
+  }
   interface ListProps<T> { style: Style & { height: number }; parent?: Node; items: T[] | (() => T[]); itemHeight: number; overscan?: number; renderItem(item: T, index: number): Node }
   interface TextProps extends ViewProps { text?: string | (() => string) }
   interface ButtonProps extends ViewProps { title?: string | (() => string); onPress?: () => void }
@@ -59,6 +88,26 @@ declare namespace lume.ui {
     style?: Omit<Style, 'width' | 'height'>;
   }
 
+  /** Anti-aliased LVGL arc (native `lv_arc`), for ring gauges. Unlike Canvas,
+   * which writes raw pixels, the arc is drawn with coverage so it stays smooth.
+   * `style.background` is the value ring colour, `track` the background ring. */
+  interface ArcProps extends ViewProps {
+    /** 0..100 percent of the start->end sweep, or a getter bound to signals. */
+    value?: number | (() => number);
+    /** Start angle in degrees (LVGL convention: clockwise, 0 = 3 o'clock). */
+    start?: number;
+    /** End angle in degrees. Defaults to 135 -> 45 (270-degree open ring). */
+    end?: number;
+    /** Ring stroke width in px. */
+    thickness?: number;
+    /** Track (background ring) colour: #RRGGBB or a theme colour key. */
+    track?: string;
+    /** Value-ring colour: #RRGGBB or a theme colour key. `style.background`
+     * carries the same meaning and is accepted too, but on an arc it is never
+     * treated as a box fill. */
+    color?: string | (() => string);
+  }
+  function Arc(props: ArcProps): Node;
   function View(props: ViewProps, children?: Node[]): Node;
   function List<T>(props: ListProps<T>): Node;
   function Text(props: TextProps): Node;
@@ -100,6 +149,21 @@ declare namespace lume.ui.shell {
 
 /** Embedded prelude globals used by the firmware fallback bundle. */
 declare function View(props: lume.ui.ViewProps, children?: lume.ui.Node[]): lume.ui.Node;
+/** View with `display:'flex'` and `flexDirection:'row'` preset (the axis is forced). */
+declare function Row(props?: lume.ui.ViewProps, children?: lume.ui.Node[]): lume.ui.Node;
+/** View with `display:'flex'` and `flexDirection:'column'` preset (the axis is forced). */
+declare function Column(props?: lume.ui.ViewProps, children?: lume.ui.Node[]): lume.ui.Node;
+
+/** Alignment constants for `ViewProps.align` (equivalent to the kebab-case strings). */
+declare const ALIGN_CENTER: 0;
+declare const ALIGN_TOP_LEFT: 1;
+declare const ALIGN_TOP_MID: 2;
+declare const ALIGN_TOP_RIGHT: 3;
+declare const ALIGN_BOTTOM_MID: 4;
+declare const ALIGN_BOTTOM_LEFT: 5;
+declare const ALIGN_BOTTOM_RIGHT: 6;
+declare const ALIGN_LEFT_MID: 7;
+declare const ALIGN_RIGHT_MID: 8;
 declare function List<T>(props: lume.ui.ListProps<T>): lume.ui.Node;
 declare function Text(props: lume.ui.TextProps): lume.ui.Node;
 declare function Button(props: lume.ui.ButtonProps): lume.ui.Node;

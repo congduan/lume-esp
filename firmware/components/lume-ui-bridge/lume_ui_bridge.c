@@ -39,11 +39,17 @@ static uint8_t s_kinds[LUME_MAX_NODES];           /* id -> kind   (LVGL task) */
 static uint8_t s_flow[LUME_MAX_NODES];            /* wire flow, for stretch axis */
 static uint8_t s_main[LUME_MAX_NODES], s_cross[LUME_MAX_NODES];
 static uint8_t s_explicit_width[LUME_MAX_NODES], s_explicit_height[LUME_MAX_NODES];
+/* Align state: LVGL applies alignment last, so the base node and the offsets
+ * must survive until ALIGN arrives (and both are re-applied together). */
+static uint8_t s_align[LUME_MAX_NODES];            /* wire lume_align_t */
+static uint8_t s_align_target[LUME_MAX_NODES];     /* 0 = parent, else node_id */
+static int16_t s_align_ofs_x[LUME_MAX_NODES], s_align_ofs_y[LUME_MAX_NODES];
 static uint16_t *s_canvas_pixels[LUME_MAX_NODES];
 static uint8_t *s_image_pixels[LUME_MAX_NODES];
 static lv_image_dsc_t s_image_dsc[LUME_MAX_NODES];
 static uint16_t s_canvas_w[LUME_MAX_NODES], s_canvas_h[LUME_MAX_NODES];
 static uint16_t s_canvas_stride[LUME_MAX_NODES]; /* RGB565 pixels per row */
+static int16_t s_arc_start[LUME_MAX_NODES], s_arc_end[LUME_MAX_NODES]; /* LUME_NODE_ARC sweep */
 static size_t s_canvas_bytes;
 #define CANVAS_BUDGET (480u * 480u * 2u)
 static void clear_subtree(lv_obj_t *obj);
@@ -112,6 +118,22 @@ static lv_obj_t *get_node(uint16_t id)
         return NULL;
     }
     return s_nodes[id];
+}
+
+/* lv_obj_align() positions inside the parent; lv_obj_align_to() positions
+ * against a sibling/other node. target 0 (or a node that no longer exists)
+ * falls back to the parent, which keeps a removed base node from parking the
+ * child at a stale position. */
+static void apply_align(lv_obj_t *obj, uint16_t id)
+{
+    lv_align_t align = map_align(s_align[id]);
+    int32_t x = s_align_ofs_x[id], y = s_align_ofs_y[id];
+    lv_obj_t *base = get_node(s_align_target[id]);
+    if (base == NULL || base == obj) {
+        lv_obj_align(obj, align, x, y);
+        return;
+    }
+    lv_obj_align_to(obj, base, align, x, y);
 }
 
 static lv_flex_flow_t map_flow(int32_t v)
@@ -319,6 +341,40 @@ static void apply_create(const lume_ui_msg_t *m)
             s_canvas_bytes += bytes;
             break;
         }
+        case LUME_NODE_ARC:
+            /* Native LVGL arc: lv_draw_sw_arc renders with coverage, so the ring
+             * is anti-aliased -- unlike Canvas, which writes raw pixels. */
+            obj = lv_arc_create(parent);
+            lv_obj_remove_style(obj, NULL, LV_PART_KNOB);
+            lv_obj_set_style_arc_width(obj, 8, LV_PART_MAIN);
+            lv_obj_set_style_arc_width(obj, 8, LV_PART_INDICATOR);
+            lv_obj_set_style_arc_color(obj, lv_color_hex(0x1B3145), LV_PART_MAIN);
+            lv_obj_set_style_arc_color(obj, lv_color_hex(0x34D399), LV_PART_INDICATOR);
+            lv_obj_set_style_arc_rounded(obj, true, LV_PART_INDICATOR);
+            /* The plain lv_obj default style paints an opaque rounded box; an
+             * arc must be a pure ring, so kill every box style on PART_MAIN. */
+            lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_INDICATOR);
+            lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN);
+            lv_obj_set_style_outline_width(obj, 0, LV_PART_MAIN);
+            lv_obj_set_style_shadow_width(obj, 0, LV_PART_MAIN);
+            lv_obj_set_style_radius(obj, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+            ESP_LOGI(TAG, "arc id=%u bg_opa=%d bg=%06x radius=%d border=%d outline=%d shadow=%d pad=%d",
+                     (unsigned)m->node_id,
+                     (int)lv_obj_get_style_bg_opa(obj, LV_PART_MAIN),
+                     (unsigned)(lv_color_to_u32(lv_obj_get_style_bg_color(obj, LV_PART_MAIN)) & 0xFFFFFFu),
+                     (int)lv_obj_get_style_radius(obj, LV_PART_MAIN),
+                     (int)lv_obj_get_style_border_width(obj, LV_PART_MAIN),
+                     (int)lv_obj_get_style_outline_width(obj, LV_PART_MAIN),
+                     (int)lv_obj_get_style_shadow_width(obj, LV_PART_MAIN),
+                     (int)lv_obj_get_style_pad_top(obj, LV_PART_MAIN));
+            lv_arc_set_bg_angles(obj, 135, 45);
+            lv_arc_set_angles(obj, 135, 135);
+            s_arc_start[m->node_id] = 135;
+            s_arc_end[m->node_id] = 45;
+            break;
         case LUME_NODE_IMAGE:
             obj = lv_image_create(parent);
             lv_image_set_inner_align(obj, LV_IMAGE_ALIGN_CONTAIN);
@@ -336,6 +392,10 @@ static void apply_create(const lume_ui_msg_t *m)
     s_cross[m->node_id] = LUME_FLEX_START;
     s_explicit_width[m->node_id] = 0;
     s_explicit_height[m->node_id] = 0;
+    s_align[m->node_id] = LUME_ALIGN_CENTER;
+    s_align_target[m->node_id] = LUME_ALIGN_TARGET_PARENT;
+    s_align_ofs_x[m->node_id] = 0;
+    s_align_ofs_y[m->node_id] = 0;
     s_scroll_sent[m->node_id] = 0;
     s_gesture_flags[m->node_id] = 0;   /* r21: fresh node -> clear press/scroll latch */
     if (m->kind == LUME_NODE_CANVAS) {
@@ -393,8 +453,15 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             break;
         }
         case LUME_ATTR_BG_COLOR:
-            lv_obj_set_style_bg_color(obj, lv_color_hex((uint32_t)m->value), 0);
-            lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+            if (s_kinds[m->node_id] == LUME_NODE_ARC) {
+                /* An arc has no box background. Setting bg_color would also force
+                 * bg_opa back to COVER (below), producing a filled rounded box --
+                 * so stray background colours are redirected to the value ring. */
+                lv_obj_set_style_arc_color(obj, lv_color_hex((uint32_t)m->value), LV_PART_INDICATOR);
+            } else {
+                lv_obj_set_style_bg_color(obj, lv_color_hex((uint32_t)m->value), 0);
+                lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, 0);
+            }
             break;
         case LUME_ATTR_WIDTH:
             s_explicit_width[m->node_id] = 1;
@@ -428,6 +495,26 @@ static void apply_set_attr(const lume_ui_msg_t *m)
         case LUME_ATTR_PADDING:
             lv_obj_set_style_pad_all(obj, m->value, 0);
             break;
+        case LUME_ATTR_PAD_TOP: lv_obj_set_style_pad_top(obj, m->value, 0); break;
+        case LUME_ATTR_PAD_RIGHT: lv_obj_set_style_pad_right(obj, m->value, 0); break;
+        case LUME_ATTR_PAD_BOTTOM: lv_obj_set_style_pad_bottom(obj, m->value, 0); break;
+        case LUME_ATTR_PAD_LEFT: lv_obj_set_style_pad_left(obj, m->value, 0); break;
+        case LUME_ATTR_MARGIN:
+            lv_obj_set_style_margin_top(obj, m->value, 0);
+            lv_obj_set_style_margin_right(obj, m->value, 0);
+            lv_obj_set_style_margin_bottom(obj, m->value, 0);
+            lv_obj_set_style_margin_left(obj, m->value, 0);
+            break;
+        case LUME_ATTR_MARGIN_TOP: lv_obj_set_style_margin_top(obj, m->value, 0); break;
+        case LUME_ATTR_MARGIN_RIGHT: lv_obj_set_style_margin_right(obj, m->value, 0); break;
+        case LUME_ATTR_MARGIN_BOTTOM: lv_obj_set_style_margin_bottom(obj, m->value, 0); break;
+        case LUME_ATTR_MARGIN_LEFT: lv_obj_set_style_margin_left(obj, m->value, 0); break;
+        case LUME_ATTR_FLEX_GROW:
+            /* lv_obj_set_flex_grow takes uint8_t; grow only applies inside a
+             * flex parent that still has free space on the main axis. */
+            lv_obj_set_flex_grow(obj, (uint8_t)(m->value < 0 ? 0 :
+                                               (m->value > 255 ? 255 : m->value)));
+            break;
         case LUME_ATTR_GAP:
             lv_obj_set_style_pad_row(obj, m->value, 0);
             lv_obj_set_style_pad_column(obj, m->value, 0);
@@ -445,7 +532,26 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             lv_obj_set_style_opa(obj, (lv_opa_t)m->value, 0);
             break;
         case LUME_ATTR_ALIGN:
-            lv_obj_align(obj, map_align(m->value), 0, 0);
+            /* Out-of-range wire values degrade to CENTER instead of indexing
+             * off the end of map_align(). */
+            s_align[m->node_id] = (uint8_t)(m->value < 0 || m->value > LUME_ALIGN_RIGHT_MID
+                                                ? LUME_ALIGN_CENTER : m->value);
+            apply_align(obj, m->node_id);
+            break;
+        case LUME_ATTR_ALIGN_TARGET:
+            /* Stored only: the align-relative-to message is applied by ALIGN,
+             * which always arrives last from the prelude. */
+            s_align_target[m->node_id] =
+                (m->value <= LUME_ALIGN_TARGET_PARENT || m->value >= LUME_MAX_NODES)
+                    ? (uint8_t)LUME_ALIGN_TARGET_PARENT : (uint8_t)m->value;
+            break;
+        case LUME_ATTR_ALIGN_OFS_X:
+            s_align_ofs_x[m->node_id] = (int16_t)(m->value < -32768 ? -32768 :
+                                                  (m->value > 32767 ? 32767 : m->value));
+            break;
+        case LUME_ATTR_ALIGN_OFS_Y:
+            s_align_ofs_y[m->node_id] = (int16_t)(m->value < -32768 ? -32768 :
+                                                  (m->value > 32767 ? 32767 : m->value));
             break;
         case LUME_ATTR_VISIBLE:
             if (m->value) {
@@ -460,6 +566,35 @@ static void apply_set_attr(const lume_ui_msg_t *m)
                 lv_obj_set_parent(obj, p);   /* append child into parent */
                 apply_stretch_child(obj, (uint16_t)m->value);
             }
+            break;
+        }
+        case LUME_ATTR_ARC_START:
+            s_arc_start[m->node_id] = (int16_t)m->value;
+            lv_arc_set_bg_angles(obj, s_arc_start[m->node_id], s_arc_end[m->node_id]);
+            lv_arc_set_angles(obj, s_arc_start[m->node_id], s_arc_start[m->node_id]);
+            break;
+        case LUME_ATTR_ARC_END:
+            s_arc_end[m->node_id] = (int16_t)m->value;
+            lv_arc_set_bg_angles(obj, s_arc_start[m->node_id], s_arc_end[m->node_id]);
+            lv_arc_set_angles(obj, s_arc_start[m->node_id], s_arc_start[m->node_id]);
+            break;
+        case LUME_ATTR_ARC_THICKNESS:
+            lv_obj_set_style_arc_width(obj, m->value, LV_PART_MAIN);
+            lv_obj_set_style_arc_width(obj, m->value, LV_PART_INDICATOR);
+            break;
+        case LUME_ATTR_ARC_TRACK:
+            lv_obj_set_style_arc_color(obj, lv_color_hex((uint32_t)m->value), LV_PART_MAIN);
+            break;
+        case LUME_ATTR_ARC_COLOR:
+            lv_obj_set_style_arc_color(obj, lv_color_hex((uint32_t)m->value), LV_PART_INDICATOR);
+            break;
+        case LUME_ATTR_ARC_VALUE: {
+            /* percent of the configured start->end sweep, clockwise */
+            int32_t start = s_arc_start[m->node_id], end = s_arc_end[m->node_id];
+            int32_t span = ((end - start) % 360 + 360) % 360;
+            if (span == 0) span = 360;
+            int32_t v = m->value < 0 ? 0 : (m->value > 100 ? 100 : m->value);
+            lv_arc_set_angles(obj, start, (start + span * v / 100) % 360);
             break;
         }
         default:
@@ -492,6 +627,9 @@ static void clear_subtree(lv_obj_t *obj)
         s_nodes[id] = NULL;
         s_kinds[id] = 0;
         s_explicit_width[id] = s_explicit_height[id] = 0;
+        s_align[id] = LUME_ALIGN_CENTER;
+        s_align_target[id] = LUME_ALIGN_TARGET_PARENT;
+        s_align_ofs_x[id] = s_align_ofs_y[id] = 0;
     }
 }
 static void release_dead_canvases(void)

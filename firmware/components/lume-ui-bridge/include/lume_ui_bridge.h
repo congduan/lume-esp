@@ -34,6 +34,7 @@ typedef enum {
     LUME_NODE_BUTTON,
     LUME_NODE_CANVAS,
     LUME_NODE_IMAGE,
+    LUME_NODE_ARC,       /* LVGL arc: anti-aliased ring gauge */
 } lume_node_kind_t;
 
 /* set-attr attribute ids. PARENT is the "append child" primitive: View()
@@ -54,7 +55,29 @@ typedef enum {
     LUME_ATTR_SCROLL_DIR, LUME_ATTR_SCROLLBAR_MODE,
     LUME_ATTR_SCROLL_Y,       /* programmatic offset, non-animated */
     LUME_ATTR_IGNORE_LAYOUT,  /* absolute-positioned virtual rows */
+    /* LUME_NODE_ARC only (all msg.value): */
+    LUME_ATTR_ARC_VALUE,      /* 0..100 percent of the start->end sweep */
+    LUME_ATTR_ARC_START,      /* start angle in degrees (LVGL 0..360, cw) */
+    LUME_ATTR_ARC_END,        /* end angle in degrees */
+    LUME_ATTR_ARC_THICKNESS,  /* ring stroke width in px */
+    LUME_ATTR_ARC_TRACK,      /* track (background ring) colour 0xRRGGBB */
+    LUME_ATTR_ARC_COLOR,      /* value ring colour 0xRRGGBB (never touches bg) */
+    /* Layout extensions (all msg.value):
+     * per-side padding/margin, LVGL flex grow, and align-relative-to-node.
+     * PADDING/MARGIN set all four sides; the per-side ids override one edge
+     * and are always sent after the box shorthand. */
+    LUME_ATTR_PAD_TOP, LUME_ATTR_PAD_RIGHT, LUME_ATTR_PAD_BOTTOM, LUME_ATTR_PAD_LEFT,
+    LUME_ATTR_MARGIN,
+    LUME_ATTR_MARGIN_TOP, LUME_ATTR_MARGIN_RIGHT, LUME_ATTR_MARGIN_BOTTOM, LUME_ATTR_MARGIN_LEFT,
+    LUME_ATTR_FLEX_GROW,      /* 0..255 grow factor, LVGL lv_obj_set_flex_grow */
+    LUME_ATTR_ALIGN_TARGET,   /* base node_id for ALIGN; 0 = parent (default) */
+    LUME_ATTR_ALIGN_OFS_X,    /* signed px offset applied by the next ALIGN */
+    LUME_ATTR_ALIGN_OFS_Y,
 } lume_attr_t;
+
+/* ALIGN_TARGET value meaning "align inside the parent" (lv_obj_align). Any
+ * other value is a node id aligned against (lv_obj_align_to). */
+#define LUME_ALIGN_TARGET_PARENT 0
 
 /* Wire values are independent of LVGL's enum ordering. */
 typedef enum { LUME_FLEX_ROW = 0, LUME_FLEX_COLUMN,
