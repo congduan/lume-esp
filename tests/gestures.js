@@ -89,11 +89,27 @@ ok('swipe: axis fallback when no LVGL dir hint (vertical -> down)', () => {
   const a = seq([D(10, 10, 0), M(10, 80, 60), U(12, 110, 120)]);
   assert.strictEqual(a.filter(e => e.type === 'swipe')[0].dir, 'down');
 });
-ok('swipe speed gate: a 5s hold is a longpress, never a swipe', () => {
-  // With longpressMs=400 any drag that lasts >=400ms is consumed as a longpress;
-  // this is the real speed bound (LVGL exposes no swipe velocity threshold).
-  const a = seq([D(10, 10, 0), U(110, 10, 5000)]);
+ok('swipe speed gate: a 5s STATIONARY hold is a longpress, never a swipe', () => {
+  // Stationary: longpressMs bounds it; LVGL exposes no swipe velocity threshold.
+  const a = seq([D(10, 10, 0), U(10, 10, 5000)]);
   assert.deepStrictEqual(types(a), ['longpress']);
+});
+ok('r21-fix: a SLOW drag held past 400ms is pan, NEVER longpress (movement gate)', () => {
+  // Codex review P1-2 regression: displacement must gate the longpress clock.
+  // 50px over 700ms -> mean vel 0.071 px/ms, below swipeMinVel: no swipe.
+  const a = seq([D(10, 10, 0), M(30, 10, 100), M(50, 10, 410), U(60, 10, 700)]);
+  assert.deepStrictEqual(types(a), ['panstart', 'pan', 'pan', 'panend'],
+    'a dragged press never morphs into longpress');
+});
+ok('r21-fix: a slow drag that ends fast stays swipe-eligible (no longpress steal)', () => {
+  // 110px dragged over 5000ms but released... use a drag completed quickly at UP:
+  const a = seq([D(10, 10, 0), M(60, 10, 60), U(120, 10, 120)]);
+  assert.strictEqual(types(a).indexOf('swipe') >= 0, true, 'swipe delivered');
+});
+ok('r21-fix: slow long drag (dist>=50px, vel<min) is neither longpress nor swipe', () => {
+  const a = seq([D(10, 10, 0), M(80, 10, 300), U(110, 10, 5000)]);
+  assert.deepStrictEqual(types(a), ['panstart', 'pan', 'panend'],
+    'drag -> pan stream only; 5s+100px at 0.02px/ms is too slow to swipe');
 });
 ok('swipeMinVel is a real, tunable gate (raise it -> slow drag stops swiping)', () => {
   run('lume.gesture.tuning.swipeMinVel = 1.0');

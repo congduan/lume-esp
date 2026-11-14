@@ -1606,7 +1606,12 @@ void lume_engine_post_scroll(uint16_t node_id, int32_t y)
     }
 }
 
-/* r21: LVGL-task sink -> one LUME_EVT_GESTURE on Queue B. Pure queue op. */
+/* r21 review fix (P2): gesture MOVE events are lossy-by-design (the pure JS
+ * state machine tolerates dropped MOVEs -- thresholds re-evaluate on the next
+ * sample), but UP (panend/tap/swipe), DOWN and PRESS are not. When the shared
+ * Queue B is full, a MOVE is dropped FIRST instead of evicting the head;
+ * non-MOVE events (UP/DOWN/PRESS/ANIM_COMPLETE/...) still post at the head so
+ * a stalled engine cannot lose releases because of PRESSING traffic. */
 void lume_engine_post_gesture(uint16_t node_id, uint8_t kind, int16_t x, int16_t y,
                               uint32_t t, uint8_t dir, uint8_t cancelled)
 {
@@ -1619,7 +1624,33 @@ void lume_engine_post_gesture(uint16_t node_id, uint8_t kind, int16_t x, int16_t
         .g_dir = dir,
         .g_cancelled = cancelled,
     };
-    if (s_evt_queue == NULL || xQueueSend(s_evt_queue, &evt, 0) != pdTRUE) {
+    if (s_evt_queue == NULL) {
+        s_evt_dropped++;
+        return;
+    }
+    if (kind == 1 && uxQueueSpacesAvailable(s_evt_queue) == 0) {
+        /* Full queue + lossy MOVE: drop proactively (counted/logged). */
+        s_evt_dropped++;
+        if (s_evt_dropped == 1 || (s_evt_dropped % EVT_DROP_LOG_EVERY) == 0)
+            ESP_LOGW(TAG, "gesture-MOVE id=%u dropped: evt queue full (%u total drops)",
+                     (unsigned)node_id, (unsigned)s_evt_dropped);
+        return;
+    }
+    if (kind == 1) {
+        /* Normal MOVE: to the tail. */
+        if (xQueueSend(s_evt_queue, &evt, 0) != pdTRUE) {
+            s_evt_dropped++;
+            if (s_evt_dropped == 1 || (s_evt_dropped % EVT_DROP_LOG_EVERY) == 0)
+                ESP_LOGW(TAG, "gesture id=%u dropped: evt queue full (%u total drops)",
+                         (unsigned)node_id, (unsigned)s_evt_dropped);
+        }
+        return;
+    }
+    /* kind 0/2/3 (DOWN/UP/SWIPEDIR) and cancelled UP: front-post so a burst of
+     * MOVEs queued ahead cannot delay or evict the release. xQueueSendToFront
+     * fails only if the queue is full; in that case fall back to the tail. */
+    if (xQueueSendToFront(s_evt_queue, &evt, 0) != pdTRUE &&
+        xQueueSend(s_evt_queue, &evt, 0) != pdTRUE) {
         s_evt_dropped++;
         if (s_evt_dropped == 1 || (s_evt_dropped % EVT_DROP_LOG_EVERY) == 0)
             ESP_LOGW(TAG, "gesture id=%u dropped: evt queue full (%u total drops)",

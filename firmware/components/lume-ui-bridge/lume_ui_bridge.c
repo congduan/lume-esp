@@ -687,10 +687,56 @@ static void apply_set_press(const lume_ui_msg_t *m)
  * indev->pointer.scroll_obj once a drag is committed to scrolling and, on its
  * own, suppresses LV_EVENT_GESTURE/LONG_PRESSED/CLICKED while it is set
  * (lv_indev.c:1702 / 1352 / 1453). We extend the SAME rule to the PRESSING
- * stream: when scroll_obj is non-NULL we stop emitting MOVE, so a List scroll
- * never produces pan/swipe/tap/longpress. Because scroll begins at
- * LV_INDEV_DEF_SCROLL_LIMIT (10px) but pan needs >12px, a scrollable container
- * cannot even start a pan before the scroll steals the drag. */
+ * stream. Two gates stop MOVE before a scroll can steal the drag:
+ *   (a) scroll_obj already committed, and
+ *   (b) PRE-COMMIT latch (r21 review fix): PRESSING is sent BEFORE
+ *       lv_indev_scroll_handler within the same indev read
+ *       (lv_indev.c:1332 vs 1339), so on the commit frame scroll_obj is still
+ *       NULL and a naive check would leak exactly the MOVE that crosses the
+ *       scroll limit (>12px cumulative displacement can start a pan).
+ *       Therefore at DOWN we scan the ancestor chain for an ancestor that can
+ *       actually scroll on some axis (scrollable + direction enabled + content
+ *       beyond an edge, mirroring lv_indev_find_scroll_obj,
+ *       lv_indev_scroll.c:267-...), and latch when the cumulative drag on such
+ *       an axis exceeds LV_INDEV_DEF_SCROLL_LIMIT (10px, lv_indev.c:32) -- the
+ *       same accumulation LVGL itself uses (scroll_sum += vect,
+ *       lv_indev_scroll.c:285-286). Pan needs >12px, so a scrollable target
+ *       can never start a pan before the scroll wins; a drag on an axis with
+ *       no scroll candidate still pans freely (e.g. horizontal pan over a
+ *       vertical List). */
+#define GESTURE_ACTIVE        0x01
+#define GESTURE_SCROLLED      0x02
+#define GESTURE_VER_CAND      0x04  /* an ancestor can still scroll vertically */
+#define GESTURE_HOR_CAND      0x08  /* an ancestor can still scroll horizontally */
+#define GESTURE_SCROLL_LATCH_PX 10  /* LV_INDEV_DEF_SCROLL_LIMIT lv_indev.c:32 */
+static uint8_t s_gesture_flags[LUME_MAX_NODES];
+static lv_point_t s_gescroll_sum;     /* cumulative drag since DOWN, per press */
+
+/* Scan the pressed object and its ancestors for live scroll candidates.
+ * Mirrors lv_indev_find_scroll_obj's notion of "scrollable into a direction":
+ * the SCROLLABLE flag, an enabled scroll direction, and content beyond an
+ * edge (lv_obj_get_scroll_* offsets). Non-scrollable objs stay in the walk:
+ * scroll chain flags default on, so the chain continues through them. */
+static uint8_t gesture_scan_scroll_chain(lv_obj_t *obj)
+{
+    uint8_t cand = 0;
+    for (lv_obj_t *o = obj; o != NULL; o = lv_obj_get_parent(o)) {
+        if (!(cand & GESTURE_VER_CAND) &&
+            lv_obj_has_flag(o, LV_OBJ_FLAG_SCROLLABLE) &&
+            (lv_obj_get_scroll_dir(o) & (LV_DIR_TOP | LV_DIR_BOTTOM)) &&
+            (lv_obj_get_scroll_top(o) > 0 || lv_obj_get_scroll_bottom(o) > 0))
+            cand |= GESTURE_VER_CAND;
+        if (!(cand & GESTURE_HOR_CAND) &&
+            lv_obj_has_flag(o, LV_OBJ_FLAG_SCROLLABLE) &&
+            (lv_obj_get_scroll_dir(o) & (LV_DIR_LEFT | LV_DIR_RIGHT)) &&
+            (lv_obj_get_scroll_left(o) > 0 || lv_obj_get_scroll_right(o) > 0))
+            cand |= GESTURE_HOR_CAND;
+        if ((cand & (GESTURE_VER_CAND | GESTURE_HOR_CAND)) ==
+            (GESTURE_VER_CAND | GESTURE_HOR_CAND)) break;
+    }
+    return cand;
+}
+
 static void gesture_obj_cb(lv_event_t *e)
 {
     uint16_t id = (uint16_t)(uintptr_t)lv_event_get_user_data(e);
@@ -701,18 +747,45 @@ static void gesture_obj_cb(lv_event_t *e)
     uint32_t t = lv_tick_get();
     switch (lv_event_get_code(e)) {
         case LV_EVENT_PRESSED:
-            s_gesture_flags[id] = GESTURE_ACTIVE;
+            s_gesture_flags[id] = GESTURE_ACTIVE |
+                                  gesture_scan_scroll_chain(lv_event_get_target_obj(e));
+            s_gescroll_sum.x = 0;
+            s_gescroll_sum.y = 0;
             s_gesture_sink(id, 0, (int16_t)p.x, (int16_t)p.y, t, 0, 0);   /* DOWN */
             break;
-        case LV_EVENT_PRESSING:
+        case LV_EVENT_PRESSING: {
             if (!(s_gesture_flags[id] & GESTURE_ACTIVE)) break;
             if ((s_gesture_flags[id] & GESTURE_SCROLLED) ||
                 (indev && lv_indev_get_scroll_obj(indev) != NULL)) {
                 s_gesture_flags[id] |= GESTURE_SCROLLED;   /* scroll wins: no MOVE */
                 break;
             }
+            /* Pre-commit latch (r21 review fix): on the frame the drag crosses
+             * the scroll limit PRESSING has already run (lv_indev.c:1332)
+             * before lv_indev_scroll_handler (:1339) sets scroll_obj, so that
+             * MOVE would leak and could start a pan on a scrollable target.
+             * Latch early using LVGL's own accumulation semantics: cumulative
+             * drag (scroll_sum += vect, lv_indev_scroll.c:285-286) past
+             * scroll_limit (10px) on an axis with a live scroll candidate.
+             * Note scroll_sum is consumed by scroll_handler each read, so we
+             * track our own accumulation from the per-read vect. */
+            if (indev) {
+                lv_point_t v;
+                lv_indev_get_vect(indev, &v);
+                s_gescroll_sum.x += v.x;
+                s_gescroll_sum.y += v.y;
+                uint8_t cand = s_gesture_flags[id];
+                if (((cand & GESTURE_VER_CAND) &&
+                     LV_ABS(s_gescroll_sum.y) > GESTURE_SCROLL_LATCH_PX) ||
+                    ((cand & GESTURE_HOR_CAND) &&
+                     LV_ABS(s_gescroll_sum.x) > GESTURE_SCROLL_LATCH_PX)) {
+                    s_gesture_flags[id] |= GESTURE_SCROLLED;
+                    break;
+                }
+            }
             s_gesture_sink(id, 1, (int16_t)p.x, (int16_t)p.y, t, 0, 0);   /* MOVE */
             break;
+        }
         case LV_EVENT_GESTURE: {
             /* indev_gesture() only fires this when no scroll_obj is active
              * (lv_indev.c:1702), and only once per press (gesture_sent). */
