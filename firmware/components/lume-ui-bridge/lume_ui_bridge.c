@@ -251,9 +251,13 @@ static void apply_stretch_child(lv_obj_t *child, uint16_t parent_id)
 
 static void apply_flex_align(lv_obj_t *obj, uint16_t id)
 {
-    lv_obj_set_flex_align(obj, map_flex_align(s_main[id]),
-                          s_cross[id] == LUME_FLEX_CROSS_STRETCH ? LV_FLEX_ALIGN_START :
-                          map_flex_align(s_cross[id]), LV_FLEX_ALIGN_START);
+    /* track_place must follow the cross alignment, not stay START: a single
+     * flex track (e.g. one text line inside a 56x56 icon tile) is placed at
+     * the container top otherwise, so a cross-centred child still renders in
+     * the upper third -- the "letter not vertically centred" symptom. */
+    lv_flex_align_t cross = s_cross[id] == LUME_FLEX_CROSS_STRETCH ? LV_FLEX_ALIGN_START :
+                            map_flex_align(s_cross[id]);
+    lv_obj_set_flex_align(obj, map_flex_align(s_main[id]), cross, cross);
     uint32_t n = lv_obj_get_child_count(obj);
     for (uint32_t i = 0; i < n; i++) apply_stretch_child(lv_obj_get_child(obj, i), id);
 }
