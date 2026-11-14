@@ -46,10 +46,12 @@ function runDemo(script) {
   const sandbox = vm.createContext({lume: {
     createNode: kind => { calls.push(['create', kind]); return ++id; },
     setAttr: (...args) => calls.push(['attr', ...args]),
-    setPressEvent: node => calls.push(['press', node]), log: () => {}
+    setPressEvent: node => calls.push(['press', node]),
+    canvasDraw: (...args) => calls.push(['draw', ...args]),
+    canvasInvalidate: node => calls.push(['invalidate', node]), log: () => {}
   }});
   vm.runInContext(prelude + '\n' + script, sandbox);
   return calls;
 }
-assert.deepStrictEqual(runDemo(embeddedDemo), runDemo(fs.readFileSync('examples/counter/app.js', 'utf8')));
-console.log('PASS embedded demo matches examples/counter/app.js messages');
+assert.deepStrictEqual(runDemo(embeddedDemo), runDemo(fs.readFileSync('examples/heart_curve/app.js', 'utf8')));
+console.log('PASS embedded demo matches examples/heart_curve/app.js messages');
