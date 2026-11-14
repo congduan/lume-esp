@@ -24,7 +24,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [x] Style resolution (padding/margin/background/border/corner/opacity)（r14 部分：padding/gap/borderRadius/borderWidth/borderColor/opacity/百分比已落地；margin 与分边 padding 登记简化，见 KNOWN-SIMPLIFICATIONS）
 - [ ] List virtualization, image rendering (PNG/JPG decode)
 - [x] Animation primitives (tween/transition)（r15 代码完成：LVGL lv_anim 桥接、signal transition、lume.anim.to/cancel、完成事件回流与滑入示例；host harness/构建/size 验证，真机视觉流畅度待接板）
-- [ ] Canvas self-drawing widget（r16 计划：`<Canvas>` 声明式组件 + 绘制上下文 JS API——底层 LVGL canvas widget，参与 flex 布局流与脏区管线，不自管 framebuffer；signal 驱动重绘节流；折线图/仪表盘样板。视觉上限破局点：声明式组合覆盖结构化 UI + canvas 自绘覆盖任意像素）
+- [ ] Canvas self-drawing widget（r16 代码完成：LVGL RGB565 canvas + PSRAM 预算、Canvas/onDraw 绘制 API、signal effect 重绘与折线图 flex 混排示例；host harness/构建/size 见 r16 战报。真机像素、时序和视觉验收留接板轮，故保持未勾选）
 - [ ] Gesture layer (tap/swipe/long-press/pan)
 
 ## M4 — tooling
