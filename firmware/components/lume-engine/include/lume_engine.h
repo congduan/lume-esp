@@ -13,6 +13,9 @@ void lume_engine_start(void);
  * fresh iteration with the staged app source (see lume_engine_request_reload). */
 #define LUME_EVT_RELOAD 2
 #define LUME_EVT_ANIM_COMPLETE 3
+#define LUME_EVT_BACK 4
+#define LUME_EVT_PAUSE 5
+#define LUME_EVT_RESUME 6
 typedef struct {
     uint8_t  type;        /* LUME_EVT_* */
     uint16_t node_id;
@@ -22,6 +25,9 @@ typedef struct {
 /* Reverse-channel sink: called by the ui-bridge press callback (LVGL task)
  * to enqueue a CLICKED event into s_evt_queue. Pure queue op, no lv_* call. */
 void lume_engine_post_press(uint16_t node_id);
+/* Protocol task -> engine task; returns -1 when event queue is full. */
+int lume_engine_post_back(void);
+int lume_engine_post_lifecycle(uint8_t type);
 void lume_engine_post_anim_complete(uint32_t token);
 
 /* r4 P2: called by the ui-bridge remove path (LVGL task) after a subtree was

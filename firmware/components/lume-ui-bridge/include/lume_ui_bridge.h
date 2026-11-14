@@ -83,6 +83,7 @@ typedef enum {
     LUME_OP_ANIMATE_CANCEL, /* stop one node/attr animation */
     LUME_OP_CANVAS_DRAW,
     LUME_OP_CANVAS_INVALIDATE,
+    LUME_OP_RESET,             /* release all app nodes/canvases on LVGL task */
 } lume_op_t;
 
 typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,

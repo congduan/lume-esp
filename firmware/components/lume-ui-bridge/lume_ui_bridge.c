@@ -199,6 +199,15 @@ static void apply_animate(const lume_ui_msg_t *m)
 /* Queue A apply functions — LVGL task context only                    */
 /* ------------------------------------------------------------------ */
 
+static void apply_reset(void)
+{
+    lv_obj_t *screen = lv_screen_active();
+    clear_subtree(screen);
+    lv_obj_clean(screen);
+    release_dead_canvases();
+    ESP_LOGI(TAG, "app UI reset complete");
+}
+
 static void apply_create(const lume_ui_msg_t *m)
 {
     if (m->node_id == 0 || m->node_id >= LUME_MAX_NODES) {
@@ -576,6 +585,7 @@ void lume_ui_bridge_drain(void)
         /* Defensive hard truncate: text is always a bounded 64-byte field. */
         m.text[LUME_TEXT_MAX - 1] = '\0';
         switch (m.op) {
+            case LUME_OP_RESET:     apply_reset();       break;
             case LUME_OP_CREATE:    apply_create(&m);    break;
             case LUME_OP_SET_ATTR:  apply_set_attr(&m);  break;
             case LUME_OP_REMOVE:    apply_remove(&m);    break;

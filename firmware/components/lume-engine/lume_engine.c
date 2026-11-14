@@ -22,6 +22,7 @@
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "esp_heap_caps.h"
 #include "lume_engine.h"
 #include "lume_ui_bridge.h"
@@ -181,6 +182,41 @@ static JSValue js_log(JSContext *ctx, JSValueConst this_val,
     ESP_LOGI(TAG, "js: %s", s);
     JS_FreeCString(ctx, s);
     return JS_UNDEFINED;
+}
+
+static JSValue js_now_ms(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    return JS_NewFloat64(ctx, (double)esp_timer_get_time() / 1000.0);
+}
+
+static void call_app_hook(const char *name)
+{
+    JSValue global = JS_GetGlobalObject(s_ctx);
+    JSValue fn = JS_GetPropertyStr(s_ctx, global, name);
+    if (JS_IsFunction(s_ctx, fn)) {
+        JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 0, NULL);
+        if (JS_IsException(ret)) dump_js_exception(s_ctx, name);
+        JS_FreeValue(s_ctx, ret);
+    }
+    JS_FreeValue(s_ctx, fn);
+    JS_FreeValue(s_ctx, global);
+}
+
+static bool call_back_hook(void)
+{
+    bool handled = false;
+    JSValue global = JS_GetGlobalObject(s_ctx);
+    JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_back");
+    if (JS_IsFunction(s_ctx, fn)) {
+        JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 0, NULL);
+        if (JS_IsException(ret)) dump_js_exception(s_ctx, "__lume_back");
+        else handled = JS_ToBool(s_ctx, ret) == 1;
+        JS_FreeValue(s_ctx, ret);
+    }
+    JS_FreeValue(s_ctx, fn);
+    JS_FreeValue(s_ctx, global);
+    return handled;
 }
 
 static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
@@ -1303,6 +1339,7 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_set_press_event, "setPressEvent", 1));
     JS_SetPropertyStr(ctx, lume, "removeChild",
                       JS_NewCFunction(ctx, js_remove_child, "removeChild", 1));
+    JS_SetPropertyStr(ctx, lume, "_nowMs", JS_NewCFunction(ctx, js_now_ms, "_nowMs", 0));
     JS_SetPropertyStr(ctx, lume, "log",
                       JS_NewCFunction(ctx, js_log, "log", 1));
     /* lume.gpio: built inline on the `lume` object, mirroring how log /
@@ -1472,6 +1509,17 @@ void lume_engine_post_press(uint16_t node_id)
                      (unsigned)node_id, (unsigned)s_evt_dropped);
         }
     }
+}
+
+int lume_engine_post_lifecycle(uint8_t type)
+{
+    lume_engine_evt_t evt = { .type = type };
+    return s_evt_queue != NULL && xQueueSend(s_evt_queue, &evt, 0) == pdTRUE ? 0 : -1;
+}
+
+int lume_engine_post_back(void)
+{
+    return lume_engine_post_lifecycle(LUME_EVT_BACK);
 }
 
 void lume_engine_post_anim_complete(uint32_t token)
@@ -1755,6 +1803,12 @@ static void engine_task(void *arg)
             } else {
                 ESP_LOGE(TAG, "embedded/last-good app eval failed (unexpected)");
             }
+            call_app_hook("__lume_shutdown");
+            lume_ui_msg_t failed_reset;
+            msg_init(&failed_reset);
+            failed_reset.op = LUME_OP_RESET;
+            if (lume_ui_bridge_post(&failed_reset) != 0)
+                ESP_LOGE(TAG, "UI reset after eval failure failed");
             s_rt = NULL;
             s_ctx = NULL;
             JS_FreeContext(ctx);
@@ -1768,6 +1822,8 @@ static void engine_task(void *arg)
             vTaskDelay(pdMS_TO_TICKS(50));     /* avoid a tight respin */
             continue;
         }
+
+        call_app_hook("__lume_start");
 
         /* ---- success: commit candidate + report OK ---- */
         if (from_reload) {
@@ -1802,6 +1858,21 @@ static void engine_task(void *arg)
                     ESP_LOGI(TAG, "engine recv RELOAD -> recycle runtime");
                     reload = true;
                     break;                     /* leave the event loop */
+                } else if (evt.type == LUME_EVT_PAUSE) {
+                    call_app_hook("__lume_pause");
+                } else if (evt.type == LUME_EVT_RESUME) {
+                    call_app_hook("__lume_resume");
+                } else if (evt.type == LUME_EVT_BACK) {
+                    if (!call_back_hook()) {
+                        /* Single-app M1 has no launcher yet; default closes the
+                         * current app and returns to the embedded demo. */
+                        call_app_hook("__lume_shutdown");
+                        if (s_good_app) heap_caps_free(s_good_app);
+                        s_good_app = NULL;
+                        s_good_app_len = 0;
+                        reload = true;
+                        break;
+                    }
                 } else if (evt.type == LUME_EVT_PRESS) {
                     ESP_LOGI(TAG, "engine recv PRESS id=%u",
                              (unsigned)evt.node_id);
@@ -1811,6 +1882,7 @@ static void engine_task(void *arg)
                 }
             }
             drain_removals();
+            call_app_hook("__lume_tick");
         }
 
         /* ---- teardown ----
@@ -1818,6 +1890,12 @@ static void engine_task(void *arg)
          * The reverse channel (press sink) and the reload request path only
          * post to FreeRTOS queues and never touch s_ctx, so no other task can
          * be using this context here. Free context first, then runtime. */
+        call_app_hook("__lume_shutdown");
+        lume_ui_msg_t reset_msg;
+        msg_init(&reset_msg);
+        reset_msg.op = LUME_OP_RESET;
+        if (lume_ui_bridge_post(&reset_msg) != 0)
+            ESP_LOGE(TAG, "UI reset post failed; old nodes may remain");
         s_rt = NULL;
         s_ctx = NULL;
         JS_FreeContext(ctx);
