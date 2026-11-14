@@ -78,7 +78,7 @@ for (let i = 0; i < APPS.length; i += 3) {
 }
 
 List({
-  style: { width: '100%', height: '100%', background: '#000000', scroll: 'vertical' },
+  style: { width: '100%', height: 420, background: '#000000', scroll: 'vertical' },
   items: rows,
   itemHeight: 104,
   overscan: 2,
@@ -87,7 +87,7 @@ List({
       display: 'flex', flexDirection: 'row', justifyContent: 'space-evenly',
       width: '100%', height: 96,
       // 奇数行右移半格，制造蜂窝错位感
-      padding: rowIndex % 2 ? '0 0 0 24' : '0 24 0 0',
+      x: rowIndex % 2 ? 24 : 0, padding: 0,
     }}, rowApps.map(AppIcon));
   },
 });
@@ -96,12 +96,13 @@ List({
 // M3 手势层未做——用按钮模拟长按进入编辑（手势层落地后换真实 longPress）
 Button({
   title: function () { return editMode() ? 'done' : 'edit'; },
+  style: { x: 400, y: 424, width: 64, height: 32 },
   onPress: function () { editMode.set(!editMode()); },
 });
 
 /* ============ 状态栏：时间 + 电量（真机数据源现成）============ */
 View({ style: { display: 'flex', flexDirection: 'row',
-                justifyContent: 'space-between', width: '100%', height: 28,
+                justifyContent: 'space-between', x: 0, y: 452, width: '100%', height: 28,
                 padding: 4, background: '#111111' } }, [
   Text({ text: function () { return '12:34'; }, style: { color: 'text' } }),
   Text({ text: function () { return 'battery ' + lume.pmic.battPercent() + '%'; },
