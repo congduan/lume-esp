@@ -53,5 +53,5 @@ function runDemo(script) {
   vm.runInContext(prelude + '\n' + script, sandbox);
   return calls;
 }
-assert.deepStrictEqual(runDemo(embeddedDemo), runDemo(fs.readFileSync('examples/imu_poll/app.js', 'utf8')));
-console.log('PASS embedded demo matches examples/imu_poll/app.js messages');
+assert.deepStrictEqual(runDemo(embeddedDemo), runDemo(fs.readFileSync('examples/counter/app.js', 'utf8')));
+console.log('PASS embedded demo matches examples/counter/app.js messages');

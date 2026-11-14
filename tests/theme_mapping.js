@@ -48,3 +48,27 @@ assert.deepStrictEqual(rows(), []);
 pass('disposed node stops receiving theme updates');
 assert.throws(() => run("View({style:{background:'missing'}})"), /expected #RRGGBB/);
 pass('unknown token falls through to literal parser');
+const demoBlock = source.match(/const char lume_demo_js\[\] =\n([\s\S]*?);\s*$/);
+const demo = [...demoBlock[1].matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(m => JSON.parse(m[0])).join('');
+let demoMessages = [], demoId = 0;
+const demoCtx = vm.createContext({lume: {
+  createNode: () => ++demoId,
+  setAttr: (id, attr, value) => demoMessages.push([id, attr, value]),
+  setPressEvent: () => {}, log: () => {}
+}});
+vm.runInContext(prelude + '\n' + demo, demoCtx);
+demoMessages = [];
+vm.runInContext('__pressHandlers[lightButton]()', demoCtx);
+const screenLight = demoMessages.splice(0);
+assert.deepStrictEqual(screenLight, [
+  [2,1,0xffffff],[2,14,0x23425f],
+  [3,1,0xa4c7e5],[3,14,0x23425f],
+  [4,1,0xa4c7e5],[4,14,0x23425f],
+  [5,1,0xa4c7e5],[5,14,0x23425f],
+  [6,1,0xe9f2fa]
+]);
+vm.runInContext('__pressHandlers[darkButton]()', demoCtx);
+const screenDark = demoMessages.splice(0);
+assert.strictEqual(screenDark.length, screenLight.length);
+console.log('demo dark→light ATTR messages: ' + JSON.stringify(screenLight));
+pass('demo buttons recolor card, controls and full-screen root');

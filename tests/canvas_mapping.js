@@ -53,8 +53,8 @@ pass('dimensions/coordinates/color/text/point bounds reject', () => {
     'Canvas({width:2,height:2,onDraw:function(c){c.text(0,0,"x","#ffffff",32);}})'
   ]) assert.throws(() => harness(expr), expr);
 });
-pass('embedded demo equals polling example message sequence', () => {
-  const file = fs.readFileSync('examples/imu_poll/app.js','utf8');
+pass('embedded demo equals counter example message sequence', () => {
+  const file = fs.readFileSync('examples/counter/app.js','utf8');
   assert.deepStrictEqual(harness(demo).calls,harness(file).calls);
 });
 const printed = harness(demo).calls;
