@@ -14,15 +14,18 @@ declare namespace lume.ui {
     borderRadius?: number;
     borderWidth?: number;
     borderColor?: `#${string}`;
-    opacity?: number; // 0..1
-    background?: `#${string}` | number; // number keeps the M1 bg path
-    width?: number | `${number}%`;
-    height?: number | `${number}%`;
+    opacity?: number | (() => number); // 0..1
+    x?: number | (() => number);
+    y?: number | (() => number);
+    transition?: { property: 'bg' | 'x' | 'y' | 'width' | 'height' | 'opacity'; durationMs: number; easing?: lume.anim.Easing };
+    background?: `#${string}` | number | (() => `#${string}` | number); // number keeps the M1 bg path
+    width?: number | `${number}%` | (() => number);
+    height?: number | `${number}%` | (() => number);
   }
 
   /** Nodes are numeric ids returned by the embedded prelude. */
   type Node = number;
-  interface ViewProps { style?: Style; parent?: Node; bg?: number; w?: number; h?: number; align?: number; visible?: boolean }
+  interface ViewProps { style?: Style; parent?: Node; bg?: number | (() => number); w?: number; h?: number; align?: number; visible?: boolean }
   interface TextProps extends ViewProps { text?: string | (() => string) }
   interface ButtonProps extends ViewProps { title?: string | (() => string); onPress?: () => void }
 
@@ -36,6 +39,18 @@ declare function View(props: lume.ui.ViewProps, children?: lume.ui.Node[]): lume
 declare function Text(props: lume.ui.TextProps): lume.ui.Node;
 declare function Button(props: lume.ui.ButtonProps): lume.ui.Node;
 declare function signal<T>(initial: T): (() => T) & { set(value: T): void };
+
+declare namespace lume.anim {
+  type Easing = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+  type Attr = 'x' | 'y' | 'width' | 'height' | 'opacity';
+  /** Starts from the current LVGL value unless from is supplied. Returns a completion token. */
+  function to(node: lume.ui.Node, options: {
+    attr: Attr; from?: number; to: number; durationMs: number;
+    easing?: Easing; onComplete?: () => void;
+  }): number;
+  /** Cancels one node/attribute animation; its onComplete will not run. */
+  function cancel(node: lume.ui.Node, attr: Attr): void;
+}
 
 declare namespace lume.system {
   function log(msg: string): void;
