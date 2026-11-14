@@ -1,0 +1,28 @@
+/** Touch activity keeps the panel awake; idle 15 seconds enters light sleep.
+ * This demo owns WiFi for its lifetime. Reinitialize it before using net APIs. */
+var lastActivity = lume._nowMs();
+var state = signal('awake at ' + Math.floor(lastActivity));
+var netStatus = lume.net.deinit(); // boot starts WiFi even when disconnected
+var touch = function () { lastActivity = lume._nowMs(); };
+
+View({ style: { width: '100%', height: '100%', background: '#0B1E3F' },
+       onPress: touch }, [
+  Text({ text: state, style: { x: 30, y: 180, width: 400, height: 40 } }),
+  Button({ title: 'Keep awake', style: { x: 100, y: 250, width: 280, height: 60 },
+           onPress: touch })
+]);
+
+if (netStatus !== 0) state.set('WiFi deinit error ' + netStatus);
+lume.power.onWake(function () {
+  lastActivity = lume._nowMs();
+  state.set('awake at ' + Math.floor(lastActivity));
+});
+
+lume.system.setInterval(function () {
+  if (lume._nowMs() - lastActivity < 15000) return;
+  var status = lume.power.sleepNow();
+  if (status < 0) {
+    state.set('sleep error ' + status);
+    lastActivity = lume._nowMs(); // avoid a busy retry loop
+  }
+}, 1000);
