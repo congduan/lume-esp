@@ -7,6 +7,8 @@
  * 运行环境：TF 卡已挂载（lume.storage.Fs.mounted()）。
  */
 
+lume.theme.set({ colors: { primary: '#0B1E3F', text: '#FFFFFF' }, radius: 6 });
+
 /* ============ 状态 ============ */
 const cwd = signal('/');            // 当前目录
 const entries = signal([]);         // 当前目录条目 [{name, isDir}]
@@ -72,9 +74,11 @@ View({ style: {
   View({ style: { width: 40, height: 32 } }),           // 占位保持标题居中
 ]);
 
-/* ============ UI：文件列表（signal 驱动逐条渲染）============ */
-entries().forEach(function (e) {
-  View({
+/* ============ UI：文件列表（固定 36px 行，窗口化渲染）============ */
+List({
+  items: entries, itemHeight: 36,
+  style: { width: '100%', height: 388, background: '#101828' },
+  renderItem: function (e) { return View({
     style: {
       display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
       width: '100%', height: 36, padding: 6, borderRadius: 6,
@@ -87,8 +91,17 @@ entries().forEach(function (e) {
     Text({ text: e.isDir ? '[DIR]' : '[FILE]',
            style: { color: e.isDir ? '#FFD866' : '#9AB4D8' } }),
     Text({ text: e.name, style: { color: 'text' } }),
-  ]);
+  ]); },
 });
+
+/* 开发验证：在控制台调用 seedTestEntries()，用 1000 条模拟目录测试滚动。
+ * 不写 TF 卡；重新 loadDir(cwd()) 即可恢复真实目录。 */
+function seedTestEntries() {
+  var test = [];
+  for (var i = 0; i < 1000; i++) test.push({name: 'dir-' + i, isDir: true});
+  entries.set(test);
+  status.set('1000 test directories');
+}
 
 /* ============ UI：底部状态栏 ============ */
 View({ style: {
