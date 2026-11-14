@@ -84,7 +84,31 @@
     dialogs.push(entry);
     return function () { closeDialog(entry); };
   }
-  lume.app.onPause(function () { dialogs.slice().forEach(closeDialog); });
+  function clearToast() {
+    if (!toast) return;
+    if (toast.timer) lume.system.clearTimeout(toast.timer);
+    if (toast.fade) lume.system.clearTimeout(toast.fade);
+    lume.anim.cancel(toast.id, 'opacity');
+    lume.removeChild(toast.id);
+    toast = null;
+  }
+  var Toast = { show: function (message, options) {
+    options = options || {};
+    var duration = options.durationMs === undefined ? 2000 : options.durationMs;
+    if (!Number.isInteger(duration) || duration < 1) throw new RangeError('lume: Toast durationMs must be positive integer');
+    clearToast();
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    var opacity = signal(1);
+    var id = Text({text:String(message),style:{x:40,y:options.position === 'top' ? 48 : screen.h - 84,
+      width:screen.w - 80,height:48,background:'#222222',borderRadius:12,padding:12,
+      textAlign:'center',opacity:opacity,transition:{property:'opacity',durationMs:180,easing:'ease-out'}}});
+    var current = {id:id}; toast = current;
+    current.timer = lume.system.setTimeout(function () {
+      opacity.set(0);
+      current.fade = lume.system.setTimeout(function () { if (toast === current) clearToast(); },180);
+    },duration);
+  }};
+  lume.app.onPause(function () { dialogs.slice().forEach(closeDialog); clearToast(); });
   function positive(name, value, fallback, max) {
     var n = value === undefined ? fallback : value;
     if (typeof n !== 'number' || !isFinite(n) || Math.floor(n) !== n || n < 1 || n > max)
@@ -241,6 +265,7 @@
   shell.EdgeNavigation = EdgeNavigation;
   shell.Launcher = Launcher;
   shell.Dialog = Dialog;
+  shell.Toast = Toast;
   shell.dispose = dispose;
   lume.ui = lume.ui || {};
   lume.ui.shell = shell;
