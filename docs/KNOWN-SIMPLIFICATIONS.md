@@ -745,12 +745,12 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   **零代码字节增量**（task 2 与 task 3 之后 size 完全一致），未拉入任何
   `noflash`/IRAM 符号。Flash Code 的 +8 字节来自把两处日志里的地址字面量
   改成 `%02x` 格式串（多传一个参数），属可解释的近似零增量。
-- **JS prelude 的 `480` 是明确的例外**：`firmware/components/lume-engine/
-  lume_scripts.c` 内嵌 JS 的 canvas 坐标钳位（`__canvasInt(...,-480,480)`、
-  `480*480*2` 预算）仍为字面量。该字符串由 `tests/lib/prelude_runner.js`
+- **JS prelude 的 `480` 曾是明确的例外（r32 已解决）**：r31 时
+  `firmware/components/lume-engine/lume_scripts.c` 内嵌 JS 的 canvas 坐标钳位
+  和 `480*480*2` 预算仍为字面量。该字符串由 `tests/lib/prelude_runner.js`
   按「每行一个字符串字面量」正则逐字提取，C 宏插值会破坏提取；且 r31 明确
   「JS 层不应有行为变化」。**所有 C 侧**分辨率/引脚/地址字面量已引用 profile，
-  `git grep` 在 main/components 的 C 代码中无游离板级魔数。prelude 收敛留后续轮。
+  `git grep` 在 main/components 的 C 代码中无游离板级魔数。后续方案见 r32。
 - **tracked `sdkconfig` 与 defconfig 的优先级**：ESP-IDF 里已有 `sdkconfig` 的
   已存值优先于 defaults。移动分区表后必须同步改 `firmware/sdkconfig` 里的
   `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME` / `FILENAME`（本轮已改并提交，
@@ -763,3 +763,23 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   81/81 绿（补齐 4 条 `lume.ui.shell.*` + 实证多出的 `lume.net.otaStatus`，
   并补上 gallery 的 `examples/shell_demo/`）。真机显示/触摸方向、bundle 推送、
   音频、睡眠电流、radio、持久化等一律留接板验收。
+
+## r32 / prelude 屏宽屏高运行时注入
+
+- `lume_engine.c` 在每次新 QuickJS runtime 注册 native bindings 后、eval prelude 前，
+  把选中板 profile 的 `LUME_LCD_H_RES` / `LUME_LCD_V_RES` 注入内部全局
+  `__lumeScreen = {w, h}`。这不是公开 JS API；默认板仍为 480×480。
+- prelude 的 Canvas 宽高、PSRAM 总预算以及 fillRect/line/circle/text 坐标上界
+  改用注入值。内置 home 根容器高度原本意在铺满屏幕，也改为注入的屏高。
+  `tests/lib/prelude_runner.js` 的 VM 注入同名全局；模拟器直接使用该 runner。
+  新增 390×390 harness 覆盖尺寸、预算和绘图边界。
+- 不能在 `lume_scripts.c` 的内嵌 JS 字符串中直接插 C 宏：host 提取器以
+  `/^"(?:\\.|[^"\\])*"/gm` 逐行匹配以 `"` 开头的字符串，宏 token 行会被
+  忽略，同一行的后半个字符串也会丢失。运行时属性注入保持提取器与固件
+  执行同一份 prelude。
+- `ba98394` 干净基线 → r32 最终（差值还包含开工前已在 `origin/main` 的
+  `ca8236a` 和 `1ed8336`）：Flash Code 1675574→1675718（+144），Flash Data
+  393180→393228（+48），DIRAM 229551→229551（0），**IRAM
+  16384/16384→16384/16384（0，未溢出）**，Total 2216753→2216945（+192）。
+  `idf.py build` + `idf.py size`、12 个 JS harness、CLI 14 项和网站检查均通过。
+  无真机，本轮不声明板上行为已验证；M5 Board abstraction 仍未勾选。

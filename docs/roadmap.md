@@ -73,10 +73,10 @@ on-device acceptance are still pending:
   `SDKCONFIG_DEFAULTS` list. Default-board behaviour is unchanged and
   `idf.py size` IRAM stays 16384/16384 (no overflow). There is still **no
   second board profile**, no runtime hot-switch, no multi-board CI matrix and
-  no on-device acceptance; the embedded JS prelude canvas clamps still use a
-  literal `480` (documented exception, see
-  `docs/KNOWN-SIMPLIFICATIONS.md` r27). "Additional targets" is therefore not
-  yet demonstrated — the checkbox stays unchecked.
+  no on-device acceptance. r32 removed the embedded JS prelude canvas `480`
+  exception by injecting the selected board's screen width and height before
+  prelude evaluation (see `docs/KNOWN-SIMPLIFICATIONS.md` r32). "Additional
+  targets" is therefore not yet demonstrated — the checkbox stays unchecked.
 - **Docs site + example gallery**: r27 completed the API catalog (81/81,
   incl. the 4 `lume.ui.shell.*` + `lume.net.otaStatus` entries) and added
   `examples/shell_demo/` to the gallery. The "does not list `shell_demo` yet"
