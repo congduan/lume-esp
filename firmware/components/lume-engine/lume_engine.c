@@ -33,6 +33,7 @@
 #include "lume_kv.h"
 #include "lume_fs.h"
 #include "lume_net.h"
+#include "lume_audio.h"
 #include "quickjs.h"
 
 static const char *TAG = "lume-engine";
@@ -1109,6 +1110,79 @@ static JSValue js_net_http_get(JSContext *ctx, JSValueConst this_val,
     return obj;
 }
 
+static JSValue js_audio_play(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "lume.audio.play: expected ArrayBuffer");
+    size_t len = 0;
+    uint8_t *data = JS_GetArrayBuffer(ctx, &len, argv[0]);
+    if (!data) return JS_NewInt32(ctx, LUME_AUDIO_ERR_ARG);
+    if (argc > 1 && JS_IsObject(argv[1])) {
+        const char *names[] = {"sampleRate", "channels", "bits"};
+        const int expected[] = {16000, 2, 16};
+        for (int i = 0; i < 3; ++i) {
+            JSValue v = JS_GetPropertyStr(ctx, argv[1], names[i]);
+            if (JS_IsException(v)) return JS_EXCEPTION;
+            if (!JS_IsUndefined(v)) {
+                int32_t n;
+                if (JS_ToInt32(ctx, &n, v) < 0) { JS_FreeValue(ctx, v); return JS_EXCEPTION; }
+                if (n != expected[i]) { JS_FreeValue(ctx, v); return JS_NewInt32(ctx, LUME_AUDIO_ERR_ARG); }
+            }
+            JS_FreeValue(ctx, v);
+        }
+    }
+    return JS_NewInt32(ctx, lume_audio_play(data, len));
+}
+
+static JSValue js_audio_record(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "lume.audio.record: expected seconds");
+    double seconds;
+    if (JS_ToFloat64(ctx, &seconds, argv[0]) < 0) return JS_EXCEPTION;
+    if (!(seconds > 0 && seconds <= 10)) return JS_NewInt32(ctx, LUME_AUDIO_ERR_ARG);
+    if (argc > 1 && JS_IsObject(argv[1])) {
+        const char *names[] = {"sampleRate", "channels", "bits"};
+        const int expected[] = {16000, 2, 16};
+        for (int i = 0; i < 3; ++i) {
+            JSValue v = JS_GetPropertyStr(ctx, argv[1], names[i]);
+            if (JS_IsException(v)) return JS_EXCEPTION;
+            if (!JS_IsUndefined(v)) {
+                int32_t n;
+                if (JS_ToInt32(ctx, &n, v) < 0) { JS_FreeValue(ctx, v); return JS_EXCEPTION; }
+                if (n != expected[i]) { JS_FreeValue(ctx, v); return JS_NewInt32(ctx, LUME_AUDIO_ERR_ARG); }
+            }
+            JS_FreeValue(ctx, v);
+        }
+    }
+    size_t frames = (size_t)(seconds * 16000);
+    if (!frames) return JS_NewInt32(ctx, LUME_AUDIO_ERR_ARG);
+    size_t bytes = frames * 4;
+    uint8_t *pcm = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
+    if (!pcm) return JS_NewInt32(ctx, LUME_AUDIO_ERR_MEMORY);
+    int r = lume_audio_record(pcm, bytes);
+    JSValue result = r < 0 ? JS_NewInt32(ctx, r) : JS_NewArrayBufferCopy(ctx, pcm, bytes);
+    heap_caps_free(pcm);
+    return result;
+}
+
+static JSValue js_audio_volume(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "lume.audio.setVolume: expected percent");
+    int32_t n;
+    if (JS_ToInt32(ctx, &n, argv[0]) < 0) return JS_EXCEPTION;
+    if (n < 0 || n > 100) return JS_NewInt32(ctx, LUME_AUDIO_ERR_ARG);
+    int r = lume_audio_init();
+    return JS_NewInt32(ctx, r < 0 ? r : lume_audio_set_volume(n));
+}
+
+static JSValue js_audio_stop(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_audio_stop());
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -1262,6 +1336,12 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_net_http_get, "get", 1));
     JS_SetPropertyStr(ctx, net, "http", http);
     JS_SetPropertyStr(ctx, lume, "net", net);
+    JSValue audio = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, audio, "play", JS_NewCFunction(ctx, js_audio_play, "play", 2));
+    JS_SetPropertyStr(ctx, audio, "record", JS_NewCFunction(ctx, js_audio_record, "record", 2));
+    JS_SetPropertyStr(ctx, audio, "setVolume", JS_NewCFunction(ctx, js_audio_volume, "setVolume", 1));
+    JS_SetPropertyStr(ctx, audio, "stop", JS_NewCFunction(ctx, js_audio_stop, "stop", 0));
+    JS_SetPropertyStr(ctx, lume, "audio", audio);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }
