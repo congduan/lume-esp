@@ -19,6 +19,10 @@ void lume_engine_start(void);
 #define LUME_EVT_SCROLL 7
 /* r21 gesture pointer stream (LVGL task -> engine task). node_id = target. */
 #define LUME_EVT_GESTURE 8
+/* r30 multi-app: switch to another installed app ("" = built-in home screen).
+ * The id was copied into the engine's launch slot before the event is posted;
+ * the target source is read from LittleFS when the event is consumed. */
+#define LUME_EVT_LAUNCH 9
 typedef struct {
     uint8_t  type;        /* LUME_EVT_* */
     uint16_t node_id;
@@ -73,6 +77,27 @@ typedef void (*lume_engine_reload_result_fn)(bool ok, size_t len,
                                              const char *reason);
 void lume_engine_set_reload_result_cb(lume_engine_reload_result_fn cb);
 int lume_engine_request_reload(const char *src, size_t len);
+
+/* ------------------------------------------------------------------------
+ * r30 multi-app launch (any task -> engine task).
+ *
+ * Ask the engine to run the installed app `id` (empty / NULL = the built-in
+ * home screen). Only the id is copied here; the bundle is read from LittleFS
+ * by the engine loop, which then recycles the CURRENT runtime and evals the
+ * new source in a fresh context. Exactly one app is alive at any time.
+ *
+ * Returns 0 when the request was queued, -1 on a bad id / OOM / queue full.
+ * The eventual eval outcome is reported through the SAME reload-result
+ * callback as a hot reload (so a command channel still gets exactly one
+ * reply per request).
+ * ------------------------------------------------------------------------ */
+int lume_engine_request_launch(const char *id);
+
+/* Same as lume_engine_request_launch, but the eventual eval outcome is also
+ * reported through the reload-result callback ("RELOAD OK <len>" /
+ * "RELOAD ERR <reason>"). Used by the command channel so one request always
+ * gets exactly one reply; JS-initiated launches use the silent variant. */
+int lume_engine_request_launch_reply(const char *id);
 
 /* ------------------------------------------------------------------------
  * r26: lume.net.otaStatus() provider.

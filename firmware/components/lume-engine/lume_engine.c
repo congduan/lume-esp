@@ -33,6 +33,7 @@
 #include "lume_imu_hw.h"
 #include "lume_kv.h"
 #include "lume_fs.h"
+#include "lume_apps.h"
 #include "lume_net.h"
 #include "lume_ble.h"
 #include "lume_audio.h"
@@ -67,6 +68,17 @@ static bool    s_reload_pending;    /* a RELOAD event is queued, not consumed */
  * task, so no mutex. Transferred (not copied) from a successful reload. */
 static char   *s_good_app;
 static size_t  s_good_app_len;
+
+/* r30 multi-app: which app the CURRENT runtime belongs to ("" = home/demo).
+ * Exactly one app is live at any time; switching tears the runtime down. */
+static char s_running_app[LUME_APP_ID_MAX];
+
+/* Pending launch request (JS native -> engine loop). Guarded by s_stage_mutex;
+ * an empty id means "go home". The source is read from LittleFS by the engine
+ * loop, never on the caller's stack. */
+static char s_launch_req[LUME_APP_ID_MAX];
+static bool s_launch_pending;
+static bool s_launch_reply;   /* the queued request expects a reload-reply */
 
 /* Registered by lume-hotreload; reports the final reload outcome over USB TX. */
 static lume_engine_reload_result_fn s_result_cb;
@@ -1166,6 +1178,135 @@ static JSValue js_fs_list(JSContext *ctx, JSValueConst this_val, int argc, JSVal
 static JSValue js_fs_mounted(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
 { (void)v; (void)n; (void)a; return JS_NewBool(ctx, lume_fs_mounted()); }
 
+/* ---- r30 multi-app natives (lume.apps.*) ----
+ * The store and the "which app is live" decision both run on the engine task.
+ * launch()/home() only POST a switch request: the CURRENT runtime must keep
+ * running until the JS call returns, and the engine loop recycles it right
+ * after (single-live-app rule, see lume_apps.h). */
+typedef struct {
+    JSContext *ctx;
+    JSValue    arr;
+    int        count;
+    bool       failed;
+} apps_list_ctx_t;
+
+static void apps_list_emit(void *arg, const char *id)
+{
+    apps_list_ctx_t *c = (apps_list_ctx_t *)arg;
+    if (c->failed) {
+        return;
+    }
+    if (JS_SetPropertyUint32(c->ctx, c->arr, (uint32_t)c->count,
+                             JS_NewString(c->ctx, id)) < 0) {
+        c->failed = true;
+        return;
+    }
+    c->count++;
+}
+
+static JSValue js_apps_list(JSContext *ctx, JSValueConst self, int argc,
+                            JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    apps_list_ctx_t c = { ctx, JS_NewArray(ctx), 0, false };
+    if (JS_IsException(c.arr)) {
+        return JS_EXCEPTION;
+    }
+    int r = lume_apps_list(apps_list_emit, &c);
+    if (r < 0 || c.failed) {
+        JS_FreeValue(ctx, c.arr);
+        return c.failed ? JS_EXCEPTION : JS_NewInt32(ctx, r);
+    }
+    return c.arr;
+}
+
+static JSValue js_apps_meta(JSContext *ctx, JSValueConst self, int argc,
+                            JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "lume.apps.meta: expected app id");
+    size_t n = 0;
+    const char *id = JS_ToCStringLen(ctx, &n, argv[0]);
+    if (id == NULL) return JS_EXCEPTION;
+    if (memchr(id, '\0', n) != NULL) {
+        JS_FreeCString(ctx, id);
+        return JS_NewInt32(ctx, LUME_APPS_ERR_ID);
+    }
+    char *meta = NULL;
+    size_t meta_len = 0;
+    int r = lume_apps_meta_read(id, &meta, &meta_len);
+    JS_FreeCString(ctx, id);
+    if (r < 0) return JS_NewInt32(ctx, r);
+    JSValue out = JS_NewStringLen(ctx, meta, meta_len);
+    heap_caps_free(meta);
+    return out;
+}
+
+static JSValue js_apps_current(JSContext *ctx, JSValueConst self, int argc,
+                               JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    char id[LUME_APP_ID_MAX];
+    int r = lume_apps_current(id, sizeof(id));
+    if (r < 0) return JS_NewInt32(ctx, r);
+    return JS_NewString(ctx, id);
+}
+
+static JSValue js_apps_launch(JSContext *ctx, JSValueConst self, int argc,
+                              JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "lume.apps.launch: expected app id");
+    size_t n = 0;
+    const char *id = JS_ToCStringLen(ctx, &n, argv[0]);
+    if (id == NULL) return JS_EXCEPTION;
+    int r = -1;
+    if (memchr(id, '\0', n) == NULL && n > 0 && n < LUME_APP_ID_MAX &&
+        lume_app_id_valid(id, n)) {
+        r = lume_engine_request_launch(id);
+    }
+    JS_FreeCString(ctx, id);
+    return JS_NewInt32(ctx, r < 0 ? -1 : 0);
+}
+
+static JSValue js_apps_home(JSContext *ctx, JSValueConst self, int argc,
+                            JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_engine_request_launch("") < 0 ? LUME_FS_ERR_STATE : 0);
+}
+
+static JSValue js_apps_remove(JSContext *ctx, JSValueConst self, int argc,
+                              JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "lume.apps.remove: expected app id");
+    size_t n = 0;
+    const char *id = JS_ToCStringLen(ctx, &n, argv[0]);
+    if (id == NULL) return JS_EXCEPTION;
+    if (memchr(id, '\0', n) != NULL) {
+        JS_FreeCString(ctx, id);
+        return JS_NewInt32(ctx, LUME_APPS_ERR_ID);
+    }
+    /* A live app cannot delete itself: the runtime is about to be the one
+     * running its own (now missing) source on the next boot. */
+    int r = LUME_APPS_ERR_ID;
+    if (strcmp(id, s_running_app) == 0) {
+        r = LUME_APPS_ERR_BUSY;
+    } else {
+        r = lume_apps_remove(id);
+    }
+    JS_FreeCString(ctx, id);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue js_apps_mounted(JSContext *ctx, JSValueConst self, int argc,
+                               JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    return JS_NewBool(ctx, lume_fs_mounted());
+}
+
 /* lume.net / lume.net.http natives (M2 / r11): WiFi station + HTTP client,
  * hardware/net layer in lume-net. Same thread discipline as the lume.* natives
  * above: all run ONLY on the engine task; lume-net is QuickJS-free and returns
@@ -1653,6 +1794,26 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, fs, "mounted", JS_NewCFunction(ctx, js_fs_mounted, "mounted", 0));
     JS_SetPropertyStr(ctx, storage, "Fs", fs);
     JS_SetPropertyStr(ctx, lume, "storage", storage);
+    /* lume.apps (r30): multi-app store + launch. Mounts LittleFS through
+     * lume_apps_init(); an unmounted store makes list() return -3 and keeps
+     * the single embedded demo running exactly as before. */
+    lume_apps_init();
+    JSValue apps = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, apps, "list",
+                      JS_NewCFunction(ctx, js_apps_list, "list", 0));
+    JS_SetPropertyStr(ctx, apps, "meta",
+                      JS_NewCFunction(ctx, js_apps_meta, "meta", 1));
+    JS_SetPropertyStr(ctx, apps, "current",
+                      JS_NewCFunction(ctx, js_apps_current, "current", 0));
+    JS_SetPropertyStr(ctx, apps, "launch",
+                      JS_NewCFunction(ctx, js_apps_launch, "launch", 1));
+    JS_SetPropertyStr(ctx, apps, "home",
+                      JS_NewCFunction(ctx, js_apps_home, "home", 0));
+    JS_SetPropertyStr(ctx, apps, "remove",
+                      JS_NewCFunction(ctx, js_apps_remove, "remove", 1));
+    JS_SetPropertyStr(ctx, apps, "mounted",
+                      JS_NewCFunction(ctx, js_apps_mounted, "mounted", 0));
+    JS_SetPropertyStr(ctx, lume, "apps", apps);
     /* lume.net + lume.net.http (M2 / r11): WiFi station + HTTP client, hw in
      * lume-net. Natives self-register, so the prelude needs no change.
      * One-time lume_net_init() is idempotent across hot-reload runtime resets
@@ -2066,6 +2227,77 @@ int lume_engine_request_reload(const char *src, size_t len)
     return 0;
 }
 
+static int request_launch_common(const char *id, bool want_reply)
+{
+    if (s_stage_mutex == NULL || s_evt_queue == NULL) {
+        return -1;
+    }
+    if (id == NULL) {
+        id = "";
+    }
+    size_t n = strlen(id);
+    if (n >= LUME_APP_ID_MAX) {
+        return -1;
+    }
+    if (n > 0 && !lume_app_id_valid(id, n)) {
+        return -1;
+    }
+
+    xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
+    memcpy(s_launch_req, id, n + 1);
+    /* Coalesce like the reload slot: at most one LAUNCH event is queued and
+     * the engine reads the LATEST id, so rapid taps cannot build a backlog.
+     * A coalesced request keeps the caller's reply flag (the queued event
+     * reports for whichever request owns it). */
+    bool need_post = !s_launch_pending;
+    s_launch_pending = true;
+    if (need_post) {
+        s_launch_reply = want_reply;
+    }
+    xSemaphoreGive(s_stage_mutex);
+
+    if (!need_post) {
+        return 0;
+    }
+    lume_engine_evt_t evt = { .type = LUME_EVT_LAUNCH, .node_id = 0 };
+    if (xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(100)) != pdTRUE) {
+        xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
+        s_launch_pending = false;
+        s_launch_reply = false;
+        xSemaphoreGive(s_stage_mutex);
+        ESP_LOGE(TAG, "request_launch('%s'): evt queue full", id);
+        return -1;
+    }
+    return 0;
+}
+
+int lume_engine_request_launch(const char *id)
+{
+    return request_launch_common(id, false);
+}
+
+int lume_engine_request_launch_reply(const char *id)
+{
+    return request_launch_common(id, true);
+}
+
+/* Engine-task side of request_launch: copy + clear the pending id. */
+static bool take_launch(char *out, size_t cap, bool *want_reply)
+{
+    bool have = false;
+    xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
+    if (s_launch_pending) {
+        snprintf(out, cap, "%s", s_launch_req);
+        s_launch_req[0] = '\0';
+        s_launch_pending = false;
+        *want_reply = s_launch_reply;
+        s_launch_reply = false;
+        have = true;
+    }
+    xSemaphoreGive(s_stage_mutex);
+    return have;
+}
+
 /* Drop any removal latch left over from the previous app before a fresh
  * context starts; stale ids must not be dispatched into the new JS context. */
 static void clear_removals(void)
@@ -2086,22 +2318,52 @@ static void engine_task(void *arg)
     ESP_LOGI(TAG, "engine task up (pinned core 1), PSRAM free=%u bytes",
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
 
-    /* Candidate app source for the NEXT runtime iteration. Owned exclusively
-     * by the engine task. cand_is_reload drives TX reporting + commit-on-OK. */
+    /* Candidate source for the NEXT runtime iteration. Owned exclusively by
+     * the engine task. cand_is_reload drives TX reporting + commit-on-OK. */
     char *cand_src = NULL;
     size_t cand_len = 0;
-    bool cand_is_reload = false;
+    bool cand_is_reload = false;   /* pushed/launched bundle: commit on OK */
+    bool cand_want_reply = false;  /* report the eval outcome to the requester */
+    char cand_app[LUME_APP_ID_MAX];/* app identity, "" = home / demo */
+    bool cand_is_home = false;     /* run the built-in home screen */
+    bool home_failed = false;      /* home itself broke: fall back to demo */
 
-    /* OUTER LOOP: one iteration == one QuickJS runtime lifetime. A reload
-     * tears the runtime down at the bottom and continues here. Drivers
-     * (LVGL / touch / board) are NOT restarted across iterations. */
+    /* Boot: resume the last started app, otherwise show the home grid. */
+    lume_apps_init();
+    {
+        char boot[LUME_APP_ID_MAX];
+        cand_app[0] = '\0';
+        if (lume_apps_boot_id(boot, sizeof(boot))) {
+            char *src = NULL;
+            size_t len = 0;
+            if (lume_apps_read(boot, &src, &len) == 0) {
+                cand_src = src;
+                cand_len = len;
+                snprintf(cand_app, sizeof(cand_app), "%s", boot);
+                ESP_LOGI(TAG, "boot app '%s' (%u bytes)", boot, (unsigned)len);
+            } else {
+                ESP_LOGW(TAG, "boot app '%s' unreadable; starting home", boot);
+                (void)lume_apps_set_current("");
+            }
+        }
+        cand_is_home = (cand_src == NULL);
+    }
+
+    /* OUTER LOOP: one iteration == one QuickJS runtime lifetime. A reload or
+     * an app launch tears the runtime down at the bottom and continues here.
+     * Drivers (LVGL / touch / board) are NOT restarted across iterations.
+     * EXACTLY ONE app (or the home screen) is live at any moment. */
     for (;;) {
         const char *app_src;
         size_t app_len;
-        bool from_reload = cand_is_reload;
+        const bool from_reload = cand_is_reload;
+        const bool want_reply = cand_want_reply;
         if (cand_src != NULL) {
-            app_src = cand_src;                 /* staged frame */
+            app_src = cand_src;                 /* staged frame / launched app */
             app_len = cand_len;
+        } else if (cand_is_home) {
+            app_src = lume_home_js;             /* built-in home grid */
+            app_len = strlen(lume_home_js);
         } else if (s_good_app != NULL) {
             app_src = s_good_app;               /* last-known-good app */
             app_len = s_good_app_len;
@@ -2135,8 +2397,9 @@ static void engine_task(void *arg)
          * see docs/KNOWN-SIMPLIFICATIONS.md. */
         memset(s_node_live, 0, sizeof(s_node_live));
         clear_removals();                       /* drop stale removal latch */
-        ESP_LOGI(TAG, "runtime up; eval %s app (%u bytes)",
-                 from_reload ? "staged" : "embedded/last-good",
+        ESP_LOGI(TAG, "runtime up; eval app '%s' (%u bytes)",
+                 cand_app[0] ? cand_app
+                             : (cand_is_home ? "<home>" : "<embedded-demo>"),
                  (unsigned)app_len);
 
         /* ---- eval prelude (signals/ui), then the app ---- */
@@ -2148,14 +2411,15 @@ static void engine_task(void *arg)
         }
 
         if (!ok) {
-            /* eval_buf already dumped the JS exception. A failed reload must
-             * NOT kill the engine: report ERR, then fall back to the previous
-             * good app (or the embedded demo) on the next iteration. */
-            if (from_reload) {
+            /* eval_buf already dumped the JS exception. A failed reload or a
+             * broken installed app must NOT kill the engine. */
+            if (want_reply) {
                 report_result(false, app_len, "eval-failed");
-                ESP_LOGW(TAG, "reload eval failed; falling back to last-good app");
+            }
+            if (from_reload) {
+                ESP_LOGW(TAG, "reload/launch eval failed for '%s'", cand_app);
             } else {
-                ESP_LOGE(TAG, "embedded/last-good app eval failed (unexpected)");
+                ESP_LOGE(TAG, "embedded/last-good/home app eval failed (unexpected)");
             }
             call_app_hook("__lume_shutdown");
             lume_ui_msg_t failed_reset;
@@ -2167,17 +2431,46 @@ static void engine_task(void *arg)
             s_ctx = NULL;
             JS_FreeContext(ctx);
             JS_FreeRuntime(rt);
+            const bool attempted_home = cand_is_home && cand_src == NULL;
             if (cand_src != NULL) {            /* discard the bad candidate */
                 heap_caps_free(cand_src);
                 cand_src = NULL;
             }
             cand_len = 0;
-            cand_is_reload = false;            /* next iter uses s_good_app */
+            cand_is_reload = false;
+            cand_want_reply = false;
+            /* Same-app hot update failed -> keep the last good bundle of THAT
+             * app. Anything else (a newly selected app) falls back to home, so
+             * a bad install can never leave the device showing the previous
+             * app while .current points at the broken one. If home itself
+             * broke, the embedded demo is the final fallback. */
+            bool same_app = cand_app[0] != '\0' && s_good_app != NULL &&
+                            strcmp(cand_app, s_running_app) == 0;
+            if (!same_app) {
+                if (cand_app[0] != '\0') {
+                    ESP_LOGE(TAG, "app '%s' failed to eval; dropping boot marker",
+                             cand_app);
+                    (void)lume_apps_set_current("");
+                }
+                cand_app[0] = '\0';
+                if (attempted_home) {
+                    home_failed = true;
+                }
+                cand_is_home = !home_failed;
+            }
             vTaskDelay(pdMS_TO_TICKS(50));     /* avoid a tight respin */
             continue;
         }
 
         call_app_hook("__lume_start");
+
+        /* ---- success: the live app identity + boot marker ---- */
+        snprintf(s_running_app, sizeof(s_running_app), "%s", cand_app);
+        if (cand_app[0] != '\0') {
+            (void)lume_apps_set_current(cand_app);
+        } else if (cand_is_home) {
+            (void)lume_apps_set_current("");
+        }
 
         /* ---- success: commit candidate + report OK ---- */
         if (from_reload) {
@@ -2191,6 +2484,8 @@ static void engine_task(void *arg)
             s_good_app = cand_src;
             s_good_app_len = cand_len;
             cand_src = NULL;                   /* ownership transferred */
+        }
+        if (want_reply) {
             report_result(true, app_len, NULL);
         }
         if (cand_src != NULL) {
@@ -2199,10 +2494,12 @@ static void engine_task(void *arg)
         }
         cand_len = 0;
         cand_is_reload = false;
+        cand_want_reply = false;
         ESP_LOGI(TAG, "app eval ok; entering event loop");
 
         /* ---- inner event loop (one runtime lifetime) ---- */
         bool reload = false;
+        bool go_home = false;
         for (;;) {
             lume_engine_evt_t evt;
             /* Bounded wait instead of portMAX_DELAY (r4 P2): the timeout is
@@ -2212,18 +2509,50 @@ static void engine_task(void *arg)
                     ESP_LOGI(TAG, "engine recv RELOAD -> recycle runtime");
                     reload = true;
                     break;                     /* leave the event loop */
+                } else if (evt.type == LUME_EVT_LAUNCH) {
+                    char id[LUME_APP_ID_MAX];
+                    bool reply = false;
+                    if (take_launch(id, sizeof(id), &reply)) {
+                        if (id[0] == '\0') {
+                            ESP_LOGI(TAG, "engine recv LAUNCH home");
+                            go_home = true;
+                            cand_want_reply = reply;
+                            reload = true;
+                            break;
+                        }
+                        char *src = NULL;
+                        size_t len = 0;
+                        int r = lume_apps_read(id, &src, &len);
+                        if (r < 0) {
+                            ESP_LOGW(TAG, "LAUNCH '%s' failed (%d); staying", id, r);
+                            if (reply) report_result(false, 0, "no-app");
+                            continue;          /* keep the current app alive */
+                        }
+                        if (cand_src != NULL) {
+                            heap_caps_free(cand_src);
+                        }
+                        cand_src = src;
+                        cand_len = len;
+                        cand_is_reload = true;
+                        cand_want_reply = reply;
+                        cand_is_home = false;
+                        snprintf(cand_app, sizeof(cand_app), "%s", id);
+                        ESP_LOGI(TAG, "engine recv LAUNCH '%s' (%u bytes)",
+                                 id, (unsigned)len);
+                        reload = true;
+                        break;
+                    }
                 } else if (evt.type == LUME_EVT_PAUSE) {
                     call_app_hook("__lume_pause");
                 } else if (evt.type == LUME_EVT_RESUME) {
                     call_app_hook("__lume_resume");
                 } else if (evt.type == LUME_EVT_BACK) {
                     if (!call_back_hook()) {
-                        /* Single-app M1 has no launcher yet; default closes the
-                         * current app and returns to the embedded demo. */
-                        call_app_hook("__lume_shutdown");
-                        if (s_good_app) heap_caps_free(s_good_app);
-                        s_good_app = NULL;
-                        s_good_app_len = 0;
+                        /* No app handler claimed BACK: return to the built-in
+                         * home screen. The app runtime is destroyed, so only
+                         * the home runtime is alive after the switch. */
+                        go_home = true;
+                        cand_want_reply = false;
                         reload = true;
                         break;
                     }
@@ -2259,17 +2588,39 @@ static void engine_task(void *arg)
         JS_FreeContext(ctx);
         JS_FreeRuntime(rt);
 
-        /* ---- pick up the staged source for the next iteration ---- */
+        /* ---- decide the NEXT source ---- */
         if (reload) {
-            size_t n = 0;
-            char *newsrc = take_staged(&n);
-            if (newsrc != NULL) {
-                cand_src = newsrc;
-                cand_len = n;
-                cand_is_reload = true;
-            } else {
-                ESP_LOGW(TAG, "reload event but staging empty; restarting last-good");
+            if (go_home) {
+                if (cand_src != NULL) {
+                    heap_caps_free(cand_src);
+                    cand_src = NULL;
+                }
+                cand_len = 0;
                 cand_is_reload = false;
+                cand_app[0] = '\0';
+                cand_is_home = true;
+                if (s_good_app != NULL) {      /* the old app's bundle */
+                    heap_caps_free(s_good_app);
+                    s_good_app = NULL;
+                    s_good_app_len = 0;
+                }
+            } else if (cand_src != NULL) {
+                /* LAUNCH already filled the candidate source. */
+            } else {
+                size_t n = 0;
+                char *newsrc = take_staged(&n);
+                if (newsrc != NULL) {
+                    cand_src = newsrc;
+                    cand_len = n;
+                    cand_is_reload = true;
+                    cand_want_reply = false;   /* DATA frames reply via FIFO */
+                    /* A hot update belongs to the app that is running now. */
+                    snprintf(cand_app, sizeof(cand_app), "%s", s_running_app);
+                    cand_is_home = false;
+                } else {
+                    ESP_LOGW(TAG, "reload event but staging empty; restarting last-good");
+                    cand_is_reload = false;
+                }
             }
         }
     }

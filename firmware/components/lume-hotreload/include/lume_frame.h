@@ -17,6 +17,13 @@
  *   offset 12..   payload = JS app SOURCE text (JS_Eval, not bytecode)
  *   At an aligned boundary the four-byte controls "BACK" / "PAUS" / "RESM"
  *   are also accepted (no header, no payload, no response).
+ *
+ * §1b Command frames (multi-app management) — same 12-byte header layout with
+ *   magic = 'L' 'U' 'M' 'C'. The payload is UTF-8 TEXT (not JS source) and is
+ *   handed to the portable parser in lume_cmd.h. A command frame is NEVER
+ *   evaluated as an app; it is answered with "CMD OK ..." / "CMD ERR ..."
+ *   lines instead of "RELOAD ..." lines. Old firmware treats "LUMC" as a bad
+ *   magic and re-syncs, so the two frame kinds can share one byte stream.
  *   Streaming parser aligns on "LUME"; on bad magic / empty / too-large / OOM /
  *   bad CRC it emits an ERR event and re-syncs on the next "LUME". There is NO
  *   frame timeout. Both channels feed byte streams into their OWN reentrant
@@ -44,6 +51,9 @@
 #define LUME_FRAME_CTRL_PAUSE     "PAUS"
 #define LUME_FRAME_CTRL_RESUME    "RESM"
 
+/* ---- §1b command frames (multi-app management) ---- */
+#define LUME_FRAME_CMD_MAGIC      "LUMC"
+
 /* Standard CRC-32 (reflected poly 0xEDB88320), identical to zlib.crc32 and
  * esp_crc32_le(0, ...). Verified by the "123456789" -> 0xcbf43926 vector. */
 uint32_t lume_frame_crc32(const uint8_t *data, size_t len);
@@ -53,12 +63,17 @@ uint32_t lume_frame_crc32(const uint8_t *data, size_t len);
 size_t lume_frame_encode(uint8_t *out, size_t out_cap,
                          const uint8_t *payload, size_t len);
 
+/* Same header/CRC, magic "LUMC": payload is UTF-8 command text (lume_cmd.h). */
+size_t lume_frame_encode_cmd(uint8_t *out, size_t out_cap,
+                             const uint8_t *payload, size_t len);
+
 typedef enum {
     LUME_FRAME_EV_DATA = 1,   /* validated frame; payload valid DURING cb only */
     LUME_FRAME_EV_BACK,
     LUME_FRAME_EV_PAUSE,
     LUME_FRAME_EV_RESUME,
     LUME_FRAME_EV_ERR,        /* reason: bad-magic/empty/too-large/oom/bad-crc */
+    LUME_FRAME_EV_CMD,        /* "LUMC" frame; payload valid DURING cb only */
 } lume_frame_ev_t;
 
 typedef void *(*lume_frame_alloc_fn)(size_t len);
@@ -78,6 +93,7 @@ typedef struct {
     lume_frame_state_t state;
     uint8_t  magic[LUME_FRAME_MAGIC_LEN];
     int      magic_n;
+    bool     is_cmd;                       /* header came from "LUMC" */
     uint8_t  hdr[LUME_FRAME_LEN_LEN + LUME_FRAME_CRC_LEN];
     int      hdr_n;
     uint8_t  sync[LUME_FRAME_MAGIC_LEN];   /* rolling window, ALL states */

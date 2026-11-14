@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include "esp_log.h"
+#include "esp_heap_caps.h"
 #include "esp_partition.h"
 #include "esp_littlefs.h"
 #include "lume_fs.h"
@@ -109,6 +111,37 @@ int lume_fs_read(const char *path, uint8_t **data, size_t *len)
     return LUME_FS_OK;
 }
 
+int lume_fs_read_psram(const char *path, size_t max_len, uint8_t **data,
+                       size_t *len)
+{
+    if (!data || !len) return LUME_FS_ERR_ARG;
+    *data = NULL; *len = 0;
+    if (require_ready() < 0) return LUME_FS_ERR_STATE;
+    char full[sizeof(FS_BASE) + LUME_FS_PATH_MAX + 1];
+    int r = full_path(path, full, false);
+    if (r < 0) return r;
+    FILE *f = fopen(full, "rb");
+    if (!f) return io_error("open read");
+    if (fseek(f, 0, SEEK_END) != 0) { fclose(f); return io_error("seek"); }
+    long size = ftell(f);
+    if (size < 0 || (size_t)size > max_len || fseek(f, 0, SEEK_SET) != 0) {
+        ESP_LOGW(TAG, "read_psram %s: size %ld exceeds cap %u", path, size,
+                 (unsigned)max_len);
+        fclose(f);
+        return LUME_FS_ERR_ARG;
+    }
+    /* +1 keeps the caller free to NUL-terminate a text file in place. */
+    uint8_t *buf = heap_caps_malloc((size_t)size + 1, MALLOC_CAP_SPIRAM);
+    if (!buf) { fclose(f); return LUME_FS_ERR_DRIVER; }
+    bool ok = fread(buf, 1, (size_t)size, f) == (size_t)size;
+    if (fclose(f) != 0) ok = false;
+    if (!ok) { heap_caps_free(buf); return io_error("read/close"); }
+    buf[size] = 0;
+    *data = buf;
+    *len = (size_t)size;
+    return LUME_FS_OK;
+}
+
 int lume_fs_remove(const char *path)
 {
     if (require_ready() < 0) return LUME_FS_ERR_STATE;
@@ -131,6 +164,16 @@ int lume_fs_mkdir(const char *path)
         if (stat(full, &st) == 0 && S_ISDIR(st.st_mode)) return LUME_FS_OK;
     }
     return io_error("mkdir");
+}
+
+int lume_fs_rmdir(const char *path)
+{
+    if (require_ready() < 0) return LUME_FS_ERR_STATE;
+    char full[sizeof(FS_BASE) + LUME_FS_PATH_MAX + 1];
+    int r = full_path(path, full, false);
+    if (r < 0) return r;
+    if (rmdir(full) == 0 || errno == ENOENT) return LUME_FS_OK;
+    return io_error("rmdir");
 }
 
 int lume_fs_exists(const char *path, bool *exists)

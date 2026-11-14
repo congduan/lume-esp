@@ -42,15 +42,15 @@ static uint32_t load_le32(const uint8_t *p)
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-size_t lume_frame_encode(uint8_t *out, size_t out_cap,
-                         const uint8_t *payload, size_t len)
+static size_t encode_magic(uint8_t *out, size_t out_cap, const char *magic,
+                           const uint8_t *payload, size_t len)
 {
-    if (out == NULL || (payload == NULL && len > 0) ||
+    if (out == NULL || magic == NULL || (payload == NULL && len > 0) ||
         len == 0 || len > LUME_FRAME_MAX_PAYLOAD ||
         out_cap < LUME_FRAME_HDR_LEN + len) {
         return 0;
     }
-    memcpy(out, LUME_FRAME_MAGIC, LUME_FRAME_MAGIC_LEN);
+    memcpy(out, magic, LUME_FRAME_MAGIC_LEN);
     store_le32(out + LUME_FRAME_MAGIC_LEN, (uint32_t)len);
     store_le32(out + LUME_FRAME_MAGIC_LEN + LUME_FRAME_LEN_LEN,
                lume_frame_crc32(payload, len));
@@ -58,6 +58,18 @@ size_t lume_frame_encode(uint8_t *out, size_t out_cap,
         memcpy(out + LUME_FRAME_HDR_LEN, payload, len);
     }
     return LUME_FRAME_HDR_LEN + len;
+}
+
+size_t lume_frame_encode(uint8_t *out, size_t out_cap,
+                         const uint8_t *payload, size_t len)
+{
+    return encode_magic(out, out_cap, LUME_FRAME_MAGIC, payload, len);
+}
+
+size_t lume_frame_encode_cmd(uint8_t *out, size_t out_cap,
+                             const uint8_t *payload, size_t len)
+{
+    return encode_magic(out, out_cap, LUME_FRAME_CMD_MAGIC, payload, len);
 }
 
 /* ------------------------------------------------------------------ */
@@ -74,10 +86,19 @@ static void sync_push(lume_frame_parser_t *p, uint8_t b)
     }
 }
 
-static bool sync_is_magic(const lume_frame_parser_t *p)
+/* 0 = no magic, 1 = "LUME" (JS source), 2 = "LUMC" (command text). */
+static int sync_magic_kind(const lume_frame_parser_t *p)
 {
-    return p->sync_n == LUME_FRAME_MAGIC_LEN &&
-           memcmp(p->sync, LUME_FRAME_MAGIC, LUME_FRAME_MAGIC_LEN) == 0;
+    if (p->sync_n != LUME_FRAME_MAGIC_LEN) {
+        return 0;
+    }
+    if (memcmp(p->sync, LUME_FRAME_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
+        return 1;
+    }
+    if (memcmp(p->sync, LUME_FRAME_CMD_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
+        return 2;
+    }
+    return 0;
 }
 
 static void emit(lume_frame_parser_t *p, lume_frame_ev_t ev,
@@ -105,7 +126,9 @@ static void enter_resync(lume_frame_parser_t *p)
     /* The rolling window already holds the trailing bytes; a magic ending
      * exactly at the error boundary must not be lost, so test it BEFORE the
      * first new byte arrives. No errors are emitted while re-syncing. */
-    if (sync_is_magic(p)) {
+    int kind = sync_magic_kind(p);
+    if (kind != 0) {
+        p->is_cmd = (kind == 2);
         enter_hdr(p);
         return;
     }
@@ -158,6 +181,10 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
                 emit(p, LUME_FRAME_EV_BACK, NULL, 0, NULL);
                 enter_magic(p);
             } else if (memcmp(p->magic, LUME_FRAME_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
+                p->is_cmd = false;
+                enter_hdr(p);
+            } else if (memcmp(p->magic, LUME_FRAME_CMD_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
+                p->is_cmd = true;
                 enter_hdr(p);
             } else {
                 reject(p, "bad-magic", 0);
@@ -166,11 +193,14 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
         }
         break;
 
-    case LUME_FRAME_ST_RESYNC:
-        if (sync_is_magic(p)) {
+    case LUME_FRAME_ST_RESYNC: {
+        int kind = sync_magic_kind(p);
+        if (kind != 0) {
+            p->is_cmd = (kind == 2);
             enter_hdr(p);          /* the 4 magic bytes were just consumed */
         }
         break;
+    }
 
     case LUME_FRAME_ST_HDR:
         p->hdr[p->hdr_n++] = b;
@@ -215,9 +245,10 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
                 release_payload(p);
                 enter_resync(p);
             } else {
-                /* Valid frame. The sink's DATA handler copies the payload into
-                 * the engine staging slot; it is valid ONLY during the call. */
-                emit(p, LUME_FRAME_EV_DATA, p->payload, p->payload_len, NULL);
+                /* Valid frame. The sink's DATA/CMD handler copies the payload
+                 * into its own storage; it is valid ONLY during the call. */
+                emit(p, p->is_cmd ? LUME_FRAME_EV_CMD : LUME_FRAME_EV_DATA,
+                     p->payload, p->payload_len, NULL);
                 release_payload(p);
                 enter_magic(p);
             }

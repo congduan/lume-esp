@@ -40,6 +40,7 @@
  *     post_back/post_lifecycle, set_ota_status_provider.
  */
 #include <stdio.h>
+#include <stdlib.h>          /* malloc/free for CMD reply lines */
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -60,6 +61,8 @@
 #include "lume_net.h"
 #include "lume_hotreload.h"
 #include "lume_frame.h"
+#include "lume_cmd.h"
+#include "lume_apps.h"
 
 static const char *TAG     = "lume-hotreload";
 static const char *OTA_TAG = "lume-ota";
@@ -161,6 +164,167 @@ static void on_engine_result(bool ok, size_t len, const char *reason)
 }
 
 /* ================================================================== */
+/* Command channel (r30 multi-app)                                     */
+/* ================================================================== */
+/* Reply lines (one per command, always on the pushing channel):
+ *   "CMD OK store <id> <len>\n"     app installed / replaced
+ *   "CMD OK remove <id>\n"
+ *   "CMD OK list <count>\n"         preceded by one block per app:
+ *   "APP\t<id>\nMETA\t<id>\t<json>\n"
+ *   "CMD ERR <reason>\n"            reason: arg/verb/id/format/empty/
+ *                                   store/notfound/busy/fs/stage-oom
+ * LAUNCH / HOME are answered with the engine's own "RELOAD OK/ERR" line,
+ * because the outcome is only known after the new app has been evaluated. */
+static void cmd_reply(reply_sink_t sink, bool ok, const char *verb,
+                      const char *id, size_t len, const char *reason)
+{
+    char line[LUME_OTA_REPLY_MAX];
+    int n;
+    if (!ok) {
+        n = snprintf(line, sizeof(line), "CMD ERR %s\n",
+                     reason != NULL ? reason : "cmd");
+    } else if (verb != NULL && id != NULL && len > 0) {
+        n = snprintf(line, sizeof(line), "CMD OK %s %s %u\n", verb, id,
+                     (unsigned)len);
+    } else if (verb != NULL && id != NULL) {
+        n = snprintf(line, sizeof(line), "CMD OK %s %s\n", verb, id);
+    } else if (verb != NULL) {
+        n = snprintf(line, sizeof(line), "CMD OK %s\n", verb);
+    } else {
+        n = snprintf(line, sizeof(line), "CMD OK\n");
+    }
+    if (n > 0 && (size_t)n < sizeof(line)) {
+        reply_write(sink, line, (size_t)n);
+    }
+}
+
+typedef struct {
+    reply_sink_t sink;
+    int          count;
+} list_reply_t;
+
+static void list_emit(void *arg, const char *id)
+{
+    list_reply_t *l = (list_reply_t *)arg;
+    char *meta = NULL;
+    size_t meta_len = 0;
+    if (lume_apps_meta_read(id, &meta, &meta_len) == 0) {
+        for (size_t i = 0; i < meta_len; i++) {
+            if (meta[i] == '\n' || meta[i] == '\r' || meta[i] == '\t') {
+                meta[i] = ' ';
+            }
+        }
+    }
+    const size_t need = strlen(id) * 2 + meta_len + 32;
+    char *out = malloc(need);
+    if (out != NULL) {
+        int n = snprintf(out, need, "APP\t%s\nMETA\t%s\t%s\n", id, id,
+                         meta != NULL ? meta : "");
+        /* meta_len is not NUL-terminated when the file has no trailing NUL;
+         * lume_apps_meta_read always NUL-terminates via the PSRAM reader. */
+        if (n > 0 && (size_t)n < need) {
+            reply_write(l->sink, out, (size_t)n);
+        }
+        free(out);
+    }
+    if (meta != NULL) {
+        heap_caps_free(meta);
+    }
+    l->count++;
+}
+
+static void handle_cmd(reply_sink_t sink, const uint8_t *payload, size_t len)
+{
+    lume_cmd_t cmd;
+    int r = lume_cmd_parse(payload, len, &cmd);
+    if (r != LUME_CMD_OK) {
+        cmd_reply(sink, false, NULL, NULL, 0, lume_cmd_reason(r));
+        return;
+    }
+    switch (cmd.kind) {
+    case LUME_CMD_STORE: {
+        int s = lume_apps_store(cmd.id, cmd.meta, cmd.meta_len,
+                                cmd.src, cmd.src_len);
+        if (s < 0) {
+            ESP_LOGW(TAG, "STORE '%s' failed (%d)", cmd.id, s);
+            cmd_reply(sink, false, NULL, NULL, 0, "store");
+        } else {
+            cmd_reply(sink, true, "store", cmd.id, cmd.src_len, NULL);
+        }
+        break;
+    }
+    case LUME_CMD_REMOVE: {
+        int s = lume_apps_remove(cmd.id);
+        if (s == LUME_APPS_ERR_NOTFOUND) {
+            cmd_reply(sink, false, NULL, NULL, 0, "notfound");
+        } else if (s == LUME_APPS_ERR_BUSY) {
+            cmd_reply(sink, false, NULL, NULL, 0, "busy");
+        } else if (s < 0) {
+            cmd_reply(sink, false, NULL, NULL, 0, "fs");
+        } else {
+            cmd_reply(sink, true, "remove", cmd.id, 0, NULL);
+        }
+        break;
+    }
+    case LUME_CMD_META: {
+        char *meta = NULL;
+        size_t meta_len = 0;
+        int s = lume_apps_meta_read(cmd.id, &meta, &meta_len);
+        if (s < 0) {
+            cmd_reply(sink, false, NULL, NULL, 0,
+                      s == LUME_APPS_ERR_NOTFOUND ? "notfound" : "fs");
+            break;
+        }
+        const size_t need = strlen(cmd.id) + meta_len + 32;
+        char *out = malloc(need);
+        if (out != NULL) {
+            int n = snprintf(out, need, "META\t%s\t%s\n", cmd.id, meta);
+            if (n > 0 && (size_t)n < need) {
+                reply_write(sink, out, (size_t)n);
+            }
+            free(out);
+            cmd_reply(sink, true, "meta", cmd.id, 0, NULL);
+        } else {
+            cmd_reply(sink, false, NULL, NULL, 0, "oom");
+        }
+        heap_caps_free(meta);
+        break;
+    }
+    case LUME_CMD_LIST: {
+        list_reply_t l = { sink, 0 };
+        int n = lume_apps_list(list_emit, &l);
+        if (n < 0) {
+            cmd_reply(sink, false, NULL, NULL, 0, "fs");
+        } else {
+            char line[LUME_OTA_REPLY_MAX];
+            int w = snprintf(line, sizeof(line), "CMD OK list %d\n", l.count);
+            if (w > 0 && (size_t)w < sizeof(line)) {
+                reply_write(sink, line, (size_t)w);
+            }
+        }
+        break;
+    }
+    case LUME_CMD_LAUNCH:
+    case LUME_CMD_HOME: {
+        /* The eval result arrives asynchronously: register this channel as
+         * the reply sink, then ask the engine to switch. */
+        const char *target = cmd.kind == LUME_CMD_HOME ? "" : cmd.id;
+        xSemaphoreTakeRecursive(s_pending_mutex, portMAX_DELAY);
+        bool pushed = pending_push(sink);
+        int s = pushed ? lume_engine_request_launch_reply(target) : -1;
+        if (s != 0) {
+            pending_drop_tail();
+        }
+        xSemaphoreGiveRecursive(s_pending_mutex);
+        if (s != 0) {
+            reply_line(sink, false, 0, "stage-oom");
+        }
+        break;
+    }
+    }
+}
+
+/* ================================================================== */
 /* Frame codec glue (identical for USB and TCP)                         */
 /* ================================================================== */
 static void *psram_alloc(size_t len) { return heap_caps_malloc(len, MALLOC_CAP_SPIRAM); }
@@ -199,6 +363,9 @@ static void on_frame_event(lume_frame_ev_t ev, const uint8_t *payload,
         break;
     case LUME_FRAME_EV_RESUME:
         lume_engine_post_lifecycle(LUME_EVT_RESUME);
+        break;
+    case LUME_FRAME_EV_CMD:
+        handle_cmd(sink, payload, len);
         break;
     case LUME_FRAME_EV_ERR:
         ESP_LOGE(TAG, "frame rejected: %s (len=%u)", reason, (unsigned)len);
