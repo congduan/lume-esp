@@ -1,0 +1,131 @@
+name: Build firmware
+
+# r26: CI firmware publishing. Two independent outcomes from one build:
+#   * push to main touching firmware/** (or this file) -> build + artifact only,
+#     named by the run number.
+#   * push of an annotated `vX.Y.Z` tag -> build + artifact + GitHub Release.
+#   * workflow_dispatch -> manual build + artifact.
+#
+# Verified against espressif/esp-idf-ci-action@v1 action.yml / README:
+#   * inputs are esp_idf_version / target / path / command (default `idf.py build`);
+#   * `v5.5.5` is a published, active `espressif/idf` Docker tag;
+#   * the action mounts $GITHUB_WORKSPACE and sets -w to `<repo>/<path>`, so
+#     `path: firmware` makes `idf.py build` write to `firmware/build/` on the
+#     host workspace, readable by the collection step below.
+# GitHub Actions docs note: "Path filters are not evaluated for pushes of tags."
+# That is why `branches`+`paths` (branch-gated builds) and `tags` (releases) can
+# coexist under one `push` trigger: a tag push ignores `paths` and still runs.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware.yml"
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: firmware-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.5
+          target: esp32s3
+          path: firmware
+
+      - name: Collect artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp firmware/build/bootloader/bootloader.bin dist/bootloader.bin
+          cp firmware/build/partition_table/partition-table.bin dist/partition-table.bin
+          cp firmware/build/lume.bin dist/lume.bin
+          # IDF writes flash_args with BUILD-relative subdir paths, e.g.
+          #   0x0 bootloader/bootloader.bin
+          #   0x8000 partition_table/partition-table.bin
+          #   0x10000 lume.bin
+          # We FLATTEN the three bins into dist/, so `write_flash @flash_args`
+          # would fail to find the first two. Rewrite ONLY the offset lines to
+          # use basenames and keep the option line (--flash_mode/--flash_freq/
+          # --flash_size) verbatim. Result: dist/ is self-consistent, and the
+          # exact same flat set works for BOTH the artifact zip and the flat
+          # GitHub Release assets.
+          python3 - <<'PY'
+          import os
+          out = []
+          with open('firmware/build/flash_args', encoding='utf-8') as f:
+              for line in f:
+                  parts = line.split()
+                  if len(parts) == 2 and parts[0].startswith('0x'):
+                      out.append(f'{parts[0]} {os.path.basename(parts[1])}\n')
+                  else:
+                      out.append(line if line.endswith('\n') else line + '\n')
+          with open('dist/flash_args', 'w', encoding='utf-8') as f:
+              f.writelines(out)
+          print('--- dist/flash_args (flattened, self-consistent) ---')
+          print(open('dist/flash_args', encoding='utf-8').read(), end='')
+          PY
+          cat > dist/README-flash.txt <<'EOF'
+          Lume firmware — flash instructions
+
+          Files in this directory (a FLAT set):
+            bootloader.bin       0x0
+            partition-table.bin  0x8000
+            lume.bin             0x10000
+            flash_args           esptool argument file (paths already flattened)
+            README-flash.txt     this file
+
+          Option A: esptool.py (Python) — recommended
+            pip install esptool
+            cd <this directory>
+            esptool.py --chip esp32s3 -b 460800 --before default_reset \
+              --after hard_reset write_flash @flash_args
+            (@flash_args resolves the three .bin files next to it.)
+
+            If you flattened the files differently, specify offsets explicitly:
+            esptool.py --chip esp32s3 -b 460800 --before default_reset \
+              --after hard_reset write_flash \
+              0x0 bootloader.bin 0x8000 partition-table.bin 0x10000 lume.bin
+
+          Option B: esptool-js Web flasher
+            Open https://espressif.github.io/esptool-js/ in Chrome/Edge, select the
+            board's serial port, 460800 baud, and add the three .bin files at the
+            offsets above (0x0 / 0x8000 / 0x10000).
+
+          After flashing, the runtime boots with an embedded demo app. Push JS apps
+          over USB with `lume deploy <dir>`, or over WiFi (once the device has an
+          IP) with `lume deploy <dir> --ota <ip> --token <t>`.
+          EOF
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lume-firmware-${{ github.run_number }}
+          path: dist/
+          if-no-files-found: error
+
+      - name: Release (tag builds only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Lume firmware ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/bootloader.bin
+            dist/partition-table.bin
+            dist/lume.bin
+            dist/flash_args
+            dist/README-flash.txt
