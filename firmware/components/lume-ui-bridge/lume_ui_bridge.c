@@ -951,6 +951,13 @@ static void press_cb(lv_event_t *e)
     if (lv_event_get_code(e) != LV_EVENT_CLICKED) {
         return;
     }
+    /* Nodes carry LV_OBJ_FLAG_EVENT_BUBBLE (for the screen-level gesture), so
+     * a CLICKED on a child also arrives here when the parent has its own
+     * onPress. onPress must mean "this exact node was tapped": ignore bubbled
+     * copies, where the original target differs from the node handling it. */
+    if (lv_event_get_target_obj(e) != lv_event_get_current_target_obj(e)) {
+        return;
+    }
     uint16_t node_id = (uint16_t)(uintptr_t)lv_event_get_user_data(e);
     ESP_LOGI(TAG, "LVGL CLICKED id=%u -> post to engine queue", (unsigned)node_id);
     if (s_press_sink != NULL) {
