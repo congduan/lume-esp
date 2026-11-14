@@ -277,10 +277,12 @@ const char lume_prelude_js[] =
 "}\n";
 
 const char lume_demo_js[] =
-"/* ---- M1 demo: JS button counter ---- */\n"
+"/* ---- M3 flex button counter ---- */\n"
 "var count = signal(0);\n"
-"View({ bg: 0x0B1E3F, w: 480, h: 480 }, [\n"
-"  Text({ text: function () { return 'taps: ' + count(); } }),  /* centered big text */\n"
-"  Button({ align: ALIGN_BOTTOM_MID, title: '+1',\n"
+"View({ style: { display: 'flex', flexDirection: 'column',\n"
+"  justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: 16,\n"
+"  background: '#0B1E3F', width: '100%', height: '100%', borderRadius: 12 } }, [\n"
+"  Text({ text: function () { return 'taps: ' + count(); } }),\n"
+"  Button({ title: '+1', style: { width: '50%', borderRadius: 12 },\n"
 "           onPress: function () { count.set(count() + 1); } })\n"
 "]);\n";

@@ -1,25 +1,12 @@
-/**
- * Lume M1 demo app — runs entirely in JS (compiled to QuickJS bytecode).
- * This is the source form; the firmware embeds its compiled bytecode as the
- * fallback bundle until hot reload lands.
- *
- * Demo: interactive button counter — proves engine boot, touch events,
- * and the declarative UI bridge in one loop.
- */
-
-const { View, Text, Button } = lume.ui;
-const { log } = lume.system;
-
-let count = 0;
-
-const root = View({ style: { background: '#000000', padding: 40 } }, [
-  Text({ text: 'Lume', style: { fontSize: 48, color: '#ffffff' } }),
-  Text({ id: 'counter', text: 'taps: 0', style: { fontSize: 24, color: '#888888' } }),
-  Button({ title: '+1', onPress: () => {
-    count++;
-    root.setState('counter', { text: 'taps: ' + count });
-    log('tap -> ' + count);
-  }}),
+/** M3 flex counter. The firmware embeds the same app in lume_demo_js. */
+var count = signal(0);
+View({ style: {
+  display: 'flex', flexDirection: 'column',
+  justifyContent: 'space-between', alignItems: 'center',
+  gap: 8, padding: 16, background: '#0B1E3F',
+  width: '100%', height: '100%', borderRadius: 12
+} }, [
+  Text({ text: function () { return 'taps: ' + count(); } }),
+  Button({ title: '+1', style: { width: '50%', borderRadius: 12 },
+    onPress: function () { count.set(count() + 1); } })
 ]);
-
-lume.start(root);
