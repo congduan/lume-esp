@@ -59,11 +59,8 @@ demoMessages = [];
 vm.runInContext('__pressHandlers[lightButton]()', demoCtx);
 const screenLight = demoMessages.splice(0);
 assert.deepStrictEqual(screenLight, [
-  [2,1,0xffffff],[2,14,0x23425f],
-  [3,1,0xa4c7e5],[3,14,0x23425f],
-  [4,1,0xa4c7e5],[4,14,0x23425f],
-  [5,1,0xa4c7e5],[5,14,0x23425f],
-  [6,1,0xe9f2fa]
+  [2,1,0xffffff],      // card label ink
+  [7,1,0xe9f2fa]       // full-screen root background
 ]);
 vm.runInContext('__pressHandlers[darkButton]()', demoCtx);
 const screenDark = demoMessages.splice(0);

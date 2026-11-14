@@ -132,7 +132,7 @@ check('embedded home launches a tile and keeps BACK at the root', () => {
 check('embedded home shows an empty state with no apps', () => {
   const s = runApp(homeJs, { apps: {} });
   const texts = s.messages.filter(m => m[0] === 'attr' && m[2] === 0).map(m => m[3]);
-  assert.ok(texts.includes('还没有安装应用'));
+  assert.ok(texts.includes('no apps installed') && texts.includes('lume deploy <app>'));
   assert.equal(s.messages.filter(m => m[0] === 'create' && m[2] === 3).length, 0);
 });
 

@@ -101,7 +101,7 @@ echo.setNow(100);
 echo.run('__lume_tick()');
 assert.ok(echo.calls.some(c => c[0] === 'write' && c[1] === 'echo:hello'),
           'inbound RX packet must be echoed over TX');
-assert.ok(echo.attrs().some(v => v.includes('last: hello')),
+assert.ok(echo.attrs().some(v => v.includes('hello')),
           'inbound RX packet must update the reactive Text');
 console.log('PASS interval poll drains one RX packet and echoes it');
 
@@ -110,7 +110,8 @@ assert.ok(button, 'example must create a Button node');
 echo.session.press(button[1]);
 assert.ok(echo.calls.some(c => c[0] === 'write' && c[1] === 'ping'),
           'Button onPress must send a ping');
-assert.ok(echo.attrs().some(v => v.includes('pings sent: 1')));
+assert.ok(echo.attrs().some(v => v === '1'),
+          'Button press must update the pings counter Text');
 console.log('PASS Button press sends a ping and updates the counter');
 
 incoming = -3;

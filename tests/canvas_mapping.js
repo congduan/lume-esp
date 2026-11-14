@@ -51,7 +51,10 @@ pass('injected 390x390 screen governs canvas size, budget and draw bounds', () =
   const screen = {w: 390, h: 390};
   const app = 'Canvas({width:390,height:390,onDraw:function(c){c.fillRect(-390,-390,390,390);c.line(390,390,0,0,"#ffffff");c.circle(0,0,390,"#ffffff");c.text(390,390,"ok","#ffffff");}})';
   const result = runApp(app, {screen});
-  assert.deepStrictEqual(result.messages[0], ['create', 1, 3, 0, 390, 390]);
+  /* The prelude registers one global swipe-up gesture on node 0 before any
+   * app code runs; skip that registration message. */
+  const msgs = result.messages.filter(x => !(x[0] === 'gesture' && x[1] === 0));
+  assert.deepStrictEqual(msgs[0], ['create', 1, 3, 0, 390, 390]);
   assert.strictEqual(result.messages.filter(x => x[0] === 'draw').length, 4);
   for (const expr of [
     'Canvas({width:391,height:1,onDraw:function(){}})',
