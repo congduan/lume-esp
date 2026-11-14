@@ -13,12 +13,14 @@ declare namespace lume.ui {
     padding?: number;
     borderRadius?: number;
     borderWidth?: number;
-    borderColor?: `#${string}`;
+    /** #RRGGBB or a key in lume.theme.get().colors. */
+    borderColor?: string | (() => string);
     opacity?: number | (() => number); // 0..1
     x?: number | (() => number);
     y?: number | (() => number);
     transition?: { property: 'bg' | 'x' | 'y' | 'width' | 'height' | 'opacity'; durationMs: number; easing?: lume.anim.Easing };
-    background?: `#${string}` | number | (() => `#${string}` | number); // number keeps the M1 bg path
+    /** #RRGGBB or a key in lume.theme.get().colors; number keeps the M1 bg path. */
+    background?: string | number | (() => string | number);
     width?: number | `${number}%` | (() => number);
     height?: number | `${number}%` | (() => number);
   }
@@ -75,6 +77,21 @@ declare namespace lume.anim {
   }): number;
   /** Cancels one node/attribute animation; its onComplete will not run. */
   function cancel(node: lume.ui.Node, attr: Attr): void;
+}
+
+declare namespace lume.theme {
+  interface Theme {
+    /** Named colors used by Style.background and Style.borderColor. */
+    colors?: Record<string, `#${string}`>;
+    /** Default borderRadius for styles without an explicit borderRadius. */
+    radius?: number;
+    /** Stored for future text sizing; does not change text in r18. */
+    fontScale?: number;
+  }
+  /** Replaces the whole theme and repaints styles that read its named colors. */
+  function set(theme: Theme): void;
+  /** Returns an isolated snapshot of the current theme. */
+  function get(): Theme;
 }
 
 declare namespace lume.system {
@@ -477,6 +494,7 @@ declare namespace lume {
   const ui: typeof lume.ui;
   const system: typeof lume.system;
   const app: typeof lume.app;
+  const theme: typeof lume.theme;
   const gpio: typeof lume.gpio;
   const adc: typeof lume.adc;
   const pmic: typeof lume.pmic;
