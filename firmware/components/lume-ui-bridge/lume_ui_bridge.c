@@ -30,7 +30,7 @@ static const char *TAG = "lume-ui-bridge";
  * so 32 slots was not enough for a dashboard app: the queue filled mid-redraw,
  * post() returned -1 and JS threw "ui queue full" halfway through a refresh.
  * 128 slots x <=112 B = ~14 KB of internal RAM, drained every 5 ms. */
-#define UI_QUEUE_LEN 128
+#define UI_QUEUE_LEN 384
 #define DRAIN_PERIOD_MS 5
 #define LUME_POST_MAX_ATTEMPTS 8   /* finite retries when Queue A is full */
 
@@ -70,6 +70,7 @@ static void release_dead_images(void)
 }
 static lume_anim_sink_fn s_anim_sink;
 static lume_press_sink_fn s_press_sink;           /* set once by engine task */
+static bool s_screen_gesture;                     /* prelude registered node 0 */
 static lume_scroll_sink_fn s_scroll_sink;
 static lume_gesture_sink_fn s_gesture_sink;       /* r21: set once by engine task */
 /* Per-node gesture press flags (LVGL task only). bit0 = a press is active,
@@ -373,6 +374,13 @@ static void apply_create(const lume_ui_msg_t *m)
     switch (m->kind) {
         case LUME_NODE_VIEW:
             obj = lv_obj_create(parent);
+            /* LVGL's lv_obj default style is an opaque white rounded box. Apps
+             * expect a transparent node unless they set `background`, so start
+             * transparent; ATTR_BG_COLOR restores bg_opa COVER when a colour
+             * is actually set. */
+            lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, 0);
+            lv_obj_set_style_border_width(obj, 0, 0);
+            lv_obj_set_style_radius(obj, 0, 0);
             /* Lume default: containers do not scroll. LVGL marks every lv_obj
              * SCROLLABLE with an AUTO scrollbar, so overflowing flex children
              * would grow a scrollbar and swallow drags before the gesture
@@ -388,6 +396,11 @@ static void apply_create(const lume_ui_msg_t *m)
             lv_obj_set_style_pad_all(obj, 0, 0);
             lv_obj_set_style_pad_row(obj, 0, 0);
             lv_obj_set_style_pad_column(obj, 0, 0);
+            /* Plain Views are also non-clickable: a decorative child (icon
+             * tile, label...) must not swallow the tap meant for the parent
+             * card that owns the onPress. apply_set_press/apply_set_gesture
+             * re-add the flag for nodes that actually handle input. */
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
             break;
         case LUME_NODE_TEXT:
             obj = lv_label_create(parent);
@@ -469,6 +482,11 @@ static void apply_create(const lume_ui_msg_t *m)
             return;
     }
 
+    /* Bubble every event up to the screen so the global gesture listener
+     * (prelude, node 0) sees drags that start anywhere, including on objects
+     * that subscribe to no gestures of their own. Handlers on the original
+     * target still fire first, so per-app gestures are unaffected. */
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_EVENT_BUBBLE);
     s_nodes[m->node_id] = obj;
     for (int i = 0; i < ANIM_ATTRS; i++) cancel_anim(m->node_id, (uint8_t)(i == 0 ? LUME_ATTR_X : i == 1 ? LUME_ATTR_Y : i == 2 ? LUME_ATTR_WIDTH : i == 3 ? LUME_ATTR_HEIGHT : LUME_ATTR_OPACITY));
     s_kinds[m->node_id] = m->kind;
@@ -921,6 +939,7 @@ static void apply_set_press(const lume_ui_msg_t *m)
     }
     /* One-shot tap: CLICKED fires once per press/release. (PRESSING would
      * repeat continuously and would inflate a counter on every frame.) */
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(obj, press_cb, LV_EVENT_CLICKED,
                         (void *)(uintptr_t)m->node_id);
     ESP_LOGI(TAG, "press registered id=%u", (unsigned)m->node_id);
@@ -991,12 +1010,21 @@ static uint8_t gesture_scan_scroll_chain(lv_obj_t *obj)
 static void gesture_obj_cb(lv_event_t *e)
 {
     uint16_t id = (uint16_t)(uintptr_t)lv_event_get_user_data(e);
-    if (!s_gesture_sink || id == 0 || id >= LUME_MAX_NODES) return;
+    if (!s_gesture_sink || id >= LUME_MAX_NODES) return;   /* id 0 = screen is valid */
     lv_indev_t *indev = lv_indev_active();
     lv_point_t p = {0, 0};
     if (indev) lv_indev_get_point(indev, &p);
     uint32_t t = lv_tick_get();
-    switch (lv_event_get_code(e)) {
+    uint32_t code = lv_event_get_code(e);
+    /* LVGL events do not bubble, so a drag that starts on an app object never
+     * reaches the screen callback. Mirror the raw DOWN/MOVE/UP stream into the
+     * node-0 recognizer (prelude's global swipe-up), unfiltered. */
+    if (id != 0 && s_screen_gesture) {
+        uint8_t kind = code == LV_EVENT_PRESSED ? 0 : (code == LV_EVENT_PRESSING ? 1 :
+                       (code == LV_EVENT_RELEASED ? 2 : 0xFF));
+        if (kind != 0xFF) s_gesture_sink(0, kind, (int16_t)p.x, (int16_t)p.y, t, 0, 0);
+    }
+    switch (code) {
         case LV_EVENT_PRESSED:
             s_gesture_flags[id] = GESTURE_ACTIVE |
                                   gesture_scan_scroll_chain(lv_event_get_target_obj(e));
@@ -1060,12 +1088,26 @@ static void gesture_obj_cb(lv_event_t *e)
 
 static void apply_set_gesture(const lume_ui_msg_t *m)
 {
-    lv_obj_t *obj = get_node(m->node_id);
+    /* node_id 0 is the active screen: the prelude registers one global
+     * swipe-up listener there so every app gets "swipe up = home" for free. */
+    lv_obj_t *obj = (m->node_id == 0) ? lv_screen_active() : get_node(m->node_id);
     if (obj == NULL) {
         ESP_LOGW(TAG, "set-gesture: unknown node_id %u", (unsigned)m->node_id);
         return;
     }
+    lv_obj_add_flag(obj, LV_OBJ_FLAG_CLICKABLE);
     void *ud = (void *)(uintptr_t)m->node_id;
+    if (m->node_id == 0) {
+        /* The prelude re-registers on every runtime rebuild (each app start).
+         * Drop the previous callbacks first: they point into a JS context that
+         * no longer exists. */
+        lv_obj_remove_event_cb(obj, gesture_obj_cb);
+        /* A scrollable root would make every drag a scroll and cancel the
+         * gesture before it reaches the recognizer. */
+        lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+        s_screen_gesture = true;
+        ESP_LOGI(TAG, "global gesture registered on the screen (node 0)");
+    }
     lv_obj_add_event_cb(obj, gesture_obj_cb, LV_EVENT_PRESSED, ud);
     lv_obj_add_event_cb(obj, gesture_obj_cb, LV_EVENT_PRESSING, ud);
     lv_obj_add_event_cb(obj, gesture_obj_cb, LV_EVENT_RELEASED, ud);

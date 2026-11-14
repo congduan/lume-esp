@@ -115,8 +115,9 @@ check('embedded home renders a clock and one tile per installed app', () => {
   const texts = s.messages.filter(m => m[0] === 'attr' && m[2] === 0).map(m => m[3]);
   assert.ok(texts.some(t => /^\d\d:\d\d$/.test(String(t))), 'clock text rendered');
   assert.ok(texts.includes('时钟') && texts.includes('计算器'), 'labels rendered');
-  assert.equal(s.messages.filter(m => m[0] === 'create' && m[2] === 3).length, 2,
-    'one circular icon canvas per app');
+  /* Icon tiles are rounded Views (LVGL borderRadius) with a one-letter
+   * glyph, not Canvas fills — see the watch-style launcher rebuild. */
+  assert.ok(texts.includes('T') && texts.includes('C'), 'icon glyphs rendered');
 });
 
 check('embedded home launches a tile and keeps BACK at the root', () => {
