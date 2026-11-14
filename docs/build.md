@@ -81,6 +81,28 @@ gcc -std=c11 -Wall -Wextra -Werror \
   -o /tmp/lume_apps_protocol && /tmp/lume_apps_protocol
 ```
 
+The other two C host harnesses (r27 note: `lume_image_header.c` now pulls the
+board profile through `lume_pins.h`, so its host compile needs the board dir on
+the include path):
+
+```bash
+gcc -std=c11 -Wall -Wextra -Werror \
+  -I firmware/components/lume-ui-bridge/include \
+  tests/bridge_protocol.c -o /tmp/lume_bridge_protocol && /tmp/lume_bridge_protocol
+
+gcc -std=c11 -Wall -Wextra -Werror \
+  -I firmware/components/lume-engine/include \
+  -I firmware/components/lume-board/include \
+  -I firmware/boards/waveshare_esp32_s3_touch_amoled_2_16 \
+  tests/image_header.c \
+  firmware/components/lume-engine/lume_image_header.c \
+  firmware/components/lume-engine/lume_image_pixels.c \
+  -o /tmp/lume_image_header && /tmp/lume_image_header
+```
+
+The JS harnesses are standalone CommonJS scripts (`node tests/<harness>.js`),
+and the CLI unit tests are `npm test --prefix tools/lume`.
+
 ## WiFi OTA deploy (`lume deploy --ota`)
 
 Once the board is on WiFi with an IP, push a bundle over TCP instead of USB. The device generates a random token on first boot, stores it in NVS and prints it on the serial console every boot (`lume-ota: WiFi OTA token: <32 hex>`):
