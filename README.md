@@ -12,6 +12,7 @@
 
 <img src="images/demo.jpg" alt="Lume running on the ESP32-S3 AMOLED board" width="480">
 <img src="images/demo1.jpg" alt="Lume UI built with declarative JS components" width="480">
+<img src="images/demo2.jpg" alt="Lume sample apps on the ESP32-S3 AMOLED board" width="480">
 
 </div>
 
