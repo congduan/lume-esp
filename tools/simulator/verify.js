@@ -48,7 +48,8 @@ async function server(app, port) {
     });
     for (const [name, okay] of Object.entries(unit)) { assert.ok(okay, name); console.log('PASS renderer ' + name); }
     for (const [app, port, expected] of [
-      ['counter', 8766, 'taps: 0'], ['files', 8767, 'demo.txt'], ['watch_launcher', 8768, 'battery 80%'],
+      ['counter', 8766, 'taps: 0'], ['files', 8767, 'demo.txt'],
+      ['watch_launcher', 8768, 'battery 80%'], ['shell_demo', 8769, 'Shell demo'],
     ]) {
       const child = await server(app, port);
       try {
@@ -63,8 +64,27 @@ async function server(app, port) {
         }
         if (app === 'watch_launcher') {
           assert.ok(await page.locator('#device canvas').count() >= 12, 'watch canvas icons');
+          assert.ok(await page.getByText('Lume', { exact: true }).count(), 'Launcher title');
+        }
+        if (app === 'shell_demo') {
+          assert.ok(await page.getByText('page 1 / 3', { exact: true }).count(), 'StatusBar and page rendered');
+          const edges = await (await fetch(`http://localhost:${port}/messages`)).json();
+          const left = edges.messages.find(m => m[0] === 'gesture')[1];
+          const inject = input => fetch(`http://localhost:${port}/input`, {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input),
+          });
+          await inject({ type: 'gesture', id: left, kind: 0, x: 10, y: 200, t: 0 });
+          await inject({ type: 'gesture', id: left, kind: 1, x: 85, y: 200, t: 50 });
+          await page.waitForTimeout(250);
+          assert.ok(await page.locator('#device canvas').count() >= 2, 'EdgeNavigation indicator canvas');
+          await page.locator('#device').screenshot({ path: path.join(shots, 'EdgeNavigation.png') });
+          await inject({ type: 'gesture', id: left, kind: 2, x: 85, y: 200, t: 100 });
+          await page.getByText('page 3 / 3', { exact: true }).waitFor();
+          console.log('PASS shell_demo injected edge swipe advances page screenshot=artifacts/simulator/EdgeNavigation.png');
         }
         await page.locator('#device').screenshot({ path: path.join(shots, app + '.png') });
+        if (app === 'shell_demo') await page.locator('#device').screenshot({ path: path.join(shots, 'StatusBar.png') });
+        if (app === 'watch_launcher') await page.locator('#device').screenshot({ path: path.join(shots, 'Launcher.png') });
         console.log(`PASS ${app} DOM nodes=${count} expected=${JSON.stringify(expected)} screenshot=artifacts/simulator/${app}.png`);
       } finally { child.kill('SIGTERM'); }
     }

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { runApp } = require('../../tests/lib/prelude_runner');
+const { buildSync } = require('../lume/node_modules/esbuild');
 
 const appPath = path.resolve(process.argv[2] || '');
 if (!process.argv[2] || !fs.existsSync(appPath)) {
@@ -15,7 +16,9 @@ function reload() {
   generation++;
   messages = []; error = null; session = undefined;
   try {
-    session = runApp(fs.readFileSync(appPath, 'utf8'), {
+    const bundled = buildSync({ entryPoints: [appPath], bundle: true, format: 'iife',
+      platform: 'neutral', target: 'es2020', write: false, charset: 'utf8' }).outputFiles[0].text;
+    session = runApp(bundled, {
       filename: appPath,
       onMessage: m => {
         messages.push(m);

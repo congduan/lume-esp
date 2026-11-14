@@ -68,6 +68,32 @@ declare namespace lume.ui {
   function Canvas(props: CanvasProps): Node;
 }
 
+/** Optional JS bundle module: import runtime/shell.js before using these components. */
+declare namespace lume.ui.shell {
+  interface StatusBarProps {
+    parent?: lume.ui.Node; left?: string | (() => string); right?: string | (() => string);
+    height?: number; background?: string; clock?: boolean; x?: number; y?: number;
+  }
+  interface EdgeNavigationProps {
+    parent?: lume.ui.Node; onBack?: () => boolean;
+    onPageSwipe?: (dir: 'left' | 'right') => void;
+    edgeWidth?: number; indicator?: boolean; width?: number; height?: number;
+  }
+  interface LauncherApp { id: string; label: string; color?: string; icon?: string; glyph?: string }
+  interface LauncherProps {
+    parent?: lume.ui.Node; apps: LauncherApp[]; onLaunch?: (id: string) => void;
+    statusBar?: boolean; columns?: number; title?: string;
+    right?: string | (() => string); indicator?: boolean;
+    onBack?: () => boolean; onPageSwipe?: (dir: 'left' | 'right') => void;
+  }
+  function StatusBar(props?: StatusBarProps): lume.ui.Node;
+  /** Returns the left edge node; dispose(id) unregisters both edge targets. */
+  function EdgeNavigation(props?: EdgeNavigationProps): lume.ui.Node;
+  function Launcher(props: LauncherProps): lume.ui.Node;
+  /** Idempotent cleanup for timers and gesture subscriptions before removing a component. */
+  function dispose(node: lume.ui.Node): void;
+}
+
 /** Embedded prelude globals used by the firmware fallback bundle. */
 declare function View(props: lume.ui.ViewProps, children?: lume.ui.Node[]): lume.ui.Node;
 declare function List<T>(props: lume.ui.ListProps<T>): lume.ui.Node;
