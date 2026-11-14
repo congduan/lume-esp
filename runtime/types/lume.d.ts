@@ -79,6 +79,20 @@ declare namespace lume.anim {
 
 declare namespace lume.system {
   function log(msg: string): void;
+  /** 20ms engine drain tick, with skipped missed periods; callbacks run on the engine task. */
+  function setInterval(cb: () => void, ms: number): number;
+  function setTimeout(cb: () => void, ms: number): number;
+  function clearInterval(id: number): void;
+  function clearTimeout(id: number): void;
+}
+
+declare namespace lume.app {
+  /** Hooks run in registration order; each returns an idempotent unregister function. */
+  function onStart(cb: () => void): () => void;
+  function onPause(cb: () => void): () => void;
+  function onResume(cb: () => void): () => void;
+  /** Returning true handles BACK; false invokes the single-app default. */
+  function onBack(cb: () => boolean): () => void;
 }
 
 /**
@@ -462,6 +476,7 @@ declare namespace lume.audio {
 declare namespace lume {
   const ui: typeof lume.ui;
   const system: typeof lume.system;
+  const app: typeof lume.app;
   const gpio: typeof lume.gpio;
   const adc: typeof lume.adc;
   const pmic: typeof lume.pmic;
