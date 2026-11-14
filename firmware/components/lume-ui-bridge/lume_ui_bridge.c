@@ -638,6 +638,27 @@ static void apply_set_attr(const lume_ui_msg_t *m)
             }
             break;
         }
+        case LUME_ATTR_TEXT_FONT: {
+            /* Snap an arbitrary px size to the nearest bundled face (14/20/32);
+             * CJK glyphs fall through the face's .fallback to lume_font_sc_16. */
+            static const int16_t faces[] = {14, 20, 32};
+            const lv_font_t *font = &lv_font_montserrat_14;
+            int16_t best = faces[0];
+            for (size_t i = 1; i < sizeof(faces) / sizeof(faces[0]); i++) {
+                if (labs((long)m->value - faces[i]) < labs((long)m->value - best)) {
+                    font = (i == 1) ? &lv_font_montserrat_20 : &lv_font_montserrat_32;
+                    best = faces[i];
+                }
+            }
+            lv_obj_set_style_text_font(text_target(m->node_id, obj), font, 0);
+            break;
+        }
+        case LUME_ATTR_LETTER_SPACE:
+            lv_obj_set_style_text_letter_space(text_target(m->node_id, obj), (int16_t)m->value, 0);
+            break;
+        case LUME_ATTR_LINE_SPACE:
+            lv_obj_set_style_text_line_space(text_target(m->node_id, obj), (int16_t)m->value, 0);
+            break;
         case LUME_ATTR_FLEX_FLOW:
             s_flow[m->node_id] = (uint8_t)m->value;
             lv_obj_set_flex_flow(obj, map_flow(m->value));

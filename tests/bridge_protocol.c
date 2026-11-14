@@ -26,7 +26,9 @@ _Static_assert(LUME_ATTR_WIDTH_AUTO == 43 && LUME_ATTR_HEIGHT_AUTO == 44 &&
                LUME_ATTR_MIN_HEIGHT == 47 && LUME_ATTR_MAX_HEIGHT == 48 &&
                LUME_ATTR_TRANSLATE_X == 49 && LUME_ATTR_TRANSLATE_X_PCT == 50 &&
                LUME_ATTR_TRANSLATE_Y == 51 && LUME_ATTR_TRANSLATE_Y_PCT == 52 &&
-               LUME_ATTR_TEXT_ALIGN == 53 && LUME_ATTR_TEXT_LONG_MODE == 54,
+               LUME_ATTR_TEXT_ALIGN == 53 && LUME_ATTR_TEXT_LONG_MODE == 54 &&
+               LUME_ATTR_TEXT_FONT == 55 && LUME_ATTR_LETTER_SPACE == 56 &&
+               LUME_ATTR_LINE_SPACE == 57,
                "sizing/text attribute ids");
 _Static_assert(LUME_ALIGN_TARGET_PARENT == 0 && LUME_ALIGN_RIGHT_MID == 8,
                "align wire values");

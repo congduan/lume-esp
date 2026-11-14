@@ -84,6 +84,12 @@ typedef enum {
     LUME_ATTR_TRANSLATE_Y, LUME_ATTR_TRANSLATE_Y_PCT,
     LUME_ATTR_TEXT_ALIGN,     /* msg.value (lume_text_align_t) */
     LUME_ATTR_TEXT_LONG_MODE, /* msg.value (lume_text_long_t) */
+    /* r35 typography (all msg.value). TEXT_FONT carries a px size; the bridge
+     * snaps it to the nearest bundled montserrat face (14/20/32). CJK glyphs
+     * fall through each face's .fallback to lume_font_sc_16. */
+    LUME_ATTR_TEXT_FONT,      /* msg.value: px size, snapped to nearest face */
+    LUME_ATTR_LETTER_SPACE,   /* msg.value: px, may be negative */
+    LUME_ATTR_LINE_SPACE,     /* msg.value: px, may be negative */
 } lume_attr_t;
 
 /* ALIGN_TARGET value meaning "align inside the parent" (lv_obj_align). Any
