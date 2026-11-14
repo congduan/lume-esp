@@ -45,6 +45,8 @@
 #define LCD_H_RES       LUME_LCD_H_RES
 #define LCD_V_RES       LUME_LCD_V_RES
 #define LCD_BPP         LUME_LCD_BPP
+#define LCD_SPI_HOST    LUME_LCD_SPI_HOST
+#define LCD_PCLK_HZ     LUME_LCD_PCLK_HZ
 /* Draw buffer height in lines (profile value: 20). Buffers stay in INTERNAL
  * SRAM (see lume_display_init): the SPI driver copies a non-DMA-capable PSRAM
  * buffer into an internal bounce buffer for every transaction, and a
