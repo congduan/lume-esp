@@ -14,6 +14,7 @@
  */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 const { runApp } = require('./lib/prelude_runner');
 
 const shell = fs.readFileSync('runtime/shell.js', 'utf8');
@@ -97,6 +98,41 @@ check('explicit apps + onLaunch still override the store', () => {
 
 check('Launcher rejects a non-array app list', () => {
   assert.throws(() => app('lume.ui.shell.Launcher({apps: 1});'), /apps must be an array/);
+});
+
+/* ---- the firmware's built-in home screen (lume_scripts.c:lume_home_js) ---- */
+const scripts = fs.readFileSync('firmware/components/lume-engine/lume_scripts.c', 'utf8');
+const homeBlock = scripts.match(/const char lume_home_js\[\] =\n([\s\S]*?);\n/);
+assert.ok(homeBlock, 'embedded home found');
+const homeJs = [...homeBlock[1].matchAll(/^"(?:\\.|[^"\\])*"$/gm)]
+  .map(m => JSON.parse(m[0])).join('');
+
+check('embedded home renders a clock and one tile per installed app', () => {
+  const s = runApp(homeJs, {
+    apps: { clock: { label: '时钟', color: '#1E88E5', icon: 'T' },
+            calc: { label: '计算器', color: '#7CB342', icon: 'C' } },
+  });
+  const texts = s.messages.filter(m => m[0] === 'attr' && m[2] === 0).map(m => m[3]);
+  assert.ok(texts.some(t => /^\d\d:\d\d$/.test(String(t))), 'clock text rendered');
+  assert.ok(texts.includes('时钟') && texts.includes('计算器'), 'labels rendered');
+  assert.equal(s.messages.filter(m => m[0] === 'create' && m[2] === 3).length, 2,
+    'one circular icon canvas per app');
+});
+
+check('embedded home launches a tile and keeps BACK at the root', () => {
+  const s = runApp(homeJs, { apps: { clock: { label: '时钟' } } });
+  const pressIds = s.messages.filter(m => m[0] === 'press').map(m => m[1]);
+  assert.ok(pressIds.length >= 1, 'tile is pressable');
+  s.press(pressIds[pressIds.length - 1]);
+  assert.deepEqual(s.messages.filter(m => m[0] === 'launch').at(-1), ['launch', 'clock']);
+  assert.equal(vm.runInContext('__lume_back()', s.ctx), true, 'home swallows BACK');
+});
+
+check('embedded home shows an empty state with no apps', () => {
+  const s = runApp(homeJs, { apps: {} });
+  const texts = s.messages.filter(m => m[0] === 'attr' && m[2] === 0).map(m => m[3]);
+  assert.ok(texts.includes('还没有安装应用'));
+  assert.equal(s.messages.filter(m => m[0] === 'create' && m[2] === 3).length, 0);
 });
 
 console.log('PASS ' + cases + ' multi-app cases');
