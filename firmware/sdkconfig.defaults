@@ -48,3 +48,14 @@ CONFIG_FATFS_MAX_LFN=128
 # saved) at the cost of WiFi throughput. EXTRA_IRAM_OPT / SLP_IRAM_OPT stay off.
 CONFIG_ESP_WIFI_IRAM_OPT=n
 CONFIG_ESP_WIFI_RX_IRAM_OPT=n
+
+# BLE peripheral / NimBLE (r25, lume-ble). These are the Kconfig inputs;
+# firmware/sdkconfig was regenerated with idf.py v5.5.5 so a plain build has
+# Bluetooth enabled. Host build + size: IRAM 16384/16384 (100%, no overflow),
+# DIRAM 227975, Flash Code 1657930, app partition 67% free. IRAM has ZERO bytes
+# free, so re-check `idf.py size` after any new IRAM symbol. Real WiFi+BLE
+# coexistence still needs board acceptance (docs/KNOWN-SIMPLIFICATIONS.md r25).
+CONFIG_BT_ENABLED=y
+CONFIG_BT_BLUEDROID_ENABLED=n
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1

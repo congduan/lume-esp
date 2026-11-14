@@ -34,6 +34,7 @@
 #include "lume_kv.h"
 #include "lume_fs.h"
 #include "lume_net.h"
+#include "lume_ble.h"
 #include "lume_audio.h"
 #include "lume_power.h"
 #include "lume_image.h"
@@ -1346,6 +1347,106 @@ static JSValue js_net_http_get(JSContext *ctx, JSValueConst this_val,
     return obj;
 }
 
+/* lume.ble natives (r25): NimBLE GATT peripheral, hardware in lume-ble.
+ * Same thread discipline as lume.net: natives run ONLY on the engine task,
+ * lume-ble is QuickJS-free and returns an int status (0 = OK, negative =
+ * error code, see lume_ble.h). The radio is started LAZILY by start()/init()
+ * (like lume.audio), so register_bindings() does not switch on Bluetooth for
+ * apps that never use it. A failed init is non-fatal and degrades every
+ * entry point to -3. No device name / BLE payload is ever logged.
+ *
+ * status() returns an OBJECT on success and a negative NUMBER on failure;
+ * read() returns a STRING, null for an empty rx queue, or a negative NUMBER.
+ * init/start/stop/write return the int status directly. */
+static JSValue js_ble_init(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_ble_init());
+}
+
+static JSValue js_ble_start(JSContext *ctx, JSValueConst this_val,
+                            int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    /* name is optional; NULL keeps the current/default name ("Lume"). */
+    if (argc < 1 || JS_IsUndefined(argv[0]) || JS_IsNull(argv[0])) {
+        return JS_NewInt32(ctx, lume_ble_start(NULL, 0));
+    }
+    size_t len = 0;
+    const char *name = JS_ToCStringLen(ctx, &len, argv[0]);
+    if (name == NULL) {
+        return JS_EXCEPTION;
+    }
+    int r = lume_ble_start(name, len);
+    JS_FreeCString(ctx, name);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue js_ble_stop(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_ble_stop());
+}
+
+static JSValue js_ble_status(JSContext *ctx, JSValueConst this_val,
+                             int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    lume_ble_status_t st;
+    int r = lume_ble_status(&st);
+    if (r < 0) {
+        return JS_NewInt32(ctx, r);
+    }
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "state", JS_NewInt32(ctx, (int32_t)st.state));
+    JS_SetPropertyStr(ctx, obj, "connected", JS_NewBool(ctx, st.connected));
+    JS_SetPropertyStr(ctx, obj, "subscribed", JS_NewBool(ctx, st.subscribed));
+    JS_SetPropertyStr(ctx, obj, "mtu", JS_NewInt32(ctx, st.mtu));
+    JS_SetPropertyStr(ctx, obj, "pending", JS_NewInt32(ctx, st.pending));
+    return obj;
+}
+
+static JSValue js_ble_write(JSContext *ctx, JSValueConst this_val,
+                            int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) {
+        return JS_ThrowTypeError(ctx, "lume.ble.write: expected 1 argument (data)");
+    }
+    /* Real UTF-8 byte length; lume-ble caps it at LUME_BLE_PAYLOAD_MAX (20)
+     * and rejects an embedded NUL, same policy as lume.net.connect(). */
+    size_t len = 0;
+    const char *data = JS_ToCStringLen(ctx, &len, argv[0]);
+    if (data == NULL) {
+        return JS_EXCEPTION;
+    }
+    if (memchr(data, '\0', len) != NULL) {
+        JS_FreeCString(ctx, data);
+        return JS_NewInt32(ctx, LUME_BLE_ERR_ARG);
+    }
+    int r = lume_ble_write((const uint8_t *)data, len);
+    JS_FreeCString(ctx, data);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue js_ble_read(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    uint8_t buf[LUME_BLE_PAYLOAD_MAX];
+    size_t len = 0;
+    int r = lume_ble_read(buf, sizeof buf, &len);
+    if (r < 0) {
+        return JS_NewInt32(ctx, r);
+    }
+    if (r == 0) {
+        return JS_NULL;
+    }
+    return JS_NewStringLen(ctx, (const char *)buf, len);
+}
+
 static JSValue js_audio_play(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
 {
     (void)self;
@@ -1597,6 +1698,34 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, audio, "setVolume", JS_NewCFunction(ctx, js_audio_volume, "setVolume", 1));
     JS_SetPropertyStr(ctx, audio, "stop", JS_NewCFunction(ctx, js_audio_stop, "stop", 0));
     JS_SetPropertyStr(ctx, lume, "audio", audio);
+    /* lume.ble (r25): NimBLE GATT peripheral (NUS-shaped RX/TX service),
+     * hardware in lume-ble. Natives self-register, so the prelude needs no
+     * change. Deliberately NO lume_ble_init() here: the stack is started
+     * lazily by the app's first start()/init() call, so an app that never
+     * uses BLE never switches on the radio. The C stack survives hot reloads
+     * (drivers are not restarted); only these JS function objects are new.
+     * JS_SetPropertyStr consumes `ble`. */
+    JSValue ble = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, ble, "init",
+                      JS_NewCFunction(ctx, js_ble_init, "init", 0));
+    JS_SetPropertyStr(ctx, ble, "start",
+                      JS_NewCFunction(ctx, js_ble_start, "start", 1));
+    JS_SetPropertyStr(ctx, ble, "stop",
+                      JS_NewCFunction(ctx, js_ble_stop, "stop", 0));
+    JS_SetPropertyStr(ctx, ble, "status",
+                      JS_NewCFunction(ctx, js_ble_status, "status", 0));
+    JS_SetPropertyStr(ctx, ble, "write",
+                      JS_NewCFunction(ctx, js_ble_write, "write", 1));
+    JS_SetPropertyStr(ctx, ble, "read",
+                      JS_NewCFunction(ctx, js_ble_read, "read", 0));
+    JS_SetPropertyStr(ctx, ble, "IDLE", JS_NewInt32(ctx, LUME_BLE_IDLE));
+    JS_SetPropertyStr(ctx, ble, "ADVERTISING",
+                      JS_NewInt32(ctx, LUME_BLE_ADVERTISING));
+    JS_SetPropertyStr(ctx, ble, "CONNECTED",
+                      JS_NewInt32(ctx, LUME_BLE_CONNECTED));
+    JS_SetPropertyStr(ctx, ble, "MAX_PAYLOAD",
+                      JS_NewInt32(ctx, LUME_BLE_PAYLOAD_MAX));
+    JS_SetPropertyStr(ctx, lume, "ble", ble);
     JS_SetPropertyStr(ctx, global, "lume", lume);
     JS_FreeValue(ctx, global);
 }
