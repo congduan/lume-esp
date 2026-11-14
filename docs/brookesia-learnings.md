@@ -9,11 +9,11 @@
 Brookesia：`App` 抽象基类——`run/back/close/init/deinit/pause/resume/cleanResource`，
 Phone manager 负责多 app 切换时调 pause/resume（资源紧张时 cleanResource 回收）。
 
-**Lume 采纳（高优，r17）**：JS app 生命周期钩子——
+**Lume 采纳（r17 已落地，真机待验收）**：JS app 生命周期钩子——
 ```js
-lume.app.onStart(() => {})      // 冷启动/从后台回前台
+lume.app.onStart(() => {})      // bundle eval 成功后的首次启动
 lume.app.onPause(() => {})      // 切后台（停 IMU 轮询/动画省电）
-lume.app.onResume(() => {})
+lume.app.onResume(() => {})     // 暂停后回前台
 lume.app.onBack(() => boolean)  // 返回键拦截：返回 true=已处理，false=默认退出
 ```
 热更新场景比 Brookesia 更需要它：bundle 替换时旧 app 的 effect/timer/动画要可靠释放

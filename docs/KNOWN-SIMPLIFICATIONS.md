@@ -49,10 +49,7 @@ Owner：主控接板后跑，M1 不据此验收。
 - **单 staging 槽 + last-wins 合并**：引擎侧只有一个受 mutex 保护的 staging 槽，
   未被引擎取走的新帧会覆盖旧帧，且 `s_reload_pending` 合并为最多一个排队中的
   `LUME_EVT_RELOAD`。连续快速推包时只有最后一帧生效，不做逐帧排队/逐帧 ACK。
-- **LVGL 对象不随重载清空 + node id 复用**：按约定「驱动/LVGL/触摸不重启」，
-  `lume-ui-bridge` 的 `s_nodes[]` 表跨重载保留；引擎每轮把 `s_next_node_id` 复位为 0，
-  新 app 复用 1..N 的 id 覆盖表项，上一版 app 的 lv_obj 仍挂在屏幕上（成为孤儿/残留控件）。
-  没有 `clear screen` 原语，残留控件仍可能触发点击回调并投递旧 id。彻底清理留给后续刀。
+- **热替换时清理 LVGL 场景**：r17 在 Queue A 排入 RESET，LVGL task 删除屏幕子节点、动画和 canvas；新 app 的 CREATE 排在 RESET 之后。硬件驱动仍不重启。UI 队列投递失败时会记录错误，尚无全量重同步。
 - **帧协议极简**：固定 12 字节头（`LUME` + `u32le total_len` + `u32le crc32`），
   `total_len` 是 payload 字节数（不含头），上限 256KB；`crc32` = `esp_crc32_le(0, payload, len)`
   （即标准 CRC-32 / `zlib.crc32`），只校验 payload。无版本号、flags、帧序号、压缩/分片。
@@ -482,3 +479,10 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - `onDraw` is an owned signal effect. It runs at creation and once per changed signal value read in its previous run. Each call posts fixed-size raster commands through Queue A, followed by one `CANVAS_INVALIDATE`; the LVGL timer drains them in order. There is no per-frame callback. The chosen one-way queue avoids blocking LVGL on the engine task or sharing a mutable pixel pointer across tasks. Large polylines can spend multiple timer periods posting and are limited to 240 points; draws are not atomic against an intermediate LVGL refresh. The sample uses 12 points.
 - Coordinates are integer canvas-local pixels; clipping occurs in the bridge. Colors are opaque RGB565. Text uses LVGL's default 14px font through a canvas draw layer and is limited to 63 UTF-8 bytes. `clear()` fills opaque black. Antialiased curves, path reuse, alpha blending, image blit, and dynamic canvas resizing are deferred.
 - Signal callbacks and text draw cost have host/build validation only. Real-device rendering, timing, and visual quality remain for the board acceptance round.
+
+## r17 App lifecycle / timers
+
+- 单 app 实例。`onStart` 在 bundle eval 成功后触发；`PAUS`/`RESM` 四字节控制帧触发 pause/resume，重复帧幂等；`BACK` 四字节控制帧只在协议侧实现，触摸返回手势后续接入。`onBack` 任一回调返回严格的 `true` 即拦截；默认关闭当前 app 并启动内嵌 demo。尚无多 app 启动器。
+- 20ms engine 队列等待是 timer tick 源，`esp_timer_get_time()` 仅用于单调时钟读数。回调在 engine task 的 drain 点执行；interval 漏过的周期只补一次，不追赶连发。pause 时 timer 停止派发，resume 后到期的 timer 最多触发一次；bundle 替换时全部清掉。
+- `audio.record`/`audio.play` 与同步 HTTP 会阻塞 engine task，期间 timer、输入与热更新均延迟。后续可把这些操作迁到独立 worker，由定长消息桥回传完成事件，再在 engine drain 点派发 JS 回调。
+- 热替换释放次序：旧 app `onPause` → 清生命周期回调 → 清 timer → 取消 native 动画 → dispose 所有 effect（含 Canvas onDraw）/press handler → 清 signal 队列与版本 → Queue A RESET 场景 → 释放旧 QuickJS runtime → 新 runtime/prelude/bundle eval → `onStart`。signal 对象的最终内存由 QuickJS runtime 释放。eval 失败会回退上个可用 bundle；`onStart` 回调抛错仅记录日志。
