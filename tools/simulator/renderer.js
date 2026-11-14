@@ -83,6 +83,16 @@
         case 21: s.scrollbarWidth = value === 0 ? 'none' : 'auto'; break;
         case 22: el.scrollTop = value; break;
         case 23: if (value) s.position = 'absolute'; break;
+        // LUME_ATTR_FLEX_GROW (0..255): mirror lv_obj_set_flex_grow.
+        case 39: s.flexGrow = value || ''; break;
+        // LUME_ATTR_TEXT_ALIGN: 0=left 1=center 2=right 3=auto(LVGL default=left).
+        case 53: s.textAlign = ['', 'center', 'right', ''][value] || ''; break;
+        // LUME_ATTR_TEXT_LONG_MODE: 0=wrap 1=dots 2=scroll 3=scroll-circular 4=clip.
+        case 54:
+          s.overflow = value ? 'hidden' : '';
+          s.whiteSpace = value ? 'nowrap' : 'normal';
+          s.textOverflow = value === 1 ? 'ellipsis' : '';
+          break;
       }
     }
     animate(m) {

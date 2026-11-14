@@ -61,6 +61,14 @@ const server = http.createServer(async (req, res) => {
   }
   res.writeHead(404); res.end('Not found');
 });
-server.listen(port, '127.0.0.1', () => console.log(`Lume Host Simulator http://localhost:${port} (${appPath})`));
+/* Dual-stack bind ('::' with IPv4-mapped addresses): 'localhost' resolves to
+ * ::1 first on many systems, so an IPv4-only bind looks "unreachable". */
+server.on('error', e => {
+  if (e.code === 'EADDRINUSE')
+    console.error(`port ${port} in use — start with LUME_SIM_PORT=<other> (conflict: ${e})`);
+  else console.error(e);
+  process.exit(1);
+});
+server.listen(port, '::', () => console.log(`Lume Host Simulator http://localhost:${port} (${appPath})`));
 const ticker = setInterval(() => { if (session) try { vm.runInContext('__lume_tick()', session.ctx); } catch (e) { console.error(e); } }, 50);
 process.on('SIGTERM', () => { clearInterval(ticker); fs.unwatchFile(appPath); server.close(); });
