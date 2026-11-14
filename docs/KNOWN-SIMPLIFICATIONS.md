@@ -468,3 +468,10 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - LVGL's flex layout computes positions. Its cross-axis align enum has no `stretch`, so the bridge sets an un-sized child's cross-axis size to `lv_pct(100)` when adopted by a stretch parent. Explicit child width/height wins. Changing stretch back to another alignment after adoption does not restore the child's implicit default size; dynamic style mutation is not part of the M3 prelude API.
 - Padding is one value on all four sides, and gap is one value for rows and columns. There is no margin, grid, per-side padding, flex grow/shrink, reverse direction, or percentage sizing on properties other than width/height. Percentage size is relative to the parent's LVGL content area.
 - `lume_demo_js` is the boot fallback and `examples/counter/app.js` is its source equivalent. Flex appearance, stretch sizing, and touch placement still require board visual acceptance.
+
+## r15 M3 animation primitives
+
+- `transition` applies to numeric `x`, `y`, pixel `width`/`height`, and `opacity`. A signal getter supplies the initial value via `SET_ATTR`; later changes send `ANIMATE` with omitted `from`, so the LVGL task samples the current value. `lume.anim.to` offers an optional `from` and completion callback; `lume.anim.cancel` stops one attribute. A new animation on the same node and attribute replaces its predecessor.
+- `transition.property: 'bg'` is accepted for API shape, but reactive color updates are immediate `SET_ATTR` changes; color interpolation is unavailable. There are no keyframes, multistage timelines, or spring physics curves. Easing is limited to LVGL linear/ease-in/ease-out/ease-in-out. Duration is an integer from 1 to 60000 ms.
+- Completion events share the 16-entry LVGL→engine event queue with presses. On overflow completion is logged and dropped; its JS callback will not run. Callback references are released on replacement, cancel, removal, or runtime recycle; a dropped completion remains registered until one of those events.
+- The example's `y` movement uses LVGL object coordinates. Visual smoothness, flex interaction, and touch timing await board testing.

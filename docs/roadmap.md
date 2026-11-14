@@ -23,7 +23,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [ ] Flex layout engine in the bridge (map to LVGL flex)
 - [ ] Style resolution (padding/margin/background/border/corner/opacity)
 - [ ] List virtualization, image rendering (PNG/JPG decode)
-- [ ] Animation primitives (tween/transition)
+- [ ] Animation primitives (tween/transition)（r15 代码完成：LVGL lv_anim 桥接、signal transition、lume.anim.to/cancel、完成事件回流与滑入示例；host harness/构建/size 验证，真机视觉流畅度待接板）
 - [ ] Gesture layer (tap/swipe/long-press/pan)
 
 ## M4 — tooling
