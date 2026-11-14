@@ -240,6 +240,8 @@ declare namespace lume.theme {
 
 declare namespace lume.system {
   function log(msg: string): void;
+  /** Emits a firmware warning log. */
+  function warn(msg: string): void;
   /** 20ms engine drain tick, with skipped missed periods; callbacks run on the engine task. */
   function setInterval(cb: () => void, ms: number): number;
   function setTimeout(cb: () => void, ms: number): number;

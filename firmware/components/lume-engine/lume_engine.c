@@ -52,6 +52,7 @@ static QueueHandle_t s_evt_queue;   /* Queue B: LVGL -> engine */
 static JSRuntime *s_rt;
 static JSContext *s_ctx;
 static bool s_node_live[LUME_MAX_NODES]; /* cleared only after LVGL remove acknowledgement */
+static bool s_node_dead[LUME_MAX_NODES]; /* failed ids stay reserved until runtime reset */
 static uint32_t s_evt_dropped;      /* LVGL-task-only reverse-drop counter */
 
 /* ---- Hot-reload staging (shared: USB CDC RX task writes, engine consumes) ----
@@ -231,6 +232,18 @@ static JSValue js_log(JSContext *ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
+static JSValue js_warn(JSContext *ctx, JSValueConst this_val,
+                       int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) return JS_UNDEFINED;
+    const char *s = JS_ToCString(ctx, argv[0]);
+    if (!s) return JS_EXCEPTION;
+    ESP_LOGW(TAG, "js: %s", s);
+    JS_FreeCString(ctx, s);
+    return JS_UNDEFINED;
+}
+
 static JSValue js_now_ms(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
 {
     (void)self; (void)argc; (void)argv;
@@ -357,6 +370,7 @@ static JSValue js_image_set_source(JSContext *ctx, JSValueConst self, int argc, 
     if (argc < 2 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
         id < 1 || id >= LUME_MAX_NODES || !s_node_live[id])
         return JS_NewInt32(ctx, -1);
+    if (s_node_dead[id]) return JS_NewInt32(ctx, 0);
     size_t len = 0;
     uint8_t *bytes = JS_GetArrayBuffer(ctx, &len, argv[1]);
     if (!bytes) return JS_NewInt32(ctx, -1);
@@ -388,6 +402,7 @@ static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, J
         a < -LUME_LCD_H_RES || a > LUME_LCD_H_RES ||
         b < -LUME_LCD_V_RES || b > LUME_LCD_V_RES)
         return JS_ThrowRangeError(ctx, "lume: canvas draw argument out of range");
+    if (s_node_dead[id]) return JS_UNDEFINED;
     lume_ui_msg_t m; msg_init(&m);
     m.op = LUME_OP_CANVAS_DRAW; m.node_id = id; m.attr = op;
     m.from = x; m.to = y; m.duration_ms = (uint32_t)a; m.token = (uint32_t)b;
@@ -409,6 +424,7 @@ static JSValue js_canvas_invalidate(JSContext *ctx, JSValueConst this_val, int a
     if (argc < 1) return JS_ThrowTypeError(ctx, "lume: canvasInvalidate needs id");
     if (JS_ToInt32(ctx,&id,argv[0]) < 0) return JS_EXCEPTION;
     if (id < 1 || id >= LUME_MAX_NODES) return JS_ThrowRangeError(ctx,"lume: invalid canvas id");
+    if (s_node_dead[id]) return JS_UNDEFINED;
     lume_ui_msg_t m; msg_init(&m); m.op = LUME_OP_CANVAS_INVALIDATE; m.node_id = id;
     if (lume_ui_bridge_post(&m) != 0) return JS_ThrowInternalError(ctx,"lume: ui queue full");
     return JS_UNDEFINED;
@@ -423,6 +439,8 @@ static JSValue js_set_attr(JSContext *ctx, JSValueConst this_val,
         JS_ToInt32(ctx, &attr, argv[1]) < 0) {
         return JS_EXCEPTION;
     }
+    if (node_id > 0 && node_id < LUME_MAX_NODES && s_node_dead[node_id])
+        return JS_UNDEFINED;
 
     lume_ui_msg_t m;
     msg_init(&m);
@@ -468,6 +486,7 @@ static JSValue js_animate(JSContext *ctx, JSValueConst this_val,
         ((attr == LUME_ATTR_OPACITY) &&
          (to < 0 || to > 255 || (has_from && (from < 0 || from > 255)))))
         return JS_ThrowRangeError(ctx, "lume: invalid animation arguments");
+    if (s_node_dead[id]) return JS_NewUint32(ctx, 0);
     lume_ui_msg_t m;
     msg_init(&m);
     m.op = LUME_OP_ANIMATE; m.node_id = (uint16_t)id; m.attr = (uint8_t)attr;
@@ -491,6 +510,7 @@ static JSValue js_animate_cancel(JSContext *ctx, JSValueConst this_val,
          attr != LUME_ATTR_WIDTH && attr != LUME_ATTR_HEIGHT &&
          attr != LUME_ATTR_OPACITY))
         return JS_ThrowRangeError(ctx, "lume: invalid animation cancel");
+    if (s_node_dead[id]) return JS_UNDEFINED;
     lume_ui_msg_t m;
     msg_init(&m);
     m.op = LUME_OP_ANIMATE_CANCEL; m.node_id = (uint16_t)id; m.attr = (uint8_t)attr;
@@ -507,6 +527,8 @@ static JSValue js_set_press_event(JSContext *ctx, JSValueConst this_val,
     if (argc < 1 || JS_ToInt32(ctx, &node_id, argv[0]) < 0) {
         return JS_EXCEPTION;
     }
+    if (node_id > 0 && node_id < LUME_MAX_NODES && s_node_dead[node_id])
+        return JS_UNDEFINED;
     lume_ui_msg_t m;
     msg_init(&m);
     m.op = LUME_OP_SET_PRESS;
@@ -529,6 +551,8 @@ static JSValue js_set_gesture_event(JSContext *ctx, JSValueConst this_val,
     if (argc < 1 || JS_ToInt32(ctx, &node_id, argv[0]) < 0) {
         return JS_EXCEPTION;
     }
+    if (node_id > 0 && node_id < LUME_MAX_NODES && s_node_dead[node_id])
+        return JS_UNDEFINED;
     lume_ui_msg_t m;
     msg_init(&m);
     m.op = LUME_OP_SET_GESTURE;
@@ -549,6 +573,8 @@ static JSValue js_remove_child(JSContext *ctx, JSValueConst this_val,
     if (argc < 1 || JS_ToInt32(ctx, &node_id, argv[0]) < 0) {
         return JS_EXCEPTION;
     }
+    if (node_id > 0 && node_id < LUME_MAX_NODES && s_node_dead[node_id])
+        return JS_UNDEFINED;
     lume_ui_msg_t m;
     msg_init(&m);
     m.op = LUME_OP_REMOVE;
@@ -1729,6 +1755,8 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, lume, "power", power);
     JS_SetPropertyStr(ctx, lume, "log",
                       JS_NewCFunction(ctx, js_log, "log", 1));
+    JS_SetPropertyStr(ctx, lume, "warn",
+                      JS_NewCFunction(ctx, js_warn, "warn", 1));
     /* lume.gpio: built inline on the `lume` object, mirroring how log /
      * createNode / setAttr are attached directly (natives self-register, so
      * the prelude needs no change). JS_SetPropertyStr consumes `gpio`. */
@@ -2112,6 +2140,7 @@ static void dispatch_remove(uint16_t node_id)
 #define LUME_RM_WORDS ((LUME_MAX_NODES + 31u) / 32u)
 static portMUX_TYPE s_rm_mux = portMUX_INITIALIZER_UNLOCKED;
 static uint32_t s_rm_pending[LUME_RM_WORDS];   /* bits: node ids to dispose */
+static uint32_t s_failed_pending[LUME_RM_WORDS]; /* create failures */
 
 void lume_engine_mark_removed(uint16_t node_id)
 {
@@ -2123,15 +2152,25 @@ void lume_engine_mark_removed(uint16_t node_id)
     portEXIT_CRITICAL(&s_rm_mux);
 }
 
+void lume_engine_mark_create_failed(uint16_t node_id)
+{
+    if (node_id == 0 || node_id >= LUME_MAX_NODES) return;
+    portENTER_CRITICAL(&s_rm_mux);
+    s_failed_pending[node_id / 32u] |= 1u << (node_id % 32u);
+    portEXIT_CRITICAL(&s_rm_mux);
+}
+
 /* Engine-task side: snapshot + clear the latch in one critical section,
  * then run __lume_dispatchRemove for each latched id. */
 static void drain_removals(void)
 {
-    uint32_t snap[LUME_RM_WORDS];
+    uint32_t snap[LUME_RM_WORDS], failed[LUME_RM_WORDS];
     portENTER_CRITICAL(&s_rm_mux);
     for (unsigned i = 0; i < LUME_RM_WORDS; i++) {
         snap[i] = s_rm_pending[i];
         s_rm_pending[i] = 0;
+        failed[i] = s_failed_pending[i];
+        s_failed_pending[i] = 0;
     }
     portEXIT_CRITICAL(&s_rm_mux);
     for (unsigned w = 0; w < LUME_RM_WORDS; w++) {
@@ -2141,6 +2180,24 @@ static void drain_removals(void)
             bits &= bits - 1;
             dispatch_remove((uint16_t)(w * 32u + bit));
             s_node_live[w * 32u + bit] = false;
+        }
+        bits = failed[w] & ~snap[w];
+        while (bits) {
+            unsigned bit = __builtin_ctz(bits);
+            bits &= bits - 1;
+            uint16_t id = (uint16_t)(w * 32u + bit);
+            s_node_dead[id] = true;
+            JSValue global = JS_GetGlobalObject(s_ctx);
+            JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_dispatchCreateFailed");
+            if (JS_IsFunction(s_ctx, fn)) {
+                JSValue arg = JS_NewInt32(s_ctx, id);
+                JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 1, &arg);
+                if (JS_IsException(ret)) dump_js_exception(s_ctx, "__lume_dispatchCreateFailed");
+                JS_FreeValue(s_ctx, ret);
+                JS_FreeValue(s_ctx, arg);
+            }
+            JS_FreeValue(s_ctx, fn);
+            JS_FreeValue(s_ctx, global);
         }
     }
 }
@@ -2329,6 +2386,7 @@ static void clear_removals(void)
     portENTER_CRITICAL(&s_rm_mux);
     for (unsigned i = 0; i < LUME_RM_WORDS; i++) {
         s_rm_pending[i] = 0;
+        s_failed_pending[i] = 0;
     }
     portEXIT_CRITICAL(&s_rm_mux);
 }
@@ -2421,6 +2479,7 @@ static void engine_task(void *arg)
          * cleared (drivers don't restart), so ids are reused across reloads;
          * see docs/KNOWN-SIMPLIFICATIONS.md. */
         memset(s_node_live, 0, sizeof(s_node_live));
+        memset(s_node_dead, 0, sizeof(s_node_dead));
         clear_removals();                       /* drop stale removal latch */
         ESP_LOGI(TAG, "runtime up; eval app '%s' (%u bytes)",
                  cand_app[0] ? cand_app

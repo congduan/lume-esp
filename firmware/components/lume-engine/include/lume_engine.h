@@ -54,6 +54,8 @@ void lume_engine_post_gesture(uint16_t node_id, uint8_t kind, int16_t x, int16_t
  * queue capacity to exhaust) and any node count is covered. Pure latch op,
  * no lv_* call. */
 void lume_engine_mark_removed(uint16_t node_id);
+/* LVGL create failed: latch id for engine-side dead-node disposal and warning. */
+void lume_engine_mark_create_failed(uint16_t node_id);
 
 /* ------------------------------------------------------------------------
  * Hot reload (M1): engine-side staging + result reporting.

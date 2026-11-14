@@ -1,5 +1,19 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
+## r34 host fixes; board acceptance pending
+
+- Hot-reload staging ownership, Queue B gesture FIFO and release delivery,
+  256-byte UTF-8 UI text, and asynchronous CREATE failure notices have host
+  coverage and firmware compile checks. Concurrent reload pressure, touch feel,
+  a low-PSRAM CREATE failure, and long Chinese labels on the display remain
+  for the board round.
+- A failed CREATE reserves its node id until the next runtime reset. The JS
+  effect owner is disposed and later native calls on the id become no-op.
+  This avoids stale JS references mutating a newly reused id; a sequence of
+  many failed creations can exhaust the 127 app node ids until reload.
+- Firmware has no linked `console`; create failures use `lume.warn` to emit
+  one `ESP_LOGW` record per failed node.
+
 本文件记录 M1 刻意接受的行为简化，以及**本轮不做、留待接板验收**的硬指标。
 Codex review round-3 的 4 个 P1 已修（见提交）；round-4 review 的 2 个必修点已修：
 `__drain()` 对普通抛异常的 effect 不再误清残留批次（仅 guard 溢出路径清），

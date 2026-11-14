@@ -43,6 +43,7 @@ function runApp(script, options = {}) {
     nativeAnimate: (...args) => { emit('animate', ...args); return ++token; },
     nativeAnimateCancel: (...args) => emit('cancelAnimate', ...args),
     _nowMs: () => Date.now(), log: (...args) => options.onLog?.(...args),
+    warn: (...args) => options.onWarn?.(...args),
     imu: { read: () => null },
     pmic: {
       battPercent: () => 80, battVoltageMv: () => 3980, vbusVoltageMv: () => 5020,

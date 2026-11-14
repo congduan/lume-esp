@@ -38,6 +38,7 @@ static const char *TAG = "lume-ui-bridge";
 static QueueHandle_t s_ui_queue;                  /* Queue A */
 static lv_obj_t *s_nodes[LUME_MAX_NODES];         /* id -> lv_obj* (LVGL task) */
 static uint8_t s_kinds[LUME_MAX_NODES];           /* id -> kind   (LVGL task) */
+static bool s_failed_nodes[LUME_MAX_NODES];       /* suppress queued ops after failed CREATE */
 static uint8_t s_flow[LUME_MAX_NODES];            /* wire flow, for stretch axis */
 static uint8_t s_main[LUME_MAX_NODES], s_cross[LUME_MAX_NODES];
 static uint8_t s_explicit_width[LUME_MAX_NODES], s_explicit_height[LUME_MAX_NODES];
@@ -353,7 +354,14 @@ static void apply_reset(void)
     lv_obj_clean(screen);
     release_dead_canvases();
     release_dead_images();
+    memset(s_failed_nodes, 0, sizeof(s_failed_nodes));
     ESP_LOGI(TAG, "app UI reset complete");
+}
+
+static void fail_create(uint16_t id)
+{
+    s_failed_nodes[id] = true;
+    lume_engine_mark_create_failed(id);
 }
 
 static void apply_create(const lume_ui_msg_t *m)
@@ -362,6 +370,7 @@ static void apply_create(const lume_ui_msg_t *m)
         ESP_LOGE(TAG, "create: invalid node_id %u", (unsigned)m->node_id);
         return;
     }
+    s_failed_nodes[m->node_id] = false;
     if (s_nodes[m->node_id]) {
         lv_obj_t *old = s_nodes[m->node_id];
         clear_subtree(old);
@@ -373,6 +382,10 @@ static void apply_create(const lume_ui_msg_t *m)
                            ? lv_screen_active()
                            : get_node(m->parent_id);
     if (parent == NULL) {
+        if (m->parent_id < LUME_MAX_NODES && s_failed_nodes[m->parent_id]) {
+            fail_create(m->node_id);
+            return;
+        }
         parent = lv_screen_active();
     }
 
@@ -380,6 +393,7 @@ static void apply_create(const lume_ui_msg_t *m)
     switch (m->kind) {
         case LUME_NODE_VIEW:
             obj = lv_obj_create(parent);
+            if (!obj) { fail_create(m->node_id); return; }
             /* LVGL's lv_obj default style is an opaque white rounded box. Apps
              * expect a transparent node unless they set `background`, so start
              * transparent; ATTR_BG_COLOR restores bg_opa COVER when a colour
@@ -410,6 +424,7 @@ static void apply_create(const lume_ui_msg_t *m)
             break;
         case LUME_NODE_TEXT:
             obj = lv_label_create(parent);
+            if (!obj) { fail_create(m->node_id); return; }
             /* Centered text uses LVGL's default font. Typography (big font)
              * is intentionally deferred: M1 real-device visuals are out of
              * scope, and referencing Montserrat-32 pulls ~45KB of glyph data. */
@@ -417,7 +432,9 @@ static void apply_create(const lume_ui_msg_t *m)
             break;
         case LUME_NODE_BUTTON: {
             obj = lv_button_create(parent);
+            if (!obj) { fail_create(m->node_id); return; }
             lv_obj_t *label = lv_label_create(obj);
+            if (!label) { lv_obj_delete(obj); fail_create(m->node_id); return; }
             lv_label_set_text(label, "");
             lv_obj_set_style_text_color(label, lv_color_white(), 0);
             lv_obj_center(label);
@@ -428,14 +445,16 @@ static void apply_create(const lume_ui_msg_t *m)
             if (w < 1 || h < 1 || w > LUME_LCD_H_RES || h > LUME_LCD_V_RES ||
                 (size_t)w * h * 2u > CANVAS_BUDGET - s_canvas_bytes) {
                 ESP_LOGE(TAG, "canvas id=%u invalid dimensions/budget %ldx%ld", m->node_id, (long)w, (long)h);
+                fail_create(m->node_id);
                 return;
             }
             size_t bytes = (size_t)lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565) * h;
-            if (bytes > CANVAS_BUDGET - s_canvas_bytes) return;
+            if (bytes > CANVAS_BUDGET - s_canvas_bytes) { fail_create(m->node_id); return; }
             uint16_t *pixels = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
-            if (!pixels) { ESP_LOGE(TAG, "canvas PSRAM allocation failed (%u)", (unsigned)bytes); return; }
+            if (!pixels) { ESP_LOGE(TAG, "canvas PSRAM allocation failed (%u)", (unsigned)bytes); fail_create(m->node_id); return; }
             memset(pixels, 0, bytes);
             obj = lv_canvas_create(parent);
+            if (!obj) { heap_caps_free(pixels); fail_create(m->node_id); return; }
             lv_canvas_set_buffer(obj, pixels, w, h, LV_COLOR_FORMAT_RGB565);
             lv_obj_set_size(obj, w, h);
             s_canvas_pixels[m->node_id] = pixels;
@@ -449,6 +468,7 @@ static void apply_create(const lume_ui_msg_t *m)
             /* Native LVGL arc: lv_draw_sw_arc renders with coverage, so the ring
              * is anti-aliased -- unlike Canvas, which writes raw pixels. */
             obj = lv_arc_create(parent);
+            if (!obj) { fail_create(m->node_id); return; }
             lv_obj_remove_style(obj, NULL, LV_PART_KNOB);
             lv_obj_set_style_arc_width(obj, 8, LV_PART_MAIN);
             lv_obj_set_style_arc_width(obj, 8, LV_PART_INDICATOR);
@@ -481,10 +501,12 @@ static void apply_create(const lume_ui_msg_t *m)
             break;
         case LUME_NODE_IMAGE:
             obj = lv_image_create(parent);
+            if (!obj) { fail_create(m->node_id); return; }
             lv_image_set_inner_align(obj, LV_IMAGE_ALIGN_CONTAIN);
             break;
         default:
             ESP_LOGE(TAG, "create: unknown kind %u", (unsigned)m->kind);
+            fail_create(m->node_id);
             return;
     }
 
@@ -522,7 +544,8 @@ static void apply_set_attr(const lume_ui_msg_t *m)
 {
     lv_obj_t *obj = get_node(m->node_id);
     if (obj == NULL) {
-        ESP_LOGW(TAG, "set-attr: unknown node_id %u", (unsigned)m->node_id);
+        if (m->node_id >= LUME_MAX_NODES || !s_failed_nodes[m->node_id])
+            ESP_LOGW(TAG, "set-attr: unknown node_id %u", (unsigned)m->node_id);
         return;
     }
     cancel_anim(m->node_id, m->attr);
