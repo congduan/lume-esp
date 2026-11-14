@@ -91,7 +91,10 @@ function runApp(script, options = {}) {
     },
     image: { sizeOf: () => -1, _setSource: () => -1 },
   };
-  const ctx = vm.createContext({ lume, Fs, console, setTimeout, clearTimeout, ArrayBuffer, Uint8Array });
+  // Mirror the native global injected after bindings and before prelude eval.
+  // The simulator uses this runner too; tests may supply another board size.
+  const __lumeScreen = options.screen || { w: 480, h: 480 };
+  const ctx = vm.createContext({ lume, Fs, console, setTimeout, clearTimeout, ArrayBuffer, Uint8Array, __lumeScreen });
   vm.runInContext(prelude, ctx, { filename: 'lume_prelude.js' });
   vm.runInContext(script, ctx, { filename: options.filename || 'app.js' });
   return {

@@ -1,6 +1,6 @@
 // Host harness for the exact embedded prelude and demo message sequence.
 const fs = require('fs'), vm = require('vm'), assert = require('assert');
-const { prelude, demo } = require('./lib/prelude_runner');
+const { prelude, demo, runApp } = require('./lib/prelude_runner');
 function harness(script) {
   const calls = [], handlers = new Map(); let next = 0;
   const lume = {
@@ -11,7 +11,7 @@ function harness(script) {
     setPressEvent: id => calls.push(['press', id]),
     log: () => {}, _nowMs: () => 0, imu: {read: () => null}
   };
-  const ctx = vm.createContext({lume});
+  const ctx = vm.createContext({lume, __lumeScreen: {w: 480, h: 480}});
   vm.runInContext(prelude + '\n' + script, ctx);
   return {calls, ctx};
 }
@@ -46,6 +46,22 @@ pass('dimensions/coordinates/color/text/point bounds reject', () => {
     'Canvas({width:2,height:2,onDraw:function(c){c.polyline([[1],[2]],"#ffffff");}})',
     'Canvas({width:2,height:2,onDraw:function(c){c.text(0,0,"x","#ffffff",32);}})'
   ]) assert.throws(() => harness(expr), expr);
+});
+pass('injected 390x390 screen governs canvas size, budget and draw bounds', () => {
+  const screen = {w: 390, h: 390};
+  const app = 'Canvas({width:390,height:390,onDraw:function(c){c.fillRect(-390,-390,390,390);c.line(390,390,0,0,"#ffffff");c.circle(0,0,390,"#ffffff");c.text(390,390,"ok","#ffffff");}})';
+  const result = runApp(app, {screen});
+  assert.deepStrictEqual(result.messages[0], ['create', 1, 3, 0, 390, 390]);
+  assert.strictEqual(result.messages.filter(x => x[0] === 'draw').length, 4);
+  for (const expr of [
+    'Canvas({width:391,height:1,onDraw:function(){}})',
+    'Canvas({width:1,height:391,onDraw:function(){}})',
+    'Canvas({width:390,height:390,onDraw:function(){}});Canvas({width:1,height:1,onDraw:function(){}})',
+    'Canvas({width:1,height:1,onDraw:function(c){c.fillRect(391,0,1,1);}})',
+    'Canvas({width:1,height:1,onDraw:function(c){c.line(0,-391,0,0,"#ffffff");}})',
+    'Canvas({width:1,height:1,onDraw:function(c){c.circle(0,0,391,"#ffffff");}})',
+    'Canvas({width:1,height:1,onDraw:function(c){c.text(0,391,"x","#ffffff");}})',
+  ]) assert.throws(() => runApp(expr, {screen}), expr);
 });
 pass('embedded demo equals counter example message sequence', () => {
   const file = fs.readFileSync('examples/counter/app.js','utf8');
