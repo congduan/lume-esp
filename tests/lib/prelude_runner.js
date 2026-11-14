@@ -62,6 +62,8 @@ function runApp(script, options = {}) {
         { ssid: 'Demo-AP', rssi: -42, auth: 3 },
         { ssid: 'OpenNet', rssi: -60, auth: 0 },
       ],
+      httpRequest: () => -3,
+      ...(options.net || {}),
     },
     // Host-side BLE stand-in: no radio, no stack. Harnesses can override any
     // method with options.ble (see tests/ble.js); the simulator uses these.
@@ -74,7 +76,8 @@ function runApp(script, options = {}) {
     },
     storage: {
       Fs, mounted: () => true,
-      kv: { set: () => 0, get: () => null, remove: () => 0, keys: () => [], clear: () => 0 },
+      kv: { set: () => 0, get: () => null, remove: () => 0, keys: () => [], clear: () => 0,
+            ...(options.kv || {}) },
     },
     // Host-side multi-app stand-in. list()/meta() mirror the native contract
     // (meta returns the JSON text, -4 when absent); launch()/home() only RECORD
