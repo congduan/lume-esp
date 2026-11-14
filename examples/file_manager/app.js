@@ -245,6 +245,10 @@ action(340, 'VIEW', previewSelected);
 /* swipe up on the backdrop = leave the current folder (same target as UP) */
 lume.gesture.on(backdrop, 'swipe', function (e) {
   if (e.dir === 'down') goUp();                  /* swipe down = parent folder */
+/* diagnostics: does the global (node 0) listener ever fire? */
+lume.gesture.on(0, 'swipe', function (e) {
+  lume.system.log('fm global swipe dir=' + e.dir + ' type=' + e.type);
+});
 });
 
 lume.app.onStart(function () { loadDir(cwd()); });

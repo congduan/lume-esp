@@ -71,6 +71,11 @@ static void release_dead_images(void)
 static lume_anim_sink_fn s_anim_sink;
 static lume_press_sink_fn s_press_sink;           /* set once by engine task */
 static bool s_screen_gesture;                     /* prelude registered node 0 */
+static bool s_gedge_armed;                        /* press started in the bottom edge zone */
+/* A swipe only counts as "go home" when the press STARTS inside this strip at
+ * the bottom edge (Brookesia-style). Anywhere else it belongs to the app: its
+ * own gestures, scrolling, or nothing. */
+#define G_EDGE_ZONE_PX 60
 static lume_scroll_sink_fn s_scroll_sink;
 static lume_gesture_sink_fn s_gesture_sink;       /* r21: set once by engine task */
 /* Per-node gesture press flags (LVGL task only). bit0 = a press is active,
@@ -1016,13 +1021,28 @@ static void gesture_obj_cb(lv_event_t *e)
     if (indev) lv_indev_get_point(indev, &p);
     uint32_t t = lv_tick_get();
     uint32_t code = lv_event_get_code(e);
-    /* LVGL events do not bubble, so a drag that starts on an app object never
-     * reaches the screen callback. Mirror the raw DOWN/MOVE/UP stream into the
-     * node-0 recognizer (prelude's global swipe-up), unfiltered. */
-    if (id != 0 && s_screen_gesture) {
-        uint8_t kind = code == LV_EVENT_PRESSED ? 0 : (code == LV_EVENT_PRESSING ? 1 :
-                       (code == LV_EVENT_RELEASED ? 2 : 0xFF));
-        if (kind != 0xFF) s_gesture_sink(0, kind, (int16_t)p.x, (int16_t)p.y, t, 0, 0);
+    if (id == 0 && s_screen_gesture) {
+        /* Global swipe-up recognizer (prelude's "back to launcher"), evaluated
+         * here on the raw press/release pair: the engine receives exactly ONE
+         * event per completed gesture. Mirroring the raw DOWN/MOVE/UP stream
+         * instead flooded the engine's gesture queue -- with events bubbling
+         * to the screen, PRESSING fires every frame and the queue overflowed
+         * (gesture drops), so no swipe ever reached the app. */
+        if (code == LV_EVENT_PRESSED) {
+            s_gedge_armed = p.y >= 480 - G_EDGE_ZONE_PX;
+            if (s_gedge_armed)
+                s_gesture_sink(0, 0, (int16_t)p.x, (int16_t)p.y, t, 0, 0);   /* DOWN */
+        } else if (code == LV_EVENT_RELEASED) {
+            /* Two records per gesture total. The prelude state machine judges
+             * distance/velocity itself and reports the direction; its handler
+             * filters for 'up'. A kind=3 (SWIPEDIR) record would NOT work:
+             * __gestureStep treats it as a direction hint and returns an empty
+             * event list, so no handler ever fired. */
+            if (s_gedge_armed)
+                s_gesture_sink(0, 2, (int16_t)p.x, (int16_t)p.y, t, 0, 0);   /* UP */
+            s_gedge_armed = false;
+        }
+        return;   /* the screen does not feed the per-node state machine */
     }
     switch (code) {
         case LV_EVENT_PRESSED:
