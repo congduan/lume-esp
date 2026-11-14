@@ -529,6 +529,14 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - Vendored LVGL 9.3.0 lodepng and tjpgd are enabled in `lv_conf.h`. The native decoder calls their proven raw APIs on the engine task and converts into the display format; the LVGL image decoder registration is present but external file loading is not used. No vendored decoder source was modified. JPEG uses the vendored `JD_FORMAT=0` RGB888 blocks, then converts them to RGB565. PNG accepts lodepng's supported color types and preserves per-pixel alpha; animated PNG, GIF, and WebP are outside this API.
 - `Fs.readBinary` retains its 64 KiB single-read limit; gallery assets on TF must fit it. `httpGet(...,{responseType:'arraybuffer'})` has its own configured response limit.
 
+## r24 Host Simulator L1
+
+- Browser CSS and Canvas replay the prelude's wire messages but are not LVGL. Fonts, default widget style, antialiasing, flex sizing, scroll momentum and rendering time can differ. RGB565 on the device quantizes colors; the browser's 2D canvas draws full RGB888. Canvas `clear` uses its encoded color (black from the prelude), as in `lume_ui_bridge.c`; circle and line antialiasing are browser approximations of the bridge's pixel rasterizer. Simulator frame rate does not represent device frame rate.
+- Click sends `onPress` through `__lume_dispatchPress`. Scroll offset reaches `__lume_dispatchScroll`, but browser touch injection does not yet reproduce native pan/swipe/longpress timing or hit testing. There is no multitouch or device performance simulation.
+- Images display a gray size placeholder; image decoding and LVGL contain scaling are deferred. Host `Fs` serves in-memory sample entries, not a mounted TF card. The host does not simulate IMU, battery changes, power, audio, network, or persistent storage.
+- File watching covers the selected `app.js` only. The simulator evaluates the app as a global script; it does not bundle imported modules. The generated `npm run sim` points at the simulator in the checkout used to create it, so moving or removing that checkout requires recreating or updating the script.
+- Counter, files, and watch_launcher DOM assertions and screenshots are in `artifacts/simulator`. Hardware visual acceptance remains for the board round.
+
 ## r23 / M4 CLI first slice
 
 - `tools/lume` sends esbuild IIFE JavaScript source over the existing USB Serial/JTAG protocol. There is no on-device bytecode compiler or WiFi OTA path in this slice. The embedded demo remains the boot fallback and a failed eval restores the last good app.
