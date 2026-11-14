@@ -38,7 +38,12 @@ function runApp(script, options = {}) {
     nativeAnimate: (...args) => { emit('animate', ...args); return ++token; },
     nativeAnimateCancel: (...args) => emit('cancelAnimate', ...args),
     _nowMs: () => Date.now(), log: (...args) => options.onLog?.(...args),
-    imu: { read: () => null }, pmic: { battPercent: () => 80 },
+    imu: { read: () => null },
+    pmic: {
+      battPercent: () => 80, battVoltageMv: () => 3980, vbusVoltageMv: () => 5020,
+      usbConnected: () => 1, chargingStatus: () => 2, dieTempRaw: () => 6900,
+      powerOff: () => 0,
+    },
     power: { _sleepNow: () => 0, _wake: () => 0 }, net: { deinit: () => 0 },
     // Host-side BLE stand-in: no radio, no stack. Harnesses can override any
     // method with options.ble (see tests/ble.js); the simulator uses these.
