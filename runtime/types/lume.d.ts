@@ -505,6 +505,30 @@ declare namespace lume.audio {
   function stop(): number;
 }
 
+/**
+ * Gesture layer (M3 / r21). Gestures attach to a specific View (a numeric node
+ * id) and are delivered through the same LVGL->engine event pipeline as onPress.
+ * x/y are absolute screen pixels; dx/dy are displacement from the press start;
+ * `dir` is LVGL's lv_indev_get_gesture_dir() when a swipe exceeds LVGL's
+ * gesture limit, else inferred from the dominant movement axis.
+ */
+interface GestureEvent {
+  type: 'tap' | 'swipe' | 'longpress' | 'pan' | 'panstart' | 'panend';
+  x: number; y: number;            // current / end point
+  dx?: number; dy?: number;        // swipe delta or pan displacement
+  dir?: 'left' | 'right' | 'up' | 'down';
+}
+declare namespace lume.gesture {
+  /** Register a gesture callback on a View; returns an idempotent unregister fn.
+    * `target` is the numeric node id returned by View()/Button()/etc. */
+  function on(target: lume.ui.Node, type: GestureEvent['type'], cb: (e: GestureEvent) => void): () => void;
+  /** Centralized, tunable thresholds (start from vendored LVGL defaults). */
+  const tuning: {
+    tapMovePx: number; tapMaxMs: number; longpressMs: number;
+    panMinPx: number; swipeMinPx: number; swipeMinVel: number;
+  };
+}
+
 declare namespace lume {
   const ui: typeof lume.ui;
   const system: typeof lume.system;
@@ -517,5 +541,6 @@ declare namespace lume {
   const storage: typeof lume.storage;
   const net: typeof lume.net;
   const audio: typeof lume.audio;
+  const gesture: typeof lume.gesture;
   function start(root: lume.ui.Node): void;
 }
