@@ -23,7 +23,7 @@ function runApp(script, options = {}) {
   const files = options.files || { '/': ['demo.txt', 'photos'], '/photos/': ['image.raw'] };
   const Fs = {
     list: p => [...(files[p] || [])],
-    exists: p => p in files || Object.values(files).some(a => a.includes(p.split('/').filter(Boolean).at(-1))),
+    exists: p => p in files || (!p.endsWith('/') && Object.values(files).some(a => a.includes(p.split('/').at(-1)))),
     remove: p => { const dir = p.slice(0, p.lastIndexOf('/') + 1); files[dir] = (files[dir] || []).filter(n => n !== p.slice(dir.length)); return 0; },
     read: () => -2, write: () => -2,
   };
