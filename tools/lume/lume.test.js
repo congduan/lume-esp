@@ -28,7 +28,9 @@ test('create writes complete offline scaffold and bundles with prelude globals',
   try {
     await create(root);
     assert.deepEqual((await readdir(root)).sort(), ['.gitignore', 'app.js', 'package.json', 'tsconfig.json']);
-    assert.equal(JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).lume.entry, 'app.js');
+    const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
+    assert.equal(manifest.lume.entry, 'app.js');
+    assert.match(manifest.scripts.sim, /sim\.js" app\.js$/);
     const output = await bundle(root, { minify: false });
     assert.ok(output.length > 0);
     assert.match(output.toString(), /View\(/);
