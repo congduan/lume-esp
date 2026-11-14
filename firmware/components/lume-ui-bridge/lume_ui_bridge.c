@@ -24,7 +24,12 @@
 _Static_assert(sizeof(lume_ui_msg_t) <= 112, "UI queue record size budget");
 
 static const char *TAG = "lume-ui-bridge";
-#define UI_QUEUE_LEN 32
+/* Queue A depth. Every canvasDraw() is one record, and a Canvas gauge redraw
+ * (arc polylines included) emits 30..90 records back-to-back from the JS task,
+ * so 32 slots was not enough for a dashboard app: the queue filled mid-redraw,
+ * post() returned -1 and JS threw "ui queue full" halfway through a refresh.
+ * 128 slots x <=112 B = ~14 KB of internal RAM, drained every 5 ms. */
+#define UI_QUEUE_LEN 128
 #define DRAIN_PERIOD_MS 5
 #define LUME_POST_MAX_ATTEMPTS 8   /* finite retries when Queue A is full */
 
