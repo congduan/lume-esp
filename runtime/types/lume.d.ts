@@ -109,6 +109,15 @@ declare namespace lume.system {
   function clearTimeout(id: number): void;
 }
 
+declare namespace lume.power {
+  /** Blocks until a GPIO11 touch wake; 0 success, -1 WiFi started, -2 INT held low, -3 driver error. */
+  function sleepNow(): number;
+  /** Idempotent once JS is executing; external touch wakes the sleeping CPU. */
+  function wake(): number;
+  /** Called after panel wake and redraw scheduling; returns an unregister function. */
+  function onWake(cb: () => void): () => void;
+}
+
 declare namespace lume.app {
   /** Hooks run in registration order; each returns an idempotent unregister function. */
   function onStart(cb: () => void): () => void;
