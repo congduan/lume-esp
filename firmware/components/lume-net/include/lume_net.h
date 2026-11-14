@@ -97,6 +97,13 @@
  * disconnected states. Engine-task-only, like the other public net calls. */
 bool lume_net_wifi_started(void);
 
+/* r26: spinlock-guarded "does the station have a usable IPv4 (GOT_IP)" query.
+ * UNLIKE the other public entry points (engine-task-only), this reads ONLY the
+ * s_state_mux-protected state and is safe to call from ANY task. Used by the
+ * WiFi-OTA push channel (lume-hotreload) to gate its TCP listener: it binds
+ * only after connect/GOT_IP and stops when WiFi drops. */
+bool lume_net_has_ip(void);
+
 /* WPA2-PSK station only (r11 simplification). SSID <= MAX_SSID_LEN(32) bytes;
  * password is 8..63 bytes (WPA2 passphrase; .password[64] leaves room for the
  * NUL). Verified: esp_wifi_types_generic.h:559-560, 1196-1197. */

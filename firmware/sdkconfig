@@ -596,6 +596,12 @@ CONFIG_PARTITION_TABLE_MD5=y
 # end of Partition Table
 
 #
+# Lume WiFi OTA (r26)
+#
+CONFIG_LUME_OTA_PORT=8765
+# end of Lume WiFi OTA (r26)
+
+#
 # Compiler options
 #
 CONFIG_COMPILER_OPTIMIZATION_DEBUG=y

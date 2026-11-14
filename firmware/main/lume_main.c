@@ -6,7 +6,8 @@
  *   2. LVGL render backend init (CO5300 QSPI)
  *   3. QuickJS-NG engine task start (heap in PSRAM)
  *   4. Engine boots the embedded demo JS source (replaceable via hot reload)
- *   5. Hot-reload RX channel on USB Serial/JTAG (USB CDC)
+ *   5. Push channels: hot-reload RX on USB Serial/JTAG (USB CDC) + WiFi OTA
+ *      TCP server (self-starts once the station has an IP)
  */
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"

@@ -70,6 +70,10 @@ static size_t  s_good_app_len;
 /* Registered by lume-hotreload; reports the final reload outcome over USB TX. */
 static lume_engine_reload_result_fn s_result_cb;
 
+/* r26: registered by the WiFi-OTA channel; js_net_ota_status() reads it.
+ * Declared here (before the native at ~1244) to avoid a use-before-declare. */
+static lume_ota_status_provider_fn s_ota_status_provider;
+
 /* ------------------------------------------------------------------ */
 /* PSRAM-backed allocator for QuickJS-NG (JSMallocFunctions)            */
 /* ------------------------------------------------------------------ */
@@ -1238,6 +1242,27 @@ static JSValue js_net_status(JSContext *ctx, JSValueConst this_val,
     return obj;
 }
 
+/* r26: lume.net.otaStatus() -> { running, wifiReady, tokenReady, port, token }.
+ * The status is supplied by the WiFi-OTA channel's registered provider (see
+ * lume_engine.h); no provider -> an all-false/zero status object. */
+static JSValue js_net_ota_status(JSContext *ctx, JSValueConst this_val,
+                                 int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    lume_ota_status_t st;
+    memset(&st, 0, sizeof(st));
+    if (s_ota_status_provider != NULL) {
+        s_ota_status_provider(&st);
+    }
+    JSValue obj = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, obj, "running",    JS_NewBool(ctx, st.running));
+    JS_SetPropertyStr(ctx, obj, "wifiReady",  JS_NewBool(ctx, st.wifi_ready));
+    JS_SetPropertyStr(ctx, obj, "tokenReady", JS_NewBool(ctx, st.token_ready));
+    JS_SetPropertyStr(ctx, obj, "port",       JS_NewInt32(ctx, st.port));
+    JS_SetPropertyStr(ctx, obj, "token",      JS_NewString(ctx, st.token));
+    return obj;
+}
+
 /* lume.net.httpGet(url, options?) / lume.net.http.get(url, options?).
  * options: { timeoutMs?: number, responseType?: 'text'|'arraybuffer' }.
  * Returns { status, body, contentLength, truncated } on a completed transfer,
@@ -1547,6 +1572,8 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_net_disconnect, "disconnect", 0));
     JS_SetPropertyStr(ctx, net, "status",
                       JS_NewCFunction(ctx, js_net_status, "status", 0));
+    JS_SetPropertyStr(ctx, net, "otaStatus",
+                      JS_NewCFunction(ctx, js_net_ota_status, "otaStatus", 0));
     JS_SetPropertyStr(ctx, net, "httpGet",
                       JS_NewCFunction(ctx, js_net_http_get, "httpGet", 1));
     /* The status() state enum, exposed as named numeric constants (mirrors
@@ -1830,6 +1857,14 @@ static void report_result(bool ok, size_t len, const char *reason)
 void lume_engine_set_reload_result_cb(lume_engine_reload_result_fn cb)
 {
     s_result_cb = cb;   /* set once, before any frame can arrive */
+}
+
+/* r26: WiFi-OTA status provider, registered by lume-hotreload at boot. The
+ * engine has NO link dependency on lume-hotreload (avoids a component cycle);
+ * js_net_ota_status() calls through this function pointer only. */
+void lume_engine_set_ota_status_provider(lume_ota_status_provider_fn fn)
+{
+    s_ota_status_provider = fn;
 }
 
 /* Move the staged source out of the shared slot into the engine task's sole

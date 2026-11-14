@@ -87,8 +87,10 @@ static int map_err(esp_err_t err, const char *what)
     return LUME_NET_ERR_DRIVER;
 }
 
-/* Guarded read of "do we have a usable IP" (http_get gate). */
-static bool wifi_has_ip(void)
+/* r26: guarded read of "do we have a usable IP". Public because it reads ONLY
+ * spinlock-protected state (no engine-task-only flags), so the OTA task may
+ * call it; also used internally as the http_get gate. See lume_net.h. */
+bool lume_net_has_ip(void)
 {
     bool ok;
     portENTER_CRITICAL(&s_state_mux);
@@ -435,7 +437,7 @@ int lume_net_http_get(const char *url, int timeout_ms,
     if (r != LUME_NET_OK) {
         return r;
     }
-    if (!wifi_has_ip()) {
+    if (!lume_net_has_ip()) {
         ESP_LOGW(TAG, "httpGet: WiFi has no IP yet (state != GOT_IP)");
         return LUME_NET_ERR_STATE;
     }

@@ -73,3 +73,23 @@ typedef void (*lume_engine_reload_result_fn)(bool ok, size_t len,
                                              const char *reason);
 void lume_engine_set_reload_result_cb(lume_engine_reload_result_fn cb);
 int lume_engine_request_reload(const char *src, size_t len);
+
+/* ------------------------------------------------------------------------
+ * r26: lume.net.otaStatus() provider.
+ *
+ * The WiFi-OTA channel lives in lume-hotreload, which already REQUIRES
+ * lume-engine. To let the engine expose its status WITHOUT creating a
+ * component dependency CYCLE (lume-engine -> lume-hotreload), the OTA channel
+ * registers a status-provider callback here at boot; the engine native calls
+ * it through the function pointer. The struct is defined in this header so
+ * both sides agree on it. No provider registered -> all flags false.
+ * ------------------------------------------------------------------------ */
+typedef struct {
+    bool running;       /* TCP listener currently bound */
+    bool wifi_ready;    /* WiFi station has a usable IPv4 */
+    bool token_ready;   /* a token is available (persisted or ephemeral) */
+    int  port;          /* configured TCP port */
+    char token[33];     /* 32 lowercase hex chars + NUL */
+} lume_ota_status_t;
+typedef void (*lume_ota_status_provider_fn)(lume_ota_status_t *out);
+void lume_engine_set_ota_status_provider(lume_ota_status_provider_fn fn);

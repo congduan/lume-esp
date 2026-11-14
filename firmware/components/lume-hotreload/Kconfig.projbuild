@@ -1,0 +1,10 @@
+menu "Lume WiFi OTA (r26)"
+    config LUME_OTA_PORT
+        int "WiFi OTA TCP listen port"
+        default 8765
+        range 1 65535
+        help
+            TCP port for the authenticated WiFi OTA push channel. The server
+            binds only while the WiFi station has an IPv4 address. The CLI
+            selects a non-default port with --ota-port.
+endmenu

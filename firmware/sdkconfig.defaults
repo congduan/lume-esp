@@ -25,6 +25,9 @@ CONFIG_FREERTOS_HZ=1000
 # USB CDC console (hot-reload channel + logs)
 CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
 
+# WiFi OTA push channel TCP port (r26, Kconfig LUME_OTA_PORT)
+CONFIG_LUME_OTA_PORT=8765
+
 # Partition table: app + LittleFS-style data partition
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"

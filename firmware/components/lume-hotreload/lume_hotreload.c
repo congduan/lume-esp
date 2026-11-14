@@ -1,293 +1,236 @@
 /**
- * Hot reload over USB Serial/JTAG (USB CDC), M1 implementation.
+ * lume-hotreload (r26): JS app PUSH CHANNELS.
  *
- * See lume_hotreload.h for the full wire protocol and ownership notes.
- * Verified against ESP-IDF v5.5 installed headers:
- *   - component esp_driver_usb_serial_jtag, header driver/usb_serial_jtag.h
- *     (NOT the old usb_serial_jtag_driver.h name), APIs
- *     usb_serial_jtag_driver_install / _read_bytes / _write_bytes /
- *     _is_driver_installed, USB_SERIAL_JTAG_DRIVER_CONFIG_DEFAULT.
- *   - crc32 via esp_crc.h (component esp_hw_support), esp_crc32_le() which is
- *     a thin inline wrapper over esp_rom_crc32_le(crc, buf, len). With crc=0
- *     this is standard CRC-32 (zlib.crc32) over the buffer.
+ *   (1) USB Serial/JTAG (USB CDC) — M1. Same physical port as the ESP console
+ *       (CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y); the CLI filters "RELOAD " lines.
+ *   (2) WiFi TCP OTA — r26. Authenticated TCP server on port 8765 (Kconfig
+ *       CONFIG_LUME_OTA_PORT), bound ONLY while the WiFi station has an IPv4.
+ *
+ * Both channels feed their byte stream into a PRIVATE instance of the SAME
+ * portable frame codec (lume_frame.c) and both push through the SAME engine
+ * hot-replacement chain (lume_engine_request_reload + the single result cb).
+ * See include/lume_frame.h for the exact wire format (magic/len/crc/payload +
+ * BACK/PAUS/RESM). This file owns ONLY transport, auth, reply routing.
+ *
+ * Reply routing (why a FIFO): the engine has exactly ONE reload-result
+ * callback but two channels. Each accepted DATA frame pushes its reply sink
+ * onto a small FIFO BEFORE calling lume_engine_request_reload(); the result cb
+ * pops the head. The engine's staging slot is single/last-wins, so a frame
+ * that is superseded emits its "superseded" ERR synchronously (inside
+ * request_reload) — the FIFO pop order still matches that frame's sink. A
+ * recursive mutex is held across request_reload() so the synchronous cb can
+ * re-enter it and concurrent pushes cannot interleave with a tail-drop.
+ *
+ * Token: 16 bytes from esp_fill_random(), hex-encoded, persisted in NVS
+ * ("lume_ota"/"token"), logged at boot. NEVER hard-coded. If NVS is
+ * unavailable the channel still works with an ephemeral per-boot token.
+ *
+ * ESP-IDF v5.5.5 API evidence (verified before coding, not assumed):
+ *   - driver/usb_serial_jtag.h + _vfs.h : install/read/write/is_driver_installed
+ *     / vfs_use_driver (unchanged M1 path).
+ *   - esp_heap_caps.h           : heap_caps_malloc(MALLOC_CAP_SPIRAM)/free
+ *   - esp_random.h              : esp_fill_random(void*, size_t) (:43)
+ *   - nvs_flash.h / nvs.h       : nvs_flash_init (idempotent + Lock-guarded,
+ *     nvs_api.cpp:124-135), nvs_open/get_str/set_str/commit/close
+ *   - lwip/sockets.h            : socket/bind/listen/select/accept/recv/send/
+ *     setsockopt(SO_RCVTIMEO/SO_SNDTIMEO)/close, fd_set, struct sockaddr_in
+ *   - lume_net.h                : lume_net_has_ip() (spinlock-guarded, callable
+ *     from any task) gates the listener.
+ *   - lume_engine.h             : request_reload, set_reload_result_cb,
+ *     post_back/post_lifecycle, set_ota_status_provider.
  */
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <errno.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
-#include "esp_crc.h"
+#include "esp_random.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+#include "lwip/sockets.h"
 #include "driver/usb_serial_jtag.h"
 #include "driver/usb_serial_jtag_vfs.h"
 #include "lume_engine.h"
+#include "lume_net.h"
 #include "lume_hotreload.h"
+#include "lume_frame.h"
 
-static const char *TAG = "lume-hotreload";
+static const char *TAG     = "lume-hotreload";
+static const char *OTA_TAG = "lume-ota";
 
-#define LUME_MAGIC            "LUME"
-#define LUME_MAGIC_LEN        4
-#define LUME_LEN_FIELD_LEN    4    /* total_len u32 (payload byte count) */
-#define LUME_CRC_FIELD_LEN    4    /* crc32 u32 */
-#define LUME_HDR_FIELDS_LEN   (LUME_LEN_FIELD_LEN + LUME_CRC_FIELD_LEN)
-#define LUME_MAX_PAYLOAD      (256u * 1024u)   /* 256 KiB hard cap */
-#define LUME_RX_CHUNK         128
-#define LUME_RX_STACK         4096
-#define LUME_USJ_RX_BUFFER    1024  /* driver requires > 64 */
-#define LUME_USJ_TX_BUFFER    512
-#define LUME_TX_LINE_MAX      64
+#ifndef CONFIG_LUME_OTA_PORT
+#define CONFIG_LUME_OTA_PORT 8765
+#endif
+#define OTA_PORT           CONFIG_LUME_OTA_PORT
+#define OTA_TASK_STACK     4096
+#define OTA_IO_TIMEOUT_S   5
+#define OTA_RECV_CHUNK     512
+#define OTA_BACKLOG        1
+#define USB_RX_STACK       4096
+#define USB_RX_CHUNK       128
+#define USJ_RX_BUFFER      1024   /* driver requires > 64 */
+#define USJ_TX_BUFFER      512
 
-/* Serializes all TX writes: validation failures originate on the RX task,
- * the final OK/ERR-after-eval originates on the engine task via the callback. */
-static SemaphoreHandle_t s_tx_mutex;
+#define PENDING_MAX        16     /* bounded outstanding reloads */
 
-/* ------------------------------------------------------------------ */
-/* TX reply (also the engine's reload-result callback)                  */
-/* ------------------------------------------------------------------ */
-static void respond(bool ok, size_t len, const char *reason)
+/* ================================================================== */
+/* Reply sinks + the single engine result callback                     */
+/* ================================================================== */
+typedef enum { REPLY_USB, REPLY_TCP } reply_kind_t;
+typedef struct {
+    reply_kind_t kind;
+    int          sock;      /* REPLY_TCP only */
+} reply_sink_t;
+
+static reply_sink_t        s_usb_sink = { REPLY_USB, -1 };
+static SemaphoreHandle_t   s_tx_mutex;       /* serializes ALL reply writes */
+static SemaphoreHandle_t   s_pending_mutex;  /* RECURSIVE: guards the FIFO */
+
+/* Pending-result FIFO (ring). Head = oldest sink = next result to report. */
+static reply_sink_t s_pending[PENDING_MAX];
+static int          s_pending_head;
+static int          s_pending_count;
+
+static bool pending_push(reply_sink_t s)   /* caller holds s_pending_mutex */
 {
-    char line[LUME_TX_LINE_MAX];
-    int n;
-    if (ok) {
-        n = snprintf(line, sizeof(line), "RELOAD OK %u\n", (unsigned)len);
+    if (s_pending_count >= PENDING_MAX) return false;
+    s_pending[(s_pending_head + s_pending_count) % PENDING_MAX] = s;
+    s_pending_count++;
+    return true;
+}
+static bool pending_pop(reply_sink_t *out) /* caller holds s_pending_mutex */
+{
+    if (s_pending_count == 0) return false;
+    *out = s_pending[s_pending_head];
+    s_pending_head = (s_pending_head + 1) % PENDING_MAX;
+    s_pending_count--;
+    return true;
+}
+static void pending_drop_tail(void)        /* caller holds s_pending_mutex */
+{
+    if (s_pending_count > 0) s_pending_count--;
+}
+
+static void reply_write(reply_sink_t sink, const char *line, size_t n)
+{
+    if (n == 0) return;
+    xSemaphoreTake(s_tx_mutex, portMAX_DELAY);
+    if (sink.kind == REPLY_USB) {
+        int w = usb_serial_jtag_write_bytes(line, n, pdMS_TO_TICKS(50));
+        if (w != (int)n) {
+            ESP_LOGE(TAG, "USB reply TX short/failed (%d/%u)", w, (unsigned)n);
+        }
     } else {
-        n = snprintf(line, sizeof(line), "RELOAD ERR %s\n",
-                     reason != NULL ? reason : "unknown");
+        int w = send(sink.sock, line, n, 0);
+        if (w != (int)n) {
+            ESP_LOGE(OTA_TAG, "TCP reply TX short/failed (%d/%u, errno %d)",
+                     w, (unsigned)n, errno);
+        }
     }
-    if (n <= 0) {
+    xSemaphoreGive(s_tx_mutex);
+}
+
+/* Shared by BOTH channels: the exact "RELOAD OK/ERR" line of the M1 protocol. */
+static void reply_line(reply_sink_t sink, bool ok, size_t len,
+                       const char *reason)
+{
+    char line[LUME_OTA_REPLY_MAX];
+    int n = lume_ota_reply(line, sizeof(line), ok, len, reason);
+    if (n > 0) reply_write(sink, line, (size_t)n);
+}
+
+/* The engine's ONE reload-result callback (also called synchronously for a
+ * "superseded" frame from inside request_reload, on the pushing task). */
+static void on_engine_result(bool ok, size_t len, const char *reason)
+{
+    reply_sink_t sink;
+    xSemaphoreTakeRecursive(s_pending_mutex, portMAX_DELAY);
+    bool have = pending_pop(&sink);
+    xSemaphoreGiveRecursive(s_pending_mutex);
+    if (!have) {
+        ESP_LOGW(TAG, "reload result with no pending sink (dropped)");
         return;
     }
-    if ((size_t)n >= sizeof(line)) {
-        n = (int)sizeof(line) - 1;   /* snprintf truncation: reasons are short */
-    }
-    if (s_tx_mutex != NULL) {
-        xSemaphoreTake(s_tx_mutex, portMAX_DELAY);
-    }
-    /* write_bytes can legitimately return 0 (TX mutex/ring-buffer timeout);
-     * a silently dropped reply would leave the host waiting forever. */
-    int written = usb_serial_jtag_write_bytes(line, (size_t)n, pdMS_TO_TICKS(50));
-    if (written != (int)n) {
-        ESP_LOGE(TAG, "reply TX short/failed (%d/%d)", written, n);
-    }
-    if (s_tx_mutex != NULL) {
-        xSemaphoreGive(s_tx_mutex);
-    }
+    reply_line(sink, ok, len, reason);
 }
 
-/* ------------------------------------------------------------------ */
-/* Streaming frame parser (RX-task-only state, no locking needed)       */
-/* ------------------------------------------------------------------ */
-typedef enum {
-    ST_MAGIC,    /* aligned: read exactly 4 bytes, validate magic */
-    ST_HDR,      /* read 8 bytes (total_len + crc32) */
-    ST_BODY,     /* read total_len payload bytes into PSRAM */
-    ST_RESYNC,   /* silent rolling 4-byte scan for "LUME" after an error */
-} parse_state_t;
+/* ================================================================== */
+/* Frame codec glue (identical for USB and TCP)                         */
+/* ================================================================== */
+static void *psram_alloc(size_t len) { return heap_caps_malloc(len, MALLOC_CAP_SPIRAM); }
+static void  psram_free(void *p)     { heap_caps_free(p); }
 
-static parse_state_t s_state = ST_MAGIC;
-static uint8_t s_magic[LUME_MAGIC_LEN];   /* aligned magic read (ST_MAGIC) */
-static int     s_magic_n;
-static uint8_t s_hdr[LUME_HDR_FIELDS_LEN];
-static int     s_hdr_n;
-static uint8_t s_sync[LUME_MAGIC_LEN];    /* rolling window, kept in ALL states
-                                          * so resync never loses overlap */
-static int     s_sync_n;
-static uint8_t *s_payload;                /* PSRAM frame/staging buffer */
-static size_t  s_payload_len;
-static size_t  s_payload_n;
-static uint32_t s_want_crc;
-
-static void sync_push(uint8_t b)
+static void on_frame_event(lume_frame_ev_t ev, const uint8_t *payload,
+                           size_t len, const char *reason, void *user)
 {
-    s_sync[0] = s_sync[1];
-    s_sync[1] = s_sync[2];
-    s_sync[2] = s_sync[3];
-    s_sync[3] = b;
-    if (s_sync_n < LUME_MAGIC_LEN) {
-        s_sync_n++;
-    }
-}
-
-static bool sync_is_magic(void)
-{
-    return s_sync_n == LUME_MAGIC_LEN &&
-           memcmp(s_sync, LUME_MAGIC, LUME_MAGIC_LEN) == 0;
-}
-
-static uint32_t le32(const uint8_t *p)
-{
-    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
-
-static void enter_magic(void)
-{
-    s_state = ST_MAGIC;         /* next frame starts on an aligned boundary */
-    s_magic_n = 0;
-}
-
-static void enter_resync(void)
-{
-    /* The rolling window s_sync already holds the trailing bytes; a magic
-     * ending exactly at the error boundary must not be lost, so test it
-     * BEFORE the first new byte arrives. No errors are emitted while
-     * re-syncing on noise. */
-    if (sync_is_magic()) {
-        s_state = ST_HDR;
-        s_hdr_n = 0;
-        return;
-    }
-    s_state = ST_RESYNC;
-}
-
-static void reject(const char *reason, size_t len)
-{
-    ESP_LOGE(TAG, "frame rejected: %s (len=%u)", reason, (unsigned)len);
-    respond(false, len, reason);
-}
-
-static void back_frame(void)
-{
-    if (lume_engine_post_back() != 0)
-        ESP_LOGW(TAG, "BACK dropped: engine queue full");
-}
-
-static void feed(uint8_t b)
-{
-    sync_push(b);               /* always maintain the rolling window */
-
-    switch (s_state) {
-    case ST_MAGIC:
-        s_magic[s_magic_n++] = b;
-        if (s_magic_n == LUME_MAGIC_LEN) {
-            s_magic_n = 0;
-            if (memcmp(s_magic, "PAUS", LUME_MAGIC_LEN) == 0) {
-                lume_engine_post_lifecycle(LUME_EVT_PAUSE);
-                enter_magic();
-            } else if (memcmp(s_magic, "RESM", LUME_MAGIC_LEN) == 0) {
-                lume_engine_post_lifecycle(LUME_EVT_RESUME);
-                enter_magic();
-            } else if (memcmp(s_magic, "BACK", LUME_MAGIC_LEN) == 0) {
-                back_frame();
-                enter_magic();
-            } else if (memcmp(s_magic, LUME_MAGIC, LUME_MAGIC_LEN) == 0) {
-                s_state = ST_HDR;
-                s_hdr_n = 0;
-            } else {
-                /* ---- bad magic ---- */
-                ESP_LOGE(TAG, "bad magic: %02x %02x %02x %02x",
-                         s_magic[0], s_magic[1], s_magic[2], s_magic[3]);
-                reject("bad-magic", 0);
-                enter_resync();
-            }
+    reply_sink_t sink = *(const reply_sink_t *)user;
+    switch (ev) {
+    case LUME_FRAME_EV_DATA: {
+        /* Push BEFORE request_reload so a synchronous "superseded" result (or
+         * an early engine result) always finds a matching FIFO head. Holding
+         * the recursive mutex across the call keeps the FIFO consistent with
+         * concurrent pushes from the other channel. */
+        bool fail = false;
+        xSemaphoreTakeRecursive(s_pending_mutex, portMAX_DELAY);
+        bool pushed = pending_push(sink);
+        int r = pushed ? lume_engine_request_reload((const char *)payload, len)
+                       : -1;
+        if (r != 0) {
+            /* No engine result will arrive for this frame: undo the push. */
+            pending_drop_tail();
+            fail = true;
         }
+        xSemaphoreGiveRecursive(s_pending_mutex);
+        if (fail) reply_line(sink, false, len, "stage-oom");
         break;
-
-    case ST_RESYNC:
-        if (sync_is_magic()) {
-            s_state = ST_HDR;   /* the 4 magic bytes were just consumed */
-            s_hdr_n = 0;
-        }
+    }
+    case LUME_FRAME_EV_BACK:
+        if (lume_engine_post_back() != 0)
+            ESP_LOGW(TAG, "BACK dropped: engine queue full");
         break;
-
-    case ST_HDR:
-        s_hdr[s_hdr_n++] = b;
-        if (s_hdr_n == LUME_HDR_FIELDS_LEN) {
-            s_hdr_n = 0;
-            uint32_t total_len = le32(s_hdr);          /* payload byte count */
-            s_want_crc = le32(s_hdr + LUME_LEN_FIELD_LEN); /* crc32 over payload */
-
-            if (total_len == 0) {
-                /* ---- zero length ---- */
-                reject("empty", 0);
-                enter_resync();
-            } else if (total_len > LUME_MAX_PAYLOAD) {
-                /* ---- oversize: drop + resync, no allocation ---- */
-                ESP_LOGE(TAG, "payload too large: %u > %u (drop + resync)",
-                         (unsigned)total_len, (unsigned)LUME_MAX_PAYLOAD);
-                reject("too-large", total_len);
-                enter_resync();
-            } else {
-                s_payload = heap_caps_malloc(total_len, MALLOC_CAP_SPIRAM);
-                s_payload_len = total_len;
-                s_payload_n = 0;
-                if (s_payload == NULL) {
-                    /* oom: still consume exactly total_len bytes to keep the
-                     * boundary aligned; NULL payload == discard mode. */
-                    reject("oom", total_len);
-                }
-                s_state = ST_BODY;
-            }
-        }
+    case LUME_FRAME_EV_PAUSE:
+        lume_engine_post_lifecycle(LUME_EVT_PAUSE);
         break;
-
-    case ST_BODY:
-        if (s_payload != NULL) {
-            s_payload[s_payload_n] = b;
-        }
-        s_payload_n++;
-        if (s_payload_n == s_payload_len) {
-            if (s_payload == NULL) {
-                /* oom discard path: error already reported; boundary aligned */
-                enter_magic();
-                break;
-            }
-            uint32_t got = esp_crc32_le(0, s_payload, (uint32_t)s_payload_len);
-            if (got != s_want_crc) {
-                /* ---- bad crc ---- */
-                ESP_LOGE(TAG, "bad crc: got %08x want %08x (len=%u)",
-                         (unsigned)got, (unsigned)s_want_crc,
-                         (unsigned)s_payload_len);
-                reject("bad-crc", s_payload_len);
-                heap_caps_free(s_payload);
-                s_payload = NULL;
-                enter_resync();
-            } else {
-                /* ---- valid frame: stage + request engine reload ----
-                 * On success the engine emits the final RELOAD OK/ERR after
-                 * eval via the registered callback. */
-                if (lume_engine_request_reload((const char *)s_payload,
-                                               s_payload_len) != 0) {
-                    reject("stage-oom", s_payload_len);
-                }
-                heap_caps_free(s_payload);
-                s_payload = NULL;
-                enter_magic();
-            }
-        }
+    case LUME_FRAME_EV_RESUME:
+        lume_engine_post_lifecycle(LUME_EVT_RESUME);
+        break;
+    case LUME_FRAME_EV_ERR:
+        ESP_LOGE(TAG, "frame rejected: %s (len=%u)", reason, (unsigned)len);
+        reply_line(sink, false, len, reason);
         break;
     }
 }
 
-static void rx_task(void *arg)
+/* ================================================================== */
+/* (1) USB Serial/JTAG channel (M1, unchanged behaviour)               */
+/* ================================================================== */
+static lume_frame_parser_t s_usb_parser;
+
+static void usb_rx_task(void *arg)
 {
     (void)arg;
-    uint8_t chunk[LUME_RX_CHUNK];
+    uint8_t chunk[USB_RX_CHUNK];
     for (;;) {
         int n = usb_serial_jtag_read_bytes(chunk, sizeof(chunk),
                                            pdMS_TO_TICKS(20));
         for (int i = 0; i < n; i++) {
-            feed(chunk[i]);
+            lume_frame_parser_feed(&s_usb_parser, chunk[i]);
         }
     }
 }
 
-void lume_hotreload_start(void)
+static void usb_start(void)
 {
-    s_tx_mutex = xSemaphoreCreateMutex();
-    if (s_tx_mutex == NULL) {
-        ESP_LOGE(TAG, "tx mutex create failed (OOM)");
-        return;
-    }
-
     if (!usb_serial_jtag_is_driver_installed()) {
         usb_serial_jtag_driver_config_t cfg = {
-            .rx_buffer_size = LUME_USJ_RX_BUFFER,
-            .tx_buffer_size = LUME_USJ_TX_BUFFER,
+            .rx_buffer_size = USJ_RX_BUFFER,
+            .tx_buffer_size = USJ_TX_BUFFER,
         };
         esp_err_t err = usb_serial_jtag_driver_install(&cfg);
         if (err != ESP_OK) {
@@ -295,27 +238,259 @@ void lume_hotreload_start(void)
                      esp_err_to_name(err));
             return;
         }
-        ESP_LOGI(TAG, "USJ driver installed (rx=%u tx=%u)",
-                 (unsigned)LUME_USJ_RX_BUFFER, (unsigned)LUME_USJ_TX_BUFFER);
     } else {
         ESP_LOGI(TAG, "USJ driver already installed; reusing it for RX");
     }
-    /* Switch the console VFS from direct-FIFO (nonblocking LL) writes to the
-     * driver. Otherwise ESP_LOG goes straight at the USJ FIFO while our
-     * replies go through the driver, and concurrent TX can interleave or
-     * clobber a RELOAD line. Idempotent; applies to both install paths. */
+    /* Route ESP_LOG console TX through the driver too, so RELOAD replies and
+     * logs do not interleave on the FIFO (M1 r6 fix). */
     usb_serial_jtag_vfs_use_driver();
 
-    /* Final reload outcome (app eval OK / failed) is reported back to TX. */
-    lume_engine_set_reload_result_cb(respond);
-
-    BaseType_t ok = xTaskCreate(rx_task, "lume-hotreload-rx",
-                                LUME_RX_STACK, NULL, 4, NULL);
+    BaseType_t ok = xTaskCreate(usb_rx_task, "lume-hotreload-rx",
+                                USB_RX_STACK, NULL, 4, NULL);
     if (ok != pdPASS) {
-        ESP_LOGE(TAG, "rx task create failed (%d)", (int)ok);
+        ESP_LOGE(TAG, "usb rx task create failed (%d)", (int)ok);
         return;
     }
-    ESP_LOGI(TAG, "hot-reload up on USB Serial/JTAG; "
+    ESP_LOGI(TAG, "USB hot-reload up; "
                   "frame LUME|len:u32le|crc32:u32le|payload, max=%u bytes",
-             (unsigned)LUME_MAX_PAYLOAD);
+             (unsigned)LUME_FRAME_MAX_PAYLOAD);
+}
+
+/* ================================================================== */
+/* (2) WiFi TCP OTA channel (r26)                                      */
+/* ================================================================== */
+static char     s_token[LUME_OTA_TOKEN_STR_MAX];   /* 32 hex + NUL */
+static volatile bool s_token_ready;
+static volatile bool s_wifi_ready;
+static volatile bool s_ota_running;
+static int      s_listen_sock = -1;
+
+static void hex_encode(const uint8_t *in, size_t n, char *out)
+{
+    static const char hx[] = "0123456789abcdef";
+    for (size_t i = 0; i < n; i++) {
+        out[2 * i]     = hx[in[i] >> 4];
+        out[2 * i + 1] = hx[in[i] & 0x0f];
+    }
+    out[2 * n] = '\0';
+}
+
+/* First boot: generate a random token and persist it in NVS. Later boots:
+ * adopt the persisted token. If NVS is unavailable, keep the ephemeral token
+ * (OTA still works for this boot). nvs_flash_init() is idempotent and Lock-
+ * guarded (nvs_api.cpp:124-135), so calling it here alongside the engine
+ * task's own init at boot is safe. */
+static void token_init(void)
+{
+    char token[LUME_OTA_TOKEN_STR_MAX];
+    uint8_t raw[16];
+    esp_fill_random(raw, sizeof(raw));
+    hex_encode(raw, sizeof(raw), token);   /* ephemeral default */
+
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_OK) {
+        nvs_handle_t h;
+        err = nvs_open("lume_ota", NVS_READWRITE, &h);
+        if (err == ESP_OK) {
+            char stored[LUME_OTA_TOKEN_STR_MAX];
+            size_t len = sizeof(stored);
+            esp_err_t g = nvs_get_str(h, "token", stored, &len);
+            if (g == ESP_OK && len == LUME_OTA_TOKEN_HEX_LEN + 1) {
+                memcpy(token, stored, sizeof(token));
+            } else if (g == ESP_ERR_NVS_NOT_FOUND) {
+                esp_err_t s = nvs_set_str(h, "token", token);
+                if (s == ESP_OK) s = nvs_commit(h);
+                if (s != ESP_OK)
+                    ESP_LOGW(OTA_TAG, "token persist failed: %s (ephemeral this boot)",
+                             esp_err_to_name(s));
+            } else if (g != ESP_OK) {
+                ESP_LOGW(OTA_TAG, "nvs_get_str failed: %s (ephemeral this boot)",
+                         esp_err_to_name(g));
+            }
+            nvs_close(h);
+        } else {
+            ESP_LOGW(OTA_TAG, "nvs_open failed: %s (ephemeral this boot)",
+                     esp_err_to_name(err));
+        }
+    } else {
+        ESP_LOGW(OTA_TAG, "nvs_flash_init failed: %s (ephemeral this boot)",
+                 esp_err_to_name(err));
+    }
+    memcpy(s_token, token, sizeof(s_token));
+    s_token_ready = true;   /* publish last, after the token is final */
+}
+
+/* Status provider registered into the engine -> lume.net.otaStatus(). */
+static void ota_status_provider(lume_ota_status_t *out)
+{
+    memset(out, 0, sizeof(*out));
+    out->running     = s_ota_running;
+    out->wifi_ready  = s_wifi_ready;
+    out->token_ready = s_token_ready;
+    out->port        = OTA_PORT;
+    if (s_token_ready) memcpy(out->token, s_token, sizeof(out->token));
+}
+
+static int ota_bind_listener(void)
+{
+    int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (s < 0) {
+        ESP_LOGE(OTA_TAG, "socket() failed: errno %d", errno);
+        return -1;
+    }
+    int one = 1;
+    setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+    struct sockaddr_in addr;
+    memset(&addr, 0, sizeof(addr));
+    addr.sin_family      = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port        = htons(OTA_PORT);
+    if (bind(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        ESP_LOGE(OTA_TAG, "bind(:%d) failed: errno %d", OTA_PORT, errno);
+        close(s);
+        return -1;
+    }
+    if (listen(s, OTA_BACKLOG) < 0) {
+        ESP_LOGE(OTA_TAG, "listen() failed: errno %d", errno);
+        close(s);
+        return -1;
+    }
+    return s;
+}
+
+/* One client at a time. Per-socket I/O timeouts keep the loop responsive so
+ * the WiFi gate is re-checked even if a client stalls. After "AUTH OK" the
+ * byte stream is fed into a private frame parser (sink = this socket). */
+static void ota_handle_client(int sock)
+{
+    reply_sink_t sink = { REPLY_TCP, sock };
+    lume_frame_parser_t parser;
+    lume_frame_parser_init(&parser, psram_alloc, psram_free,
+                           on_frame_event, &sink);
+
+    struct timeval tv = { .tv_sec = OTA_IO_TIMEOUT_S, .tv_usec = 0 };
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
+    char   auth[LUME_OTA_AUTH_LINE_MAX];
+    size_t auth_n = 0;
+    bool   authed = false;
+    uint8_t chunk[OTA_RECV_CHUNK];
+    const char *ok_line  = "AUTH OK\n";
+    const char *err_line = "AUTH ERR\n";
+
+    for (;;) {
+        int n = recv(sock, chunk, sizeof(chunk), 0);
+        if (n <= 0) break;   /* EOF / timeout / error */
+        for (int i = 0; i < n; i++) {
+            uint8_t b = chunk[i];
+            if (!authed) {
+                if (b == '\n') {
+                    char provided[LUME_OTA_TOKEN_STR_MAX];
+                    bool valid = lume_ota_auth_parse(auth, auth_n,
+                                                     provided, sizeof(provided)) &&
+                                 s_token_ready &&
+                                 lume_ota_token_equal(provided, s_token);
+                    if (valid) {
+                        reply_write(sink, ok_line, strlen(ok_line));
+                        authed = true;
+                        ESP_LOGI(OTA_TAG, "client authenticated");
+                    } else {
+                        reply_write(sink, err_line, strlen(err_line));
+                        ESP_LOGW(OTA_TAG, "client rejected: bad token");
+                        goto done;
+                    }
+                    auth_n = 0;
+                } else if (auth_n < sizeof(auth) - 1) {
+                    auth[auth_n++] = (char)b;
+                } else {
+                    reply_write(sink, err_line, strlen(err_line));
+                    ESP_LOGW(OTA_TAG, "client rejected: overlong auth line");
+                    goto done;
+                }
+            } else {
+                lume_frame_parser_feed(&parser, b);
+            }
+        }
+    }
+done:
+    close(sock);
+}
+
+static void ota_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        bool has_ip = lume_net_has_ip();
+        s_wifi_ready = has_ip;
+
+        /* Portable gate (host-tested): WiFi-not-connected -> no listener. */
+        if (!lume_ota_can_serve(has_ip, (bool)s_token_ready)) {
+            if (s_listen_sock >= 0) {
+                close(s_listen_sock);
+                s_listen_sock = -1;
+                s_ota_running = false;
+                ESP_LOGI(OTA_TAG, "WiFi down: OTA server stopped");
+            }
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            continue;      /* auto-start on the next GOT_IP */
+        }
+        if (s_listen_sock < 0) {
+            s_listen_sock = ota_bind_listener();
+            if (s_listen_sock < 0) {
+                vTaskDelay(pdMS_TO_TICKS(1000));
+                continue;
+            }
+            s_ota_running = true;
+            ESP_LOGI(OTA_TAG, "OTA server up on 0.0.0.0:%d (token logged at boot)",
+                     OTA_PORT);
+        }
+        /* 1s select: re-evaluate the WiFi gate every second even when idle. */
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(s_listen_sock, &fds);
+        struct timeval tv = { .tv_sec = 1, .tv_usec = 0 };
+        int n = select(s_listen_sock + 1, &fds, NULL, NULL, &tv);
+        if (n > 0 && FD_ISSET(s_listen_sock, &fds)) {
+            int client = accept(s_listen_sock, NULL, NULL);
+            if (client >= 0) ota_handle_client(client);
+        }
+    }
+}
+
+static void ota_start(void)
+{
+    token_init();
+    /* Intentional: the token is printed so the user can pass it to the CLI.
+     * Plaintext LAN trust model — see docs/KNOWN-SIMPLIFICATIONS.md (r26). */
+    ESP_LOGI(OTA_TAG, "WiFi OTA token: %s  (use: lume deploy --ota <ip> --token %s)",
+             s_token, s_token);
+    lume_engine_set_ota_status_provider(ota_status_provider);
+    BaseType_t ok = xTaskCreate(ota_task, "lume-ota", OTA_TASK_STACK,
+                                NULL, 4, NULL);
+    if (ok != pdPASS) {
+        ESP_LOGE(OTA_TAG, "OTA task create failed (%d)", (int)ok);
+    }
+}
+
+/* ================================================================== */
+/* Public entry                                                        */
+/* ================================================================== */
+void lume_hotreload_start(void)
+{
+    s_tx_mutex      = xSemaphoreCreateMutex();
+    s_pending_mutex = xSemaphoreCreateRecursiveMutex();
+    if (s_tx_mutex == NULL || s_pending_mutex == NULL) {
+        ESP_LOGE(TAG, "mutex create failed (OOM)");
+        return;
+    }
+
+    lume_frame_parser_init(&s_usb_parser, psram_alloc, psram_free,
+                           on_frame_event, &s_usb_sink);
+    /* Final reload outcome (eval OK / failed) is reported back to TX for
+     * whichever channel pushed the frame. */
+    lume_engine_set_reload_result_cb(on_engine_result);
+
+    usb_start();
+    ota_start();
 }
