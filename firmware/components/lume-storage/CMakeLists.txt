@@ -6,7 +6,7 @@
 # No driver/lume-board dependency: NVS lives in main flash and needs no
 # external peripheral.
 idf_component_register(
-    SRCS "lume_kv.c"
+    SRCS "lume_kv.c" "lume_fs.c"
     INCLUDE_DIRS "include"
-    REQUIRES nvs_flash
+    REQUIRES nvs_flash joltwallet__littlefs esp_partition
 )
