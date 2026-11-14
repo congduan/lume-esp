@@ -2185,6 +2185,10 @@ lv_font_t lv_font_montserrat_14 = {
     .underline_position = -1,
     .underline_thickness = 1,
 #endif
-    .dsc = &font_dsc           /*The custom font data. Will be accessed by `get_glyph_bitmap/dsc` */
+    .dsc = &font_dsc,          /*The custom font data. Will be accessed by `get_glyph_bitmap/dsc` */
+#if LV_VERSION_CHECK(8, 2, 0) || LVGL_VERSION_MAJOR >= 9
+    /* Lume r35: missing CJK glyphs fall through to the bundled simplified-Chinese font. */
+    .fallback = &lume_font_sc_16,
+#endif
 };
 #endif /*#if LV_FONT_MONTSERRAT_14*/

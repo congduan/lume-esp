@@ -7,11 +7,14 @@
 #define LV_USE_LODEPNG 1
 #define LV_USE_TJPGD 1
 
-/* Fonts: Montserrat 14 default; enable 20/32 for UI scale */
+/* Fonts: Montserrat 14 default; enable 20/32 for UI scale.
+ * r35: lume_font_sc_16 (generated, in lume-engine) is the CJK fallback target
+ * of the Montserrat fonts and the fontSize:16 face. */
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_20 1
 #define LV_FONT_MONTSERRAT_32 1
 #define LV_FONT_DEFAULT &lv_font_montserrat_14
+#define LV_FONT_CUSTOM_DECLARE LV_FONT_DECLARE(lume_font_sc_16)
 
 /* No demos/examples in firmware */
 #define LV_USE_DEMO_WIDGETS 0
