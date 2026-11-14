@@ -63,6 +63,9 @@ assert.match(read('docs/KNOWN-SIMPLIFICATIONS.md'), /## r25 \/ BLE peripheral fi
 console.log('PASS lume.ble wiring (header, CMake, sdkconfig, natives, types, docs)');
 
 // --- 2. example behaviour against a host stand-in ------------------------
+// The example walks OFF -> advertising -> connected -> LINKED: on the first
+// poll of a live link it sends the "HELLO" handshake, and every inbound RX
+// packet completes/keeps the link verified and is acked with "OK <msg>".
 function makeSession(overrides = {}) {
   const calls = [];
   const ble = {
@@ -87,9 +90,15 @@ function makeSession(overrides = {}) {
 const basic = makeSession();
 basic.run('__lume_start()');
 assert.deepStrictEqual(basic.calls, [['start', 'Lume']]);
+assert.strictEqual(basic.calls.filter(c => c[0] === 'write').length, 0,
+                   'nothing must be sent before the first poll tick');
+basic.setNow(100);
+basic.run('__lume_tick()');
+assert.ok(basic.calls.some(c => c[0] === 'write' && c[1] === 'HELLO'),
+          'the first poll of a live link must send the HELLO handshake');
 assert.ok(basic.attrs().some(v => v.includes('connected')),
-          'status() should feed the reactive status Text');
-console.log('PASS onStart starts advertising and renders status');
+          'status() should feed the reactive link status Text');
+console.log('PASS onStart advertises; first poll of a live link sends HELLO');
 
 let incoming = null;
 const echo = makeSession({
@@ -99,20 +108,28 @@ echo.run('__lume_start()');
 incoming = 'hello';
 echo.setNow(100);
 echo.run('__lume_tick()');
-assert.ok(echo.calls.some(c => c[0] === 'write' && c[1] === 'echo:hello'),
-          'inbound RX packet must be echoed over TX');
+assert.ok(echo.calls.some(c => c[0] === 'write' && c[1] === 'OK hello'),
+          'the inbound handshake reply must be acked with OK <msg>');
 assert.ok(echo.attrs().some(v => v.includes('hello')),
-          'inbound RX packet must update the reactive Text');
-console.log('PASS interval poll drains one RX packet and echoes it');
+          'inbound RX packet must update the reactive last-rx Text');
+assert.ok(echo.attrs().some(v => v.includes('verified')),
+          'completing the handshake must update the link status Text');
+console.log('PASS poll drains one RX packet, verifies the link and acks it');
 
 const button = echo.session.messages.find(m => m[0] === 'create' && m[2] === 2);
-assert.ok(button, 'example must create a Button node');
+assert.ok(button, 'example must create a Button node (the first is Ping)');
 echo.session.press(button[1]);
 assert.ok(echo.calls.some(c => c[0] === 'write' && c[1] === 'ping'),
-          'Button onPress must send a ping');
-assert.ok(echo.attrs().some(v => v === '1'),
-          'Button press must update the pings counter Text');
-console.log('PASS Button press sends a ping and updates the counter');
+          'Ping Button onPress must send a ping');
+console.log('PASS Ping Button press sends a ping');
+
+const fresh = makeSession();
+fresh.run('__lume_start()');
+const freshButton = fresh.session.messages.find(m => m[0] === 'create' && m[2] === 2);
+fresh.session.press(freshButton[1]);
+assert.ok(fresh.attrs().some(v => v === '1'),
+          'Ping Button press must update the pings counter Text');
+console.log('PASS Ping counter Text reflects the press');
 
 incoming = -3;
 echo.setNow(200);
