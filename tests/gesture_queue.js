@@ -21,12 +21,13 @@ typedef struct { uint8_t type, g_kind, g_dir, g_cancelled; uint16_t node_id; int
 #define pdTRUE 1
 #define TAG "test"
 #define ESP_LOGW(...) ((void)0)
-static int s_evt_queue = 1;
+static int queue_handle;
+static int *s_evt_queue = &queue_handle;
 static unsigned s_evt_dropped;
 static lume_engine_evt_t queue[16];
 static int count, waited;
-static int uxQueueSpacesAvailable(int q) { (void)q; return 16-count; }
-static int xQueueSend(int q, const lume_engine_evt_t *e, int timeout) {
+static int uxQueueSpacesAvailable(int *q) { (void)q; return 16-count; }
+static int xQueueSend(int *q, const lume_engine_evt_t *e, int timeout) {
   (void)q;
   if (count == 16) { assert(timeout == portMAX_DELAY); waited++; count--; }
   queue[count++] = *e; return pdTRUE;

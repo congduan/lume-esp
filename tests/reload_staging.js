@@ -21,7 +21,7 @@ const c = `
 #include <stdio.h>
 #include <sched.h>
 typedef pthread_mutex_t *SemaphoreHandle_t;
-typedef int QueueHandle_t;
+typedef int *QueueHandle_t;
 typedef struct { int type, node_id; } lume_engine_evt_t;
 #define LUME_EVT_RELOAD 2
 #define MALLOC_CAP_SPIRAM 0
@@ -32,16 +32,29 @@ typedef struct { int type, node_id; } lume_engine_evt_t;
 #define ESP_LOGE(...) ((void)0)
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static SemaphoreHandle_t s_stage_mutex = &mutex;
-static QueueHandle_t s_evt_queue = 1;
+static int queue_handle;
+static QueueHandle_t s_evt_queue = &queue_handle;
 static char *s_staged_src;
 static size_t s_staged_len;
 static bool s_reload_pending;
 static int frees, superseded, posts, post_result, block_post, entered_post, release_post;
-static void *freed[8];
-static void *heap_caps_malloc(size_t n, int caps) { (void)caps; return malloc(n); }
+static pthread_mutex_t alloc_mutex = PTHREAD_MUTEX_INITIALIZER;
+static void *live[8];
+static void *heap_caps_malloc(size_t n, int caps) {
+  (void)caps; void *p = malloc(n);
+  pthread_mutex_lock(&alloc_mutex);
+  int found = 0;
+  for (int i = 0; i < 8; i++) if (!live[i]) { live[i] = p; found = 1; break; }
+  pthread_mutex_unlock(&alloc_mutex);
+  assert(found); return p;
+}
 static void heap_caps_free(void *p) {
-  for (int i = 0; i < frees; i++) assert(freed[i] != p);
-  freed[frees++] = p; free(p);
+  pthread_mutex_lock(&alloc_mutex);
+  int found = 0;
+  for (int i = 0; i < 8; i++) if (live[i] == p) { live[i] = NULL; found++; }
+  assert(found == 1); frees++;
+  pthread_mutex_unlock(&alloc_mutex);
+  free(p);
 }
 static void result_cb(bool ok, size_t n, const char *why) {
   (void)ok; (void)n; assert(strcmp(why, "superseded") == 0); superseded++;
