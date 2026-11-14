@@ -100,7 +100,13 @@
   }
   function Launcher(p) {
     p = p || {};
-    if (!Array.isArray(p.apps)) throw new TypeError('lume: Launcher apps must be an array');
+    /* Default source: the installed app set (lume.apps.entries()). Passing
+     * `apps` still wins, so the component stays usable without the store. */
+    var apps = p.apps;
+    if (apps === undefined) {
+      apps = lume.apps && typeof lume.apps.entries === 'function' ? lume.apps.entries() : [];
+    }
+    if (!Array.isArray(apps)) throw new TypeError('lume: Launcher apps must be an array');
     callback('onLaunch', p.onLaunch);
     var columns = positive('Launcher columns', p.columns, 3, 8);
     var editing = signal(false), launching = signal(null);
@@ -114,7 +120,7 @@
       style: { x: 404, y: top + 2, width: 68, height: 30 },
       onPress: function () { editing.set(!editing()); } });
     var rows = [];
-    for (var i = 0; i < p.apps.length; i += columns) rows.push(p.apps.slice(i, i + columns));
+    for (var i = 0; i < apps.length; i += columns) rows.push(apps.slice(i, i + columns));
     var list = List({ parent: root,
       style: { x: 0, y: top + 36, width: '100%', height: 480 - top - 36,
         background: '#000000', scrollbar: 'auto' },
@@ -126,7 +132,13 @@
             return View({ style: { display: 'flex', flexDirection: 'column',
               alignItems: 'center', width: Math.floor(460 / columns), height: 94, scroll: 'none',
               opacity: function () { return launching() === app.id ? 0.55 : 1; } },
-              onPress: function () { if (!editing()) { launching.set(app.id); if (p.onLaunch) p.onLaunch(app.id); } } }, [
+              onPress: function () {
+                if (editing()) return;
+                launching.set(app.id);
+                /* Default to a real runtime switch; a host callback overrides. */
+                if (p.onLaunch) p.onLaunch(app.id);
+                else if (lume.apps && typeof lume.apps.launch === 'function') lume.apps.launch(app.id);
+              } }, [
               Canvas({ width: 48, height: 48, style: { borderRadius: 24 }, onDraw: function (c) {
                 c.clear(); c.fillColor(app.color || '#385CA5'); c.fillRect(2, 2, 44, 44);
                 c.text(17, 18, String(app.icon || app.glyph || app.label || '').slice(0, 1), '#FFFFFF');

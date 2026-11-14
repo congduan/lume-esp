@@ -1,7 +1,11 @@
-/** Watch launcher: shell composition with a host-defined bundle action. */
+/** Watch launcher: shell composition over the on-device app store. */
 import '../../runtime/shell.js';
 
-const APPS = [
+/* Real apps come from LittleFS through lume.apps.entries(). The static list is
+ * only a preview fallback for the simulator / a device with nothing installed;
+ * tapping an entry calls lume.apps.launch(id), which switches the single live
+ * app (this launcher context is destroyed by that switch). */
+const PREVIEW = [
   { id: 'clock', label: '时钟', color: '#1E88E5', icon: 'T' },
   { id: 'weather', label: '天气', color: '#43A047', icon: 'W' },
   { id: 'music', label: '音乐', color: '#8E24AA', icon: 'M' },
@@ -16,10 +20,11 @@ const APPS = [
   { id: 'calc', label: '计算器', color: '#7CB342', icon: 'C' },
 ];
 
+const installed = lume.apps.entries();
+
 lume.ui.shell.Launcher({
-  apps: APPS, columns: 3, title: 'Lume', statusBar: true,
-  onLaunch: function (id) {
-    // Device hosts can switch bundles here; the simulator records selection.
-    lume.log('launch ' + id);
-  },
+  apps: installed.length ? installed : PREVIEW,
+  columns: 3,
+  title: 'Lume',
+  statusBar: true,
 });
