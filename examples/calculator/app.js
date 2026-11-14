@@ -93,10 +93,15 @@ var C_FN = '#2E3340';      /* operators, backspace */
 var C_AC = '#B3453C';      /* clear */
 var C_EQ = '#2E86FF';      /* equals */
 
+/* Key rows use fixed heights: percent heights resolve against the parent's
+ * content box (5x '100%' would overflow), and fixed px works in both LVGL
+ * and the browser renderer. 120 + 12 + 5x45 + 4x10 = 397 <= 400 content. */
+var KEY_H = 45;
+
 function key(label, bg, flexGrow, onPress) {
   return Button({
     title: label,
-    style: { flexGrow: flexGrow || 1, height: '100%', borderRadius: 14, background: bg },
+    style: { flexGrow: flexGrow || 1, height: KEY_H, borderRadius: 14, background: bg },
     onPress: onPress
   });
 }
@@ -104,10 +109,51 @@ function digit(d) { return key(d, C_KEY, 1, function () { pressDigit(d); }); }
 
 function keyRow(children) {
   return View({ style: { display: 'flex', flexDirection: 'row', gap: 10,
-                         width: '100%', height: '100%', flexGrow: 1 } }, children);
+                         width: '100%', height: KEY_H } }, children);
 }
 
-/* ---- display: small expression line over a clipped main line ---- */
+/* ---- display: small expression line over seven-segment digits ----
+ * Style has no fontSize (Typography is deferred), so the big main line is
+ * drawn as 7-segment digits on a canvas: <=13 chars x ~5 rects stays under
+ * the ~100-primitive redraw budget. Cells are 26 px wide / 32 px tall. */
+var SEG_W = 26, SEG_X0 = 4, SEG_H = 32;
+var SEG_RECTS = {
+  a: [2, 0, 14, 4], b: [14, 2, 4, 11], c: [14, 17, 4, 11],
+  d: [2, 28, 14, 4], e: [0, 17, 4, 11], f: [0, 2, 4, 11], g: [2, 14, 14, 4]
+};
+var SEG_MAP = {
+  '0': 'abcdef', '1': 'bc', '2': 'abged', '3': 'abgcd', '4': 'fgbc',
+  '5': 'afgcd', '6': 'acdefg', '7': 'abc', '8': 'abcdefg', '9': 'abcdfg',
+  '-': 'g', 'E': 'afged', 'r': 'eg', 'o': 'cdeg'
+};
+function segAdvance(ch) { return ch === '.' ? 18 : SEG_W; }
+
+function drawMainDisplay(c) {
+  var text = dispMain();
+  var color = text === 'Error' ? '#F87171' : '#F2F5FA';
+  c.clear();
+  /* clear() paints black; repaint the card surface so the canvas blends in */
+  c.fillColor('#1C1F26');
+  c.fillRect(0, 0, 368, 44);
+  c.fillColor(color);
+  /* right-align inside the canvas; overflow past the left edge is clipped */
+  var total = 0;
+  for (var i = 0; i < text.length; i++) total += segAdvance(text[i]);
+  var x = 368 - 4 - total;
+  for (var j = 0; j < text.length; j++) {
+    var ch = text[j], cx = x + SEG_X0, cy = 4;
+    if (ch === '.') c.fillRect(cx + 12, cy + 26, 5, 4);
+    else {
+      var segs = SEG_MAP[ch];
+      if (segs) for (var k = 0; k < segs.length; k++) {
+        var r = SEG_RECTS[segs[k]];
+        c.fillRect(cx + r[0], cy + r[1], r[2], r[3]);
+      }
+    }
+    x += segAdvance(ch);
+  }
+}
+
 View({ style: {
   width: '100%', height: '100%', background: 'primary',
   display: 'flex', flexDirection: 'column', padding: 40, gap: 12
@@ -118,12 +164,11 @@ View({ style: {
     justifyContent: 'center', padding: 16, gap: 6
   } }, [
     Text({ text: function () { return dispExpr(); }, style: { textAlign: 'right', width: '100%', opacity: 0.55 } }),
-    Text({ text: function () { return dispMain(); }, style: { textAlign: 'right', width: '100%',
-      longMode: 'scroll-circular' } })
+    Canvas({ width: 368, height: 44, onDraw: drawMainDisplay })
   ]),
   View({ style: {
     display: 'flex', flexDirection: 'column', gap: 10, width: '100%',
-    flexGrow: 1, height: 'auto'
+    height: 'auto'
   } }, [
     keyRow([
       key('AC', C_AC, 1, pressClear),
