@@ -4,6 +4,8 @@
 
 /* Color: RGB565, 16bpp — matches esp_lcd QSPI frame buffer format */
 #define LV_COLOR_DEPTH 16
+#define LV_USE_LODEPNG 1
+#define LV_USE_TJPGD 1
 
 /* Fonts: Montserrat 14 default; enable 20/32 for UI scale */
 #define LV_FONT_MONTSERRAT_14 1
