@@ -1,0 +1,19 @@
+{
+  "name": "@lume/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "lume": "./lume.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "esbuild": "0.28.2",
+    "serialport": "12.0.0"
+  }
+}
