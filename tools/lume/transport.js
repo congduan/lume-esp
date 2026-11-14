@@ -1,5 +1,5 @@
 import { SerialPort } from 'serialport';
-import { frame } from './protocol.js';
+import { frame, cmdFrame } from './protocol.js';
 
 const ACK_TIMEOUT_MS = 15000;
 
@@ -13,6 +13,14 @@ export async function detectPort() {
   throw new Error('no ESP32-S3 USB Serial/JTAG port found; connect the board or pass --port <path>');
 }
 
+/* Device reply grammar (firmware lume_hotreload.c / lume_cmd.c):
+ *   RELOAD OK <len> | RELOAD ERR <reason>            (bundle / launch eval)
+ *   CMD OK <verb> [<arg>] [<len>] | CMD ERR <reason> (store/list/remove/meta)
+ *   APP\t<id> / META\t<id>\t<json>                   (list blocks, before OK) */
+const RELOAD_LINE = /^RELOAD (OK (\d+)|ERR (\S+))\r?$/;
+const CMD_OK_LINE = /^CMD OK(?: (\S+))?(?: (\S+))?(?: (\d+))?\r?$/;
+const CMD_ERR_LINE = /^CMD ERR (\S+)\r?$/;
+
 export async function openPort(path, { monitor = false } = {}) {
   const selected = path ?? await detectPort();
   const port = new SerialPort({ path: selected, baudRate: 115200, autoOpen: false });
@@ -20,17 +28,43 @@ export async function openPort(path, { monitor = false } = {}) {
   catch (err) { throw new Error(`cannot open serial port ${selected}: ${err.message} (check connection and port ownership)`); }
   let pending = null;
   let lineBuffer = '';
+  const finish = (ok, value) => {
+    const request = pending;
+    pending = null;
+    clearTimeout(request.timer);
+    if (ok) request.resolve(value);
+    else request.reject(value instanceof Error ? value : new Error(String(value)));
+  };
   const consumeLine = line => {
-    const ack = /^RELOAD (OK (\d+)|ERR (\S+))\r?$/.exec(line);
-    if (ack && pending) {
-      const request = pending;
-      pending = null;
-      clearTimeout(request.timer);
-      if (ack[2]) {
-        const received = Number(ack[2]);
-        received === request.length ? request.resolve() : request.reject(new Error(`device ACK length mismatch: ${received} != ${request.length}`));
-      } else request.reject(new Error(`device rejected bundle: ${ack[3]}`));
-    } else if (monitor) process.stdout.write(line + '\n');
+    if (!pending) {
+      if (monitor) process.stdout.write(line + '\n');
+      return;
+    }
+    if (pending.kind === 'cmd' && (line.startsWith('APP\t') || line.startsWith('META\t'))) {
+      pending.lines.push(line);
+      return;
+    }
+    if (pending.kind === 'bundle' || pending.kind === 'launch') {
+      const ack = RELOAD_LINE.exec(line);
+      if (!ack) { if (monitor) process.stdout.write(line + '\n'); return; }
+      if (ack[2] === undefined) return finish(false, new Error(`device rejected: ${ack[3]}`));
+      const received = Number(ack[2]);
+      // A launched app reports its OWN source length, not the command length.
+      if (pending.kind === 'bundle' && received !== pending.length) {
+        return finish(false, new Error(`device ACK length mismatch: ${received} != ${pending.length}`));
+      }
+      return finish(true, received);
+    }
+    const ok = CMD_OK_LINE.exec(line);
+    const err = CMD_ERR_LINE.exec(line);
+    if (!ok && !err) { if (monitor) process.stdout.write(line + '\n'); return; }
+    if (err) return finish(false, new Error(`device rejected command: ${err[1]}`));
+    const verb = ok[1] ?? '';
+    const arg = ok[2] ?? '';
+    // LIST answers "CMD OK list <count>": the count occupies the arg slot.
+    const count = ok[3] !== undefined ? Number(ok[3])
+      : verb === 'list' && arg !== '' ? Number(arg) : null;
+    return finish(true, { verb, arg, count, lines: pending.lines });
   };
   port.on('data', bytes => {
     lineBuffer += bytes.toString('utf8');
@@ -42,7 +76,7 @@ export async function openPort(path, { monitor = false } = {}) {
       lineBuffer = lineBuffer.slice(index + 1);
     }
   });
-  const failPending = err => { if (pending) { clearTimeout(pending.timer); pending.reject(err); pending = null; } };
+  const failPending = err => { if (pending) finish(false, err); };
   port.on('error', err => failPending(new Error(`serial port ${selected}: ${err.message}`)));
   port.on('close', () => failPending(new Error(`serial port ${selected} disconnected`)));
   const write = async bytes => {
@@ -50,16 +84,38 @@ export async function openPort(path, { monitor = false } = {}) {
     await new Promise((ok, fail) => port.write(bytes, err => err ? fail(err) : ok()));
     await new Promise((ok, fail) => port.drain(err => err ? fail(err) : ok()));
   };
+  const startPending = (kind, extra) => {
+    if (pending) throw new Error('a device request is already waiting for ACK');
+    return new Promise((resolve, reject) => {
+      pending = { kind, resolve, reject, ...extra,
+        timer: setTimeout(() => {
+          pending = null;
+          reject(new Error(`device did not ACK ${kind} within ${ACK_TIMEOUT_MS} ms on ${selected}`));
+        }, ACK_TIMEOUT_MS) };
+    });
+  };
   return {
     path: selected,
     async push(source) {
-      if (pending) throw new Error('a reload is already waiting for device ACK');
       const bytes = frame(source);
-      const result = new Promise((resolve, reject) => {
-        pending = { length: bytes.length - 12, resolve, reject,
-          timer: setTimeout(() => { pending = null; reject(new Error(`device did not ACK reload within ${ACK_TIMEOUT_MS} ms on ${selected}`)); }, ACK_TIMEOUT_MS) };
-      });
+      const result = startPending('bundle', { length: bytes.length - 12 });
       // A write failure can reject before the caller receives this promise.
+      result.catch(() => {});
+      try { await write(bytes); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
+      return result;
+    },
+    /** Command frame answered by CMD OK/ERR (store/list/remove/meta). */
+    async command(text) {
+      const bytes = cmdFrame(text);
+      const result = startPending('cmd', { lines: [] });
+      result.catch(() => {});
+      try { await write(bytes); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
+      return result;
+    },
+    /** Command frame answered by the engine's RELOAD OK/ERR (launch/home). */
+    async commandReload(text) {
+      const bytes = cmdFrame(text);
+      const result = startPending('launch', {});
       result.catch(() => {});
       try { await write(bytes); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
       return result;
