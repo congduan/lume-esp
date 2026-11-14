@@ -211,6 +211,7 @@ const char lume_prelude_js[] =
 "  log: lume.log\n"
 "};\n"
 "/* Wake callbacks run after panel sleep-out and full-redraw scheduling. */\n"
+"lume.power = lume.power || {};\n"
 "var __wakeCallbacks = [];\n"
 "lume.power.sleepNow = function () {\n"
 "  var status = lume.power._sleepNow();\n"
