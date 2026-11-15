@@ -51,15 +51,8 @@
 #define LCD_BPP         LUME_LCD_BPP
 #define LCD_SPI_HOST    LUME_LCD_SPI_HOST
 #define LCD_PCLK_HZ     LUME_LCD_PCLK_HZ
-/* Draw buffer height in lines (profile value: 20). Buffers stay in INTERNAL
- * SRAM (see lume_display_init): the SPI driver copies a non-DMA-capable PSRAM
- * buffer into an internal bounce buffer for every transaction, and a
- * full-frame (460800 B) bounce allocation fails with ESP_ERR_NO_MEM. 20 lines
- * = 19200 B per buffer, 38400 B for double buffering, which fits internal RAM
- * and lets the DMA read the draw buffer directly. It also matches the
- * granularity esp-brookesia uses on this board
- * (BROOKESIA_GUI_LVGL_DISPLAY_SOURCE_DEFAULT_BUFFER_HEIGHT = 20). */
-#define DRAW_BUF_LINES  LUME_LCD_DRAW_BUF_LINES
+/* The A/B height is selected by Kconfig; 48 falls back to 20 on allocation failure. */
+#define DRAW_BUF_LINES CONFIG_LUME_DRAW_BUF_LINES
 
 #define QSPI_OP_WRITE_CMD   LUME_LCD_QSPI_OP_WRITE_CMD
 #define QSPI_OP_WRITE_COLOR LUME_LCD_QSPI_OP_WRITE_COLOR
@@ -455,28 +448,29 @@ esp_err_t lume_display_init(lv_display_t **out_disp)
     ESP_RETURN_ON_FALSE(disp != NULL, ESP_ERR_NO_MEM, TAG, "lv_display_create failed");
     s_disp = disp;
 
-    /* Draw buffers live in INTERNAL SRAM so the QSPI DMA reads them in place.
-     * A PSRAM buffer is not DMA-capable: spi_master copies every transaction
-     * into an internal "priv" bounce buffer (setup_dma_priv_buffer), which
-     * costs one extra copy per flush and fails with ESP_ERR_NO_MEM as soon as
-     * the transfer gets large (a full-frame 460800 B bounce cannot be
-     * allocated). PSRAM is kept as a fallback in case internal RAM is tight. */
-    const size_t buf_bytes = (size_t)LCD_H_RES * DRAW_BUF_LINES * (LCD_BPP / 8);
+    /* Both buffers must be internal DMA SRAM. A failed 48-line attempt is
+     * released completely before retrying the known 20-line configuration. */
     const uint32_t internal_caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA | MALLOC_CAP_8BIT;
-    void *buf1 = heap_caps_malloc(buf_bytes, internal_caps);
-    void *buf2 = heap_caps_malloc(buf_bytes, internal_caps);
-    const char *where = "SRAM";
-    if (buf1 == NULL || buf2 == NULL) {
+    unsigned lines = DRAW_BUF_LINES;
+    size_t buf_bytes = (size_t)LCD_H_RES * lines * (LCD_BPP / 8);
+    size_t largest = heap_caps_get_largest_free_block(internal_caps);
+    void *buf1 = NULL, *buf2 = NULL;
+    if (largest >= buf_bytes) buf1 = heap_caps_malloc(buf_bytes, internal_caps);
+    if (buf1) buf2 = heap_caps_malloc(buf_bytes, internal_caps);
+    if ((!buf1 || !buf2) && lines != 20) {
         free(buf1);
         free(buf2);
-        buf1 = heap_caps_malloc(buf_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-        buf2 = heap_caps_malloc(buf_bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-        where = "PSRAM";
+        ESP_LOGW(TAG, "%u-line DMA buffers unavailable (each=%u, largest-before=%u); retrying 20 lines",
+                 lines, (unsigned)buf_bytes, (unsigned)largest);
+        lines = 20;
+        buf_bytes = (size_t)LCD_H_RES * lines * (LCD_BPP / 8);
+        buf1 = heap_caps_malloc(buf_bytes, internal_caps);
+        buf2 = heap_caps_malloc(buf_bytes, internal_caps);
     }
-    if (buf1 == NULL || buf2 == NULL) {
-        ESP_LOGE(TAG, "draw buffer alloc failed (%u bytes each)", (unsigned)buf_bytes);
+    if (!buf1 || !buf2) {
         free(buf1);
         free(buf2);
+        ESP_LOGE(TAG, "20-line DMA draw buffer allocation failed (each=%u)", (unsigned)buf_bytes);
         return ESP_ERR_NO_MEM;
     }
     lv_display_set_buffers(disp, buf1, buf2, (uint32_t)buf_bytes,
@@ -500,6 +494,6 @@ esp_err_t lume_display_init(lv_display_t **out_disp)
 
     *out_disp = disp;
     ESP_LOGI(TAG, "CO5300 QSPI + LVGL display up (%dx%d RGB565, 2x%u B %s draw buf)",
-             LCD_H_RES, LCD_V_RES, (unsigned)buf_bytes, where);
+             LCD_H_RES, LCD_V_RES, (unsigned)buf_bytes, "SRAM");
     return ESP_OK;
 }
