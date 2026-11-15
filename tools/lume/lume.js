@@ -253,7 +253,13 @@ try {
     const device = await openDevice({ port, ota, token, otaPort });
     try {
       if (bytecode) {
+        /* r43b: query the device's engine version FIRST, reject locally on a
+         * mismatch, then compile to bytecode. Source pushes never do this, so
+         * older firmware without VER is unaffected. */
         const bc = await import('./bytecode.js');
+        const local = await bc.qjsVersion();
+        const deviceVersion = await bc.queryEngineVersion(device);
+        bc.assertEngineVersion(deviceVersion, local.version);
         source = await bc.buildBytecodePayload(source);
       }
       const kind = bytecode ? ' (bytecode)' : '';

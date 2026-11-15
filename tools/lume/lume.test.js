@@ -12,7 +12,7 @@ import { build } from 'esbuild';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
 import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN } from './protocol.js';
-import { parseQjsVersion, qjsVersion, compileBytecode, localQjsc } from './bytecode.js';
+import { parseQjsVersion, qjsVersion, assertEngineVersion, queryEngineVersion, compileBytecode, localQjsc } from './bytecode.js';
 import { openOta, otaAuthLine, OTA_PORT_DEFAULT } from './ota.js';
 import { decodeShot, bmpFromRgb565 } from './shot.js';
 
@@ -79,6 +79,17 @@ test('engine version is read from the vendored QuickJS-NG sources', async () => 
     '#define BC_VERSION 30\n'),
     { major: 1, minor: 2, patch: 3, bcVersion: 30, version: '1.2.3' });
   assert.throws(() => parseQjsVersion('nope', 'nope'), /QJS_VERSION_MAJOR/);
+});
+
+test('bytecode deploy rejects a mismatched device engine version locally', async () => {
+  const device = { command: async () => ({ verb: 'ver', arg: '0.17.0' }) };
+  assert.equal(await queryEngineVersion(device), '0.17.0');
+  assert.throws(() => assertEngineVersion('0.17.0', '0.18.0'),
+                /engine version mismatch: device 0.17.0, local qjsc 0.18.0/);
+  assert.doesNotThrow(() => assertEngineVersion('0.18.0', '0.18.0'));
+  // Old firmware answers "CMD ERR verb": surface a clear "update firmware" hint.
+  const old = { command: async () => { throw new Error('device rejected command: verb'); } };
+  await assert.rejects(queryEngineVersion(old), /cannot query device engine version/);
 });
 
 test('binary STORE keeps bytecode bytes intact (no UTF-8 round trip)', () => {
