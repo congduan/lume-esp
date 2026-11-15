@@ -100,6 +100,21 @@ function runApp(script, options = {}) {
       pwmAttach: () => 0, pwmDuty: () => 0, pwmFree: () => 0,
     },
     image: { sizeOf: () => -1, _setSource: () => -1 },
+    audio: {
+      play: () => 0, record: () => -3, setVolume: () => 0, stop: () => 0,
+      playStream: () => 0, streamFinished: () => true,
+      streamPause: () => 0, streamReset: () => 0,
+      mp3: {
+        list: () => ['demo-one.mp3', 'demo-two.mp3'],
+        open: () => 0, close: () => 0,
+        decode: () => ({pcm:new ArrayBuffer(4608),samples:1152,
+          sampleRate:44100,channels:2,bitrateKbps:128,
+          byteOffset:1024,fileBytes:65536}),
+        id3v1: p => ({title:p.includes('one') ? 'Demo One' : 'Demo Two',artist:'Lume Demo'}),
+        readText: () => '[00:00.00]First line\n[00:01.00]Second line\n[00:02.00]Third line',
+      },
+      ...(options.audio || {}),
+    },
   };
   // Mirror the native global injected after bindings and before prelude eval.
   // The simulator uses this runner too; tests may supply another board size.
