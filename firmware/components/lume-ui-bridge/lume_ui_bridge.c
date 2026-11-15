@@ -22,6 +22,7 @@
 #include "lume_engine.h"     /* r4 P2: lume_engine_notify_removed() */
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include "lume_perf.h"
+#include "lume_raster.h"     /* r47: anti-aliased canvas stroke rasteriser  */
 
 _Static_assert(sizeof(lume_ui_msg_t) <= 128, "UI queue record size budget");
 
@@ -920,30 +921,16 @@ static inline void canvas_span(uint16_t id, int32_t y, int32_t x0, int32_t x1, u
     while (n >= 2) { *dst32++ = pair; n -= 2; }
     if (n) *(uint16_t *)dst32 = c;
 }
-static void canvas_disc(uint16_t id, int32_t x, int32_t y, int r, uint16_t c)
+/* Anti-aliased stroked segment (r47). The old version stamped an
+ * axis-aligned square brush along a Bresenham centreline, so stroke edges
+ * were hard 1 px staircases (roadmap rendering-backlog item 1). Coverage now
+ * comes from the exact point-to-segment distance with a 1 px feather, in
+ * lume_raster.h; the opaque core stays bit-identical so opaque repaints
+ * erase cleanly. */
+static void canvas_line(const lume_raster_surf_t *surf, int32_t x, int32_t y,
+                        int32_t x2, int32_t y2, uint8_t width)
 {
-    for (int32_t dy = -r; dy <= r; dy++) {
-        int32_t dx = r;
-        while (dx > 0 && dx * dx + dy * dy > r * r) dx--;
-        canvas_span(id, y + dy, x - dx, x + dx, c);
-    }
-}
-/* One stroked segment: Bresenham centreline, square brush of `width`. */
-static void canvas_line(uint16_t id, int32_t x, int32_t y, int32_t x2, int32_t y2,
-                        uint16_t c, uint8_t width)
-{
-    int32_t dx = abs(x2 - x), sx = x < x2 ? 1 : -1;
-    int32_t dy = -abs(y2 - y), sy = y < y2 ? 1 : -1, err = dx + dy;
-    int32_t hw = (((int32_t)width) - 1) >> 1;
-    int32_t hi = (int32_t)width - 1 - hw;
-    for (;;) {
-        for (int32_t oy = -hw; oy <= hi; oy++)
-            canvas_span(id, y + oy, x - hw, x + hi, c);
-        if (x == x2 && y == y2) break;
-        int32_t e = 2 * err;
-        if (e >= dy) { err += dy; x += sx; }
-        if (e <= dx) { err += dx; y += sy; }
-    }
+    lume_raster_line(surf, x, y, x2, y2, width);
 }
 static void apply_canvas_draw(const lume_ui_msg_t *m)
 {
@@ -951,6 +938,15 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
     if (id == 0 || id >= LUME_MAX_NODES || !s_canvas_pixels[id]) return;
     uint16_t c = lv_color_to_u16(lv_color_hex((uint32_t)m->value));
     int32_t x = m->from, y = m->to, a = (int32_t)m->duration_ms, b = (int32_t)m->token;
+    /* r47: one AA surface descriptor per draw op; only the LVGL task runs
+     * this function, so the single static is safe (same discipline as the
+     * rest of the drain path). */
+    static lume_raster_surf_t surf;
+    surf.px = s_canvas_work[id];
+    surf.w = s_canvas_w[id];
+    surf.h = s_canvas_h[id];
+    surf.stride = s_canvas_stride[id];
+    lume_raster_set_color(&surf, c);
     switch (m->attr) {
         case LUME_DRAW_CLEAR:
             for (int32_t yy = 0; yy < (int32_t)s_canvas_h[id]; yy++)
@@ -961,20 +957,14 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
                 canvas_span(id, yy, x, x + a - 1, c);
             break;
         case LUME_DRAW_LINE:
-            canvas_line(id, x, y, a, b, c, m->draw_width);
+            canvas_line(&surf, x, y, a, b, m->draw_width);
             break;
-        case LUME_DRAW_CIRCLE: {
-            int r = a;
-            int32_t xx = r, yy = 0, err = 1 - r;
-            while (xx >= yy) {
-                canvas_disc(id,x+xx,y+yy,(m->draw_width-1)/2,c); canvas_disc(id,x+yy,y+xx,(m->draw_width-1)/2,c);
-                canvas_disc(id,x-yy,y+xx,(m->draw_width-1)/2,c); canvas_disc(id,x-xx,y+yy,(m->draw_width-1)/2,c);
-                canvas_disc(id,x-xx,y-yy,(m->draw_width-1)/2,c); canvas_disc(id,x-yy,y-xx,(m->draw_width-1)/2,c);
-                canvas_disc(id,x+yy,y-xx,(m->draw_width-1)/2,c); canvas_disc(id,x+xx,y-yy,(m->draw_width-1)/2,c);
-                yy++; if (err < 0) err += 2*yy+1; else { xx--; err += 2*(yy-xx)+1; }
-            }
+        case LUME_DRAW_CIRCLE:
+            /* r47: one continuous anti-aliased annulus replaces the old
+             * eight-stamp circle (each stamp was a mini solid disc; the
+             * diagonal stamp sites double-covered and left seam bumps). */
+            lume_raster_ring(&surf, x, y, a, m->draw_width);
             break;
-        }
         case LUME_DRAW_TEXT: {
             /* Text is rasterised through LVGL's draw layer, which targets the
              * canvas's current buffer (front). Point it at work for the
@@ -1044,9 +1034,15 @@ static void apply_canvas_path_draw(const lume_ui_msg_t *m)
     if (slot >= LUME_CANVAS_PATHS || s_path_lines[id][slot] == NULL) return;
     int32_t dx = m->from, dy = m->to;
     const lume_canvas_line_t *line = s_path_lines[id][slot];
+    static lume_raster_surf_t surf;     /* single reader: the LVGL task */
+    surf.px = s_canvas_work[id];
+    surf.w = s_canvas_w[id];
+    surf.h = s_canvas_h[id];
+    surf.stride = s_canvas_stride[id];
     for (uint16_t i = 0; i < s_path_count[id][slot]; i++, line++) {
-        canvas_line(id, line->x1 + dx, line->y1 + dy, line->x2 + dx, line->y2 + dy,
-                    lv_color_to_u16(lv_color_hex(line->color)), line->width);
+        lume_raster_set_color(&surf, lv_color_to_u16(lv_color_hex(line->color)));
+        canvas_line(&surf, line->x1 + dx, line->y1 + dy, line->x2 + dx, line->y2 + dy,
+                    line->width);
     }
 }
 
@@ -1565,9 +1561,15 @@ void lume_ui_bridge_drain(void)
                 if (m.image_pixels && m.image_w <= LUME_CANVAS_BATCH_MAX &&
                     m.node_id > 0 && m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) {
                     const lume_canvas_line_t *line = (const lume_canvas_line_t *)m.image_pixels;
+                    static lume_raster_surf_t surf; /* single reader: LVGL task */
+                    surf.px = s_canvas_work[m.node_id];
+                    surf.w = s_canvas_w[m.node_id];
+                    surf.h = s_canvas_h[m.node_id];
+                    surf.stride = s_canvas_stride[m.node_id];
                     for (uint8_t i = 0; i < m.image_w; i++, line++) {
-                        canvas_line(m.node_id, line->x1, line->y1, line->x2, line->y2,
-                                    lv_color_to_u16(lv_color_hex(line->color)), line->width);
+                        lume_raster_set_color(&surf, lv_color_to_u16(lv_color_hex(line->color)));
+                        canvas_line(&surf, line->x1, line->y1, line->x2, line->y2,
+                                    line->width);
                     }
                 }
                 break;
