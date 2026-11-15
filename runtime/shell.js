@@ -240,7 +240,7 @@
     var root = View({ parent: p.parent, style: { width: '100%', height: 480,
       background: '#000000', scroll: 'none' } });
     var bar = p.statusBar === false ? null : StatusBar({ parent: root, left: p.title || 'Lume',
-      right: p.right === undefined ? function () { return 'battery ' + lume.pmic.battPercent() + '%'; } : p.right });
+      right: p.right === undefined ? function () { var v = lume.pmic.battPercent(); return v >= 0 && v <= 100 ? 'battery ' + v + '%' : 'battery --'; } : p.right });
     var top = bar === null ? 24 : 96;
     var listTop = bar === null ? 96 : 168;
     if (bar === null) Text({ parent: root, text: p.title || 'Lume', style: { x: 24, y: 40 } });
@@ -252,7 +252,7 @@
     var list = List({ parent: root,
       style: { x: 24, y: listTop, width: 432, height: 456 - listTop,
         background: '#000000', scrollbar: 'auto' },
-      items: rows, itemHeight: 100, overscan: 1,
+      items: rows, itemHeight: 84, overscan: 1,
       renderItem: function (row) {
         return View({ style: { display: 'flex', flexDirection: 'row',
           justifyContent: 'space-evenly', width: '100%', height: 96, scroll: 'none' } },

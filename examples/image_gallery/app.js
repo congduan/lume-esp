@@ -38,11 +38,18 @@ function main() {
   try {
     var tiles = buildTiles();
     galleryStatus = tiles.length + ' image(s)';
-    View({style: {display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 8,
-                  width: '100%', padding: 12, background: '#0B1724',
-                  alignItems: 'center', justifyContent: 'center', scroll: 'none'}},
-      tiles.length > 0 ? tiles : [Text({text: 'no images decoded',
-        style: {textAlign: 'center'}})]);
+    var content = [Text({text: tiles.length ? 'Preview' : 'No images decoded',
+      style: {width: '100%', height: 28, textAlign: 'center', color: '#A9C1CD'}})];
+    for (var i = 0; i < tiles.length; i++) content.push(tiles[i]);
+    View({style: {width: '100%', height: '100%', padding: 24, gap: 12,
+      background: '#081420', display: 'flex', flexDirection: 'column', scroll: 'none'}}, [
+      Text({text: 'Image gallery', style: {width: '100%', height: 32, fontSize: 24, color: '#F0F7FA'}}),
+      Text({text: galleryStatus + ' available', style: {width: '100%', height: 24, fontSize: 14, color: '#A9C1CD'}}),
+      View({style: {width: '100%', height: 320, padding: 16, gap: 12,
+        background: '#102431', borderRadius: 12, display: 'flex',
+        flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
+        justifyContent: 'center', scroll: 'none'}}, content)
+    ]);
   } catch (e) {
     lume.system.log('gallery fatal: ' + e);
     Text({text: String(e).slice(0, 45), style: {x: 40, y: 220, width: 400, height: 40}});

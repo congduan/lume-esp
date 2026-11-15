@@ -38,7 +38,7 @@ var settingsTheme = { colors: {
 }, radius: 10, fontScale: 1 };
 lume.theme.set(settingsTheme);
 
-var SAFE = 40;
+var SAFE = 24;
 var kv = lume.storage.kv;
 
 /* ---- persisted state ---------------------------------------------------- */
@@ -431,7 +431,7 @@ function stopPolling() {
 /* Page titles are bare Texts (node budget): BACK navigation comes from the
  * prelude's global swipe-up gesture, which applies to EVERY app. */
 function titleText(text) {
-  return Text({ text: text, style: { width: '100%', height: 36 } });
+  return Text({ text: text, style: { width: '100%', height: 36, fontSize: 24, color: 'text' } });
 }
 function infoRow(label, value, height) {
   return View({ style: {
@@ -446,38 +446,46 @@ function infoRow(label, value, height) {
 }
 function actionRow(children, height) {
   return View({ style: {
-    width: '100%', height: height || 48, display: 'flex',
+    width: '100%', height: height || 56, display: 'flex',
     flexDirection: 'row', gap: 8
   } }, children);
 }
 function bigButton(title, onPress, grow) {
   return Button({ title: title, onPress: onPress, style: {
-    flexGrow: grow || 1, height: 48, borderRadius: 10 } });
+    flexGrow: grow || 1, height: 56, borderRadius: 10 } });
 }
 
 /* ---- page: menu ------------------------------------------------------------------ */
 
-var summary = Text({ text: function () {
-  var w = wifiLine(), b = btLine();
-  if (w.length > 22) w = w.slice(0, 22) + '.';
-  if (b.length > 22) b = b.slice(0, 22) + '.';
-  return 'wifi ' + w + ' | bt ' + b;
-}, style: { width: '100%', height: 22, textAlign: 'left' } });
+function menuHeader(label) {
+  return Text({ text: label, style: { width: '100%', height: 22, fontSize: 14, color: '#92AAB6' } });
+}
+function menuRow(icon, title, value, action) {
+  return View({ onPress: action, style: {
+    width: '100%', height: 56, background: 'surface', borderRadius: 12,
+    display: 'flex', flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12
+  } }, [
+    Text({ text: icon, style: { width: 24, height: 24, fontSize: 20, color: 'accent', textAlign: 'center' } }),
+    Text({ text: title, style: { width: 126, height: 28, fontSize: 16, color: 'text' } }),
+    Text({ text: value, style: { flexGrow: 1, height: 24, fontSize: 14, color: '#92AAB6', textAlign: 'right' } }),
+    Text({ text: '>', style: { width: 12, height: 24, color: '#92AAB6', textAlign: 'right' } })
+  ]);
+}
 
 var menuChildren = [
   titleText('Settings'),
-  summary,
-  actionRow([bigButton('WiFi', function () { go('wifi'); })], 56),
-  actionRow([bigButton('Bluetooth', function () { go('bt'); })], 56),
-  actionRow([bigButton('General', function () { go('general'); })], 56),
-  infoRow('battery', function () { return battLine(); }, 36),
-  Text({ text: 'swipe up = BACK; radios need board bring-up',
-    style: { width: '100%', height: 22 } })
+  Text({ text: function () { return 'Battery  ' + battLine(); }, style: { width: '100%', height: 24, fontSize: 14, color: '#92AAB6' } }),
+  menuHeader('CONNECTIONS'),
+  menuRow('W', 'Wi-Fi', function () { return wifiLine() === 'off' ? 'Off' : 'On'; }, function () { go('wifi'); }),
+  menuRow('B', 'Bluetooth', function () { return btLine() === 'off' ? 'Off' : 'On'; }, function () { go('bt'); }),
+  menuHeader('DEVICE'),
+  menuRow('G', 'General', function () { return volume() + '% volume'; }, function () { go('general'); }),
+  Text({ text: 'Swipe up to go back', style: { width: '100%', height: 24, fontSize: 14, color: '#92AAB6' } })
 ];
 
 var menuPage = View({ style: {
   position: 'absolute', x: 0, y: 0, width: '100%', height: '100%',
-  background: 'primary', padding: SAFE, gap: 8,
+  background: 'primary', padding: SAFE, gap: 12,
   display: 'flex', flexDirection: 'column', scroll: 'none'
 } }, menuChildren);
 pageNodes.menu = menuPage;
@@ -548,7 +556,7 @@ var scanPage = View({ style: {
     renderItem: scanRow,
     style: { width: '100%', height: 176, background: 'primary',
       scrollbar: 'auto' } }),
-  Text({ text: 'tap to join (WPA2-PSK)',
+  Text({ text: 'Tap a network to connect',
     style: { width: '100%', height: 20 } })
 ]);
 pageNodes.scan = scanPage;
@@ -569,7 +577,7 @@ var btPage = View({ style: {
     bigButton('Stop', bleStop),
     bigButton('Rename', renameBle)
   ]),
-  Text({ text: 'peripheral only: no scan / pairing / outbound',
+  Text({ text: 'Ready to connect with another device',
     style: { width: '100%', height: 22 } })
 ]);
 pageNodes.bt = btPage;
@@ -604,7 +612,7 @@ var generalPage = View({ style: {
       return powerConfirm() ? 'Confirm off?' : 'Power off';
     }, powerOff, 1)
   ]),
-  Text({ text: 'sleep waits for a touch wake; off cuts the PMIC rail',
+  Text({ text: 'Touch the screen to wake from sleep',
     style: { width: '100%', height: 40 } })
 ]);
 pageNodes.general = generalPage;

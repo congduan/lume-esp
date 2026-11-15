@@ -2,7 +2,7 @@
  * State-machine core (acc/op/cur/fresh) with signal-driven display texts;
  * button grid is a flex layout sized for the 480x480 panel's 40 px safe inset. */
 var calcTheme = { colors: {
-  primary: '#0F1115', surface: '#1C1F26', accent: '#2E86FF', text: '#F2F5FA'
+  primary: '#0F1115', surface: '#1C1F26', surfaceAlt: '#2E3340', accent: '#2E86FF', text: '#F2F5FA'
 }, radius: 14, fontScale: 1 };
 lume.theme.set(calcTheme);
 
@@ -35,7 +35,7 @@ function apply() {
 
 function refresh() {
   dispMain.set(err ? 'Error' : cur);
-  var line = acc !== null && op !== null ? fmt(acc) + ' ' + op : '';
+  var line = acc !== null && op !== null ? fmt(acc) + ' ' + op + (fresh ? '' : ' ' + cur) : cur;
   dispExpr.set(err ? '' : line);
 }
 
@@ -96,7 +96,7 @@ var C_EQ = '#2E86FF';      /* equals */
 /* Key rows use fixed heights: percent heights resolve against the parent's
  * content box (5x '100%' would overflow), and fixed px works in both LVGL
  * and the browser renderer. 120 + 12 + 5x45 + 4x10 = 397 <= 400 content. */
-var KEY_H = 45;
+var KEY_H = 56;
 
 function key(label, bg, flexGrow, onPress) {
   return Button({
@@ -108,7 +108,7 @@ function key(label, bg, flexGrow, onPress) {
 function digit(d) { return key(d, C_KEY, 1, function () { pressDigit(d); }); }
 
 function keyRow(children) {
-  return View({ style: { display: 'flex', flexDirection: 'row', gap: 10,
+  return View({ style: { display: 'flex', flexDirection: 'row', gap: 8,
                          width: '100%', height: KEY_H } }, children);
 }
 
@@ -134,12 +134,12 @@ function drawMainDisplay(c) {
   c.clear();
   /* clear() paints black; repaint the card surface so the canvas blends in */
   c.fillColor('#1C1F26');
-  c.fillRect(0, 0, 368, 44);
+  c.fillRect(0, 0, 400, 44);
   c.fillColor(color);
   /* right-align inside the canvas; overflow past the left edge is clipped */
   var total = 0;
   for (var i = 0; i < text.length; i++) total += segAdvance(text[i]);
-  var x = 368 - 4 - total;
+  var x = 400 - 4 - total;
   for (var j = 0; j < text.length; j++) {
     var ch = text[j], cx = x + SEG_X0, cy = 4;
     if (ch === '.') c.fillRect(cx + 12, cy + 26, 5, 4);
@@ -156,18 +156,18 @@ function drawMainDisplay(c) {
 
 View({ style: {
   width: '100%', height: '100%', background: 'primary',
-  display: 'flex', flexDirection: 'column', padding: 40, gap: 12
+  display: 'flex', flexDirection: 'column', padding: 24, gap: 12
 } }, [
   View({ style: {
-    width: '100%', height: 120, background: 'surface', borderRadius: 14,
+    width: '100%', height: 96, background: 'surface', borderRadius: 14,
     display: 'flex', flexDirection: 'column', alignItems: 'end',
     justifyContent: 'center', padding: 16, gap: 6
   } }, [
     Text({ text: function () { return dispExpr(); }, style: { textAlign: 'right', width: '100%', opacity: 0.55 } }),
-    Canvas({ width: 368, height: 44, onDraw: drawMainDisplay })
+    Canvas({ width: 400, height: 44, onDraw: drawMainDisplay })
   ]),
   View({ style: {
-    display: 'flex', flexDirection: 'column', gap: 10, width: '100%',
+    display: 'flex', flexDirection: 'column', gap: 8, width: '100%',
     height: 'auto'
   } }, [
     keyRow([
