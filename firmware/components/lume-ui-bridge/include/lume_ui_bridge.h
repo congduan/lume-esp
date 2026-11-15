@@ -155,10 +155,19 @@ typedef enum {
     LUME_OP_SET_GESTURE,       /* r21: register LVGL pointer-event callbacks on node_id */
     LUME_OP_IMAGE_SOURCE,      /* owned PSRAM RGB565/RGB565A8 payload */
     LUME_OP_CANVAS_BATCH,      /* owned bounded array of line segments */
+    LUME_OP_CANVAS_PATH_DEFINE,/* retained segment array (attr = path id) */
+    LUME_OP_CANVAS_PATH_DRAW,  /* replay a retained path (attr = id, from/to = dx/dy) */
 } lume_op_t;
 
 #define LUME_CANVAS_BATCH_MAX 32
 typedef struct { int16_t x1, y1, x2, y2; uint32_t color; uint8_t width; uint8_t reserved[3]; } lume_canvas_line_t;
+
+/* Retained canvas paths (r45): one define per static picture, replayed per
+ * frame from C, so a full-canvas app stops rebuilding geometry in JS. A path
+ * id is canvas-local and chosen by the JS side (1..LUME_CANVAS_PATHS-1). */
+#define LUME_CANVAS_PATHS 8             /* retained paths per canvas */
+#define LUME_CANVAS_PATH_SEG_MAX 240    /* segments in one path (= polyline cap - 1) */
+#define LUME_CANVAS_PATH_BUDGET (32u * 1024u)   /* PSRAM cap for all retained paths */
 
 typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
                LUME_DRAW_CIRCLE, LUME_DRAW_TEXT } lume_draw_t;

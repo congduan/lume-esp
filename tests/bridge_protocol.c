@@ -46,7 +46,9 @@ _Static_assert(sizeof(lume_ui_msg_t) <= 128, "bounded copy message");
 _Static_assert(LUME_TEXT_LIMIT == 256 && LUME_TEXT_MAX == 64,
                "text payload limits");
 _Static_assert(LUME_NODE_CANVAS == 3 && LUME_OP_CANVAS_DRAW == 6 &&
-               LUME_OP_CANVAS_INVALIDATE == 7 && LUME_OP_CANVAS_BATCH == 11, "canvas wire ids");
+               LUME_OP_CANVAS_INVALIDATE == 7 && LUME_OP_CANVAS_BATCH == 11 &&
+               LUME_OP_CANVAS_PATH_DEFINE == 12 && LUME_OP_CANVAS_PATH_DRAW == 13,
+               "canvas wire ids");
 _Static_assert(LUME_NODE_IMAGE == 4 && LUME_OP_IMAGE_SOURCE == 10, "image wire ids");
 _Static_assert(LUME_FLEX_SPACE_BETWEEN == 3 && LUME_FLEX_CROSS_STRETCH == 3,
                "axis-specific align wire values");

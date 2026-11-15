@@ -56,6 +56,12 @@ static uint16_t s_canvas_w[LUME_MAX_NODES], s_canvas_h[LUME_MAX_NODES];
 static uint16_t s_canvas_stride[LUME_MAX_NODES]; /* RGB565 pixels per row */
 static int16_t s_arc_start[LUME_MAX_NODES], s_arc_end[LUME_MAX_NODES]; /* LUME_NODE_ARC sweep */
 static size_t s_canvas_bytes;
+/* Retained canvas paths (see LUME_OP_CANVAS_PATH_DEFINE): slot [id-1] holds the
+ * bridge-owned segment array, so a static picture is uploaded once and replayed
+ * from C on every frame instead of being rebuilt in JS. */
+static lume_canvas_line_t *s_path_lines[LUME_MAX_NODES][LUME_CANVAS_PATHS];
+static uint16_t s_path_count[LUME_MAX_NODES][LUME_CANVAS_PATHS];
+static size_t s_path_bytes;
 /* r27: canvas budget is one full framebuffer; geometry comes from the board
  * profile instead of a hardcoded frame size. Every canvas is double buffered
  * (front + work), so the budget counts two full framebuffer images. */
@@ -824,6 +830,18 @@ static void clear_subtree(lv_obj_t *obj)
         s_align_ofs_x[id] = s_align_ofs_y[id] = 0;
     }
 }
+/* Drop every retained path of one canvas (its node is gone). */
+static void canvas_release_paths(uint16_t id)
+{
+    for (uint8_t slot = 0; slot < LUME_CANVAS_PATHS; slot++) {
+        if (s_path_lines[id][slot] != NULL) {
+            s_path_bytes -= (size_t)s_path_count[id][slot] * sizeof(lume_canvas_line_t);
+            heap_caps_free(s_path_lines[id][slot]);
+            s_path_lines[id][slot] = NULL;
+            s_path_count[id][slot] = 0;
+        }
+    }
+}
 static void release_dead_canvases(void)
 {
     for (uint16_t id = 1; id < LUME_MAX_NODES; id++) {
@@ -835,6 +853,7 @@ static void release_dead_canvases(void)
             heap_caps_free(s_canvas_pixels[id]);
             s_canvas_work[id] = NULL;
             s_canvas_pixels[id] = NULL;
+            canvas_release_paths(id);
         }
     }
 }
@@ -881,22 +900,50 @@ static void canvas_publish(uint16_t id, const lume_ui_msg_t *m);
 
 /* Raster commands are applied only by the LVGL timer. The buffer belongs to
  * the canvas and is never shared with the engine; one final invalidate per
- * onDraw run avoids lv_canvas_set_px's per-pixel invalidation. */
-static void canvas_px(uint16_t id, int32_t x, int32_t y, uint16_t color)
+ * onDraw run avoids lv_canvas_set_px's per-pixel invalidation.
+ *
+ * Everything rasterises as row spans: the canvas lives in PSRAM, so a
+ * sequential run of stores per row (32-bit pairs when the run is aligned) costs
+ * far less than the previous per-pixel helper with its four bounds comparisons,
+ * and it keeps whole cache lines busy instead of re-touching them. */
+static inline void canvas_span(uint16_t id, int32_t y, int32_t x0, int32_t x1, uint16_t c)
 {
-    if (x >= 0 && y >= 0 && x < s_canvas_w[id] && y < s_canvas_h[id])
-        s_canvas_work[id][(size_t)y * s_canvas_stride[id] + x] = color;
+    if (y < 0 || y >= (int32_t)s_canvas_h[id]) return;
+    if (x0 < 0) x0 = 0;
+    if (x1 >= (int32_t)s_canvas_w[id]) x1 = (int32_t)s_canvas_w[id] - 1;
+    if (x0 > x1) return;
+    uint16_t *dst = s_canvas_work[id] + (size_t)y * s_canvas_stride[id] + x0;
+    int32_t n = x1 - x0 + 1;
+    if (((uintptr_t)dst) & 2u) { *dst++ = c; n--; }   /* realign to 32 bits */
+    uint32_t pair = ((uint32_t)c << 16) | c;
+    uint32_t *dst32 = (uint32_t *)dst;
+    while (n >= 2) { *dst32++ = pair; n -= 2; }
+    if (n) *(uint16_t *)dst32 = c;
 }
 static void canvas_disc(uint16_t id, int32_t x, int32_t y, int r, uint16_t c)
 {
-    for (int dy = -r; dy <= r; dy++) for (int dx = -r; dx <= r; dx++)
-        if (dx * dx + dy * dy <= r * r) canvas_px(id, x + dx, y + dy, c);
+    for (int32_t dy = -r; dy <= r; dy++) {
+        int32_t dx = r;
+        while (dx > 0 && dx * dx + dy * dy > r * r) dx--;
+        canvas_span(id, y + dy, x - dx, x + dx, c);
+    }
 }
-static void canvas_brush(uint16_t id, int32_t x, int32_t y, int width, uint16_t c)
+/* One stroked segment: Bresenham centreline, square brush of `width`. */
+static void canvas_line(uint16_t id, int32_t x, int32_t y, int32_t x2, int32_t y2,
+                        uint16_t c, uint8_t width)
 {
-    for (int dy = -(width - 1) / 2; dy <= width / 2; dy++)
-        for (int dx = -(width - 1) / 2; dx <= width / 2; dx++)
-            canvas_px(id, x + dx, y + dy, c);
+    int32_t dx = abs(x2 - x), sx = x < x2 ? 1 : -1;
+    int32_t dy = -abs(y2 - y), sy = y < y2 ? 1 : -1, err = dx + dy;
+    int32_t hw = (((int32_t)width) - 1) >> 1;
+    int32_t hi = (int32_t)width - 1 - hw;
+    for (;;) {
+        for (int32_t oy = -hw; oy <= hi; oy++)
+            canvas_span(id, y + oy, x - hw, x + hi, c);
+        if (x == x2 && y == y2) break;
+        int32_t e = 2 * err;
+        if (e >= dy) { err += dy; x += sx; }
+        if (e <= dx) { err += dx; y += sy; }
+    }
 }
 static void apply_canvas_draw(const lume_ui_msg_t *m)
 {
@@ -906,25 +953,16 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
     int32_t x = m->from, y = m->to, a = (int32_t)m->duration_ms, b = (int32_t)m->token;
     switch (m->attr) {
         case LUME_DRAW_CLEAR:
-            for (int32_t yy = 0; yy < s_canvas_h[id]; yy++)
-                for (int32_t xx = 0; xx < s_canvas_w[id]; xx++) canvas_px(id, xx, yy, c);
+            for (int32_t yy = 0; yy < (int32_t)s_canvas_h[id]; yy++)
+                canvas_span(id, yy, 0, (int32_t)s_canvas_w[id] - 1, c);
             break;
         case LUME_DRAW_RECT:
-            for (int32_t yy = y < 0 ? 0 : y; yy < y + b && yy < s_canvas_h[id]; yy++)
-                for (int32_t xx = x < 0 ? 0 : x; xx < x + a && xx < s_canvas_w[id]; xx++) canvas_px(id, xx, yy, c);
+            for (int32_t yy = y; yy < y + b; yy++)
+                canvas_span(id, yy, x, x + a - 1, c);
             break;
-        case LUME_DRAW_LINE: {
-            int32_t dx = abs(a - x), sx = x < a ? 1 : -1;
-            int32_t dy = -abs(b - y), sy = y < b ? 1 : -1, err = dx + dy;
-            for (;;) {
-                canvas_brush(id, x, y, m->draw_width, c);
-                if (x == a && y == b) break;
-                int32_t e = 2 * err;
-                if (e >= dy) { err += dy; x += sx; }
-                if (e <= dx) { err += dx; y += sy; }
-            }
+        case LUME_DRAW_LINE:
+            canvas_line(id, x, y, a, b, c, m->draw_width);
             break;
-        }
         case LUME_DRAW_CIRCLE: {
             int r = a;
             int32_t xx = r, yy = 0, err = 1 - r;
@@ -961,6 +999,54 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
             lv_display_enable_invalidation(disp, true);
             break;
         }
+    }
+}
+
+/* Retained paths: DEFINE takes ownership of the segment array and stores it in
+ * slot [id-1]; DRAW replays it with an optional offset. A define for an
+ * occupied slot replaces (and frees) the previous array, which is how an app
+ * rebuilds a picture without leaking. */
+static void apply_canvas_path_define(const lume_ui_msg_t *m)
+{
+    uint16_t id = m->node_id;
+    lume_canvas_line_t *lines = (lume_canvas_line_t *)m->image_pixels;
+    uint16_t count = m->image_w;
+    uint8_t slot = m->attr;
+    if (id == 0 || id >= LUME_MAX_NODES || !s_canvas_pixels[id] ||
+        count == 0 || count > LUME_CANVAS_PATH_SEG_MAX || slot >= LUME_CANVAS_PATHS) {
+        ESP_LOGE(TAG, "path define id=%u slot=%u count=%u rejected",
+                 (unsigned)id, (unsigned)slot, (unsigned)count);
+        heap_caps_free(lines);
+        return;
+    }
+    size_t bytes = (size_t)count * sizeof(lume_canvas_line_t);
+    if (s_path_lines[id][slot] != NULL) {
+        s_path_bytes -= (size_t)s_path_count[id][slot] * sizeof(lume_canvas_line_t);
+        heap_caps_free(s_path_lines[id][slot]);
+        s_path_lines[id][slot] = NULL;
+        s_path_count[id][slot] = 0;
+    }
+    if (bytes > LUME_CANVAS_PATH_BUDGET - s_path_bytes) {
+        ESP_LOGE(TAG, "path budget exceeded (%u + %u > %u), path dropped",
+                 (unsigned)s_path_bytes, (unsigned)bytes, (unsigned)LUME_CANVAS_PATH_BUDGET);
+        heap_caps_free(lines);
+        return;
+    }
+    s_path_lines[id][slot] = lines;
+    s_path_count[id][slot] = count;
+    s_path_bytes += bytes;
+}
+static void apply_canvas_path_draw(const lume_ui_msg_t *m)
+{
+    uint16_t id = m->node_id;
+    if (id == 0 || id >= LUME_MAX_NODES || !s_canvas_pixels[id]) return;
+    uint8_t slot = m->attr;
+    if (slot >= LUME_CANVAS_PATHS || s_path_lines[id][slot] == NULL) return;
+    int32_t dx = m->from, dy = m->to;
+    const lume_canvas_line_t *line = s_path_lines[id][slot];
+    for (uint16_t i = 0; i < s_path_count[id][slot]; i++, line++) {
+        canvas_line(id, line->x1 + dx, line->y1 + dy, line->x2 + dx, line->y2 + dy,
+                    lv_color_to_u16(lv_color_hex(line->color)), line->width);
     }
 }
 
@@ -1311,18 +1397,17 @@ void lume_ui_bridge_drain(void)
             case LUME_OP_ANIMATE_CANCEL: cancel_anim(m.node_id, m.attr); break;
             case LUME_OP_CANVAS_DRAW: apply_canvas_draw(&m); break;
             case LUME_OP_CANVAS_BATCH:
-                if (m.image_pixels && m.image_w <= LUME_CANVAS_BATCH_MAX) {
-                    for (uint8_t i = 0; i < m.image_w; i++) {
-                        lume_canvas_line_t *line = &((lume_canvas_line_t *)m.image_pixels)[i];
-                        lume_ui_msg_t draw = {0};
-                        draw.op = LUME_OP_CANVAS_DRAW; draw.node_id = m.node_id;
-                        draw.attr = LUME_DRAW_LINE; draw.from = line->x1; draw.to = line->y1;
-                        draw.duration_ms = (uint32_t)line->x2; draw.token = (uint32_t)line->y2;
-                        draw.value = (int32_t)line->color; draw.draw_width = line->width;
-                        apply_canvas_draw(&draw);
+                if (m.image_pixels && m.image_w <= LUME_CANVAS_BATCH_MAX &&
+                    m.node_id > 0 && m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) {
+                    const lume_canvas_line_t *line = (const lume_canvas_line_t *)m.image_pixels;
+                    for (uint8_t i = 0; i < m.image_w; i++, line++) {
+                        canvas_line(m.node_id, line->x1, line->y1, line->x2, line->y2,
+                                    lv_color_to_u16(lv_color_hex(line->color)), line->width);
                     }
                 }
                 break;
+            case LUME_OP_CANVAS_PATH_DEFINE: apply_canvas_path_define(&m); break;
+            case LUME_OP_CANVAS_PATH_DRAW: apply_canvas_path_draw(&m); break;
             case LUME_OP_IMAGE_SOURCE: apply_image_source(&m); break;
             case LUME_OP_CANVAS_INVALIDATE:
                 /* Frame complete: publish the finished image. */

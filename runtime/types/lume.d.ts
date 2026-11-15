@@ -107,6 +107,16 @@ declare namespace lume.ui {
     circle(x: number, y: number, radius: number, color: `#${string}` | number): void;
     /** LVGL default 14px font; UTF-8 text at most 256 bytes. */
     text(x: number, y: number, str: string, color: `#${string}` | number, size?: 14): void;
+    /**
+     * Uploads a polyline once and returns its path id (1..8 per canvas). The
+     * geometry is kept by the runtime and replayed by drawPath(), so a static
+     * picture costs no JS per frame. Up to 240 points.
+     */
+    retainPath(points: [number, number][], color: `#${string}` | number, width?: number): number;
+    /** Same, for independent segments `[x1,y1,x2,y2]` (tick marks, grids); 1..240 entries. */
+    retainSegments(segments: [number, number, number, number][], color: `#${string}` | number, width?: number): number;
+    /** Replays a retained path, optionally offset by (dx, dy) pixels. */
+    drawPath(pathId: number, dx?: number, dy?: number): void;
   }
   interface CanvasProps {
     /** 1..480 pixels; all canvases share a 460,800-byte RGB565 budget. */

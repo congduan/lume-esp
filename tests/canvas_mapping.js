@@ -8,6 +8,8 @@ function harness(script) {
     setAttr: (...a) => calls.push(['attr', ...a]),
     canvasDraw: (...a) => calls.push(['draw', ...a]),
     canvasBatch: (id, lines) => calls.push(['batch', id, [...lines]]),
+    canvasPathDefine: (id, path, lines) => calls.push(['pathDefine', id, path, [...lines]]),
+    canvasPathDraw: (id, path, dx, dy) => calls.push(['pathDraw', id, path, dx, dy]),
     canvasInvalidate: (...args) => calls.push(['invalidate', ...args]),
     setPressEvent: id => calls.push(['press', id]),
     log: () => {}, _nowMs: () => 0, imu: {read: () => null}
@@ -96,4 +98,41 @@ pass('240-point polyline uses eight batches', () => {
   const h = harness('var p=[];for(var i=0;i<240;i++)p.push([i,0]);Canvas({width:240,height:1,onDraw:function(c){c.polyline(p,"#ffffff");}})');
   assert.deepStrictEqual(h.calls.filter(x=>x[0]==='batch').map(x=>x[2].length/6),[32,32,32,32,32,32,32,15]);
   console.log('CANVAS 240 points: old=239 messages / 27724 queue bytes; new=8 messages / 928 queue bytes + 3824 payload bytes');
+});
+
+pass('retained path uploads geometry once and replays from C', () => {
+  const h = harness(`var cid = Canvas({width:40,height:40,onDraw:function(c){
+    c.p = c.p || c.retainPath([[0,0],[10,0],[10,10]],'#ff0000',3);
+    c.drawPath(c.p);
+    c.drawPath(c.p, 2, 3);
+  }});`);
+  const defs = h.calls.filter(x => x[0] === 'pathDefine');
+  const draws = h.calls.filter(x => x[0] === 'pathDraw');
+  assert.strictEqual(defs.length, 1, 'geometry uploaded exactly once');
+  assert.strictEqual(defs[0][1], 1, 'canvas node id');
+  assert.strictEqual(defs[0][2], 1, 'first path id');
+  assert.deepStrictEqual(defs[0][3], [0,0,10,0,0xff0000,3, 10,0,10,10,0xff0000,3], 'flat segments');
+  assert.deepStrictEqual(draws.map(d => [d[2], d[3], d[4]]), [[1,0,0],[1,2,3]], 'replays with offsets');
+  console.log(`CANVAS retained path: 2 segments uploaded once, ${draws.length} draws / ${defs.length} upload`);
+  for (const [expr, pattern] of [
+    ['Canvas({width:8,height:8,onDraw:function(c){c.drawPath(9);}})', /path id/],
+    ['Canvas({width:8,height:8,onDraw:function(c){c.retainPath([[0,0]],"#ffffff");}})', /path needs/],
+    ['Canvas({width:8,height:8,onDraw:function(c){c.retainPath([[0,0],[1,"x"]],"#ffffff");}})', /coordinate/],
+    ['Canvas({width:8,height:8,onDraw:function(c){for(var i=0;i<9;i++)c.retainPath([[0,0],[1,1]],"#ffffff");}})',
+     /too many retained paths/],
+  ]) assert.throws(() => harness(expr), pattern, expr);
+});
+
+pass('retainSegments uploads independent segments', () => {
+  const h = harness(`Canvas({width:40,height:40,onDraw:function(c){
+    c.s = c.s || c.retainSegments([[0,0,5,5],[10,10,20,10]],'#00ff00',2);
+    c.drawPath(c.s, 1, 1);
+  }});`);
+  const def = h.calls.find(x => x[0] === 'pathDefine');
+  assert.deepStrictEqual(def[3], [0,0,5,5,0x00ff00,2, 10,10,20,10,0x00ff00,2], 'independent segments');
+  assert.deepStrictEqual(h.calls.filter(x => x[0] === 'pathDraw').map(x => [x[2], x[3], x[4]]), [[1,1,1]]);
+  assert.throws(() => harness('Canvas({width:8,height:8,onDraw:function(c){c.retainSegments([[0,0,1]]);}})'),
+                /segment must be \[x1,y1,x2,y2\]/);
+  assert.throws(() => harness('Canvas({width:8,height:8,onDraw:function(c){c.retainSegments([]);}})'),
+                /1\.\.240 segments/);
 });

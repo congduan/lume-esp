@@ -40,6 +40,9 @@ function runApp(script, options = {}) {
     setGestureEvent: id => emit('gesture', id),
     canvasDraw: (...args) => emit('draw', ...args),
     canvasBatch: (id, lines) => emit('batch', id, [...lines]),
+    // Retained paths: DEFINE uploads geometry once, DRAW replays it in C.
+    canvasPathDefine: (id, path, lines) => emit('pathDefine', id, path, [...lines]),
+    canvasPathDraw: (id, path, dx, dy) => emit('pathDraw', id, path, dx, dy),
     // Same arity as the native: (id) for a full canvas, (id, x, y, w, h) for a
     // dirty rect. Harnesses rely on the rect to check the redraw budget.
     canvasInvalidate: (...args) => emit('invalidate', ...args),
