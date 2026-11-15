@@ -644,7 +644,7 @@ static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, J
         JS_ToInt32(ctx,&x,argv[2]) < 0 || JS_ToInt32(ctx,&y,argv[3]) < 0 ||
         JS_ToInt32(ctx,&a,argv[4]) < 0 || JS_ToInt32(ctx,&b,argv[5]) < 0 ||
         JS_ToInt32(ctx,&color,argv[6]) < 0 || JS_ToInt32(ctx,&width,argv[7]) < 0) return JS_EXCEPTION;
-    if (id < 1 || id >= LUME_MAX_NODES || op < LUME_DRAW_CLEAR || op > LUME_DRAW_TEXT ||
+    if (id < 1 || id >= LUME_MAX_NODES || op < LUME_DRAW_CLEAR || op > LUME_DRAW_ARC ||
         width < 1 || width > 16 ||
         x < -LUME_LCD_H_RES || x > LUME_LCD_H_RES ||
         y < -LUME_LCD_V_RES || y > LUME_LCD_V_RES ||
@@ -654,11 +654,31 @@ static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, J
     if (s_node_dead[id]) return JS_UNDEFINED;
     lume_ui_msg_t m; msg_init(&m);
     m.op = LUME_OP_CANVAS_DRAW; m.node_id = id; m.attr = op;
-    m.from = x; m.to = y; m.duration_ms = (uint32_t)a; m.token = (uint32_t)b;
+    m.from = x; m.to = y;
     m.value = color; m.draw_width = width;
-    if (op == LUME_DRAW_TEXT) {
-        if (argc < 9) return JS_ThrowTypeError(ctx, "lume: canvas text required");
-        if (msg_set_text(ctx, &m, argv[8]) != 0) return JS_EXCEPTION;
+    if (op == LUME_DRAW_ARC) {
+        /* r48 ARC reuses spare fields of the fixed 128 B message (no new
+         * fields, no renumbered ids): a = radius (additionally >= 0 here),
+         * b unused, image_w = radius, duration_ms/token = the two signed
+         * integer-degree angles. argv[8]/argv[9] carry from/to; the raster
+         * normalises/wraps them. QuickJS passes the real argc (10) through. */
+        int32_t ang_from, ang_to;
+        if (argc < 10 ||
+            JS_ToInt32(ctx, &ang_from, argv[8]) < 0 ||
+            JS_ToInt32(ctx, &ang_to, argv[9]) < 0)
+            return JS_ThrowTypeError(ctx, "lume: arc needs from/to angles");
+        if (a < 0 || ang_from < -4096 || ang_from > 4096 ||
+            ang_to < -4096 || ang_to > 4096)
+            return JS_ThrowRangeError(ctx, "lume: arc argument out of range");
+        m.image_w = (uint16_t)a;                 /* radius                    */
+        m.duration_ms = (uint32_t)ang_from;      /* from deg (signed to u32)  */
+        m.token = (uint32_t)ang_to;              /* to deg (signed to u32)    */
+    } else {
+        m.duration_ms = (uint32_t)a; m.token = (uint32_t)b;
+        if (op == LUME_DRAW_TEXT) {
+            if (argc < 9) return JS_ThrowTypeError(ctx, "lume: canvas text required");
+            if (msg_set_text(ctx, &m, argv[8]) != 0) return JS_EXCEPTION;
+        }
     }
     if (lume_ui_bridge_post(&m) != 0) {
         heap_caps_free(m.text_heap);

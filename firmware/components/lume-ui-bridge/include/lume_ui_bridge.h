@@ -181,7 +181,12 @@ typedef struct { int16_t x1, y1, x2, y2; uint32_t color; uint8_t width; uint8_t 
 #define LUME_CANVAS_PATH_BUDGET (32u * 1024u)   /* PSRAM cap for all retained paths */
 
 typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
-               LUME_DRAW_CIRCLE, LUME_DRAW_TEXT } lume_draw_t;
+               LUME_DRAW_CIRCLE, LUME_DRAW_TEXT,
+               /* r48: native AA annulus arc, appended at the tail so existing
+                * draw opcodes keep their wire values. ARC reuses the fixed
+                * 128 B message's spare fields (image_w = radius,
+                * duration_ms/token = from/to degrees); no struct change. */
+               LUME_DRAW_ARC } lume_draw_t;
 
 typedef enum { LUME_EASE_LINEAR = 0, LUME_EASE_IN, LUME_EASE_OUT,
                LUME_EASE_IN_OUT } lume_easing_t;

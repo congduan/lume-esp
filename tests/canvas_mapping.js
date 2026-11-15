@@ -30,6 +30,22 @@ pass('drawing command order and final invalidate', () => {
   assert.strictEqual(h.calls.find(x => x[0] === 'batch')[2].length, 18);
   assert.strictEqual(h.calls.at(-1)[0], 'invalidate');
 });
+pass('r48 native arc emits one LUME_DRAW_ARC (opcode 5) with normalised args', () => {
+  const h = harness(`Canvas({width:100,height:100,onDraw:function(c){c.arc(50,50,20,135,405,5,'#53E1C4');}})`);
+  const draws = h.calls.filter(x => x[0] === 'draw');
+  assert.strictEqual(draws.length, 1);
+  /* [draw, id, op=5, cx, cy, r, b=0, color, width, from, to] */
+  assert.deepStrictEqual(draws[0], ['draw', 1, 5, 50, 50, 20, 0, 0x53e1c4, 5, 135, 405]);
+});
+pass('r48 native arc rounds fractional degrees and rejects bad angles', () => {
+  const h = harness(`Canvas({width:100,height:100,onDraw:function(c){c.arc(50,50,20,259.6,405.4,5,0xffffff);}})`);
+  assert.deepStrictEqual(h.calls.filter(x => x[0] === 'draw')[0].slice(-2), [260, 405]);
+  for (const expr of [
+    `Canvas({width:100,height:100,onDraw:function(c){c.arc(0,0,10,'x',90,1,'#ffffff');}})`,
+    `Canvas({width:100,height:100,onDraw:function(c){c.arc(0,0,10,NaN,90,1,'#ffffff');}})`,
+    `Canvas({width:100,height:100,onDraw:function(c){c.arc(0,0,10,0,9000,1,'#ffffff');}})`
+  ]) assert.throws(() => harness(expr), expr);
+});
 pass('optional dirty rectangles preserve local coordinates', () => {
   const h = harness('Canvas({width:40,height:40,onDraw:function(c){return [{x:1,y:2,w:3,h:4},{x:10,y:11,w:2,h:2}];}})');
   assert.deepStrictEqual(h.calls.filter(x=>x[0]==='invalidate'), [['invalidate',1,1,2,3,4],['invalidate',1,10,11,2,2]]);

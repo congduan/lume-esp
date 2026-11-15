@@ -965,6 +965,14 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
              * diagonal stamp sites double-covered and left seam bumps). */
             lume_raster_ring(&surf, x, y, a, m->draw_width);
             break;
+        case LUME_DRAW_ARC:
+            /* r48: native AA annulus arc. The fixed 128 B message has no
+             * spare int32 pair, so ARC carries radius in image_w and the two
+             * signed degree angles in duration_ms/token (a/b here); the
+             * raster normalises/wraps them. x/y are the centre. */
+            lume_raster_arc(&surf, x, y, (int32_t)m->image_w, a, b,
+                            m->draw_width);
+            break;
         case LUME_DRAW_TEXT: {
             /* Text is rasterised through LVGL's draw layer, which targets the
              * canvas's current buffer (front). Point it at work for the

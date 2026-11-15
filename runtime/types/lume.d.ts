@@ -105,6 +105,14 @@ declare namespace lume.ui {
     /** Up to 240 [x,y] points. */
     polyline(points: [number, number][], color: `#${string}` | number, width?: number): void;
     circle(x: number, y: number, radius: number, color: `#${string}` | number): void;
+    /**
+     * Native anti-aliased annulus arc (r48). Angles are degrees, clockwise from
+     * +x (3 o'clock), wrapping at 360; `from == to` draws a round dot and a
+     * full 360° sweep draws a ring. Rendered in C (exact annulus geometry, AA
+     * edges, round end caps) — no JS polyline sampling. Fractional degrees are
+     * rounded to integers (≤0.5° boundary discretisation).
+     */
+    arc(cx: number, cy: number, r: number, from: number, to: number, width: number, color: `#${string}` | number): void;
     /** LVGL default 14px font; UTF-8 text at most 256 bytes. */
     text(x: number, y: number, str: string, color: `#${string}` | number, size?: 14): void;
     /**
