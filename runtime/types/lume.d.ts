@@ -828,6 +828,34 @@ declare namespace lume.audio {
   function setVolume(percent: number): number;
   /** Mutes future output; cannot interrupt an active synchronous play call. */
   function stop(): number;
+  interface StreamOptions { sampleRate: 16000 | 32000 | 44100 | 48000; channels: 2; bits: 16; }
+  /** Copies at most 4608 bytes into a 16-chunk PSRAM queue. Returns -3 when full;
+   * retry the same chunk on a later timer tick. PCM output uses the given rate. */
+  function playStream(pcmChunk: ArrayBuffer, opts: StreamOptions): number;
+  /** True after the queued writes finish. The final codec/DMA settling time is
+   * subject to board acceptance. */
+  function streamFinished(): boolean;
+  function streamPause(paused: boolean): number;
+  function streamReset(): number;
+  namespace mp3 {
+    interface Frame {
+      pcm: ArrayBuffer;
+      samples: number;
+      sampleRate: number;
+      channels: 1 | 2;
+      bitrateKbps: number;
+      byteOffset: number;
+      fileBytes: number;
+    }
+    /** TF card paths, separate from LittleFS Fs. One active decoder. */
+    function list(path: string): string[] | number;
+    function open(path: string): number;
+    function decode(): Frame | null | number;
+    function close(): number;
+    /** UTF-8 LRC text, maximum 32767 bytes; -1 if larger. */
+    function readText(path: string): string | number;
+    function id3v1(path: string): { title: string; artist: string } | null | number;
+  }
 }
 
 /**
