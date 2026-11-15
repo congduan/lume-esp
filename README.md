@@ -122,6 +122,10 @@ node tools/lume/lume.js create my-app
 node tools/lume/lume.js dev my-app
 ```
 
+`node tools/lume/lume.js check examples/counter` verifies an app in one command (bundle +
+emulator eval + layout R1–R7 + perf summary, `--json` for machine-readable output, exit
+0/1 for CI and agents); see [one-command verification](docs/build.md#one-command-verification-lume-check).
+
 Edit `my-app/app.js` to see each saved change on screen. Use `--port /dev/ttyACM0` if the
 USB Serial/JTAG port is not detected automatically. For a one-time push, run
 `node tools/lume/lume.js deploy my-app`. Once the board is on WiFi, the same bundle can be

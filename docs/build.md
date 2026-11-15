@@ -2,6 +2,46 @@
 
 ## App Quick Start
 
+### One-command verification (`lume check`)
+
+`lume check` is the preferred verification entry: it bundles the app, boots it
+under the esp32s3 emulator (real firmware via `tools/emu/run.sh`), verifies the
+eval, runs geometry assertions and prints a perf summary in a single shot. No
+board is required; CI and AI agents rely on its exit code and `--json` output.
+
+```bash
+node tools/lume/lume.js check examples/counter
+node tools/lume/lume.js check examples/counter --json          # machine-readable
+node tools/lume/lume.js check my-app --no-emu                  # fast bundle-only check
+node tools/lume/lume.js check my-app --timeout 180             # emu step limit (seconds, default 120)
+```
+
+Steps, in order:
+
+1. **bundle** — esbuild via `tools/lume/bundle.js`; a syntax/size failure stops
+   the run (fail fast). Reports bytes and elapsed ms.
+2. **eval** — `tools/emu/run.sh` produces `tft.png` + `serial.log` under
+   `artifacts/check/<app>/`; pass requires two `lume-engine: app eval ok`
+   markers (one home boot, one reloaded app) and no `JS exception` /
+   `reload/launch eval failed` / `RELOAD ERR`. On failure the raw message, the
+   offending `lume.*` expression with its original-source line, and a
+   nearest-neighbour spelling hint from `runtime/types/lume.d.ts` are reported
+   (e.g. `did you mean lume.ai.chat? (available: setKey, chat)`). A timeout is
+   a FAIL and includes the serial-log tail.
+3. **layout** — only when `tools/emu/layout_expectations.json` has an entry for
+   the app: `check_layout.py <tft.png> <spec> --app <name>` collects R1–R7.
+   Skipped with a reason when there is no spec or `--no-emu` was used.
+4. **perf** — collects `lume-perf:` profile lines when present; otherwise
+   skipped as `profile disabled`. Never blocks.
+
+`--json` prints a single object (`ok`, `app`, `steps[]`, `screenshot`) suitable
+for agent parsing; validate with `python3 -m json.tool`. Exit code is **0 when
+all executed steps pass, 1 when any fails** (skipped steps do not fail the run).
+All check products live in `artifacts/check/<app>/` and `artifacts/emu/` is
+left untouched. The emulator step needs the esp32s3 firmware images and
+`esp32sim` (see `tools/emu/README.md`); `run.sh` builds the firmware with
+`idf.py` unless they already exist. `--no-emu` needs only Node.js.
+
 ### Host Simulator
 
 From the repository root, run `node tools/simulator/sim.js examples/counter/app.js` and open `http://localhost:8765`. The 480×480 browser device frame replays the exact embedded prelude's UI messages. Saving the app file reruns it and resets the preview; clicking `Count` sends `onPress` back to the same Node VM and updates the screen. A project made with `lume create` can run `npm run sim` from its directory while this repository checkout is available. The simulator needs Node.js and a browser, with no simulator npm dependencies or board.

@@ -37,6 +37,13 @@ Prerequisites: Node.js >= 18. `lume dev/deploy` needs a board flashed with Lume 
 # CLI dependencies (once)
 npm ci --prefix tools/lume
 
+# Verification — preferred single entry (bundle + emu eval + layout R1-R7 + perf)
+# Exit 0 = all pass, 1 = any fail; exit code and output are the contract for CI/agents.
+node tools/lume/lume.js check examples/counter
+node tools/lume/lume.js check my-app --json        # machine-readable, parse instead of scraping prose
+node tools/lume/lume.js check my-app --no-emu      # fast host-only bundle check (no firmware/board)
+node tools/lume/lume.js check my-app --timeout 180 # emu step limit in seconds (default 120)
+
 # App development: create scaffolds, dev hot-reloads, deploy pushes once
 node tools/lume/lume.js create my-app
 node tools/lume/lume.js dev my-app [--port /dev/ttyACM0]
@@ -53,6 +60,8 @@ npm test --prefix tools/lume           # node --test, CLI unit tests
 python3 scripts/gen_api_docs.py        # regenerate website/api.html from runtime/types/lume.d.ts (--check verifies freshness)
 python3 scripts/check_website.py
 ```
+
+`lume check` is the preferred verification entry — do not assemble `npm test` + host harnesses + `sim.js` + `run.sh` + `check_layout.py` by hand for a routine app change; one `lume check <app-dir>` runs that closed loop and returns a parseable result. Its products go to `artifacts/check/<app>/` (never `artifacts/emu/`); the emu step needs the esp32s3 images/esp32sim (see `tools/emu/README.md`), while `--no-emu` needs only Node.js. See `docs/build.md`, section "One-command verification".
 
 Interactive `dev` keys: `p` / `r` / `b` -> PAUS / RESM / BACK; `Ctrl+C` exits. `RELOAD OK <length>` from the device means the JS source evaluated; `RELOAD ERR <reason>` means failure.
 
