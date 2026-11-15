@@ -1,5 +1,11 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
+## r51b / emu.yml 矩阵移除 image_gallery（CI 专有行为分歧，本地无法复现）
+
+- **现象**：GitHub Actions 的 esp32sim 矩阵里 `examples/image_gallery` 间歇性失败（r47 绿、r48 一红一绿、r49/r50/r51 连红），失败模式固定：注入 frame 后 `runtime up; eval app` 打出、app 自己的 `js: gallery: eval start` 与首个 `create id=1 kind=4`（Image 节点）也打出，随后 eval 静默挂起——既无 `app eval ok` 也无 `eval failed`/`RELOAD ERR`，`[emu] stop` emulated 8.000s 正常结束。失败轮指令数 ~1.2G，本地成功轮 ~132M（9 倍分歧，块缓存 25572 vs 30729），说明 CI 上固件确实走进了不同的执行路径（疑似 Image 解码相关忙等/重试），但无任何错误日志。
+- **已排除**：ROM 版本（本地换 CI 同款 pinned 20260528 ROM 重放 exit 0）、固件代码差异（本地与 CI 同源构建，同 app 同 frame 注入）、注入时序（RELOAD 在 2684ms 正常受理，crossfade 过渡正常 reveal）。本地（含 pinned ROM）反复跑均 exit 0。
+- **处置**：emu.yml 截图矩阵移除 image_gallery（本地 `tools/emu/run.sh examples/image_gallery` 仍可用）。在此之前 playbook 已登记过「image_gallery 在模拟器里只有背景——先怀疑 esp32sim 图像绘制保真度」——本条是该已知问题的 CI 环境强化版：Image 节点的解码路径在 esp32sim + CI runner 组合下存在未定位的行为分歧。接板后用真机验收 image_gallery；esp32sim 的 Image/decode 保真度问题单独跟踪，不在 CI 门禁里硬扛。
+
 ## r45 / 1.8 寸板驱动级缺口收口（编译期 + 模拟器证据，仍无真机验收）
 
 - **范围**：r45 收口 r44 登记的 1.8 V2（CO5300 + CST820/CST816S）profile 的三个**已实证**驱动级硬缺口，全部走编译期 profile 宏分派：① `lume_touch.c` 新增 CST816S 路径（`LUME_TOUCH_CHIP`，8-bit 寄存器 / 6 字节帧 @ 0x15），与默认板 CST9220 路径（16-bit 寄存器 / 10 字节帧）共存；② 1.8 板屏/触摸复位改走 TCA9554 IO 扩展器（`LUME_HAS_IO_EXPANDER_RESET`），默认板仍直接 GPIO；③ `LUME_LCD_COLUMN_OFFSET`（=16）真正接进 `lume_display.c` flush 路径。**默认 2.16 零回归**：新增代码全部落在默认板不编译的 `#if` 分支或取值为 0 的宏里，`idf.py size` 与 b66bebc 基线逐字节一致。**不动 vendored quickjs-ng/lvgl**；不做 SDMMC / ES7210 / 运行时切板（继续 open gap）；`runtime/types/lume.d.ts` 无变化；LVGL 未泄漏进 app 层。
