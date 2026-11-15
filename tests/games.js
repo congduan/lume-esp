@@ -20,7 +20,7 @@ s.snakeTurn(snake,'left');assert.equal(snake.next,'right');s.snakeTurn(snake,'up
 snake.next='right';assert.equal(s.snakeStep(snake,()=>0).kind,'eat');assert.equal(snake.score,1);assert.equal(snake.body.length,3);console.log('PASS snake eats');
 snake.body=[{x:23,y:3}];snake.next='right';assert.equal(s.snakeStep(snake,()=>0).kind,'wall');console.log('PASS snake wall');
 snake={body:[{x:3,y:3},{x:3,y:4},{x:2,y:4},{x:2,y:3},{x:1,y:3}],dir:'up',next:'left',food:{x:9,y:9},score:0,over:false};assert.equal(s.snakeStep(snake,()=>0).kind,'body');console.log('PASS snake body');
-assert.equal(s.imuDirection(3,1),'right');assert.equal(s.imuDirection(0,0),null);console.log('PASS snake IMU threshold');
+assert.equal(s.imuDirection(-3,1),'right');assert.equal(s.imuDirection(3,1),'left');assert.equal(s.imuDirection(0,0),null);console.log('PASS snake IMU threshold and axis sign');
 const b=logic('breakout');
 for (const [name,ctx] of [['2048',a],['snake',s],['brkout',b]]) {let stored;ctx.lume={storage:{kv:{get:key=>{stored=key;return 0;},set:(key,value)=>{stored=key;return 0;}}}};assert.equal(ctx.gameHigh(name),0);assert.equal(ctx.gameSave(name,10,0),10);assert.equal(stored,`hiscore.${name}`);assert.ok(stored.length<=15);console.log('PASS '+name+' high score KV key');}let game=b.breakoutState();game.x=4;game.vx=-3;game.y=200;game.vy=0;b.breakoutStep(game);assert.ok(game.vx>0);console.log('PASS breakout wall rebound');
 game=b.breakoutState();game.x=game.bricks[0].x+20;game.y=game.bricks[0].y-6;game.vx=0;game.vy=2;assert.equal(b.breakoutStep(game),'brick');assert.equal(game.remaining,35);assert.equal(game.score,10);console.log('PASS breakout brick');
