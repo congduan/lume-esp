@@ -10,7 +10,7 @@
  *
  *  Pages are built once and switched by toggling ATTR_VISIBLE with
  *  lume.setAttr(node, 5, 0|1) -- the pattern already used by
- *  examples/dashboard/app.js and examples/file_manager/app.js. The on-screen
+ *  examples/dashboard/app.js and examples/files/app.js. The on-screen
  *  keyboard is an absolute overlay on top; the runtime has no text-input
  *  widget, so SSID / password / BLE name are typed with key buttons.
  *

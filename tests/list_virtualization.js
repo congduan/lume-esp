@@ -14,6 +14,7 @@ const ctx = vm.createContext({lume: {
   },
   setAttr(id, attr, value) { attrs.push([id, attr, value]); if (attr === 6) parents[id] = value; },
   setPressEvent(id) { presses.add(id); },
+  setGestureEvent() {},
   removeChild(id) { removed.push(id); },
   _nowMs() { return 0; }, log() {}
 }});
@@ -103,7 +104,7 @@ ok('bridge throttle and overflow policy are present', () => {
   assert.match(e, /scroll id=%u dropped: evt queue full/);
 });
 ok('files example seeds 1000 entries without creating 1000 rows', () => {
-  ctx.Fs = {list: () => [], exists: () => false, remove: () => 0};
+  ctx.Fs = {list: () => [], exists: () => false, remove: () => 0, mounted: () => true};
   const shell = fs.readFileSync('runtime/shell.js', 'utf8');
   const app = fs.readFileSync('examples/files/app.js', 'utf8').replace(/^import '..\/..\/runtime\/shell.js';\n/m, '');
   vm.runInContext(shell + '\n' + app, ctx);

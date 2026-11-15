@@ -778,7 +778,7 @@
       "header": {
         "roi": [
           0,
-          15,
+          10,
           480,
           90
         ],
@@ -787,51 +787,67 @@
       "list": {
         "roi": [
           0,
-          90,
+          95,
           480,
-          390
+          385
         ],
         "color": "#132435"
       },
-      "button": {
+      "new": {
         "roi": [
-          0,
-          370,
-          480,
-          445
+          25,
+          395,
+          150,
+          462
+        ],
+        "color": "#132435"
+      },
+      "view": {
+        "roi": [
+          180,
+          395,
+          290,
+          462
+        ],
+        "color": "#132435"
+      },
+      "del": {
+        "roi": [
+          320,
+          395,
+          458,
+          462
         ],
         "color": "#40D8B0"
       },
       "back": {
         "roi": [
-          30,
-          20,
-          100,
-          85
+          25,
+          15,
+          105,
+          90
         ],
         "color": "#1C3449"
       },
       "row_delete": {
         "roi": [
-          135,
-          95,
-          215,
-          175
+          380,
+          100,
+          460,
+          160
         ],
         "color": "#FF6B79"
       }
     },
     "full": [
       "header",
-      "list",
-      "button"
+      "list"
     ],
     "rows": [],
     "same_width": [
       [
         "header",
-        "list",
-        "button"
+        "list"
       ]
     ],
     "headers": [],
@@ -843,171 +859,14 @@
       ],
       [
         "list",
-        "button"
+        "del"
       ]
     ],
     "buttons": [
-      "button",
-      "back",
-      "row_delete"
-    ],
-    "text_left": [],
-    "text_center": []
-  },
-  "file_manager": {
-    "background": "#07111D",
-    "gutter": 24,
-    "blocks": {
-      "header": {
-        "roi": [
-          0,
-          15,
-          480,
-          80
-        ],
-        "color": "#132435",
-        "colors": [
-          "#132435",
-          "#1C3449"
-        ]
-      },
-      "list": {
-        "roi": [
-          0,
-          80,
-          480,
-          370
-        ],
-        "color": "#132435",
-        "colors": [
-          "#132435",
-          "#1C3449"
-        ]
-      },
-      "up": {
-        "roi": [
-          0,
-          385,
-          130,
-          460
-        ],
-        "color": "#132435",
-        "colors": [
-          "#132435",
-          "#1C3449"
-        ]
-      },
-      "new": {
-        "roi": [
-          130,
-          385,
-          240,
-          460
-        ],
-        "color": "#132435",
-        "colors": [
-          "#132435",
-          "#1C3449"
-        ]
-      },
-      "del": {
-        "roi": [
-          240,
-          385,
-          355,
-          460
-        ],
-        "color": "#132435",
-        "colors": [
-          "#132435",
-          "#1C3449"
-        ]
-      },
-      "view": {
-        "roi": [
-          355,
-          385,
-          480,
-          460
-        ],
-        "color": "#132435",
-        "colors": [
-          "#132435",
-          "#1C3449"
-        ]
-      },
-      "heading": {
-        "roi": [
-          30,
-          30,
-          200,
-          65
-        ],
-        "mode": "ink",
-        "background": "#132435"
-      },
-      "right": {
-        "roi": [
-          300,
-          30,
-          450,
-          65
-        ],
-        "mode": "ink",
-        "background": "#132435"
-      },
-      "row_delete": {
-        "roi": [
-          310,
-          80,
-          400,
-          155
-        ],
-        "color": "#FF6B79"
-      }
-    },
-    "full": [
-      "header",
-      "list"
-    ],
-    "rows": [
-      [
-        "up",
-        "new",
-        "del",
-        "view"
-      ]
-    ],
-    "same_width": [
-      [
-        "header",
-        "list"
-      ],
-      [
-        "up",
-        "new",
-        "del",
-        "view"
-      ]
-    ],
-    "headers": [
-      [
-        "heading",
-        "right"
-      ]
-    ],
-    "centers": [],
-    "vertical_gaps": [
-      [
-        "header",
-        "list"
-      ]
-    ],
-    "buttons": [
-      "up",
       "new",
-      "del",
       "view",
+      "del",
+      "back",
       "row_delete"
     ],
     "text_left": [],
