@@ -29,11 +29,12 @@ function speedPolar(radius, degree) {
   return [Math.round(DIAL_CX + radius * Math.cos(a)), Math.round(DIAL_CY + radius * Math.sin(a))];
 }
 function speedAngle(kmH) { return 135 + kmH * 270 / 260; }
+/* r48: the dial arcs (background track + three colour bands) are one native
+ * ctx.arc call each — exact annulus geometry, AA edges and round caps rendered
+ * in C, so the dial no longer samples ~276 polyline segments in JS. Angles are
+ * the same speedAngle() degrees; the needle and ticks still use line/circle. */
 function speedArc(ctx, from, to, radius, color, width) {
-  var points = [];
-  for (var d = from; d <= to; d += 2) points.push(speedPolar(radius, d));
-  if ((to - from) % 2) points.push(speedPolar(radius, to));
-  ctx.polyline(points, color, width);
+  ctx.arc(DIAL_CX, DIAL_CY, radius, from, to, width, color);
 }
 /* One-off layer: everything that does not depend on the needle position. */
 function speedDialLayer(ctx) {
