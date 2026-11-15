@@ -914,3 +914,7 @@ A patched esp32sim board model can boot the unmodified Lume firmware, inject JS 
 ## r40b / small-screen example UI (simulator acceptance)
 
 Ten example apps have 480×480 simulator screenshots and four have before/after captures in `artifacts/emu/ui-refresh/`. These captures validate the rendered layout with the current firmware image. Physical AMOLED clipping and color, touch targets, sleep behavior, PMIC values, TF media and audio remain unverified on the board. The emulator shows placeholder PMIC readings (for example 0% battery and 385.7 C); these are model data, not UI calculations. `image_gallery` remains a known emulator visual failure from r39b and is outside this UI refresh. `runtime/shell.js` supplies default semantic colors only when an importing app has no theme; the embedded prelude theme has not changed.
+
+## r41b / screenshot geometry checks
+
+`tools/emu/check_layout.py` checks configured visible block bounds and spacing in the ten refreshed 480×480 emulator captures. The page geometry now uses a 24 px outer gutter. This verifies only the captured app state; transient dialog states, the optional shell in a separately bundled app, and physical AMOLED clipping or touch feel still need device review. No firmware or bridge ABI was changed. See `docs/r41b-alignment-report.md`.

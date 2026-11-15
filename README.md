@@ -28,7 +28,9 @@ and captured automatically in CI — not mockups. Every image is 480×480, the a
 | <img src="artifacts/emu/ui-refresh/counter.png" width="230"><br>**Counter**<br><sub>signals + theme switching</sub> | <img src="artifacts/emu/ui-refresh/dashboard.png" width="230"><br>**Dashboard**<br><sub>card grid, live telemetry</sub> | <img src="artifacts/emu/ui-refresh/ai_chat.png" width="230"><br>**AI chat**<br><sub>LLM over WiFi, chat bubbles</sub> |
 | <img src="artifacts/emu/ui-refresh/music_player.png" width="230"><br>**Music player**<br><sub>MP3 from TF card + synced LRC</sub> | <img src="artifacts/emu/ui-refresh/files.png" width="230"><br>**File manager**<br><sub>virtualized list, dialogs</sub> | <img src="artifacts/emu/ui-refresh/imu_poll.png" width="230"><br>**IMU**<br><sub>sensor cards, 20 Hz polling</sub> |
 
-<sub>Design rules behind these screens: [docs/ui-guidelines.md](docs/ui-guidelines.md) — 4/8/12/16/24/32
+<sub>These captures use the r41b 24 px grid and are checked against the rendered PNGs with
+[`tools/emu/check_layout.py`](tools/emu/check_layout.py). The [alignment report](docs/r41b-alignment-report.md)
+includes before/after views and the complete geometry results. Design rules: [docs/ui-guidelines.md](docs/ui-guidelines.md) — 4/8/12/16/24/32
 spacing scale, display/title/body/caption/micro type ramp, ≥56 px touch targets, card-first layout.</sub>
 
 ---
