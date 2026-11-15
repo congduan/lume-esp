@@ -132,6 +132,9 @@
 /* ------------------------------------------------------------------ */
 /* 5. CST9220 touch config / coordinate mapping                       */
 /* ------------------------------------------------------------------ */
+/* r45: selects the clean-room touch protocol path in lume_touch.c. The
+ * 2.16 board carries a CST9220 (16-bit registers / 10-byte point frame). */
+#define LUME_TOUCH_CHIP        LUME_TOUCH_CHIP_CST9220
 #define LUME_TOUCH_I2C_SPEED_HZ 400000
 /*
  * Board orientation (Waveshare BSP:566-569): mirror_y then swap_xy.

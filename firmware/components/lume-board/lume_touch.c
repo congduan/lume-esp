@@ -36,7 +36,7 @@
 #include "lvgl.h"
 #include "lume_pins.h"
 #include "lume_board_internal.h"
-
+#if LUME_TOUCH_CHIP == LUME_TOUCH_CHIP_CST9220
 /* Board profile owns the touch I2C address; chip-level registers below are
  * CST9220/cst9217 family constants, not board-wiring values. */
 #define TP_I2C_ADDR        LUME_I2C_ADDR_CST9220
@@ -242,3 +242,180 @@ esp_err_t lume_touch_init(i2c_master_bus_handle_t bus, lv_display_t *disp)
              (unsigned)TP_I2C_ADDR, LUME_PIN_TP_INT);
     return ESP_OK;
 }
+#else
+/* ==================================================================== *
+ * CST820 / CST816S path — Waveshare ESP32-S3-Touch-AMOLED-1.8 V2 (r45).
+ *
+ * Empirical sources (read before writing; the r44 "0x15 is a chip-ID
+ * register" premise was wrong — 0x15 is the I2C SLAVE ADDRESS):
+ *  - espressif/esp_lcd_touch_cst816s v1.1.1~1 (BSP dependency),
+ *      esp_lcd_touch_cst816s.c:22-23  -> DATA_START_REG 0x02,
+ *                                       CHIP_ID_REG 0xA7
+ *      esp_lcd_touch_cst816s.c:102-131 -> 8-bit register pointer, 5-byte
+ *        point frame [num, x_h:4, x_l, y_h:4, y_l], POINT_NUM_MAX 1,
+ *        x = (x_h<<8)|x_l, y = (y_h<<8)|y_l
+ *      esp_lcd_touch_cst816s.c:206-212 -> single write of the 8-bit reg
+ *        address then rx_param read (repeated-start combined transfer)
+ *  - Waveshare SensorLib TouchDrvCST816.h/.cpp (official 1.8 demos):
+ *      CST816_SLAVE_ADDRESS 0x15; regs 0x00 status / 0x02 point num /
+ *      0x03 XH / 0x04 XL / 0x05 YH / 0x06 YL / 0xA7 CHIP_ID
+ *      (CST820 = 0xB7) / 0xA9 FW_VERSION; getPoint() reads 13 bytes
+ *      from 0x00 and masks the high coordinate nibble with 0x0F.
+ *  - esp32sim esp32s3/src/i2c.rs Cst820 model: 0xA7..0xA9 = B7/41/02,
+ *      0x02 = down, 0x03/0x04 = X, 0x05/0x06 = Y (sequential 8-bit reads).
+ *
+ * Frame: 6 bytes read from register 0x01 (the "6-byte frame"):
+ *   [0]=gesture(0x01) [1]=num(0x02) [2]=XH(0x03) [3]=XL(0x04)
+ *   [4]=YH(0x05) [5]=YL(0x06).
+ * This is a superset of the espressif driver's 5-byte read from 0x02
+ * (the extra leading byte is the gesture register) and matches the 1.8
+ * demo's 13-byte read from 0x00.
+ *
+ * Reset is routed through the TCA9554 IO expander (see lume_board.c);
+ * the CST9220 path above drives a direct ESP GPIO.
+ * ==================================================================== */
+#define TP816_I2C_ADDR         LUME_I2C_ADDR_CST9220  /* profile value 0x15 */
+#define TP816_I2C_TIMEOUT_MS   200
+#define TP816_DATA_REG         0x01   /* 6-byte point-frame start (gesture) */
+#define TP816_FRAME_LEN        6
+#define TP816_CHIP_ID_REG      0xA7   /* CST820 chip id 0xB7 */
+#define TP816_ID_LEN           3      /* 0xA7..0xA9: chip / project / fw */
+#define TP816_MAX_READ_ERRORS  10
+#define TP816_LOG_INTERVAL_MS  500
+
+static const char *TAG = "lume-touch";
+static i2c_master_dev_handle_t s_tp;
+static lv_point_t s_last_point = {0};
+static bool s_was_pressed = false;
+static uint32_t s_last_point_log_ms = 0;
+static bool s_point_log_armed = false;
+static int s_read_errors = 0;
+
+/* r45 placeholder (direct GPIO). The 1.8 board's reset is behind the
+ * TCA9554; commit "TCA9554 IO-expander reset" replaces this body. */
+static esp_err_t tp_reset(void)
+{
+    const gpio_config_t rst_cfg = {
+        .mode = GPIO_MODE_OUTPUT,
+        .pin_bit_mask = 1ULL << LUME_PIN_TP_RST,
+    };
+    ESP_RETURN_ON_ERROR(gpio_config(&rst_cfg), TAG, "TP RST gpio config failed");
+    ESP_RETURN_ON_ERROR(gpio_set_level(LUME_PIN_TP_RST, 0), TAG, "TP RST low failed");
+    vTaskDelay(pdMS_TO_TICKS(10));
+    ESP_RETURN_ON_ERROR(gpio_set_level(LUME_PIN_TP_RST, 1), TAG, "TP RST high failed");
+    vTaskDelay(pdMS_TO_TICKS(50));
+    return ESP_OK;
+}
+
+/* esp_lcd_touch_cst816s.c:206-212 — 1-byte register address, then read.
+ * i2c_master_transmit_receive is the ESP-IDF 5.5 combined write+read
+ * (repeated START), the same shape esp_lcd_panel_io_rx_param() uses. */
+static esp_err_t tp_read_reg(uint8_t reg, uint8_t *data, size_t len)
+{
+    return i2c_master_transmit_receive(s_tp, &reg, 1, data, len,
+                                       TP816_I2C_TIMEOUT_MS);
+}
+
+/* Informational probe; failure is non-fatal (M1 can still read points). */
+static void tp_probe(void)
+{
+    uint8_t id[TP816_ID_LEN] = {0};
+    if (tp_read_reg(TP816_CHIP_ID_REG, id, sizeof(id)) == ESP_OK) {
+        ESP_LOGI(TAG, "CST816S chip 0x%02X project 0x%02X fw 0x%02X",
+                 (unsigned)id[0], (unsigned)id[1], (unsigned)id[2]);
+    } else {
+        ESP_LOGW(TAG, "CST816S id read failed (continuing)");
+    }
+}
+
+/* LVGL indev read callback — invoked from lv_timer_handler() in the LVGL task. */
+static void indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
+    (void)indev;
+    uint8_t frame[TP816_FRAME_LEN] = {0};
+    data->state = LV_INDEV_STATE_RELEASED;
+    data->continue_reading = false;
+
+    if (tp_read_reg(TP816_DATA_REG, frame, sizeof(frame)) != ESP_OK) {
+        /* Transient I2C error: keep the previous point/press state (vendor
+         * drivers keep last data on error). After a sustained failure, reset
+         * the controller once — mirrors the CST9220 recovery path above. */
+        s_read_errors++;
+        if (s_read_errors >= TP816_MAX_READ_ERRORS) {
+            ESP_LOGW(TAG, "touch bus down after %d read errors, resetting", s_read_errors);
+            s_read_errors = 0;
+            if (tp_reset() == ESP_OK) {
+                return;
+            }
+        }
+        data->point = s_last_point;
+        data->state = s_was_pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+        return;
+    }
+    s_read_errors = 0;
+
+    const uint8_t num = frame[1];             /* reg 0x02: point count */
+    if (num == 0 || num == 0xFF) {            /* SensorLib: 0xFF = not ready */
+        s_was_pressed = false;
+        return;
+    }
+    const uint16_t tx = (uint16_t)(((uint16_t)(frame[2] & 0x0F) << 8) | frame[3]);
+    const uint16_t ty = (uint16_t)(((uint16_t)(frame[4] & 0x0F) << 8) | frame[5]);
+
+    /* Board orientation comes from the profile's LUME_TOUCH_MAP_X/Y (the
+     * official BSP uses identity: swap_xy/mirror_x/mirror_y = 0). Clamp. */
+    int32_t px = LUME_TOUCH_MAP_X(tx, ty);
+    int32_t py = LUME_TOUCH_MAP_Y(tx, ty);
+    if (px < 0) px = 0;
+    if (py < 0) py = 0;
+    if (px >= LUME_LCD_H_RES) px = LUME_LCD_H_RES - 1;
+    if (py >= LUME_LCD_V_RES) py = LUME_LCD_V_RES - 1;
+
+    data->point.x = px;
+    data->point.y = py;
+    data->state = LV_INDEV_STATE_PRESSED;
+    s_last_point = data->point;
+    s_was_pressed = true;
+
+    uint32_t now_ms = lv_tick_get();
+    if (!s_point_log_armed ||
+        (uint32_t)(now_ms - s_last_point_log_ms) >= TP816_LOG_INTERVAL_MS) {
+        s_point_log_armed = true;
+        s_last_point_log_ms = now_ms;
+        ESP_LOGI(TAG, "touch p=(%d,%d) raw=(%u,%u)",
+                 (int)px, (int)py, (unsigned)tx, (unsigned)ty);
+    }
+}
+
+esp_err_t lume_touch_init(i2c_master_bus_handle_t bus, lv_display_t *disp)
+{
+    const i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = TP816_I2C_ADDR,
+        .scl_speed_hz = LUME_TOUCH_I2C_SPEED_HZ,
+    };
+    ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(bus, &dev_cfg, &s_tp),
+                        TAG, "CST816S add_device failed");
+
+    ESP_RETURN_ON_ERROR(tp_reset(), TAG, "CST816S reset failed");
+
+    const gpio_config_t int_cfg = {
+        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = 1ULL << LUME_PIN_TP_INT,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_RETURN_ON_ERROR(gpio_config(&int_cfg), TAG, "TP INT gpio config failed");
+
+    tp_probe();
+
+    lv_indev_t *indev = lv_indev_create();
+    ESP_RETURN_ON_FALSE(indev != NULL, ESP_ERR_NO_MEM, TAG, "lv_indev_create failed");
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(indev, indev_read_cb);
+    lv_indev_set_display(indev, disp);
+
+    ESP_LOGI(TAG, "CST816S -> LVGL indev ready (addr 0x%02x, INT=%d)",
+             (unsigned)TP816_I2C_ADDR, LUME_PIN_TP_INT);
+    return ESP_OK;
+}
+#endif /* LUME_TOUCH_CHIP == LUME_TOUCH_CHIP_CST9220 */

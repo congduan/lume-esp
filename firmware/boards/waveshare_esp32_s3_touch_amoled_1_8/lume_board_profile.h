@@ -263,6 +263,12 @@
 /* ------------------------------------------------------------------ */
 /* 5. Touch config / coordinate mapping                              */
 /* ------------------------------------------------------------------ */
+/* r45: selects the clean-room touch protocol path in lume_touch.c. V2
+ * carries a CST820 / CST816S-compatible controller at 0x15 (8-bit
+ * registers / 6-byte point frame), NOT a CST9220. Verified against
+ * espressif/esp_lcd_touch_cst816s v1.1.1~1 and the Waveshare SensorLib
+ * TouchDrvCST816 driver (official 1.8 demos). */
+#define LUME_TOUCH_CHIP        LUME_TOUCH_CHIP_CST816S
 /* 400 kHz I2C — wiki (FT3168 10 kHz..400 kHz) and the CST816S BSP config
  * (CONFIG_BSP_I2C_CLK_SPEED_HZ). Bus-level, not board wiring. */
 #define LUME_TOUCH_I2C_SPEED_HZ 400000
