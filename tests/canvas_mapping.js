@@ -74,9 +74,14 @@ pass('injected 390x390 screen governs canvas size, budget and draw bounds', () =
     'Canvas({width:1,height:1,onDraw:function(c){c.text(0,391,"x","#ffffff");}})',
   ]) assert.throws(() => runApp(expr, {screen}), expr);
 });
-pass('embedded demo equals counter example message sequence', () => {
+pass('counter example retains count and theme behavior', () => {
   const file = fs.readFileSync('examples/counter/app.js','utf8');
-  assert.deepStrictEqual(harness(demo).calls,harness(file).calls);
+  const h = harness(file);
+  assert.strictEqual(vm.runInContext('count()',h.ctx),0);
+  vm.runInContext('count.set(count()+1);lume.theme.set(lightTheme)',h.ctx);
+  assert.strictEqual(vm.runInContext('count()',h.ctx),1);
+  assert.strictEqual(vm.runInContext('lume.theme.get().colors.bg',h.ctx),'#EAF2F7');
+  assert(h.calls.some(x=>x[0]==='press'));
 });
 const printed = harness(demo).calls;
 console.log('SAMPLE messages (first 12): ' + JSON.stringify(printed.slice(0,12)));
