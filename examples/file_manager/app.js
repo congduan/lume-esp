@@ -12,11 +12,11 @@
 var fmTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
 lume.theme.set(fmTheme);
 
-var SAFE = 32;
+var SAFE = 24;
 var WIDE = 480 - SAFE * 2;
 var LIST_Y = 88;
 var LIST_H = 272;
-var ROW_H = 48;
+var ROW_H = 56;
 var Fs = lume.storage.Fs;
 
 var cwd = signal('/');
@@ -184,7 +184,7 @@ var backdrop = View({ style: { x: 0, y: 0, width: 480, height: 480, background: 
 
 /* path bar */
 View({ style: {
-  x: SAFE, y: SAFE, width: WIDE, height: 40,
+  x: SAFE, y: SAFE, width: WIDE, height: 48,
   background: 'surface', borderColor: fmTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 12,
   display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
   alignItems: 'center', padding: 8, scroll: 'none'
@@ -211,7 +211,7 @@ List({
       Text({ text: entry.isDir ? 'DIR ' : 'FILE', style: { width: 40 } }),
       Text({ text: trim(entry.name, 22), style: { width: 226 } }),
       Button({ title: function () { return pendingDelete() === entry.name ? 'SURE' : 'DEL'; },
-        style: { width: 60, height: 32, background: fmTheme.colors.danger,
+        style: { width: 60, height: 56, background: fmTheme.colors.danger,
           borderColor: fmTheme.colors.danger, borderWidth: 1, borderRadius: 8 },
         onPress: function () { askDelete(entry.name); } })
     ]);
@@ -239,19 +239,19 @@ lume.setAttr(previewCanvas, 5, 0);   /* ATTR_VISIBLE = 5, hidden until VIEW */
 
 /* status line + action bar */
 Text({ text: function () { return trim(status(), 46); },
-  style: { x: SAFE, y: 368, width: WIDE, height: 18 } });
+  style: { x: SAFE, y: 368, width: WIDE, height: 16 } });
 
 function action(x, label, handler) {
   return Button({ title: label, style: {
-    x: x, y: 392, width: 94, height: 56,
+    x: x, y: 392, width: 99, height: 56,
     background: 'surface', borderColor: fmTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 9
   }, onPress: handler });
 }
 
 action(SAFE, 'UP', goUp);
-action(140, 'NEW', makeDir);
-action(240, 'DEL', removeSelected);
-action(340, 'VIEW', previewSelected);
+action(135, 'NEW', makeDir);
+action(246, 'DEL', removeSelected);
+action(357, 'VIEW', previewSelected);
 
 /* swipe up on the backdrop = leave the current folder (same target as UP) */
 lume.gesture.on(backdrop, 'swipe', function (e) {

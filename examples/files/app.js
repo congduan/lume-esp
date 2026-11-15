@@ -96,35 +96,35 @@ function removeSelected() {
 View({ style: {
   width: '100%', height: '100%', background: 'primary', scroll: 'none',
   display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-  padding: 32
+  padding: 24
 }}, [
   /* 顶栏：返回 + 路径 + 占位 */
   View({ style: {
     display: 'flex', flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', width: '100%', height: 44,
+    justifyContent: 'space-between', width: '100%', height: 56,
     background: 'surface', borderRadius: 12,
     paddingLeft: 12, paddingRight: 12, scroll: 'none'
   }}, [
     Button({
       title: '<',
-      style: { width: 44, height: 32, borderRadius: 8, background:'surfaceAlt' },
+      style: { width: 56, height: 56, borderRadius: 12, background:'surfaceAlt' },
       onPress: function () {
         if (cwd() !== '/') loadDir(cwd().replace(/[^/]+\/$/, '') || '/');
       },
     }),
     Text({ text: function () { return 'Files / ' + cwd(); }, style: {} }),
-    View({ style: { width: 44, height: 30 } }),           // 占位保持路径居中
+    View({ style: { width: 56, height: 56 } }),           // 占位保持路径居中
   ]),
 
   /* 文件列表（固定高度，窗口化渲染） */
   List({
-    items: entries, itemHeight: 48,
+    items: entries, itemHeight: 56,
     style: { width: '100%', height: 272, background: 'surface', borderRadius: 12,
              scrollbar: 'off' },
     renderItem: function (e) { return View({
       style: {
         display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
-        width: '100%', height: 48, paddingLeft: 12, borderRadius: 8,
+        width: '100%', height: 56, paddingLeft: 12, borderRadius: 8,
         background: function () {
           return selected() === e.name ? 'surfaceAlt' : (entries().indexOf(e) % 2 ? 'surfaceAlt' : 'surface');
         },
@@ -137,7 +137,7 @@ View({ style: {
       Text({ text: e.name }),
       Button({
         title: 'DEL',
-        style: { width: 56, height: 32, borderRadius: 8, background:'danger' },
+        style: { width: 56, height: 56, borderRadius: 8, background:'danger' },
         onPress: function () { askDelete(e.name); },
       }),
     ]); },
@@ -145,17 +145,17 @@ View({ style: {
 
   /* 底部操作行 */
   View({ style: {
-    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
-    width: '100%', height: 56
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+    width: '100%', height: 80, padding: 0
   }}, [
-    Button({ title: 'del selected', style: { width: 144, height: 56, borderRadius: 999, background:'accent' },
+    Button({ title: 'del selected', style: { width: '100%', height: 56, borderRadius: 999, background:'accent' },
              onPress: removeSelected }),
-    Text({ text: function () { return status(); }, style: { flexGrow: 1 } }),
+    Text({ text: function () { return status(); }, style: { width: '100%', textAlign: 'center' } }),
   ]),
 ]);
 
 Text({text:function(){return entries().length?'':'[ ]';},style:{x:200,y:180,width:80,fontSize:40,color:'textDim',textAlign:'center'}});
-Text({text:function(){return entries().length?'':'No files in this folder';},style:{x:64,y:232,width:352,fontSize:13,color:'textDim',textAlign:'center'}});
+Text({text:function(){return entries().length?'':'No files in this folder';},style:{x:24,y:232,width:432,fontSize:13,color:'textDim',textAlign:'center'}});
 
 /* ============ 生命周期 ============ */
 lume.app.onResume(function () { loadDir(cwd()); });   // 回前台重读目录

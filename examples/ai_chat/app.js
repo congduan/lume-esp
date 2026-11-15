@@ -40,24 +40,24 @@ var chatTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceA
 lume.theme.set(chatTheme);
 var dots=signal(0);
 lume.system.setInterval(function(){if(state()==='Loading...')dots.set((dots()+1)%4);},400);
-View({style:{width:'100%',height:'100%',padding:32,background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',gap:12}},[
+View({style:{width:'100%',height:'100%',padding:24,background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',gap:12}},[
   View({style:{width:'100%',height:56,display:'flex',flexDirection:'column',padding:0,gap:4}},[
     Text({text:'Lume AI',style:{fontSize:24,color:'text'}}),
     Text({text:function(){return state()==='Loading...'?'Thinking'+'.'.repeat(dots()):state();},style:{fontSize:13,color:'textDim'}})
   ]),
-  View({style:{width:'100%',height:104,display:'flex',flexDirection:'row',justifyContent:'end',padding:0}},[
-    View({style:{width:304,height:96,background:'surfaceAlt',borderRadius:20,padding:16}},[
-      Text({text:shownQuestion,style:{width:272,height:72,fontSize:16,color:'text',longMode:'wrap'}})
+  View({style:{width:'100%',height:96,display:'flex',flexDirection:'row',padding:0}},[
+    View({style:{width:'100%',height:96,background:'surfaceAlt',borderRadius:20,padding:16,display:'flex',alignItems:'center'}},[
+      Text({text:shownQuestion,style:{width:400,fontSize:16,color:'text',longMode:'wrap'}})
     ])
   ]),
-  View({style:{width:'100%',height:148,display:'flex',flexDirection:'row',padding:0}},[
-    View({style:{width:344,height:144,background:'surface',borderRadius:20,padding:16}},[
-      Text({text:pageText,style:{width:312,height:112,fontSize:16,color:'text',longMode:'wrap'}})
+  View({style:{width:'100%',height:144,display:'flex',flexDirection:'row',padding:0}},[
+    View({style:{width:'100%',height:144,background:'surface',borderRadius:20,padding:16,display:'flex',alignItems:'center'}},[
+      Text({text:pageText,style:{width:400,fontSize:16,color:'text',textAlign:'left',longMode:'wrap'}})
     ])
   ]),
   View({style:{width:'100%',height:64,display:'flex',flexDirection:'row',alignItems:'center',gap:8,padding:0}},[
     Button({title:'More',style:{width:88,height:56,borderRadius:999,background:'surfaceAlt'},onPress:function(){if((page()+1)*80<answer().length)page.set(page()+1);else page.set(0);}}),
-    View({style:{width:252,height:56,background:'surfaceAlt',borderRadius:999,padding:16,display:'flex',alignItems:'center'}},[Text({text:'Next prompt',style:{fontSize:13,color:'textDim'}})]),
+    View({style:{width:272,height:56,background:'surfaceAlt',borderRadius:999,padding:16,display:'flex',alignItems:'center'}},[Text({text:'Next prompt',style:{fontSize:13,color:'textDim'}})]),
     Button({title:'Send',style:{width:56,height:56,borderRadius:999,background:'accent'},onPress:sendQuestion})
   ])
 ]);

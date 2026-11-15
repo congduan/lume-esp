@@ -118,19 +118,19 @@ var battArc = Arc({
  * The existing canvas still renders TRACE and SYSTEM without changing navigation. */
 var gaugeCards=[View({style:{x:0,y:0,width:480,height:396,background:'bg',scroll:'none'}})];
 function metricCard(x,y,label,value,unit){
-  var id=View({style:{x:x,y:y,width:196,height:128,background:'surface',borderRadius:12,padding:16,
+  var id=View({style:{x:x,y:y,width:204,height:129,background:'surface',borderRadius:12,padding:16,
     display:'flex',flexDirection:'column',justifyContent:'space-between',gap:8,scroll:'none'}},[
     Text({text:label,style:{fontSize:13,color:'textDim'}}),
     Text({text:value,style:{fontSize:24,color:'text'}}),
     Text({text:unit,style:{fontSize:11,color:'textDim'}})
   ]);gaugeCards.push(id);
 }
-metricCard(32,80,'BATTERY',function(){return Math.round(view().pct)+'%';},'Charge level');
+metricCard(24,80,'BATTERY',function(){return Math.round(view().pct)+'%';},'Charge level');
 metricCard(252,80,'TEMPERATURE',function(){return view().temp;},'Board sensor');
-metricCard(32,220,'USB POWER',function(){return view().vbus;},'VBUS input');
+metricCard(24,220,'USB POWER',function(){return view().vbus;},'VBUS input');
 metricCard(252,220,'UPTIME',function(){return view().uptime;},'Since start');
-gaugeCards.push(Text({text:'LUME HUB',style:{x:32,y:32,width:300,height:32,fontSize:24,color:'text'}}));
-gaugeCards.push(Text({text:function(){return view().charge+'  /  accelerometer live';},style:{x:32,y:364,width:416,height:24,fontSize:13,color:'textDim'}}));
+gaugeCards.push(Text({text:'LUME HUB',style:{x:24,y:24,width:300,height:32,fontSize:24,color:'text'}}));
+gaugeCards.push(Text({text:function(){return view().charge+'  /  accelerometer live';},style:{x:24,y:364,width:432,height:20,fontSize:13,color:'textDim'}}));
 lume.setAttr(battArc,5,0);
 
 function drawGauge(ctx, v) {
@@ -358,15 +358,15 @@ lume.gesture.on(backdrop, 'swipe', function (e) {
 
 function tab(x, index, label) {
   return Button({ title: label, style: {
-    x: x, y: 404, width: 128, height: 36,
+    x: x, y: 400, width: 136, height: 56,
     background: function () { return view().page === index ? 'accent' : 'surface'; },
     borderColor: hubTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 10
   }, onPress: function () { go(index); } });
 }
 
-tab(SAFE, 0, 'GAUGE');
-tab(176, 1, 'TRACE');
-tab(312, 2, 'SYSTEM');
+tab(24, 0, 'GAUGE');
+tab(172, 1, 'TRACE');
+tab(320, 2, 'SYSTEM');
 
 /* Bottom indicator pill: a quiet hint that an upward swipe leaves the app. */
 View({ style: { width: 64, height: 3, background: hubTheme.colors.surfaceAlt, borderRadius: 2 },

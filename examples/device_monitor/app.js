@@ -121,7 +121,7 @@ function card(width, label, value) {
 function row(children, height, justify) {
   return View({ style: {
     width: '100%', height: height,
-    display: 'flex', flexDirection: 'row', gap: 8,
+    display: 'flex', flexDirection: 'row', gap: 24,
     justifyContent: justify || 'start'
   } }, children);
 }
@@ -208,19 +208,19 @@ lume.app.onResume(startPolling);
 
 /* Four metric cards leave room for a readable status footer. */
 lume.setAttr(battGauge,5,0);lume.setAttr(tiltGauge,5,0);
-function monitorMetric(label,value,large){return View({style:{width:196,height:128,background:'surface',borderRadius:12,padding:16,
+function monitorMetric(label,value,large){return View({style:{width:204,height:127,background:'surface',borderRadius:12,padding:16,
   display:'flex',flexDirection:'column',justifyContent:'space-between',gap:8},onPress:refresh},[
-  Text({text:label,style:{fontSize:13,color:'textDim'}}),
+  Text({text:label,style:{fontSize:13,color:'textDim',paddingTop:label==='ACCEL / m/s2'?2:0}}),
   Text({text:value,style:{fontSize:large?24:16,color:'text',longMode:'dots'}}),
   Text({text:'LIVE SENSOR',style:{fontSize:11,color:'textDim'}})
 ]);}
-var screenRoot=View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',padding:32,gap:12},onPress:refresh},[
-  View({style:{width:'100%',height:48,display:'flex',flexDirection:'row',justifyContent:'space-between',padding:0}},[
+var screenRoot=View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',padding:24,gap:24},onPress:refresh},[
+  View({style:{width:'100%',height:40,display:'flex',flexDirection:'row',justifyContent:'space-between',alignItems:'center',padding:0}},[
     Text({text:'Device',style:{fontSize:24,color:'text'}}),Text({text:'LIVE / 2 Hz',style:{fontSize:13,color:'textDim'}})
   ]),
   row([monitorMetric('BATTERY',function(){return Math.round(battPct())+'%';},true),monitorMetric('TEMPERATURE',function(){return tempLine();},true)],128),
   row([monitorMetric('POWER',function(){return powerLine();},false),monitorMetric('ACCEL / m/s2',function(){return accelLine();},false)],128),
-  View({style:{width:'100%',height:64,background:'surfaceAlt',borderRadius:12,padding:12,display:'flex',flexDirection:'column',gap:4}},[
+  View({style:{width:'100%',height:56,background:'surfaceAlt',borderRadius:12,padding:12,display:'flex',flexDirection:'column',gap:4}},[
     Text({text:function(){return 'WiFi '+netLine()+' / BLE '+bleLine();},style:{width:'100%',fontSize:13,color:'textDim',longMode:'dots'}}),
     Text({text:function(){return 'Storage '+storeLine()+' / gyro '+gyroLine();},style:{width:'100%',fontSize:11,color:'textDim',longMode:'dots'}})
   ])
