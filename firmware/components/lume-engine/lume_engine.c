@@ -284,6 +284,149 @@ static int eval_script(JSContext *ctx, const char *src, const char *name)
 }
 
 /* ------------------------------------------------------------------ */
+/* r46 Task B: one-time bytecode compile cache for embedded scripts.     */
+/* lume_prelude_js (~57 KB) was re-parsed from source on EVERY app       */
+/* switch. Compile it once (JS_Eval COMPILE_ONLY), serialize the function */
+/* bytecode with JS_WriteObject into a PSRAM-resident blob, and on later  */
+/* switches load it with JS_ReadObject + JS_EvalFunction, skipping the    */
+/* parse. Same pattern for lume_home_js / lume_demo_js. The blob is       */
+/* self-contained (atoms serialized inline) so it survives the runtime    */
+/* teardown between iterations. A magic + packed QJS version + source     */
+/* content hash guard against ever reading a stale/foreign blob; on any    */
+/* mismatch or load error we discard the cache and fall back to source     */
+/* eval. Source C-string form in lume_scripts.c is untouched.            */
+/* ------------------------------------------------------------------ */
+#define LUME_SCRIPT_CACHE_MAGIC 0x43424d4cu   /* "LMBC" */
+#define SCRIPT_QJS_VERSION (((uint32_t)QJS_VERSION_MAJOR << 16) | \
+                            ((uint32_t)QJS_VERSION_MINOR << 8) |  \
+                            (uint32_t)QJS_VERSION_PATCH)
+
+typedef enum {
+    LUME_CACHE_PRELUDE = 0,
+    LUME_CACHE_HOME,
+    LUME_CACHE_DEMO,
+    LUME_CACHE_COUNT
+} lume_cache_slot_t;
+
+typedef struct {
+    uint32_t magic;
+    uint32_t qjs_version;   /* packed QJS_VERSION_MAJOR.MINOR.PATCH */
+    uint32_t src_hash;      /* FNV-1a over the embedded source bytes */
+    uint32_t body_len;      /* JS_WriteObject blob length */
+    uint8_t  body[];        /* JS_WriteObject blob (starts with BC_VERSION) */
+} lume_script_cache_t;
+
+/* Engine-task-only, PSRAM-resident, alive for the whole boot (never freed:
+ * small, fixed set, reused on every switch). */
+static lume_script_cache_t *s_script_cache[LUME_CACHE_COUNT];
+
+static uint32_t script_src_hash(const char *src, size_t len)
+{
+    uint32_t h = 2166136261u;   /* FNV-1a 32 */
+    for (size_t i = 0; i < len; i++) {
+        h ^= (uint8_t)src[i];
+        h *= 16777619u;
+    }
+    return h;
+}
+
+/* Compile `src` to bytecode and store it. Returns true when the cache holds a
+ * valid blob (which the caller then loads+runs). `ctx` is a live runtime. */
+static bool script_cache_compile(JSContext *ctx, lume_cache_slot_t slot,
+                                 const char *src, const char *name)
+{
+    size_t len = strlen(src);
+    JSValue fn = JS_Eval(ctx, src, len, name,
+                         JS_EVAL_TYPE_GLOBAL | JS_EVAL_FLAG_COMPILE_ONLY);
+    if (JS_IsException(fn)) {
+        dump_js_exception(ctx, name);
+        return false;
+    }
+    size_t body_len = 0;
+    uint8_t *body = JS_WriteObject(ctx, &body_len, fn, JS_WRITE_OBJ_BYTECODE);
+    JS_FreeValue(ctx, fn);
+    if (body == NULL || body_len == 0) {
+        if (body) js_free(ctx, body);
+        return false;
+    }
+    size_t total = sizeof(lume_script_cache_t) + body_len;
+    lume_script_cache_t *c = heap_caps_malloc(total, MALLOC_CAP_SPIRAM);
+    if (c == NULL) {
+        js_free(ctx, body);
+        ESP_LOGW(TAG, "script cache '%s': PSRAM alloc %u bytes failed",
+                 name, (unsigned)total);
+        return false;
+    }
+    c->magic = LUME_SCRIPT_CACHE_MAGIC;
+    c->qjs_version = SCRIPT_QJS_VERSION;
+    c->src_hash = script_src_hash(src, len);
+    c->body_len = (uint32_t)body_len;
+    memcpy(c->body, body, body_len);
+    js_free(ctx, body);
+    s_script_cache[slot] = c;
+    ESP_LOGI(TAG, "script cache '%s': compiled %u bytes total (%u body), "
+             "qjs %d.%d.%d, src hash 0x%08x",
+             name, (unsigned)total, (unsigned)body_len,
+             QJS_VERSION_MAJOR, QJS_VERSION_MINOR, QJS_VERSION_PATCH,
+             (unsigned)c->src_hash);
+    return true;
+}
+
+/* Load + run a cached blob. JS_EvalFunction consumes obj. Returns 0 on ok. */
+static int script_cache_load(JSContext *ctx, const lume_script_cache_t *c,
+                             const char *name)
+{
+    JSValue obj = JS_ReadObject(ctx, c->body, c->body_len, JS_READ_OBJ_BYTECODE);
+    if (JS_IsException(obj)) {
+        dump_js_exception(ctx, "<bytecode-read>");
+        return -1;
+    }
+    JSValue ret = JS_EvalFunction(ctx, obj);
+    if (JS_IsException(ret)) {
+        dump_js_exception(ctx, "<bytecode-eval>");
+        JS_FreeValue(ctx, ret);
+        return -1;
+    }
+    JS_FreeValue(ctx, ret);
+    return 0;
+}
+
+/* Evaluate an embedded script, using the resident bytecode cache when valid.
+ * On first use it compiles AND runs via bytecode; later uses skip the parse.
+ * Any cache problem discards it and falls back to source eval (never a
+ * cross-version misread). */
+static int eval_cached_script(JSContext *ctx, const char *src,
+                              const char *name, lume_cache_slot_t slot)
+{
+    lume_script_cache_t *c = s_script_cache[slot];
+    if (c != NULL &&
+        (c->magic != LUME_SCRIPT_CACHE_MAGIC ||
+         c->qjs_version != SCRIPT_QJS_VERSION ||
+         c->body_len == 0 ||
+         c->src_hash != script_src_hash(src, strlen(src)))) {
+        ESP_LOGW(TAG, "script cache '%s': version/hash mismatch, discarding", name);
+        heap_caps_free(c);
+        s_script_cache[slot] = NULL;
+        c = NULL;
+    }
+    if (c == NULL) {
+        if (!script_cache_compile(ctx, slot, src, name)) {
+            ESP_LOGW(TAG, "script cache '%s': compile failed, source eval", name);
+            return eval_script(ctx, src, name);
+        }
+        c = s_script_cache[slot];
+    }
+    if (script_cache_load(ctx, c, name) != 0) {
+        ESP_LOGW(TAG, "script cache '%s': load failed, discard + source eval", name);
+        heap_caps_free(c);
+        s_script_cache[slot] = NULL;
+        return eval_script(ctx, src, name);
+    }
+    /* Match eval_buf/eval_script's convention: 1 = ok, 0 = failed. */
+    return 1;
+}
+
+/* ------------------------------------------------------------------ */
 /* Native JS bindings: global `lume` object (engine task only)         */
 /* Each binding posts a fixed-size message; no lv_* anywhere here.     */
 /* ------------------------------------------------------------------ */
@@ -3004,11 +3147,24 @@ static void engine_task(void *arg)
                              : (cand_is_home ? "<home>" : "<embedded-demo>"),
                  (unsigned)app_len);
 
-        /* ---- eval prelude (signals/ui), then the app ---- */
-        bool ok = eval_script(ctx, lume_prelude_js, "<lume-prelude>");
+        /* ---- eval prelude (signals/ui), then the app ----
+         * r46 Task B: prelude + the built-in home/demo scripts go through the
+         * resident bytecode cache (parsed once, loaded on later switches).
+         * Pushed/installed app bundles keep the generic eval_buf path (which
+         * also handles LUMB bytecode frames). */
+        bool ok = eval_cached_script(ctx, lume_prelude_js, "<lume-prelude>",
+                                     LUME_CACHE_PRELUDE);
         lume_perf_switch_mark(LUME_SW_POST_PRELUDE);
         if (ok) {
-            ok = eval_buf(ctx, app_src, app_len, "<lume-app>");
+            if (app_src == lume_home_js) {
+                ok = eval_cached_script(ctx, lume_home_js, "<lume-home>",
+                                        LUME_CACHE_HOME);
+            } else if (app_src == lume_demo_js) {
+                ok = eval_cached_script(ctx, lume_demo_js, "<lume-demo>",
+                                        LUME_CACHE_DEMO);
+            } else {
+                ok = eval_buf(ctx, app_src, app_len, "<lume-app>");
+            }
         } else {
             ESP_LOGE(TAG, "prelude eval failed; app skipped");
         }
