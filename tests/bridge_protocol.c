@@ -52,6 +52,10 @@ _Static_assert(LUME_NODE_CANVAS == 3 && LUME_OP_CANVAS_DRAW == 6 &&
 _Static_assert(LUME_NODE_IMAGE == 4 && LUME_OP_IMAGE_SOURCE == 10, "image wire ids");
 _Static_assert(LUME_FLEX_SPACE_BETWEEN == 3 && LUME_FLEX_CROSS_STRETCH == 3,
                "axis-specific align wire values");
+/* r46: FIRSTFRAME is appended at the op-enum tail (after CANVAS_PATH_DRAW=13),
+ * never renumbering existing IDs. */
+_Static_assert(LUME_OP_CANVAS_PATH_DRAW == 13 && LUME_OP_FIRSTFRAME == 14,
+               "r46 FIRSTFRAME op id (appended at tail)");
 
 /* r43b: the "LUMB" frame variant and the 16-byte "LQBC" payload header must
  * stay in lockstep with tools/lume/protocol.js and lume_frame.c. */

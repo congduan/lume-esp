@@ -1416,6 +1416,14 @@ void lume_ui_bridge_drain(void)
                     canvas_publish(m.node_id, &m);
                 }
                 break;
+            case LUME_OP_FIRSTFRAME:
+                /* r46 Task A: the engine posts this AFTER all initial UI
+                 * messages, so by now the new app's first frame is applied.
+                 * token carries the app-eval-done emulated timestamp; report
+                 * the LVGL-side first-frame drain latency. (Task C also uses
+                 * this as the transition reveal trigger.) */
+                lume_perf_switch_firstframe((int64_t)m.token);
+                break;
             default:
                 ESP_LOGW(TAG, "drain: unknown op %u", (unsigned)m.op);
                 break;

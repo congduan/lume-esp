@@ -157,6 +157,12 @@ typedef enum {
     LUME_OP_CANVAS_BATCH,      /* owned bounded array of line segments */
     LUME_OP_CANVAS_PATH_DEFINE,/* retained segment array (attr = path id) */
     LUME_OP_CANVAS_PATH_DRAW,  /* replay a retained path (attr = id, from/to = dx/dy) */
+    /* r46 Task A/C: engine posts this AFTER an app's initial UI messages.
+     * FIFO Queue A ordering guarantees it is drained only once the whole
+     * first frame has been applied. token = engine esp_timer us at app-eval
+     * -done (first-frame latency measurement); also the transition reveal
+     * trigger (Task C). Appended at the tail: existing IDs are unchanged. */
+    LUME_OP_FIRSTFRAME,
 } lume_op_t;
 
 #define LUME_CANVAS_BATCH_MAX 32

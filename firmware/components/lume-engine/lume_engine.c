@@ -2949,6 +2949,7 @@ static void engine_task(void *arg)
      * Drivers (LVGL / touch / board) are NOT restarted across iterations.
      * EXACTLY ONE app (or the home screen) is live at any moment. */
     for (;;) {
+        lume_perf_switch_mark(LUME_SW_RB_START);   /* r46 Task A: rebuild begin */
         s_bc_fail_reason = NULL;   /* r43b: one reload outcome per iteration */
         const char *app_src;
         size_t app_len;
@@ -2974,6 +2975,7 @@ static void engine_task(void *arg)
             ESP_LOGE(TAG, "JS_NewRuntime2 (PSRAM allocator) failed");
             abort();             /* fail-fast: boot abort beats a dead engine */
         }
+        lume_perf_switch_mark(LUME_SW_POST_NEWRT);
         JS_SetMemoryLimit(rt, LUME_JS_HEAP_LIMIT);
         JSContext *ctx = JS_NewContext(rt);
         if (ctx == NULL) {
@@ -2981,6 +2983,7 @@ static void engine_task(void *arg)
             JS_FreeRuntime(rt);
             abort();
         }
+        lume_perf_switch_mark(LUME_SW_POST_NEWCTX);
         s_rt = rt;
         s_ctx = ctx;
         register_bindings(ctx);                              /* native lume.* */
@@ -2995,6 +2998,7 @@ static void engine_task(void *arg)
         memset(s_node_live, 0, sizeof(s_node_live));
         memset(s_node_dead, 0, sizeof(s_node_dead));
         clear_removals();                       /* drop stale removal latch */
+        lume_perf_switch_mark(LUME_SW_POST_BINDINGS);
         ESP_LOGI(TAG, "runtime up; eval app '%s' (%u bytes)",
                  cand_app[0] ? cand_app
                              : (cand_is_home ? "<home>" : "<embedded-demo>"),
@@ -3002,11 +3006,14 @@ static void engine_task(void *arg)
 
         /* ---- eval prelude (signals/ui), then the app ---- */
         bool ok = eval_script(ctx, lume_prelude_js, "<lume-prelude>");
+        lume_perf_switch_mark(LUME_SW_POST_PRELUDE);
         if (ok) {
             ok = eval_buf(ctx, app_src, app_len, "<lume-app>");
         } else {
             ESP_LOGE(TAG, "prelude eval failed; app skipped");
         }
+        lume_perf_switch_mark(LUME_SW_POST_APP);
+        lume_perf_switch_report();   /* r46 Task A: log phase deltas (no-op when off) */
 
         if (!ok) {
             /* eval_buf already dumped the JS exception. A failed reload or a
@@ -3066,6 +3073,19 @@ static void engine_task(void *arg)
         }
 
         call_app_hook("__lume_start");
+
+#if CONFIG_LUME_SWITCH_PROFILE
+        /* r46 Task A: posted AFTER all initial UI messages and __lume_start.
+         * Queue A FIFO ensures the LVGL task drains it only once the first
+         * frame is fully applied; token = app-eval-done emulated timestamp. */
+        {
+            lume_ui_msg_t ff;
+            msg_init(&ff);
+            ff.op = LUME_OP_FIRSTFRAME;
+            ff.token = (uint32_t)esp_timer_get_time();
+            (void)lume_ui_bridge_post(&ff);
+        }
+#endif
 
         /* ---- success: the live app identity + boot marker ---- */
         snprintf(s_running_app, sizeof(s_running_app), "%s", cand_app);
@@ -3188,6 +3208,10 @@ static void engine_task(void *arg)
             call_app_hook("__lume_tick");
         }
 
+        /* r46 Task A: an app switch is starting (teardown now + rebuild on
+         * the next outer-loop iteration). Start one measurement window. */
+        lume_perf_switch_begin();
+
         /* ---- teardown ----
          * Only the engine task ever dereferences s_ctx (bindings, dispatch_*).
          * The reverse channel (press sink) and the reload request path only
@@ -3203,8 +3227,11 @@ static void engine_task(void *arg)
             ESP_LOGE(TAG, "UI reset post failed; old nodes may remain");
         s_rt = NULL;
         s_ctx = NULL;
+        lume_perf_switch_mark(LUME_SW_PRE_FREE);
         JS_FreeContext(ctx);
+        lume_perf_switch_mark(LUME_SW_POST_FREECTX);
         JS_FreeRuntime(rt);
+        lume_perf_switch_mark(LUME_SW_POST_FREERT);
 
         /* ---- decide the NEXT source ---- */
         if (reload) {

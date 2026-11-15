@@ -63,3 +63,83 @@ void lume_perf_log_second(void)
     }
 }
 #endif
+
+/* ------------------------------------------------------------------ */
+/* r46 Task A: app-switch phase profiler (independent opt-in).          */
+/* Marks are emulated microseconds from esp_timer_get_time(). Under     */
+/* esp32sim these are deterministic (the emulated clock advances with    */
+/* executed cycles), which is the "instruction-count / relative-time"    */
+/* metric requested for the switch-phase table, NOT wall-clock.         */
+/* One SWMARK line per checkpoint also lets the harness stop the sim at  */
+/* that exact emulated time and read cumulative instruction counts.      */
+/* ------------------------------------------------------------------ */
+#if CONFIG_LUME_SWITCH_PROFILE
+#include <stdbool.h>
+#include "esp_timer.h"
+#include "esp_log.h"
+static const char *s_sw_names[LUME_SW_MARKS] = {
+    "BEGIN", "PRE_FREE", "POST_FREECTX", "POST_FREERT", "RB_START",
+    "POST_NEWRT", "POST_NEWCTX", "POST_BINDINGS", "POST_PRELUDE", "POST_APP"
+};
+static int64_t s_sw_marks[LUME_SW_MARKS];
+static bool s_sw_active;
+
+static int64_t sw_now(void) { return esp_timer_get_time(); }
+
+void lume_perf_switch_begin(void)
+{
+    for (int i = 0; i < LUME_SW_MARKS; i++) s_sw_marks[i] = 0;
+    s_sw_active = true;
+    s_sw_marks[LUME_SW_BEGIN] = sw_now();
+    ESP_LOGI("lume-perf", "SWMARK 0 BEGIN %lld", (long long)s_sw_marks[LUME_SW_BEGIN]);
+}
+
+void lume_perf_switch_mark(lume_sw_mark_t m)
+{
+    if (!s_sw_active || m < 0 || m >= LUME_SW_MARKS) return;
+    s_sw_marks[m] = sw_now();
+    ESP_LOGI("lume-perf", "SWMARK %d %s %lld",
+             (int)m, s_sw_names[m], (long long)s_sw_marks[m]);
+}
+
+static long long sw_delta(int a, int b)
+{
+    if (!s_sw_marks[a] || !s_sw_marks[b]) return -1;
+    return (long long)(s_sw_marks[b] - s_sw_marks[a]);
+}
+
+void lume_perf_switch_report(void)
+{
+    if (!s_sw_active) return;
+    ESP_LOGI("lume-perf",
+             "switch: teardown=%lldus (housekeeping=%lld freectx=%lld freeRT=%lld) "
+             "runtime=%lldus (newRT=%lld newCtx=%lld bindings=%lld) "
+             "prelude=%lldus app=%lldus",
+             sw_delta(LUME_SW_BEGIN, LUME_SW_POST_FREERT),
+             sw_delta(LUME_SW_BEGIN, LUME_SW_PRE_FREE),
+             sw_delta(LUME_SW_PRE_FREE, LUME_SW_POST_FREECTX),
+             sw_delta(LUME_SW_POST_FREECTX, LUME_SW_POST_FREERT),
+             sw_delta(LUME_SW_RB_START, LUME_SW_POST_BINDINGS),
+             sw_delta(LUME_SW_RB_START, LUME_SW_POST_NEWRT),
+             sw_delta(LUME_SW_POST_NEWRT, LUME_SW_POST_NEWCTX),
+             sw_delta(LUME_SW_POST_NEWCTX, LUME_SW_POST_BINDINGS),
+             sw_delta(LUME_SW_POST_BINDINGS, LUME_SW_POST_PRELUDE),
+             sw_delta(LUME_SW_POST_PRELUDE, LUME_SW_POST_APP));
+    s_sw_active = false;
+}
+
+void lume_perf_switch_firstframe(int64_t app_done_us)
+{
+    if (!app_done_us) return;
+    int64_t now = sw_now();
+    long long d = (long long)(now - app_done_us);
+    /* esp_timer wraps a uint32 after ~71 min; reject nonsense when it does. */
+    if (d < 0 || d > 10000000LL) {
+        ESP_LOGI("lume-perf", "switch-firstframe: n/a (clock wrap / out of range)");
+        return;
+    }
+    ESP_LOGI("lume-perf", "SWMARK %d FIRSTFRAME %lld",
+             (int)LUME_SW_MARKS, (long long)now);
+    ESP_LOGI("lume-perf", "switch-firstframe=%lldus", d);
+}
+#endif

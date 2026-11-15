@@ -10,4 +10,14 @@ menu "Lume performance experiments"
         int "LVGL refresh period in milliseconds (10, 15, or 33)"
         range 10 33
         default 33
+    config LUME_SWITCH_PROFILE
+        bool "r46: log per-phase app-switch timing (opt-in measurement, default off)"
+        default n
+        help
+          Emits one lume-perf "switch:" line per app switch with teardown
+          (JS_FreeRuntime broken out), runtime creation (NewRuntime2 /
+          NewContext / register_bindings broken out), prelude eval and app
+          eval phases, plus SWMARK checkpoints and an LVGL-side first-frame
+          latency line. Uses emulated microseconds (deterministic under
+          esp32sim), NOT wall-clock. Off by default: no production overhead.
 endmenu
