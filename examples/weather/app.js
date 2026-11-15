@@ -4,8 +4,8 @@
  * 数据源：Open-Meteo 免费接口，无需 API key。
  *   https://api.open-meteo.com/v1/forecast?latitude=..&longitude=..&current=..&daily=..
  *
- * 布局：480×480 面板，24 px gutter，纵向四段
- *   header 56（城市 + 刷新按钮）/ hero 148（Canvas 图标 + 温度）/ 指标 60 / 三日预报 128
+ * 布局：480×480 面板，左右与底部 24 px gutter、顶部 36 px（圆角屏安全区），纵向四段
+ *   header 56（城市 + 刷新按钮）/ hero 144（Canvas 图标 + 温度）/ 指标 60 / 三日预报 128
  *
  * 前置条件（NVS，用 lume deploy 之前通过 kv 写入）：
  *   wifi_ssid / wifi_pass     —— 与 examples/ai_chat 相同的约定
@@ -231,7 +231,8 @@ function refresh() {
     if (typeof res === 'number') {
       online.set(false);
       data.set(DEMO);
-      status.set('请求失败 ' + res + (res === -2 && !skipTls ? '（TLS 需先校时，可设 weather.insecure=1）' : ''));
+      /* 短文案：header 只有一行，长提示会被省略号截断（insecure 开关见文件头）。 */
+      status.set('请求失败 ' + res + (res === -2 && !skipTls ? ' · TLS 需校时' : ''));
       return;
     }
     if (res.status !== 200) {
@@ -261,91 +262,114 @@ function heroIcon(ctx) {
   return drawWeatherIcon(ctx, weatherOf(data().code).icon, 112);
 }
 
-function metricCard(label, valueOf) {
+/* 卡片内的两行文字也各自定位：真机上 flex column 的行高会与模拟器不同，
+ * 靠布局自动排会让两行叠在一起。 */
+function metricCard(label, valueOf, x) {
   return View({
     style: {
-      flexGrow: 1, height: 60, background: 'surfaceAlt', borderRadius: 12, padding: 8,
-      display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-      gap: 4, scroll: 'none',
+      position: 'absolute', x: x, y: 256, width: 136, height: 60,
+      background: 'surfaceAlt', borderRadius: 12, scroll: 'none',
     },
   }, [
-    Text({ text: label, style: { fontSize: 14, color: 'textDim' } }),
-    Text({ text: valueOf, style: { fontSize: 20, color: 'text' } }),
+    Text({
+      text: label,
+      style: { position: 'absolute', x: 0, y: 8, width: 136, height: 18, fontSize: 14, color: 'textDim', textAlign: 'center' },
+    }),
+    Text({
+      text: valueOf,
+      style: { position: 'absolute', x: 0, y: 28, width: 136, height: 26, fontSize: 20, color: 'text', textAlign: 'center' },
+    }),
   ]);
 }
 
 function dayRow(index) {
+  var top = 328 + index * 44;
   return View({
-    style: {
-      width: '100%', height: 40, display: 'flex', flexDirection: 'row',
-      alignItems: 'center', justifyContent: 'space-between', padding: 0, gap: 8,
-    },
+    style: { position: 'absolute', x: 24, y: top, width: 432, height: 40 },
   }, [
-    Text({ text: function () { return dayAt(data(), index).label; }, style: { fontSize: 14, color: 'textDim' } }),
-    Text({ text: function () { return weatherOf(dayAt(data(), index).code).text; }, style: { fontSize: 14, color: 'text' } }),
+    Text({
+      text: function () { return dayAt(data(), index).label; },
+      style: { position: 'absolute', x: 0, y: 10, width: 120, height: 20, fontSize: 14, color: 'textDim', textAlign: 'left' },
+    }),
+    Text({
+      text: function () { return weatherOf(dayAt(data(), index).code).text; },
+      style: { position: 'absolute', x: 120, y: 10, width: 180, height: 20, fontSize: 14, color: 'text', textAlign: 'center' },
+    }),
     Text({
       text: function () {
         var d = dayAt(data(), index);
         return fmtTemp(d.lo) + ' / ' + fmtTemp(d.hi);
       },
-      style: { fontSize: 14, color: 'text' },
+      style: { position: 'absolute', x: 300, y: 10, width: 132, height: 20, fontSize: 14, color: 'text', textAlign: 'right' },
     }),
   ]);
 }
 
+/* 每个节点都显式给 x/y：真机上带 padding 的 flex column 会把首段顶出可视区，
+ * 卡片内的行高也和模拟器不同（home 与 examples/speedometer 同样只用绝对定位）。
+ * 24 px gutter；顶部留 28 px 给面板圆角。 */
+var GUTTER = 24;
+var CONTENT = 480 - GUTTER * 2;
+
 var root = View({
-  style: {
-    width: '100%', height: '100%', padding: 24, background: 'bg', scroll: 'none',
-    display: 'flex', flexDirection: 'column', gap: 12,
-  },
+  style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' },
 }, [
-  /* header：城市 + 状态，右侧 88×56 刷新按钮（≥56 px 触摸目标） */
+  /* header：城市 / 状态 / 88×56 刷新按钮（≥56 px 触摸目标） */
+  Text({
+    text: function () { return city.name; },
+    style: {
+      position: 'absolute', x: GUTTER, y: 28, width: 300, height: 28,
+      fontSize: 20, color: 'text', longMode: 'dots',
+    },
+  }),
+  Text({
+    text: headerLine,
+    style: {
+      position: 'absolute', x: GUTTER, y: 58, width: 300, height: 20,
+      fontSize: 14, color: function () { return online() ? 'textDim' : 'danger'; }, longMode: 'dots',
+    },
+  }),
+  Button({
+    title: function () { return busy() ? '…' : '刷新'; },
+    style: {
+      position: 'absolute', x: 368, y: 26, width: 88, height: 56,
+      borderRadius: 28, background: 'accent',
+    },
+    onPress: refresh,
+  }),
+
+  /* hero：Canvas 天气图标 + 温度 / 天气 / 体感 */
   View({
     style: {
-      width: '100%', height: 56, display: 'flex', flexDirection: 'row',
-      justifyContent: 'space-between', alignItems: 'center', gap: 8, padding: 0,
+      position: 'absolute', x: GUTTER, y: 100, width: CONTENT, height: 144,
+      background: 'surface', borderRadius: 20, scroll: 'none',
     },
   }, [
-    View({ style: { display: 'flex', flexDirection: 'column', gap: 4, padding: 0, flexGrow: 1 } }, [
-      Text({ text: function () { return city.name; }, style: { fontSize: 20, color: 'text' } }),
-      Text({ text: headerLine, style: { fontSize: 14, color: function () { return online() ? 'textDim' : 'danger'; } } }),
-    ]),
-    Button({
-      title: function () { return busy() ? '…' : '刷新'; },
-      style: { width: 88, height: 56, borderRadius: 28, background: 'accent' },
-      onPress: refresh,
+    Canvas({ width: 112, height: 112, onDraw: heroIcon, style: { position: 'absolute', x: 16, y: 16 } }),
+    Text({
+      text: function () { return fmtTemp(data().temp); },
+      style: { position: 'absolute', x: 144, y: 16, width: 264, height: 42, fontSize: 32, color: 'text' },
+    }),
+    Text({
+      text: function () { return weatherOf(data().code).text; },
+      style: { position: 'absolute', x: 144, y: 64, width: 264, height: 28, fontSize: 20, color: 'text' },
+    }),
+    Text({
+      text: function () { return '体感 ' + fmtTemp(data().feels); },
+      style: { position: 'absolute', x: 144, y: 96, width: 264, height: 20, fontSize: 14, color: 'textDim' },
     }),
   ]),
 
-  /* hero：Canvas 天气图标 + 温度 */
-  View({
-    style: {
-      width: '100%', height: 148, background: 'surface', borderRadius: 20, padding: 16,
-      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 16, scroll: 'none',
-    },
-  }, [
-    Canvas({ width: 112, height: 112, onDraw: heroIcon }),
-    View({ style: { display: 'flex', flexDirection: 'column', gap: 8, padding: 0, flexGrow: 1 } }, [
-      Text({ text: function () { return fmtTemp(data().temp); }, style: { fontSize: 32, color: 'text' } }),
-      Text({ text: function () { return weatherOf(data().code).text; }, style: { fontSize: 20, color: 'text' } }),
-      Text({ text: function () { return '体感 ' + fmtTemp(data().feels); }, style: { fontSize: 14, color: 'textDim' } }),
-    ]),
-  ]),
-
-  /* 指标：湿度 / 风速 / 今日范围 */
-  View({ style: { width: '100%', height: 60, display: 'flex', flexDirection: 'row', gap: 12, padding: 0 } }, [
-    metricCard('湿度', function () { return fmtHumidity(data().humidity); }),
-    metricCard('风速', function () { return fmtWind(data().wind); }),
-    metricCard('今日', function () {
-      var d = dayAt(data(), 0);
-      return fmtTemp(d.lo) + '/' + fmtTemp(d.hi);
-    }),
-  ]),
+  /* 指标：湿度 / 风速 / 今日范围（136 宽 × 3 + 12 间距 = 432） */
+  metricCard('湿度', function () { return fmtHumidity(data().humidity); }, 24),
+  metricCard('风速', function () { return fmtWind(data().wind); }, 172),
+  metricCard('今日', function () {
+    var d = dayAt(data(), 0);
+    return fmtTemp(d.lo) + '/' + fmtTemp(d.hi);
+  }, 320),
 
   /* 三日预报 */
-  View({ style: { width: '100%', height: 128, display: 'flex', flexDirection: 'column', gap: 4, padding: 0 } }, [
-    dayRow(0), dayRow(1), dayRow(2),
-  ]),
+  dayRow(0), dayRow(1), dayRow(2),
 ]);
 
 /* WiFi：与 examples/ai_chat 相同的约定，凭据放 NVS。 */
