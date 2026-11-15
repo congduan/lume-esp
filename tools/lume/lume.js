@@ -7,9 +7,10 @@ import { CONTROL, storeCommand, storeCommandBuffer, simpleCommand } from './prot
 import { openPort } from './transport.js';
 import { openOta, OTA_PORT_DEFAULT } from './ota.js';
 import { bmpFromRgb565 } from './shot.js';
+import { check, render } from './check.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--bytecode]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--bytecode]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --bytecode compiles the bundle with qjsc and pushes QuickJS bytecode\n  (build qjsc first: tools/lume/fetch-qjsc.sh); source mode stays the default.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n`;
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--bytecode]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--bytecode]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume check <app-dir> [--json] [--no-emu] [--timeout <s>]\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --bytecode compiles the bundle with qjsc and pushes QuickJS bytecode\n  (build qjsc first: tools/lume/fetch-qjsc.sh); source mode stays the default.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n`;
 
 const APP_COMMANDS = new Set(['list', 'launch', 'remove', 'home']);
 
@@ -17,8 +18,9 @@ function parse(args) {
   const [command, ...rest] = args;
   if (command === '--help' || command === '-h' || !command) return { command: 'help' };
   if (command === '--version' || command === '-v') return { command: 'version' };
-  if (!['create', 'dev', 'deploy', 'apps', 'screenshot'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
+  if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
   let dir, port, ota, token, otaPort, id, sub, subArg, ephemeral = false, bytecode = false;
+  let json = false, noEmu = false, timeout = 120;
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     if (a === '--port' && command !== 'create' && rest[i + 1]) port = rest[++i];
@@ -28,6 +30,9 @@ function parse(args) {
     else if (a === '--id' && (command === 'dev' || command === 'deploy') && rest[i + 1]) id = rest[++i];
     else if (a === '--ephemeral' && (command === 'dev' || command === 'deploy')) ephemeral = true;
     else if (a === '--bytecode' && command === 'deploy') bytecode = true;
+    else if (a === '--json' && command === 'check') json = true;
+    else if (a === '--no-emu' && command === 'check') noEmu = true;
+    else if (a === '--timeout' && command === 'check' && rest[i + 1]) timeout = rest[++i];
     else if (!a.startsWith('-') && command === 'apps' && !sub) sub = a;
     else if (!a.startsWith('-') && command === 'apps' && !subArg) subArg = a;
     else if (!a.startsWith('-') && !dir) dir = a;
@@ -38,6 +43,14 @@ function parse(args) {
   if (token && !ota) throw new Error(`--token requires --ota <ip>\n${usage}`);
   if (otaPort && !ota) throw new Error(`--ota-port requires --ota <ip>\n${usage}`);
   if (ota && port) throw new Error(`--ota and --port (serial path) are mutually exclusive\n${usage}`);
+  if (command === 'check') {
+    if (!dir) throw new Error(`check needs an app directory\n${usage}`);
+    const seconds = Number(timeout);
+    if (!Number.isFinite(seconds) || seconds <= 0) {
+      throw new Error(`--timeout must be a positive number of seconds (got ${timeout})`);
+    }
+    timeout = seconds;
+  }
   if (otaPort !== undefined) {
     const n = Number(otaPort);
     if (!Number.isInteger(n) || n < 1 || n > 65535) {
@@ -61,7 +74,7 @@ function parse(args) {
       throw new Error(`invalid app id: ${subArg}`);
     }
   }
-  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, ephemeral, bytecode };
+  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, ephemeral, bytecode, json, noEmu, timeout };
 }
 
 /* Directory name -> stable app id (same rules as lume_app_id.h). */
@@ -240,14 +253,18 @@ async function runDev(dir, portPath, id, ephemeral) {
 
 try {
   const opts = parse(process.argv.slice(2));
-  const { command, dir, port, ota, token, otaPort, id, sub, subArg, ephemeral, bytecode } = opts;
+  const { command, dir, port, ota, token, otaPort, id, sub, subArg, ephemeral, bytecode, json, noEmu, timeout } = opts;
   if (command === 'help') process.stdout.write(usage);
   else if (command === 'version') process.stdout.write(pkg.version + '\n');
   else if (command === 'create') process.stdout.write(`Created ${await create(dir)}\n`);
   else if (command === 'dev') await runDev(dir, port, id, ephemeral);
   else if (command === 'apps') await runApps(sub, subArg, { port, ota, token, otaPort });
   else if (command === 'screenshot') await runScreenshot(dir && dir !== '.' ? dir : 'screenshot.bmp', { port, ota, token, otaPort });
-  else {
+  else if (command === 'check') {
+    const result = await check(dir, { noEmu, timeout });
+    process.stdout.write(render(result, { json }));
+    process.exitCode = result.ok ? 0 : 1;
+  } else {
     let source = await bundle(dir);
     const appId = id ?? defaultId(dir);
     const device = await openDevice({ port, ota, token, otaPort });
