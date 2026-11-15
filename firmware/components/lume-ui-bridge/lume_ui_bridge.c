@@ -60,6 +60,7 @@ static size_t s_canvas_bytes;
 #define CANVAS_BUDGET ((size_t)LUME_LCD_H_RES * LUME_LCD_V_RES * (LUME_LCD_BPP / 8u))
 static void clear_subtree(lv_obj_t *obj);
 static void release_dead_canvases(void);
+static void canvas_frame_close(void);
 static void release_dead_images(void)
 {
     for (uint16_t id = 1; id < LUME_MAX_NODES; id++) {
@@ -355,6 +356,7 @@ static void apply_animate(const lume_ui_msg_t *m)
 static void apply_reset(void)
 {
     lv_obj_t *screen = lv_screen_active();
+    canvas_frame_close();   /* a reset can land mid redraw: never leave the refresh paused */
     clear_subtree(screen);
     lv_obj_clean(screen);
     release_dead_canvases();
@@ -851,6 +853,45 @@ static void apply_image_source(const lume_ui_msg_t *m)
     if (old) heap_caps_free(old);
 }
 
+/* ---- canvas frame atomicity ----
+ * Raster commands write straight into the RGB565 buffer the next refresh reads.
+ * One onDraw frame arrives as a burst of Queue A records closed by
+ * LUME_OP_CANVAS_INVALIDATE, and a burst can straddle several 5 ms drain ticks
+ * (the engine task is still posting), so a display refresh that lands inside
+ * that window blits a half-drawn canvas: on a gauge that shows up as a
+ * flickering arc and a needle that comes and goes. The refresh timer is
+ * therefore paused from the first raster command of a frame until the closing
+ * invalidate, so every blit samples a finished frame. No extra framebuffer is
+ * needed; the cost is that other widgets are not repainted for the duration of
+ * one canvas frame (a few ms), and the flush that ends the frame happens on the
+ * next refresh tick. drain_timer_cb() resumes the refresh if an app dies (or
+ * throws) without closing its frame. */
+static bool s_canvas_frame_open;
+static uint32_t s_canvas_frame_start;
+#define CANVAS_FRAME_MAX_MS 100           /* watchdog: never pause the refresh longer */
+
+static lv_timer_t *canvas_refr_timer(void)
+{
+    lv_display_t *disp = lv_display_get_default();
+    return disp ? lv_display_get_refr_timer(disp) : NULL;
+}
+static void canvas_frame_open(void)
+{
+    if (s_canvas_frame_open) return;
+    lv_timer_t *timer = canvas_refr_timer();
+    if (timer == NULL) return;
+    s_canvas_frame_open = true;
+    s_canvas_frame_start = lv_tick_get();
+    lv_timer_pause(timer);
+}
+static void canvas_frame_close(void)
+{
+    if (!s_canvas_frame_open) return;
+    s_canvas_frame_open = false;
+    lv_timer_t *timer = canvas_refr_timer();
+    if (timer != NULL) lv_timer_resume(timer);
+}
+
 /* Raster commands are applied only by the LVGL timer. The buffer belongs to
  * the canvas and is never shared with the engine; one final invalidate per
  * onDraw run avoids lv_canvas_set_px's per-pixel invalidation. */
@@ -874,6 +915,7 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
 {
     uint16_t id = m->node_id;
     if (id == 0 || id >= LUME_MAX_NODES || !s_canvas_pixels[id]) return;
+    canvas_frame_open();   /* hold the refresh off until the closing invalidate */
     uint16_t c = lv_color_to_u16(lv_color_hex((uint32_t)m->value));
     int32_t x = m->from, y = m->to, a = (int32_t)m->duration_ms, b = (int32_t)m->token;
     switch (m->attr) {
@@ -961,6 +1003,8 @@ static void apply_remove(const lume_ui_msg_t *m)
 
     clear_subtree(obj);   /* purge this node AND every descendant table entry */
     lv_obj_delete(obj);   /* deletes the whole LVGL subtree */
+    /* A deleted canvas never posts its closing invalidate: drop the pause. */
+    canvas_frame_close();
     release_dead_canvases();
     release_dead_images();
     ESP_LOGI(TAG, "remove id=%u (subtree purged, %d js owners)",
@@ -1238,6 +1282,9 @@ void lume_ui_bridge_drain(void)
                 break;
             case LUME_OP_IMAGE_SOURCE: apply_image_source(&m); break;
             case LUME_OP_CANVAS_INVALIDATE:
+                /* Frame complete: let the display refresh run again. Released
+                 * before the invalidate so the queued area is rendered. */
+                canvas_frame_close();
                 if (m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) {
                     lv_obj_t *obj = s_nodes[m.node_id];
                     if (!m.kind) lv_obj_invalidate(obj);
@@ -1275,6 +1322,13 @@ static void drain_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
     /* Runs from lv_timer_handler() on the LVGL task. */
+    if (s_canvas_frame_open &&
+        lv_tick_elaps(s_canvas_frame_start) > CANVAS_FRAME_MAX_MS) {
+        /* An app that threw inside onDraw never posts its closing invalidate. */
+        ESP_LOGW(TAG, "canvas frame open > %d ms, resume refresh",
+                 CANVAS_FRAME_MAX_MS);
+        canvas_frame_close();
+    }
     lume_ui_bridge_drain();
 }
 
