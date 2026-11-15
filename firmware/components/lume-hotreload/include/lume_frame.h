@@ -14,7 +14,8 @@
  *                 0 rejected, > 256 KiB rejected (drop + resync)
  *   offset 8..11  crc32 (u32 LE) = standard CRC-32 over payload only
  *                 (zlib.crc32 / esp_crc32_le(0, payload, len))
- *   offset 12..   payload = JS app SOURCE text (JS_Eval, not bytecode)
+ *   offset 12..   payload = JS app SOURCE text (default path, JS_Eval GLOBAL).
+ *                 See §1c for the opt-in "LUMB" bytecode payload.
  *   At an aligned boundary the four-byte controls "BACK" / "PAUS" / "RESM"
  *   are also accepted (no header, no payload, no response).
  *
@@ -23,7 +24,15 @@
  *   handed to the portable parser in lume_cmd.h. A command frame is NEVER
  *   evaluated as an app; it is answered with "CMD OK ..." / "CMD ERR ..."
  *   lines instead of "RELOAD ..." lines. Old firmware treats "LUMC" as a bad
- *   magic and re-syncs, so the two frame kinds can share one byte stream.
+ *   magic and re-syncs, so the frame kinds can share one byte stream.
+ *
+ * §1c Bytecode frames (r43b) — same 12-byte header layout with magic = 'L'
+ *   'U' 'M' 'B' ("LUMB"). The payload is a lume_bytecode.h header followed by
+ *   a raw qjsc bytecode blob. It stages through the SAME engine reload slot as
+ *   "LUME"; the engine dispatches on the payload header at eval time, so the
+ *   source path is unchanged. Old firmware treats "LUMB" as a bad magic and
+ *   re-syncs (no crash), so all three frame kinds share one byte stream.
+ *
  *   Streaming parser aligns on "LUME"; on bad magic / empty / too-large / OOM /
  *   bad CRC it emits an ERR event and re-syncs on the next "LUME". There is NO
  *   frame timeout. Both channels feed byte streams into their OWN reentrant
@@ -53,6 +62,13 @@
 
 /* ---- §1b command frames (multi-app management) ---- */
 #define LUME_FRAME_CMD_MAGIC      "LUMC"
+/* ---- §1c bytecode frames (r43b) ---- */
+#define LUME_FRAME_BYTECODE_MAGIC "LUMB"
+
+/* Frame kind stored in the parser (replaces the old bool is_cmd). */
+#define LUME_FRAME_KIND_SOURCE    0u
+#define LUME_FRAME_KIND_CMD       1u
+#define LUME_FRAME_KIND_BYTECODE  2u
 
 /* Standard CRC-32 (reflected poly 0xEDB88320), identical to zlib.crc32 and
  * esp_crc32_le(0, ...). Verified by the "123456789" -> 0xcbf43926 vector. */
@@ -67,6 +83,10 @@ size_t lume_frame_encode(uint8_t *out, size_t out_cap,
 size_t lume_frame_encode_cmd(uint8_t *out, size_t out_cap,
                              const uint8_t *payload, size_t len);
 
+/* Same header/CRC, magic "LUMB": payload is a lume_bytecode.h blob. */
+size_t lume_frame_encode_bytecode(uint8_t *out, size_t out_cap,
+                                  const uint8_t *payload, size_t len);
+
 typedef enum {
     LUME_FRAME_EV_DATA = 1,   /* validated frame; payload valid DURING cb only */
     LUME_FRAME_EV_BACK,
@@ -74,6 +94,7 @@ typedef enum {
     LUME_FRAME_EV_RESUME,
     LUME_FRAME_EV_ERR,        /* reason: bad-magic/empty/too-large/oom/bad-crc */
     LUME_FRAME_EV_CMD,        /* "LUMC" frame; payload valid DURING cb only */
+    LUME_FRAME_EV_BYTECODE,   /* "LUMB" frame; payload valid DURING cb only */
 } lume_frame_ev_t;
 
 typedef void *(*lume_frame_alloc_fn)(size_t len);
@@ -93,7 +114,7 @@ typedef struct {
     lume_frame_state_t state;
     uint8_t  magic[LUME_FRAME_MAGIC_LEN];
     int      magic_n;
-    bool     is_cmd;                       /* header came from "LUMC" */
+    uint8_t  kind;                         /* LUME_FRAME_KIND_* (LUME/LUMC/LUMB) */
     uint8_t  hdr[LUME_FRAME_LEN_LEN + LUME_FRAME_CRC_LEN];
     int      hdr_n;
     uint8_t  sync[LUME_FRAME_MAGIC_LEN];   /* rolling window, ALL states */

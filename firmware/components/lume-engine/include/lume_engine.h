@@ -120,3 +120,8 @@ typedef struct {
 } lume_ota_status_t;
 typedef void (*lume_ota_status_provider_fn)(lume_ota_status_t *out);
 void lume_engine_set_ota_status_provider(lume_ota_status_provider_fn fn);
+
+/* r43b: fill `out` with the QuickJS engine version ("MAJOR.MINOR.PATCH").
+ * Used by the hot-reload channel to answer the CLI's VER query before a
+ * bytecode push. No quickjs.h needed by the caller. */
+void lume_engine_version(char *out, size_t cap);

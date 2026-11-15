@@ -72,6 +72,12 @@ size_t lume_frame_encode_cmd(uint8_t *out, size_t out_cap,
     return encode_magic(out, out_cap, LUME_FRAME_CMD_MAGIC, payload, len);
 }
 
+size_t lume_frame_encode_bytecode(uint8_t *out, size_t out_cap,
+                                  const uint8_t *payload, size_t len)
+{
+    return encode_magic(out, out_cap, LUME_FRAME_BYTECODE_MAGIC, payload, len);
+}
+
 /* ------------------------------------------------------------------ */
 /* Streaming frame parser (reentrant)                                  */
 /* ------------------------------------------------------------------ */
@@ -86,7 +92,8 @@ static void sync_push(lume_frame_parser_t *p, uint8_t b)
     }
 }
 
-/* 0 = no magic, 1 = "LUME" (JS source), 2 = "LUMC" (command text). */
+/* 0 = no magic, 1 = "LUME" (JS source), 2 = "LUMC" (command text),
+ * 3 = "LUMB" (bytecode). */
 static int sync_magic_kind(const lume_frame_parser_t *p)
 {
     if (p->sync_n != LUME_FRAME_MAGIC_LEN) {
@@ -98,7 +105,18 @@ static int sync_magic_kind(const lume_frame_parser_t *p)
     if (memcmp(p->sync, LUME_FRAME_CMD_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
         return 2;
     }
+    if (memcmp(p->sync, LUME_FRAME_BYTECODE_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
+        return 3;
+    }
     return 0;
+}
+
+static uint8_t magic_kind_to_frame_kind(int kind)
+{
+    /* kind 1 -> source, 2 -> cmd, 3 -> bytecode. */
+    return kind == 2 ? LUME_FRAME_KIND_CMD
+         : kind == 3 ? LUME_FRAME_KIND_BYTECODE
+                     : LUME_FRAME_KIND_SOURCE;
 }
 
 static void emit(lume_frame_parser_t *p, lume_frame_ev_t ev,
@@ -128,7 +146,7 @@ static void enter_resync(lume_frame_parser_t *p)
      * first new byte arrives. No errors are emitted while re-syncing. */
     int kind = sync_magic_kind(p);
     if (kind != 0) {
-        p->is_cmd = (kind == 2);
+        p->kind = magic_kind_to_frame_kind(kind);
         enter_hdr(p);
         return;
     }
@@ -181,10 +199,13 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
                 emit(p, LUME_FRAME_EV_BACK, NULL, 0, NULL);
                 enter_magic(p);
             } else if (memcmp(p->magic, LUME_FRAME_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
-                p->is_cmd = false;
+                p->kind = LUME_FRAME_KIND_SOURCE;
                 enter_hdr(p);
             } else if (memcmp(p->magic, LUME_FRAME_CMD_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
-                p->is_cmd = true;
+                p->kind = LUME_FRAME_KIND_CMD;
+                enter_hdr(p);
+            } else if (memcmp(p->magic, LUME_FRAME_BYTECODE_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
+                p->kind = LUME_FRAME_KIND_BYTECODE;
                 enter_hdr(p);
             } else {
                 reject(p, "bad-magic", 0);
@@ -196,7 +217,7 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
     case LUME_FRAME_ST_RESYNC: {
         int kind = sync_magic_kind(p);
         if (kind != 0) {
-            p->is_cmd = (kind == 2);
+            p->kind = magic_kind_to_frame_kind(kind);
             enter_hdr(p);          /* the 4 magic bytes were just consumed */
         }
         break;
@@ -245,10 +266,15 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
                 release_payload(p);
                 enter_resync(p);
             } else {
-                /* Valid frame. The sink's DATA/CMD handler copies the payload
-                 * into its own storage; it is valid ONLY during the call. */
-                emit(p, p->is_cmd ? LUME_FRAME_EV_CMD : LUME_FRAME_EV_DATA,
-                     p->payload, p->payload_len, NULL);
+                /* Valid frame. The sink's DATA/CMD/BYTECODE handler copies the
+                 * payload into its own storage; it is valid ONLY during the call. */
+                lume_frame_ev_t ev = LUME_FRAME_EV_DATA;
+                if (p->kind == LUME_FRAME_KIND_CMD) {
+                    ev = LUME_FRAME_EV_CMD;
+                } else if (p->kind == LUME_FRAME_KIND_BYTECODE) {
+                    ev = LUME_FRAME_EV_BYTECODE;
+                }
+                emit(p, ev, p->payload, p->payload_len, NULL);
                 release_payload(p);
                 enter_magic(p);
             }

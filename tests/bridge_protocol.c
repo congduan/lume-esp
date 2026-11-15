@@ -1,5 +1,8 @@
-/* Host protocol ABI check: numeric prelude IDs and fixed-size queue record. */
+/* Host protocol ABI check: numeric prelude IDs, fixed-size queue record and
+ * (r43b) the push-channel frame constants / bytecode payload header. */
 #include "lume_ui_bridge.h"
+#include "lume_frame.h"
+#include "lume_bytecode.h"
 _Static_assert(LUME_ATTR_TEXT == 0 && LUME_ATTR_PARENT == 6, "M1 ABI");
 _Static_assert(LUME_ATTR_FLEX_FLOW == 7 && LUME_ATTR_FLEX_MAIN_ALIGN == 8 &&
                LUME_ATTR_FLEX_CROSS_ALIGN == 9 && LUME_ATTR_PADDING == 10 &&
@@ -47,4 +50,22 @@ _Static_assert(LUME_NODE_CANVAS == 3 && LUME_OP_CANVAS_DRAW == 6 &&
 _Static_assert(LUME_NODE_IMAGE == 4 && LUME_OP_IMAGE_SOURCE == 10, "image wire ids");
 _Static_assert(LUME_FLEX_SPACE_BETWEEN == 3 && LUME_FLEX_CROSS_STRETCH == 3,
                "axis-specific align wire values");
+
+/* r43b: the "LUMB" frame variant and the 16-byte "LQBC" payload header must
+ * stay in lockstep with tools/lume/protocol.js and lume_frame.c. */
+_Static_assert(LUME_FRAME_MAGIC_LEN == 4, "4-byte frame magic");
+_Static_assert(LUME_FRAME_HDR_LEN == 12, "12-byte frame header");
+_Static_assert(LUME_FRAME_MAX_PAYLOAD == 256u * 1024u, "256 KiB max payload");
+_Static_assert(LUME_FRAME_KIND_SOURCE == 0 && LUME_FRAME_KIND_CMD == 1 &&
+               LUME_FRAME_KIND_BYTECODE == 2, "frame kind ids");
+_Static_assert(LUME_FRAME_EV_BYTECODE == 7, "bytecode frame event id");
+_Static_assert(LUME_BC_MAGIC_LEN == 4, "4-byte LQBC magic");
+_Static_assert(LUME_BC_HDR_LEN == 16, "16-byte bytecode payload header");
+_Static_assert(LUME_BC_OFF_MAJOR == 4 && LUME_BC_OFF_MINOR == 5 &&
+               LUME_BC_OFF_PATCH == 6 && LUME_BC_OFF_BCVER == 7 &&
+               LUME_BC_OFF_RESERVED == 8 && LUME_BC_OFF_BODYLEN == 12,
+               "bytecode header field offsets");
+_Static_assert(LUME_BC_OFF_BODYLEN + 4 == LUME_BC_HDR_LEN,
+               "body_len field ends at the header boundary");
+
 int main(void) { return 0; }

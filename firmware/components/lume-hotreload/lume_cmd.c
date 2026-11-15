@@ -54,6 +54,11 @@ int lume_cmd_parse(const uint8_t *payload, size_t len, lume_cmd_t *out)
         out->kind = LUME_CMD_SHOT;
         return LUME_CMD_OK;
     }
+    /* r43b: VER carries no id and needs no meta/source separator. */
+    if (verb_end == 3 && memcmp(p, "VER", 3) == 0) {
+        out->kind = LUME_CMD_VER;
+        return LUME_CMD_OK;
+    }
 
     lume_cmd_kind_t kind;
     if (verb_end == 6 && memcmp(p, "LAUNCH", 6) == 0) {

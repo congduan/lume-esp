@@ -16,6 +16,8 @@
  *   LIST
  *   HOME
  *   SHOT
+ *   VER            (r43b: query the QuickJS engine version before a bytecode
+ *                  push; answered "CMD OK ver <MAJOR.MINOR.PATCH>")
  *
  * Rules:
  *   - The first '\n' ends the first line. Verbs are case-sensitive.
@@ -44,6 +46,7 @@ typedef enum {
     LUME_CMD_LIST,
     LUME_CMD_HOME,
     LUME_CMD_SHOT,
+    LUME_CMD_VER,
 } lume_cmd_kind_t;
 
 #define LUME_CMD_OK          0

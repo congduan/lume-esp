@@ -44,6 +44,7 @@
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include "quickjs.h"
 #include "lume_perf.h"
+#include "lume_bytecode.h"    /* r43b: app bytecode payload header + errors */
 
 static const char *TAG = "lume-engine";
 #define LUME_JS_HEAP_LIMIT (8u * 1024u * 1024u)
@@ -158,28 +159,121 @@ static void dump_js_exception(JSContext *ctx, const char *where)
     JS_FreeValue(ctx, exc);
 }
 
-/* Evaluate a JS source buffer with an EXPLICIT length. Staged app source is
- * delivered as (ptr, len) and may not be strlen()-able, so every eval funnels
- * through here. */
+/* r43b: reason for the last bytecode eval failure, surfaced as the
+ * "RELOAD ERR <reason>" token instead of the generic "eval-failed". */
+static const char *s_bc_fail_reason;
+
+/* Load a little-endian u32 without an unaligned dereference. */
+static uint32_t bc_load_le32(const uint8_t *p)
+{
+    return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
+           ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+/* Validate the r43b payload header and eval the raw qjsc blob. Returns 0 on
+ * success or a negative LUME_BC_ERR_* code; NEVER crashes on a bad blob.
+ * A QJS/BC version mismatch is rejected BEFORE JS_ReadObject() is called. */
+static int eval_bytecode_buf(JSContext *ctx, const uint8_t *buf, size_t len)
+{
+    if (len < LUME_BC_HDR_LEN ||
+        memcmp(buf, LUME_BC_MAGIC, LUME_BC_MAGIC_LEN) != 0) {
+        ESP_LOGE(TAG, "bytecode: bad LQBC header (len=%u)", (unsigned)len);
+        s_bc_fail_reason = LUME_BC_REASON_HEADER;
+        return LUME_BC_ERR_HEADER;
+    }
+    uint8_t major = buf[LUME_BC_OFF_MAJOR];
+    uint8_t minor = buf[LUME_BC_OFF_MINOR];
+    uint8_t patch = buf[LUME_BC_OFF_PATCH];
+    uint8_t bcver = buf[LUME_BC_OFF_BCVER];
+    if (buf[8] || buf[9] || buf[10] || buf[11]) {
+        ESP_LOGE(TAG, "bytecode: reserved header bytes must be zero");
+        s_bc_fail_reason = LUME_BC_REASON_HEADER;
+        return LUME_BC_ERR_HEADER;
+    }
+    uint32_t body_len = bc_load_le32(buf + LUME_BC_OFF_BODYLEN);
+    if (body_len == 0 || body_len != len - LUME_BC_HDR_LEN) {
+        ESP_LOGE(TAG, "bytecode: body_len=%u inconsistent with frame len=%u",
+                 (unsigned)body_len, (unsigned)(len - LUME_BC_HDR_LEN));
+        s_bc_fail_reason = LUME_BC_REASON_LENGTH;
+        return LUME_BC_ERR_LENGTH;
+    }
+    if (major != QJS_VERSION_MAJOR || minor != QJS_VERSION_MINOR ||
+        patch != QJS_VERSION_PATCH) {
+        ESP_LOGE(TAG, "bytecode: engine version mismatch: bundle %u.%u.%u, firmware %d.%d.%d -- rejecting",
+                 (unsigned)major, (unsigned)minor, (unsigned)patch,
+                 QJS_VERSION_MAJOR, QJS_VERSION_MINOR, QJS_VERSION_PATCH);
+        s_bc_fail_reason = LUME_BC_REASON_QJS_VERSION;
+        return LUME_BC_ERR_QJS_VERSION;
+    }
+    /* Byte 0 of a JS_WriteObject blob IS BC_VERSION (quickjs.c
+     * JS_WriteObjectAtoms). Cross-check it so a stale compiler is rejected
+     * here; JS_ReadObject() independently rejects a mismatch with a
+     * SyntaxError, so this is defence in depth, not the only gate. */
+    const uint8_t *body = buf + LUME_BC_HDR_LEN;
+    if (bcver != body[0]) {
+        ESP_LOGE(TAG, "bytecode: BC_VERSION mismatch: header=%u blob=%u -- rejecting",
+                 (unsigned)bcver, (unsigned)body[0]);
+        s_bc_fail_reason = LUME_BC_REASON_BC_VERSION;
+        return LUME_BC_ERR_BC_VERSION;
+    }
+    JSValue obj = JS_ReadObject(ctx, body, body_len, JS_READ_OBJ_BYTECODE);
+    if (JS_IsException(obj)) {
+        dump_js_exception(ctx, "<bytecode-read>");
+        ESP_LOGE(TAG, "bytecode: JS_ReadObject rejected payload (version/checksum/format)");
+        s_bc_fail_reason = LUME_BC_REASON_READ;
+        return LUME_BC_ERR_READ;
+    }
+    /* JS_EvalFunction consumes obj (frees it), including on error. */
+    JSValue ret = JS_EvalFunction(ctx, obj);
+    if (JS_IsException(ret)) {
+        dump_js_exception(ctx, "<bytecode-eval>");
+        s_bc_fail_reason = LUME_BC_REASON_EVAL;
+        JS_FreeValue(ctx, ret);
+        return LUME_BC_ERR_EVAL;
+    }
+    JS_FreeValue(ctx, ret);
+    return 0;
+}
+
+/* A payload is bytecode iff it carries the LQBC header magic. Plain JS source
+ * starting with those 4 bytes is not a valid JS program, so dispatching on the
+ * magic cannot misroute a real source bundle. */
+static bool buf_is_bytecode(const char *src, size_t len)
+{
+    return len >= LUME_BC_HDR_LEN &&
+           memcmp(src, LUME_BC_MAGIC, LUME_BC_MAGIC_LEN) == 0;
+}
+
+/* Evaluate a source OR bytecode buffer with an EXPLICIT length. Staged app
+ * payloads are delivered as (ptr, len) and may not be strlen()-able, so every
+ * eval funnels through here. The source path is unchanged. */
 static int eval_buf(JSContext *ctx, const char *src, size_t len,
                     const char *name)
 {
 #if CONFIG_LUME_PERF_PROFILE
     int64_t eval_start = lume_perf_now();
 #endif
-    JSValue v = JS_Eval(ctx, src, len, name, JS_EVAL_TYPE_GLOBAL);
+    const bool is_bc = buf_is_bytecode(src, len);
+    int ok = 1;
+    if (is_bc) {
+        ok = eval_bytecode_buf(ctx, (const uint8_t *)src, len) == 0;
+    } else {
+        JSValue v = JS_Eval(ctx, src, len, name, JS_EVAL_TYPE_GLOBAL);
+        if (JS_IsException(v)) {
+            dump_js_exception(ctx, name);
+            ok = 0;
+        }
+        JS_FreeValue(ctx, v);
+    }
 #if CONFIG_LUME_PERF_PROFILE
-    lume_perf_add(LUME_PERF_EVAL, lume_perf_now() - eval_start);
+    int64_t elapsed = lume_perf_now() - eval_start;
+    lume_perf_add(LUME_PERF_EVAL, elapsed);
+    ESP_LOGI(TAG, "eval '%s' %u us (%s)", name, (unsigned)elapsed,
+             is_bc ? "bytecode" : "source");
     JSMemoryUsage usage;
     JS_ComputeMemoryUsage(JS_GetRuntime(ctx), &usage);
     lume_perf_js_heap((uint32_t)usage.memory_used_size);
 #endif
-    int ok = 1;
-    if (JS_IsException(v)) {
-        dump_js_exception(ctx, name);
-        ok = 0;
-    }
-    JS_FreeValue(ctx, v);
     return ok;
 }
 
@@ -2585,6 +2679,17 @@ void lume_engine_set_ota_status_provider(lume_ota_status_provider_fn fn)
     s_ota_status_provider = fn;
 }
 
+/* r43b: engine version for the CLI's pre-push compatibility check (VER
+ * command). Kept here because quickjs.h is private to the engine component. */
+void lume_engine_version(char *out, size_t cap)
+{
+    if (out == NULL || cap == 0) {
+        return;
+    }
+    snprintf(out, cap, "%d.%d.%d", QJS_VERSION_MAJOR, QJS_VERSION_MINOR,
+             QJS_VERSION_PATCH);
+}
+
 /* Move the staged source out of the shared slot into the engine task's sole
  * ownership, and clear the "event pending" flag. Returns NULL if the slot is
  * empty (e.g. coalesced duplicate events). */
@@ -2776,6 +2881,7 @@ static void engine_task(void *arg)
      * Drivers (LVGL / touch / board) are NOT restarted across iterations.
      * EXACTLY ONE app (or the home screen) is live at any moment. */
     for (;;) {
+        s_bc_fail_reason = NULL;   /* r43b: one reload outcome per iteration */
         const char *app_src;
         size_t app_len;
         const bool from_reload = cand_is_reload;
@@ -2838,7 +2944,10 @@ static void engine_task(void *arg)
             /* eval_buf already dumped the JS exception. A failed reload or a
              * broken installed app must NOT kill the engine. */
             if (want_reply) {
-                report_result(false, app_len, "eval-failed");
+                /* r43b: surface the precise bytecode rejection token
+                 * (bc-version / bc-read / ...) instead of a generic failure. */
+                report_result(false, app_len,
+                              s_bc_fail_reason ? s_bc_fail_reason : "eval-failed");
             }
             if (from_reload) {
                 ESP_LOGW(TAG, "reload/launch eval failed for '%s'", cand_app);

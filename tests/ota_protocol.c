@@ -35,7 +35,7 @@ static int g_checks;
 
 /* ---------------- event recorder (one parser instance) ---------------- */
 typedef struct {
-    int      data, back, pause, resume, err, cmd;
+    int      data, back, pause, resume, err, cmd, bytecode;
     size_t   len;
     char     reason[32];
     uint8_t  payload[2048];
@@ -61,6 +61,14 @@ static void rec_event(lume_frame_ev_t ev, const uint8_t *payload, size_t len,
     /* r30 command frames are covered by tests/apps_protocol.c; this harness
      * only asserts the app-frame path, so a command frame is counted apart. */
     case LUME_FRAME_EV_CMD:    r->cmd++;    break;
+    case LUME_FRAME_EV_BYTECODE:
+        r->bytecode++;
+        r->len = len;
+        r->payload_len = len < sizeof(r->payload) ? len : sizeof(r->payload);
+        if (payload != NULL && r->payload_len) {
+            memcpy(r->payload, payload, r->payload_len);
+        }
+        break;
     case LUME_FRAME_EV_ERR:
         r->err++;
         r->len = len;
@@ -202,6 +210,33 @@ int main(void)
     CHECK(r.data == 1 && r.len == sizeof(mid) &&
           r.payload_len == sizeof(mid) && memcmp(r.payload, mid, sizeof(mid)) == 0,
           "1 KiB frame decode OK");
+
+    /* ---- 4b. r43b "LUMB" bytecode frames: same header, distinct event ---- */
+    printf("[4b] r43b bytecode frame kind\n");
+    static uint8_t bc[64];
+    memset(bc, 0xa5, sizeof(bc));
+    size_t bcn = lume_frame_encode_bytecode(buf, sizeof(buf), bc, sizeof(bc));
+    CHECK(bcn == LUME_FRAME_HDR_LEN + sizeof(bc),
+          "encode_bytecode length == 12 + payload");
+    CHECK(memcmp(buf, LUME_FRAME_BYTECODE_MAGIC, LUME_FRAME_MAGIC_LEN) == 0,
+          "bytecode frame magic == \"LUMB\"");
+    rec_reset(&r);
+    parser_init(&p, &r);
+    feed_all(&p, buf, bcn);
+    CHECK(r.bytecode == 1 && r.data == 0 && r.cmd == 0 && r.err == 0 &&
+          r.len == sizeof(bc) && memcmp(r.payload, bc, sizeof(bc)) == 0,
+          "LUMB decodes as EV_BYTECODE (not DATA/CMD) and round-trips");
+    /* All three kinds share one stream: LUME / LUMC / LUMB interleaved. */
+    rec_reset(&r);
+    parser_init(&p, &r);
+    feed_all(&p, hexbuf, hn);                                   /* LUME */
+    size_t cn = lume_frame_encode_cmd(buf, sizeof(buf),
+                                      (const uint8_t *)"LIST", 4);
+    feed_all(&p, buf, cn);                                      /* LUMC */
+    bcn = lume_frame_encode_bytecode(buf, sizeof(buf), bc, sizeof(bc));
+    feed_all(&p, buf, bcn);                                     /* LUMB */
+    CHECK(r.data == 1 && r.cmd == 1 && r.bytecode == 1 && r.err == 0,
+          "LUME/LUMC/LUMB interleave in one parser with no resync");
 
     /* ---- 5. token auth: correct AND wrong token paths ---- */
     printf("[5] token auth (correct / wrong token)\n");

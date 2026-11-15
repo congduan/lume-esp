@@ -408,6 +408,15 @@ static void handle_cmd(reply_sink_t sink, const uint8_t *payload, size_t len)
     case LUME_CMD_SHOT:
         handle_shot(sink);
         break;
+    case LUME_CMD_VER: {
+        /* r43b: the CLI asks for the engine version before pushing bytecode;
+         * a mismatch is rejected locally so a stale qjsc blob never reaches
+         * JS_ReadObject(). Source pushes never issue VER (old firmware safe). */
+        char v[32];
+        lume_engine_version(v, sizeof(v));
+        cmd_reply(sink, true, "ver", v, 0, NULL);
+        break;
+    }
     }
 }
 
@@ -422,6 +431,11 @@ static void on_frame_event(lume_frame_ev_t ev, const uint8_t *payload,
 {
     reply_sink_t sink = *(const reply_sink_t *)user;
     switch (ev) {
+    case LUME_FRAME_EV_BYTECODE:
+        /* r43b: a "LUMB" frame stages through the SAME reload slot as source;
+         * the engine dispatches on the payload's "LQBC" header at eval time. */
+        ESP_LOGI(TAG, "bytecode frame (%u bytes)", (unsigned)len);
+        /* fall through */
     case LUME_FRAME_EV_DATA: {
         /* Push BEFORE request_reload so a synchronous "superseded" result (or
          * an early engine result) always finds a matching FIFO head. Holding
