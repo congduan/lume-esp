@@ -291,20 +291,12 @@ static uint32_t s_last_point_log_ms = 0;
 static bool s_point_log_armed = false;
 static int s_read_errors = 0;
 
-/* r45 placeholder (direct GPIO). The 1.8 board's reset is behind the
- * TCA9554; commit "TCA9554 IO-expander reset" replaces this body. */
+/* r45: 1.8 board — touch reset is a TOUCH_RST pulse on the TCA9554 IO
+ * expander (0x20), not an ESP GPIO (BSP_LCD_TOUCH_RST = GPIO_NUM_NC).
+ * Pulse TOUCH_RST only, so indev error recovery never resets the panel. */
 static esp_err_t tp_reset(void)
 {
-    const gpio_config_t rst_cfg = {
-        .mode = GPIO_MODE_OUTPUT,
-        .pin_bit_mask = 1ULL << LUME_PIN_TP_RST,
-    };
-    ESP_RETURN_ON_ERROR(gpio_config(&rst_cfg), TAG, "TP RST gpio config failed");
-    ESP_RETURN_ON_ERROR(gpio_set_level(LUME_PIN_TP_RST, 0), TAG, "TP RST low failed");
-    vTaskDelay(pdMS_TO_TICKS(10));
-    ESP_RETURN_ON_ERROR(gpio_set_level(LUME_PIN_TP_RST, 1), TAG, "TP RST high failed");
-    vTaskDelay(pdMS_TO_TICKS(50));
-    return ESP_OK;
+    return lume_io_expander_reset(LUME_IO_EXPANDER_TOUCH_RST);
 }
 
 /* esp_lcd_touch_cst816s.c:206-212 — 1-byte register address, then read.

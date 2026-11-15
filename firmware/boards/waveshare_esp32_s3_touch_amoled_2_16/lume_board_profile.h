@@ -95,6 +95,10 @@
 #define LUME_LCD_SLEEP_IN_SETTLE_MS 150
 #define LUME_LCD_SLEEP_OUT_SETTLE_MS 600
 
+/* r45: the 2.16 board drives LCD/touch reset directly from ESP GPIOs; there
+ * is no IO expander in the reset path (default, unchanged). */
+#define LUME_HAS_IO_EXPANDER_RESET 0
+
 /*
  * CO5300 vendor init command table (Waveshare BSP 1.0.0/2.0.1,
  * esp32_s3_touch_amoled_2_16.c:53-71). Expanded as the initializer of

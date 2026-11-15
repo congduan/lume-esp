@@ -24,5 +24,13 @@ void lume_display_capture_tick(void);
 /* lume_pmic.c — AXP2101 display/touch power rails (isolated, see TODO there). */
 esp_err_t lume_pmic_display_power_on(i2c_master_bus_handle_t bus);
 
-/* lume_touch.c — CST9220 probe + LVGL indev registration. */
+/* lume_touch.c — touch probe + LVGL indev registration (CST9220 or CST816S,
+ * selected by LUME_TOUCH_CHIP). */
 esp_err_t lume_touch_init(i2c_master_bus_handle_t bus, lv_display_t *disp);
+
+#if LUME_HAS_IO_EXPANDER_RESET
+/* r45: 1.8 board — pulse the TCA9554 IO-expander reset bits. Implemented in
+ * lume_board.c; rst_bits selects which of LCD_RST / PWR_EN / TOUCH_RST to
+ * assert (touch-only for indev error recovery, all three at panel init). */
+esp_err_t lume_io_expander_reset(uint8_t rst_bits);
+#endif

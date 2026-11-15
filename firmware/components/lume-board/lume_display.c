@@ -411,6 +411,13 @@ static esp_err_t panel_io_init(void)
 static esp_err_t panel_init(void)
 {
     /* Hardware reset — esp_lcd_co5300_spi.c:174-190; timings from profile. */
+#if LUME_HAS_IO_EXPANDER_RESET
+    /* r45: 1.8 V2 — LCD/touch/power resets are on the TCA9554 (0x20), not a
+     * GPIO (BSP_LCD_RST = GPIO_NUM_NC). Pulse all three reset bits once,
+     * before the vendor init commands below. */
+    ESP_RETURN_ON_ERROR(lume_io_expander_reset(LUME_IO_EXPANDER_RST_ALL),
+                        TAG, "TCA9554 LCD/touch reset failed");
+#else
     const gpio_config_t rst_cfg = {
         .mode = GPIO_MODE_OUTPUT,
         .pin_bit_mask = 1ULL << LUME_PIN_LCD_RST,
@@ -420,6 +427,7 @@ static esp_err_t panel_init(void)
     vTaskDelay(pdMS_TO_TICKS(LUME_LCD_RST_LOW_MS));
     ESP_RETURN_ON_ERROR(gpio_set_level(LUME_PIN_LCD_RST, 1), TAG, "LCD RST high failed");
     vTaskDelay(pdMS_TO_TICKS(LUME_LCD_RST_HIGH_MS));
+#endif
 
     for (size_t i = 0; i < sizeof(s_init_cmds) / sizeof(s_init_cmds[0]); i++) {
         const lume_init_cmd_t *c = &s_init_cmds[i];

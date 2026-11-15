@@ -167,6 +167,52 @@ i2c_master_bus_handle_t lume_board_get_i2c_bus(void)
     return s_i2c_bus;
 }
 
+#if LUME_HAS_IO_EXPANDER_RESET
+/* r45: 1.8 V2 — LCD/touch/power-enable resets live on the TCA9554 IO
+ * expander (0x20), not ESP GPIOs (BSP BSP_LCD_RST / BSP_LCD_TOUCH_RST are
+ * GPIO_NUM_NC). Bit map and sequence are from the official Waveshare
+ * ESP-IDF demos 90_axp2101_pmu / 92_qmi8658_imu board_variant.c:23-30,41-71.
+ *
+ * Only rst_bits are pulled low; SD_CS and the other output bits stay high.
+ * Panel init passes LUME_IO_EXPANDER_RST_ALL (LCD + PWR_EN + TOUCH); the
+ * touch indev error-recovery path passes TOUCH_RST only, so re-probing the
+ * controller never resets the already-initialised CO5300 panel. */
+esp_err_t lume_io_expander_reset(uint8_t rst_bits)
+{
+    const i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = LUME_IO_EXPANDER_ADDR,
+        .scl_speed_hz = LUME_TOUCH_I2C_SPEED_HZ,
+    };
+    i2c_master_dev_handle_t dev = NULL;
+    ESP_RETURN_ON_ERROR(i2c_master_bus_add_device(s_i2c_bus, &dev_cfg, &dev),
+                        TAG, "TCA9554 add_device failed");
+
+    /* [reg, value] pairs — same as the demo's io_expander_write(). */
+    const uint8_t cfg[2]  = {LUME_IO_EXPANDER_REG_CONFIG,
+                             (uint8_t)~LUME_IO_EXPANDER_OUTPUT_MASK};
+    const uint8_t low[2]  = {LUME_IO_EXPANDER_REG_OUTPUT,
+                             (uint8_t)(LUME_IO_EXPANDER_OUTPUT_MASK & ~rst_bits)};
+    const uint8_t high[2] = {LUME_IO_EXPANDER_REG_OUTPUT,
+                             (uint8_t)LUME_IO_EXPANDER_OUTPUT_MASK};
+    esp_err_t err = i2c_master_transmit(dev, cfg, sizeof(cfg), 200);
+    if (err == ESP_OK) {
+        err = i2c_master_transmit(dev, low, sizeof(low), 200);
+    }
+    vTaskDelay(pdMS_TO_TICKS(20));               /* demo: reset asserted 20ms */
+    if (err == ESP_OK) {
+        err = i2c_master_transmit(dev, high, sizeof(high), 200);
+    }
+    vTaskDelay(pdMS_TO_TICKS(150));              /* demo: settle 150ms */
+
+    esp_err_t rm = i2c_master_bus_rm_device(dev);
+    if (err == ESP_OK) {
+        err = rm;
+    }
+    return err;
+}
+#endif /* LUME_HAS_IO_EXPANDER_RESET */
+
 esp_err_t lume_board_init(void)
 {
     /* 1. Shared I2C master bus: AXP2101 / CST9220 / IMU / codec / RTC all use

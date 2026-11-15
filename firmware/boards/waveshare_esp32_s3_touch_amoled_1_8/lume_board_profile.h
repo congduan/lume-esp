@@ -224,6 +224,41 @@
 #define LUME_LCD_SLEEP_IN_SETTLE_MS 150
 #define LUME_LCD_SLEEP_OUT_SETTLE_MS 100
 
+/* ------------------------------------------------------------------ */
+/* r45: TCA9554 IO-expander reset (1.8 V2)                             */
+/* ------------------------------------------------------------------ */
+/* BSP_LCD_RST / BSP_LCD_TOUCH_RST = GPIO_NUM_NC
+ * (waveshare/esp32_s3_touch_amoled_1_8 v2.0.3,
+ *  include/bsp/esp32_s3_touch_amoled_1_8.h:54-56). The resets hang off
+ * the TCA9554 at 0x20 (BSP_IO_EXPANDER_I2C_ADDRESS, :64).
+ * Bit map and reset sequence verified against the official Waveshare
+ * ESP-IDF demos examples/esp-idf/90_axp2101_pmu and 92_qmi8658_imu,
+ * components/board_variant/board_variant.c:19-30, 41-71:
+ *   REG_OUTPUT 0x01 / REG_CONFIG 0x03;
+ *   LCD_RST BIT(0) / DSI_PWR_EN BIT(1) / TOUCH_RST BIT(2) / SD_CS BIT(7);
+ *   config = ~OUTPUT_MASK (those 4 pins become outputs); drive
+ *   OUTPUT_MASK & ~rst_bits (resets low, SD_CS high), delay 20 ms, then
+ *   OUTPUT_MASK (all high), delay 150 ms.
+ * Also corroborated by the Arduino V2 demos (Adafruit_XCA9554 expander
+ * @ 0x20 pulsing pins 0/1/2 low then high) and esp32sim's Tca9554 model
+ * (regs: 0 input / 1 output / 2 polarity / 3 config). */
+#define LUME_HAS_IO_EXPANDER_RESET 1
+#define LUME_IO_EXPANDER_ADDR        0x20
+#define LUME_IO_EXPANDER_REG_OUTPUT  0x01
+#define LUME_IO_EXPANDER_REG_CONFIG  0x03
+#define LUME_IO_EXPANDER_LCD_RST     (1u << 0)   /* BIT(0) */
+#define LUME_IO_EXPANDER_PWR_EN      (1u << 1)   /* BIT(1) */
+#define LUME_IO_EXPANDER_TOUCH_RST   (1u << 2)   /* BIT(2) */
+#define LUME_IO_EXPANDER_SD_CS       (1u << 7)   /* BIT(7) */
+#define LUME_IO_EXPANDER_OUTPUT_MASK (LUME_IO_EXPANDER_LCD_RST | \
+                                      LUME_IO_EXPANDER_PWR_EN |  \
+                                      LUME_IO_EXPANDER_TOUCH_RST | \
+                                      LUME_IO_EXPANDER_SD_CS)
+/* Full reset (LCD + power-enable + touch), used once at panel init. */
+#define LUME_IO_EXPANDER_RST_ALL     (LUME_IO_EXPANDER_LCD_RST | \
+                                      LUME_IO_EXPANDER_PWR_EN |  \
+                                      LUME_IO_EXPANDER_TOUCH_RST)
+
 /* CASET/RASET upper bounds derived from the geometry above. For 368x448
  * these evaluate to 0x016F / 0x01BF, exactly the official BSP/demo init
  * values {0x00,0x00,0x01,0x6F} and {0x00,0x00,0x01,0xBF}. */
