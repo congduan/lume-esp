@@ -2690,7 +2690,15 @@ CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 # CONFIG_LUME_PERF_PROFILE is not set
 CONFIG_LUME_DRAW_BUF_LINES=20
 CONFIG_LUME_REFRESH_PERIOD_MS=33
+# CONFIG_LUME_SWITCH_PROFILE is not set
 # end of Lume performance experiments
+
+#
+# Lume app-switch transition (r46)
+#
+# CONFIG_LUME_APP_TRANSITION_DISABLE is not set
+CONFIG_LUME_APP_TRANSITION_MS=200
+# end of Lume app-switch transition (r46)
 
 #
 # LittleFS

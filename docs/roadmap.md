@@ -184,3 +184,36 @@ Next, in the order I would take it:
    rect stays inside its static region) is what caught the mid-frame blit and the
    needle-union bug. It should live in `tools/lume` as a `screenshot --scan N`
    mode so future canvas work is guarded automatically.
+
+### r46 result — app-switch smoothness (appended, milestone checkboxes untouched)
+
+Measured with esp32sim's deterministic instruction-count / emulated-microsecond
+metric, NOT board wall-clock; on-device smoothness and dropped frames are still
+pending board bring-up. This records the r46 switch work; it does not schedule
+or re-order the backlog above.
+
+- **Phase profile** (opt-in `CONFIG_LUME_SWITCH_PROFILE`, default off): a switch
+  = teardown (JS_FreeRuntime broken out) + runtime creation (NewRuntime2 /
+  NewContext / register_bindings broken out) + prelude eval + app eval +
+  first-frame UI ready. Prelude eval dominated: ~85 % of switch time and ~78 %
+  of switch instructions — so the bytecode cache was correctly the top priority.
+- **Prelude bytecode cache**: compile the ~57 KB prelude once (`JS_Eval`
+  COMPILE_ONLY -> `JS_WriteObject`) into a PSRAM-resident blob, then
+  `JS_ReadObject` + `JS_EvalFunction` on every later switch. Prelude eval
+  74245 -> 12079 us (~6x), whole switch 87536 -> 25392 us (-71 %), prelude
+  instructions 18.9 M -> 3.4 M (-82 %). Resident cache 106811 B (prelude
+  98395 B + home 8416 B). Version+content-hash guarded, source-eval fallback.
+- **Crossfade-through-black (C1)**: LVGL-task black overlay on `lv_layer_top()`,
+  fade in before RESET/teardown, fade out after the first-frame message (or a
+  500 ms fallback); removes the bare blank screen. Simulator intermediate frames
+  show old screen darkening -> near-black -> new app fading in -> full app.
+  Real old-screen snapshot crossfade (C2) abandoned: vendored `LV_USE_SNAPSHOT`
+  is compiled out, a ~450 KB snapshot buffer is hard to justify in the tight
+  PSRAM budget, and vendored edits are not allowed.
+- **Teardown chunking** skipped: `JS_FreeRuntime` is only 4.0 % (13.7 % after
+  the cache) of switch time, below the 30 % gate — "data does not support it".
+
+Size: Flash Code 1,941,940 -> 1,950,600 B (+8660, new cache/transition C code),
+IRAM unchanged at 16,384 B (100 % hard line respected, not exceeded). Bridge ABI
+only appends two op ids; app API and the prelude C-string form are unchanged.
+See `docs/KNOWN-SIMPLIFICATIONS.md` (r46) and the r46 war report.

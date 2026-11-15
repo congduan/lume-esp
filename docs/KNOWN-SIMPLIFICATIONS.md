@@ -962,3 +962,12 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 ## r41b / screenshot geometry checks
 
 `tools/emu/check_layout.py` checks configured visible block bounds and spacing in the ten refreshed 480×480 emulator captures. The page geometry now uses a 24 px outer gutter. This verifies only the captured app state; transient dialog states, the optional shell in a separately bundled app, and physical AMOLED clipping or touch feel still need device review. No firmware or bridge ABI was changed. See `docs/r41b-alignment-report.md`.
+
+## r46 / App 切换丝滑化（prelude 字节码缓存 + 屏幕过渡，sim 验证）
+
+- 切换相位测量复用 r36b 的 `esp_timer_get_time()` 基建，新增 opt-in `CONFIG_LUME_SWITCH_PROFILE`（默认关），覆盖 teardown（JS_FreeRuntime 单列）、runtime 创建（NewRuntime2 / NewContext / register_bindings 单列）、prelude eval、app eval、首帧 UI 就绪五相位。相位耗时与指令计数来自 esp32sim 的确定性模拟时钟 / 累计指令计数（相位边界停机取样），是 **sim 指令计数 / 相对耗时口径，不是真机墙钟**；真机切换耗时、掉帧、触摸手感均未验收。
+- prelude 字节码缓存：`lume_prelude_js` / `lume_home_js` / `lume_demo_js` 首次用 `JS_Eval` COMPILE_ONLY + `JS_WriteObject` 编译为 PSRAM 常驻字节码，后续切换 `JS_ReadObject` + `JS_EvalFunction` 直载跳过解析。缓存带 magic + 打包 QJS 版本 + 源码 FNV-1a hash，校验不符或加载异常即丢弃并回退源码 eval，杜绝跨版本错读。sim 口径下 prelude eval 74245 → 12079 µs（~6×），单次切换 87536 → 25392 µs（−71%）、prelude 指令 18.9 M → 3.4 M（−82%）；常驻缓存实测 prelude 98395 B + home 8416 B = 106811 B。`lume_demo_js` 是单次启动兜底，缓存无实测收益，机制同构保留。**这些加速数字是 esp32sim 指令计数 / 模拟微秒，不是真机墙钟**；真机解析 / 反序列化耗时与 GC 时序待接板量。启动一次性编译开销摊到后续每次切换。
+- 屏幕过渡只实现 C1 crossfade-through-black：LVGL task 在 `lv_layer_top()` 建全屏黑色可点击覆盖层，淡入（默认 200 ms）盖住旧屏后引擎才 RESET/teardown，新 app 首帧 `FIRSTFRAME` 消息到达（或 500 ms 兜底）后淡出。**过渡消除了裸空白期，但真机流畅度、动画掉帧、覆盖层触摸吞掉与 AMOLED 实际观感未验**；触摸吞掉仅由可点击顶层覆盖层的 LVGL 命中保证，真机命中待验收。覆盖层是一个 LVGL rect，不是旧屏快照，故无 ~450 KB 帧缓冲临时分配；PSRAM 红线未被触及。时长 `CONFIG_LUME_APP_TRANSITION_MS`（默认 200），`CONFIG_LUME_APP_TRANSITION_DISABLE=y` 关闭后行为与 r46 之前一致（回归验证：0 条过渡日志、立即重建、app eval OK、截图完整）。
+- C2 真快照 crossfade **放弃**：vendored lvgl 的 `LV_USE_SNAPSHOT` 编译为 0（`src/others/snapshot/lv_snapshot.c` 体内被 `#if` 裁空），开启需改 vendored 配置 / 代码；且 480×480×2 ≈ 450 KB 的一次性快照缓冲在 canvas 双缓冲已占两个 framebuffer 的紧张 PSRAM 预算下难保证。本轮硬约束禁止改 vendored，故只交付 C1，未做旧屏真快照 crossfade。
+- Task D（teardown 分块）**未实施**：Task A 数据显示 `JS_FreeRuntime` 占切换总耗时 3507 / 87536 = 4.0%（字节码缓存后 3479 / 25392 = 13.7%），均 < 30% 门槛，「数据不支持，不做」。
+- 桥 ABI 仅在枚举表尾追加 `LUME_OP_FIRSTFRAME`(14) / `LUME_OP_TRANSITION_COVER`(15) 并补 `_Static_assert`，既有 ID 不变；app 层 `lume.d.ts` 无新增；`lume_scripts.c` 的 prelude C 字符串形态原样保留（prelude_runner 与全部 host harness 全绿）。
