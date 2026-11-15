@@ -39,6 +39,7 @@ function runApp(script, options = {}) {
     setPressEvent: id => emit('press', id),
     setGestureEvent: id => emit('gesture', id),
     canvasDraw: (...args) => emit('draw', ...args),
+    canvasBatch: (id, lines) => emit('batch', id, [...lines]),
     canvasInvalidate: id => emit('invalidate', id),
     nativeAnimate: (...args) => { emit('animate', ...args); return ++token; },
     nativeAnimateCancel: (...args) => emit('cancelAnimate', ...args),

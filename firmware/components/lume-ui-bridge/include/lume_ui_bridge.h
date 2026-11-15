@@ -154,7 +154,11 @@ typedef enum {
     LUME_OP_RESET,             /* release all app nodes/canvases on LVGL task */
     LUME_OP_SET_GESTURE,       /* r21: register LVGL pointer-event callbacks on node_id */
     LUME_OP_IMAGE_SOURCE,      /* owned PSRAM RGB565/RGB565A8 payload */
+    LUME_OP_CANVAS_BATCH,      /* owned bounded array of line segments */
 } lume_op_t;
+
+#define LUME_CANVAS_BATCH_MAX 32
+typedef struct { int16_t x1, y1, x2, y2; uint32_t color; uint8_t width; uint8_t reserved[3]; } lume_canvas_line_t;
 
 typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
                LUME_DRAW_CIRCLE, LUME_DRAW_TEXT } lume_draw_t;
@@ -186,6 +190,8 @@ typedef struct {
     void *image_pixels;                  /* IMAGE_SOURCE: ownership passes to queue on success */
     uint16_t image_w, image_h;
     uint8_t image_alpha;
+    lume_canvas_line_t *canvas_lines; /* BATCH: queue owns on successful post */
+    uint8_t canvas_count;
 } lume_ui_msg_t;
 
 /* How the bridge hands a CLICKED event back to the engine task. Registered by

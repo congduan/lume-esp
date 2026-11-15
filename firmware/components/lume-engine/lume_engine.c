@@ -429,6 +429,49 @@ static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, J
     }
     return JS_UNDEFINED;
 }
+static JSValue js_canvas_batch(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t id;
+    if (argc != 2 || !JS_IsArray(argv[1]))
+        return JS_ThrowTypeError(ctx, "lume: canvasBatch needs id and flat segments");
+    if (JS_ToInt32(ctx, &id, argv[0]) < 0) return JS_EXCEPTION;
+    if (id < 1 || id >= LUME_MAX_NODES) return JS_ThrowRangeError(ctx, "lume: invalid canvas id");
+    JSValue length = JS_GetPropertyStr(ctx, argv[1], "length");
+    uint32_t n;
+    if (JS_ToUint32(ctx, &n, length) < 0) { JS_FreeValue(ctx, length); return JS_EXCEPTION; }
+    JS_FreeValue(ctx, length);
+    if (!n || n % 6 || n > LUME_CANVAS_BATCH_MAX * 6)
+        return JS_ThrowRangeError(ctx, "lume: canvas batch must contain 1..32 lines");
+    lume_canvas_line_t *lines = heap_caps_calloc(n / 6, sizeof(*lines), MALLOC_CAP_SPIRAM);
+    if (!lines) return JS_ThrowOutOfMemory(ctx);
+    for (uint32_t i = 0; i < n; i++) {
+        JSValue v = JS_GetPropertyUint32(ctx, argv[1], i);
+        int32_t x;
+        int bad = JS_ToInt32(ctx, &x, v);
+        JS_FreeValue(ctx, v);
+        if (bad < 0) { heap_caps_free(lines); return JS_EXCEPTION; }
+        if ((i % 6 < 4 && (x < -480 || x > 480)) ||
+            (i % 6 == 4 && (x < 0 || x > 0xffffff)) ||
+            (i % 6 == 5 && (x < 1 || x > 16))) {
+            heap_caps_free(lines); return JS_ThrowRangeError(ctx, "lume: invalid canvas batch segment");
+        }
+        lume_canvas_line_t *line = &lines[i / 6];
+        switch (i % 6) {
+            case 0: line->x1 = x; break; case 1: line->y1 = x; break;
+            case 2: line->x2 = x; break; case 3: line->y2 = x; break;
+            case 4: line->color = x; break; case 5: line->width = x; break;
+        }
+    }
+    if (s_node_dead[id]) { heap_caps_free(lines); return JS_UNDEFINED; }
+    lume_ui_msg_t m; msg_init(&m); m.op = LUME_OP_CANVAS_BATCH; m.node_id = id;
+    m.canvas_lines = lines; m.canvas_count = n / 6;
+    if (lume_ui_bridge_post(&m) != 0) {
+        heap_caps_free(lines);
+        return JS_ThrowInternalError(ctx, "lume: ui queue full");
+    }
+    return JS_UNDEFINED;
+}
 static JSValue js_canvas_invalidate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     (void)this_val;
@@ -1980,6 +2023,7 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, lume, "createNode",
                       JS_NewCFunction(ctx, js_create_node, "createNode", 2));
     JS_SetPropertyStr(ctx, lume, "canvasDraw", JS_NewCFunction(ctx, js_canvas_draw, "canvasDraw", 9));
+    JS_SetPropertyStr(ctx, lume, "canvasBatch", JS_NewCFunction(ctx, js_canvas_batch, "canvasBatch", 2));
     JS_SetPropertyStr(ctx, lume, "canvasInvalidate", JS_NewCFunction(ctx, js_canvas_invalidate, "canvasInvalidate", 1));
     JSValue image = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, image, "sizeOf", JS_NewCFunction(ctx, js_image_size_of, "sizeOf", 1));

@@ -7,6 +7,7 @@ function harness(script) {
     createNode: (...a) => { calls.push(['create', ...a]); return ++next; },
     setAttr: (...a) => calls.push(['attr', ...a]),
     canvasDraw: (...a) => calls.push(['draw', ...a]),
+    canvasBatch: (id, lines) => calls.push(['batch', id, [...lines]]),
     canvasInvalidate: (...args) => calls.push(['invalidate', ...args]),
     setPressEvent: id => calls.push(['press', id]),
     log: () => {}, _nowMs: () => 0, imu: {read: () => null}
@@ -22,7 +23,9 @@ pass('canvas create dimensions and fixed wire kind', () => {
 });
 pass('drawing command order and final invalidate', () => {
   const h = harness(`Canvas({width:40,height:40,onDraw:function(c){c.clear();c.fillColor('#112233');c.fillRect(1,2,3,4);c.line(1,2,3,4,'#abcdef',2);c.polyline([[0,0],[1,1],[2,2]],'#ffffff',1);c.circle(4,5,2,'#00ff00');c.text(2,3,'ok','#ffffff',14);}})`);
-  assert.deepStrictEqual(h.calls.filter(x => x[0] === 'draw').map(x => x[2]), [0,1,2,2,2,3,4]);
+  assert.deepStrictEqual(h.calls.filter(x => x[0] === 'draw').map(x => x[2]), [0,1,3,4]);
+  assert.strictEqual(h.calls.filter(x => x[0] === 'batch').length, 1);
+  assert.strictEqual(h.calls.find(x => x[0] === 'batch')[2].length, 18);
   assert.strictEqual(h.calls.at(-1)[0], 'invalidate');
 });
 pass('optional dirty rectangles preserve local coordinates', () => {
@@ -59,7 +62,8 @@ pass('injected 390x390 screen governs canvas size, budget and draw bounds', () =
    * app code runs; skip that registration message. */
   const msgs = result.messages.filter(x => !(x[0] === 'gesture' && x[1] === 0));
   assert.deepStrictEqual(msgs[0], ['create', 1, 3, 0, 390, 390]);
-  assert.strictEqual(result.messages.filter(x => x[0] === 'draw').length, 4);
+  assert.strictEqual(result.messages.filter(x => x[0] === 'draw').length, 3);
+  assert.strictEqual(result.messages.filter(x => x[0] === 'batch').length, 1);
   for (const expr of [
     'Canvas({width:391,height:1,onDraw:function(){}})',
     'Canvas({width:1,height:391,onDraw:function(){}})',
@@ -77,3 +81,13 @@ pass('embedded demo equals counter example message sequence', () => {
 const printed = harness(demo).calls;
 console.log('SAMPLE messages (first 12): ' + JSON.stringify(printed.slice(0,12)));
 console.log('SAMPLE totals: ' + JSON.stringify(printed.reduce((a,x)=>(a[x[0]]=(a[x[0]]||0)+1,a),{})));
+
+pass('33 contiguous lines split at 32', () => {
+  const h = harness('Canvas({width:40,height:40,onDraw:function(c){for(var i=0;i<33;i++)c.line(i,0,i,1,"#ffffff");}})');
+  assert.deepStrictEqual(h.calls.filter(x=>x[0]==='batch').map(x=>x[2].length/6),[32,1]);
+});
+
+pass('240-point polyline uses eight batches', () => {
+  const h = harness('var p=[];for(var i=0;i<240;i++)p.push([i,0]);Canvas({width:240,height:1,onDraw:function(c){c.polyline(p,"#ffffff");}})');
+  assert.deepStrictEqual(h.calls.filter(x=>x[0]==='batch').map(x=>x[2].length/6),[32,32,32,32,32,32,32,15]);
+});
