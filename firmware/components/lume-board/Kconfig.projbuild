@@ -11,6 +11,14 @@ menu "Lume board"
             See firmware/boards/README.md for how to add a board.
         config LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_16
             bool "Waveshare ESP32-S3-Touch-AMOLED-2.16"
+        config LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_8
+            bool "Waveshare ESP32-S3-Touch-AMOLED-1.8 (V2 CO5300/CST820)"
+            help
+                Second compile-time board profile (r44). 368x448 CO5300 with
+                a 16-column gap and a CST820 touch controller. Compile-time
+                only: the touch/reset/gap/SD driver paths are not yet adapted
+                and no on-device acceptance has happened - see
+                docs/KNOWN-SIMPLIFICATIONS.md (r44).
     endchoice
 
     # Hidden: derived from the choice, consumed by lume-board/CMakeLists.txt
@@ -18,6 +26,7 @@ menu "Lume board"
     config LUME_BOARD_DIR
         string
         default "waveshare_esp32_s3_touch_amoled_2_16" if LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_16
+        default "waveshare_esp32_s3_touch_amoled_1_8" if LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_8
         help
             Directory under firmware/boards/ that holds the selected profile.
             Add a "default <dir> if LUME_BOARD_<NEW>" line when adding a board.

@@ -5,19 +5,26 @@ Lume for a different board?". Everything board-specific — pin map, display
 geometry, QSPI timing, the panel init command table, I2C device addresses,
 sdkconfig values and the partition table — lives in one directory here.
 
-This is a **compile-time, single-board abstraction**. There is no runtime board
-switching and no second board profile yet; see
-`docs/KNOWN-SIMPLIFICATIONS.md` (r27 entry) and `docs/r27-board-param-audit.md`.
+This is a **compile-time, single-board-at-a-time abstraction**. There is no
+runtime board switching. r44 added a second profile (Waveshare
+ESP32-S3-Touch-AMOLED-1.8) as the first real use of the six-step flow below;
+both profiles are compile-time parameter sets and NEITHER has on-device
+acceptance. See `docs/KNOWN-SIMPLIFICATIONS.md` (r27 / r31 / r44 entries) and
+`docs/r27-board-param-audit.md`. The default board is still the 2.16 profile.
 
 ## Layout
 
 ```
 firmware/boards/
   README.md                                  <- this file
-  waveshare_esp32_s3_touch_amoled_2_16/
+  waveshare_esp32_s3_touch_amoled_2_16/       <- default board
     lume_board_profile.h                     <- all C compile-time constants
     sdkconfig.defaults                       <- board-specific CONFIG_* values
     partitions.csv                           <- board flash layout
+  waveshare_esp32_s3_touch_amoled_1_8/         <- r44: second compile-time profile
+    lume_board_profile.h
+    sdkconfig.defaults
+    partitions.csv
 ```
 
 `lume_board_profile.h` is re-exported to the whole firmware by
@@ -54,7 +61,12 @@ IRAM symbols: the profile is macros, and the IRAM budget is 16384/16384 (0 free)
 2. Edit `<new_board>/lume_board_profile.h`: set the pin map, geometry, I2C
    addresses, QSPI timing, the panel init command table and the touch
    coordinate mapping for the new hardware. Keep every `LUME_*` macro name —
-   the drivers depend on that contract (see the header's section list).
+   the drivers depend on that contract (see the header's section list). r44
+   practice: cite a source (wiki / vendor BSP / demo file:line) for every
+   value, record source conflicts in the header comment, and mark values with
+   no verifiable source `/* TODO(board): unsourced, verify on hardware */`
+   rather than guessing silently — such values are compile-time placeholders
+   needed by the driver contract, not verified wiring.
 3. Edit `<new_board>/sdkconfig.defaults`: flash size/mode/freq, PSRAM type,
    console, partition CSV path, LVGL color depth. Set
    `CONFIG_LUME_BOARD_<NEW>=y` (replace the Waveshare line) and update
@@ -73,14 +85,30 @@ IRAM symbols: the profile is macros, and the IRAM budget is 16384/16384 (0 free)
    ```
    (To make the new board the default instead, change the `SDKCONFIG_DEFAULTS`
    list in `firmware/CMakeLists.txt`.)
+
+   **r44 gotcha — the tracked `firmware/sdkconfig` wins over defaults.**
+   `firmware/sdkconfig` is a tracked, generated file; ESP-IDF applies
+   `SDKCONFIG_DEFAULTS` only while (re)generating it. An existing `sdkconfig`
+   keeps its stored `CONFIG_LUME_BOARD_*`, `CONFIG_LUME_BOARD_DIR` and
+   `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME` values and silently IGNORES the new
+   board's defconfig — so `-DSDKCONFIG_DEFAULTS=...` alone produces a FALSE
+   green build of the OLD board (verified in r44). Before switching boards,
+   move the tracked `sdkconfig` aside (or delete it) so idf.py regenerates it
+   from the defaults list; then confirm `build/config/sdkconfig.h`, the
+   component `flags.make` and the compiler `.d` dependency files really
+   reference the intended `boards/<name>/lume_board_profile.h`. After the
+   other-board build, restore the default `sdkconfig` and re-run the default
+   `idf.py build` + `idf.py size` to prove zero regression before committing.
 6. Verify `idf.py build` + `idf.py size` (IRAM must stay ≤ 16384 with no
    overflow), the host harnesses, and — when hardware is available — the
    display/touch orientation, bundle push, audio, sleep current, radio and
    persistence acceptance items in `docs/KNOWN-SIMPLIFICATIONS.md`.
 
-## Explicitly out of scope for this round
+## Explicitly out of scope (r27 first cut; status after r44)
 
-- A real second board profile / multi-board CI build matrix.
+- r27 out of scope: a real second board profile / multi-board CI build matrix.
+  r44 added the second **compile-time** profile, but there is still no
+  multi-board CI matrix and no on-device acceptance of any board.
 - Runtime board switching (profiles are compile-time macros only).
 - Converging the `480` canvas-coordinate clamps embedded in the JS prelude
   (`lume_scripts.c`): that string is extracted verbatim by the host harnesses
