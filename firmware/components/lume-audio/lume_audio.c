@@ -179,6 +179,14 @@ int lume_audio_init(void)
     if (!s_i2s_ready) {
         i2s_chan_config_t tx_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
         i2s_chan_config_t rx_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_1, I2S_ROLE_SLAVE);
+        /* The TX DMA ring is circular: with the default auto_clear_after_cb=false
+         * the driver re-sends the last descriptor forever, so any short PCM
+         * buffer (a 30 ms game beep) repeats as a continuous tone that only a
+         * reboot stops. Clearing each descriptor buffer once it has been sent
+         * (i2s_common.c i2s_dma_tx_callback) makes the line fall silent as soon
+         * as the queued samples run out; i2s_channel_write already returns after
+         * the copy, so silence trails the last sample by up to one DMA round. */
+        tx_cfg.auto_clear_after_cb = true;
         if (!s_tx && i2s_new_channel(&tx_cfg, &s_tx, NULL) != ESP_OK) return LUME_AUDIO_ERR_DRIVER;
         if (!s_rx && i2s_new_channel(&rx_cfg, NULL, &s_rx) != ESP_OK) return LUME_AUDIO_ERR_DRIVER;
         i2s_std_config_t tx = {
