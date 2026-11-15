@@ -214,42 +214,46 @@ function musicShowPage(library) {
   if (musicNowPage) lume.setAttr(musicNowPage, 5, library ? 0 : 1);
   if (musicLibraryPage) lume.setAttr(musicLibraryPage, 5, library ? 1 : 0);
 }
-var musicNowPage = View({style:{width:480,height:480,background:'#09131f',scroll:'none'}}, [
-  Text({text:'LUME  /  MUSIC',style:{x:48,y:36,width:380,height:28,color:'#65d9c4'}}),
-  Text({text:musicTitle,style:{x:48,y:76,width:385,height:42,color:'#ffffff',fontSize:24}}),
-  Text({text:musicArtist,style:{x:48,y:119,width:385,height:28,color:'#9bb3c9'}}),
-  Text({text:musicLineBefore2,style:{x:48,y:155,width:380,height:22,color:'#657b91',textAlign:'center'}}),
-  Text({text:musicLineBefore,style:{x:48,y:177,width:380,height:25,color:'#7890a7',textAlign:'center'}}),
-  Text({text:musicLineNow,style:{x:48,y:205,width:380,height:38,
-    background:'#17554e',borderRadius:10,textAlign:'center',fontSize:21}}),
-  Text({text:musicLineAfter,style:{x:48,y:245,width:380,height:25,color:'#7890a7',textAlign:'center'}}),
-  Text({text:musicLineAfter2,style:{x:48,y:270,width:380,height:22,color:'#657b91',textAlign:'center'}}),
-  Text({text:musicProgress,style:{x:48,y:294,width:380,height:25,color:'#65d9c4'}}),
-  Text({text:musicTime,style:{x:48,y:318,width:380,height:25,color:'#b7c9db'}}),
-  Button({title:'Prev',style:{x:48,y:355,width:85,height:44},onPress:function(){musicSelect(musicIndex-1);}}),
-  Button({title:musicPauseLabel,style:{x:145,y:355,width:100,height:44},onPress:musicPause}),
-  Button({title:'Next',style:{x:257,y:355,width:85,height:44},onPress:function(){musicSelect(musicIndex+1);}}),
-  Button({title:'Vol+',style:{x:354,y:355,width:78,height:44},onPress:function(){musicVolume=Math.min(100,musicVolume+10);musicAudio.setVolume(musicVolume);}}),
-  Button({title:'Vol-',style:{x:354,y:405,width:78,height:35},onPress:function(){musicVolume=Math.max(0,musicVolume-10);musicAudio.setVolume(musicVolume);}}),
-  Text({text:musicStatus,style:{x:48,y:414,width:175,height:25,color:'#9bb3c9'}}),
-  Button({title:'-0.5',style:{x:48,y:442,width:72,height:30},onPress:function(){musicOffset(-500);}}),
-  Text({text:musicOffsetLabel,style:{x:125,y:445,width:180,height:25,color:'#9bb3c9'}}),
-  Button({title:'+0.5',style:{x:350,y:442,width:82,height:30},onPress:function(){musicOffset(500);}}),
-  Button({title:'Library',style:{x:240,y:405,width:100,height:36},onPress:function(){musicShowPage(true);}})
+var musicTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
+lume.theme.set(musicTheme);
+var musicNowPage = View({style:{width:480,height:480,background:'bg',scroll:'none'}}, [
+  Text({text:'NOW PLAYING',style:{x:32,y:24,width:300,height:24,color:'accent',fontSize:13}}),
+  Button({title:'Library',style:{x:360,y:24,width:88,height:40,background:'surfaceAlt',borderRadius:999},onPress:function(){musicShowPage(true);}}),
+  Text({text:musicTitle,style:{x:32,y:72,width:416,height:44,color:'text',fontSize:24}}),
+  Text({text:musicArtist,style:{x:32,y:116,width:416,height:28,color:'textDim',fontSize:16}}),
+  View({style:{x:32,y:156,width:416,height:132,background:'surface',borderRadius:20}}),
+  Text({text:musicLineBefore2,style:{x:56,y:164,width:368,height:20,color:'textDim',fontSize:13,textAlign:'center'}}),
+  Text({text:musicLineBefore,style:{x:56,y:184,width:368,height:24,color:'textDim',fontSize:13,textAlign:'center'}}),
+  Text({text:musicLineNow,style:{x:48,y:208,width:384,height:40,background:'surfaceAlt',borderRadius:12,color:'accent',textAlign:'center',fontSize:21}}),
+  Text({text:musicLineAfter,style:{x:56,y:248,width:368,height:20,color:'textDim',fontSize:13,textAlign:'center'}}),
+  Text({text:musicLineAfter2,style:{x:56,y:268,width:368,height:20,color:'textDim',fontSize:13,textAlign:'center'}}),
+  View({style:{x:32,y:304,width:416,height:8,background:'surfaceAlt',borderRadius:999}}),
+  View({style:{x:32,y:304,width:function(){musicProgress();return musicDurationMs?Math.max(8,Math.min(416,Math.round(416*musicPosition()/musicDurationMs))):8;},height:8,background:'accent',borderRadius:999}}),
+  Text({text:musicTime,style:{x:32,y:324,width:416,height:22,color:'textDim',fontSize:13,textAlign:'center'}}),
+  Button({title:'Prev',style:{x:92,y:344,width:72,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicSelect(musicIndex-1);}}),
+  Button({title:musicPauseLabel,style:{x:196,y:336,width:88,height:72,background:'accent',borderRadius:999},onPress:musicPause}),
+  Button({title:'Next',style:{x:316,y:344,width:72,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicSelect(musicIndex+1);}}),
+  Button({title:'Vol-',style:{x:32,y:432,width:64,height:32,background:'surfaceAlt',borderRadius:8},onPress:function(){musicVolume=Math.max(0,musicVolume-10);musicAudio.setVolume(musicVolume);}}),
+  Button({title:'-0.5',style:{x:104,y:432,width:64,height:32,background:'surfaceAlt',borderRadius:8},onPress:function(){musicOffset(-500);}}),
+  Text({text:musicOffsetLabel,style:{x:176,y:436,width:112,height:24,color:'textDim',fontSize:11,textAlign:'center'}}),
+  Button({title:'+0.5',style:{x:296,y:432,width:64,height:32,background:'surfaceAlt',borderRadius:8},onPress:function(){musicOffset(500);}}),
+  Button({title:'Vol+',style:{x:368,y:432,width:64,height:32,background:'surfaceAlt',borderRadius:8},onPress:function(){musicVolume=Math.min(100,musicVolume+10);musicAudio.setVolume(musicVolume);}}),
+  Text({text:musicStatus,style:{x:32,y:412,width:416,height:16,color:'textDim',fontSize:11,textAlign:'center'}})
 ]);
 var musicLibraryItems = [
-  Text({text:'MUSIC LIBRARY',style:{x:48,y:42,width:380,height:35,color:'#65d9c4',fontSize:22}}),
-  Button({title:'Back',style:{x:48,y:385,width:105,height:48},onPress:function(){musicShowPage(false);}}),
-  Button({title:'Refresh',style:{x:170,y:385,width:110,height:48},onPress:musicScan}),
-  Text({text:musicStatus,style:{x:48,y:440,width:380,height:25,color:'#9bb3c9'}}),
-  Button({title:'<',style:{x:300,y:385,width:55,height:48},onPress:function(){musicPageBy(-1);}}),
-  Button({title:'>',style:{x:370,y:385,width:55,height:48},onPress:function(){musicPageBy(1);}})
+  Text({text:'Music library',style:{x:32,y:32,width:320,height:40,color:'text',fontSize:24}}),
+  Text({text:'TF CARD  /  MUSIC',style:{x:32,y:72,width:300,height:22,color:'textDim',fontSize:13}}),
+  Button({title:'Back',style:{x:32,y:396,width:96,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicShowPage(false);}}),
+  Button({title:'Refresh',style:{x:144,y:396,width:112,height:56,background:'accent',borderRadius:999},onPress:musicScan}),
+  Text({text:musicStatus,style:{x:32,y:360,width:416,height:24,color:'textDim',fontSize:13}}),
+  Button({title:'<',style:{x:320,y:396,width:56,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicPageBy(-1);}}),
+  Button({title:'>',style:{x:392,y:396,width:56,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicPageBy(1);}})
 ];
 for (var m = 0; m < 4; m++) (function (index) {
-  musicLibraryItems.push(Button({title:musicRows[index],style:{x:48,y:105+index*65,width:380,height:52},
+  musicLibraryItems.push(Button({title:musicRows[index],style:{x:32,y:104+index*60,width:416,height:48,background:index%2?'surfaceAlt':'surface',borderRadius:12},
     onPress:function(){if(musicPage*4+index<musicFiles.length)musicSelect(musicPage*4+index);}}));
 })(m);
-musicLibraryPage = View({visible:false,style:{width:480,height:480,background:'#09131f',scroll:'none'}},musicLibraryItems);
+musicLibraryPage = View({visible:false,style:{width:480,height:480,background:'bg',scroll:'none'}},musicLibraryItems);
 if (musicAudio && musicAudio.setVolume) musicAudio.setVolume(musicVolume);
 musicScan();
 lume.system.setInterval(musicTick, 20);
