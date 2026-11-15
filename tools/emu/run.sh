@@ -42,14 +42,14 @@ printf '2.5 serial-file %s\n' "$output/app.frame" > "$output/actions.txt"
   --tft-png "$output/tft.png" --console all --no-dump \
   > "$output/serial.log" 2>&1
 [[ -s $output/tft.png ]] || { echo "TFT PNG missing: $output/tft.png" >&2; exit 1; }
-if ! rg -q "engine recv RELOAD" "$output/serial.log" || \
-   ! rg -q "runtime up; eval app '<embedded-demo>'" "$output/serial.log" || \
-   [[ $(rg -c "lume-engine: app eval ok" "$output/serial.log" || true) -lt 2 ]] || \
-   rg -q "eval failed|RELOAD ERR" "$output/serial.log"; then
+if ! grep -qE "engine recv RELOAD" "$output/serial.log" || \
+   ! grep -qE "runtime up; eval app '<embedded-demo>'" "$output/serial.log" || \
+   [[ $(grep -cE "lume-engine: app eval ok" "$output/serial.log" || true) -lt 2 ]] || \
+   grep -qE "eval failed|RELOAD ERR" "$output/serial.log"; then
   echo "app reload did not complete successfully; see $output/serial.log" >&2
   tail -40 "$output/serial.log" >&2
   exit 1
 fi
-rg 'lume-engine: (engine task up|engine recv RELOAD|runtime up; eval app|app eval ok)|\[emu\] stop' "$output/serial.log" || true
+grep -E 'lume-engine: (engine task up|engine recv RELOAD|runtime up; eval app|app eval ok)|\[emu\] stop' "$output/serial.log" || true
 echo "TFT: $output/tft.png"
 echo "serial: $output/serial.log"
