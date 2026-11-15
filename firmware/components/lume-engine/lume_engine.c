@@ -42,6 +42,7 @@
 #include "lume_image.h"
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include "quickjs.h"
+#include "lume_perf.h"
 
 static const char *TAG = "lume-engine";
 #define LUME_JS_HEAP_LIMIT (8u * 1024u * 1024u)
@@ -162,7 +163,16 @@ static void dump_js_exception(JSContext *ctx, const char *where)
 static int eval_buf(JSContext *ctx, const char *src, size_t len,
                     const char *name)
 {
+#if CONFIG_LUME_PERF_PROFILE
+    int64_t eval_start = lume_perf_now();
+#endif
     JSValue v = JS_Eval(ctx, src, len, name, JS_EVAL_TYPE_GLOBAL);
+#if CONFIG_LUME_PERF_PROFILE
+    lume_perf_add(LUME_PERF_EVAL, lume_perf_now() - eval_start);
+    JSMemoryUsage usage;
+    JS_ComputeMemoryUsage(JS_GetRuntime(ctx), &usage);
+    lume_perf_js_heap((uint32_t)usage.memory_used_size);
+#endif
     int ok = 1;
     if (JS_IsException(v)) {
         dump_js_exception(ctx, name);
@@ -2714,7 +2724,20 @@ static void engine_task(void *arg)
         /* ---- inner event loop (one runtime lifetime) ---- */
         bool reload = false;
         bool go_home = false;
+#if CONFIG_LUME_PERF_PROFILE
+        int64_t last_heap_sample = 0;
+#endif
         for (;;) {
+#if CONFIG_LUME_PERF_PROFILE
+            int64_t heap_now = lume_perf_now();
+            if (heap_now - last_heap_sample >= 1000000) {
+                JSMemoryUsage usage;
+                JS_ComputeMemoryUsage(rt, &usage);
+                lume_perf_js_heap((uint32_t)usage.memory_used_size);
+                lume_perf_engine_stack(uxTaskGetStackHighWaterMark(NULL));
+                last_heap_sample = heap_now;
+            }
+#endif
             lume_engine_evt_t evt;
             /* Bounded wait instead of portMAX_DELAY (r4 P2): the timeout is
              * the poll tick for latched removal notifications. */

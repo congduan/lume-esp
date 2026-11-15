@@ -40,6 +40,7 @@
 #include "lume_pins.h"
 #include "lume_board.h"
 #include "lume_board_internal.h"
+#include "lume_perf.h"
 #include <string.h>
 
 /* Board profile (lume_board_profile.h, re-exported by lume_pins.h) supplies
@@ -90,6 +91,16 @@ static const lume_init_cmd_t s_init_cmds[] = {
 static const char *TAG = "lume-display";
 static esp_lcd_panel_io_handle_t s_io;
 static lv_display_t *s_disp;
+#if CONFIG_LUME_PERF_PROFILE
+static bool s_flushed_this_refresh;
+static int64_t s_render_start;
+static void render_start_cb(lv_event_t *e) { (void)e; s_render_start = lume_perf_now(); }
+static void render_ready_cb(lv_event_t *e)
+{
+    (void)e;
+    lume_perf_add(LUME_PERF_RENDER, lume_perf_now() - s_render_start);
+}
+#endif
 
 /* ------------------------------------------------------------------ */
 /* Debug screen capture (r35) — see lume_board.h for the contract.     */
@@ -143,6 +154,10 @@ static void capture_copy_area(const lv_area_t *area, const uint8_t *px_map)
 static void capture_refr_event_cb(lv_event_t *e)
 {
     (void)e;
+#if CONFIG_LUME_PERF_PROFILE
+    if (s_flushed_this_refresh) lume_perf_frame();
+    s_flushed_this_refresh = false;
+#endif
     if (!s_cap_copying || s_cap_lock == NULL) {
         return;
     }
@@ -307,6 +322,10 @@ static bool flush_ready_cb(esp_lcd_panel_io_handle_t io,
 
 static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
+#if CONFIG_LUME_PERF_PROFILE
+    int64_t flush_start = lume_perf_now();
+    unsigned transactions = 0;
+#endif
     (void)disp;
     int32_t x1 = area->x1, x2 = area->x2;
     int32_t y1 = area->y1, y2 = area->y2;
@@ -329,14 +348,28 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 
     esp_err_t err = esp_lcd_panel_io_tx_param(s_io, qspi_cmd(LCD_CMD_CASET, QSPI_OP_WRITE_CMD),
                                               col, sizeof(col));
+#if CONFIG_LUME_PERF_PROFILE
+    transactions++;
+#endif
     if (err == ESP_OK) {
         err = esp_lcd_panel_io_tx_param(s_io, qspi_cmd(LCD_CMD_RASET, QSPI_OP_WRITE_CMD),
                                         row, sizeof(row));
+#if CONFIG_LUME_PERF_PROFILE
+        transactions++;
+#endif
     }
     if (err == ESP_OK) {
         err = esp_lcd_panel_io_tx_color(s_io, qspi_cmd(LCD_CMD_RAMWR, QSPI_OP_WRITE_COLOR),
                                         px_map, len);
+#if CONFIG_LUME_PERF_PROFILE
+        transactions++;
+#endif
     }
+#if CONFIG_LUME_PERF_PROFILE
+    lume_perf_flush_count(transactions);
+    lume_perf_add(LUME_PERF_FLUSH, lume_perf_now() - flush_start);
+    s_flushed_this_refresh = true;
+#endif
     if (err != ESP_OK) {
         /* Never leave LVGL's flush wait spinning on a transfer that failed. */
         ESP_LOGE(TAG, "QSPI flush failed: %s", esp_err_to_name(err));
@@ -455,6 +488,10 @@ esp_err_t lume_display_init(lv_display_t **out_disp)
     /* Screen capture completion point: REFR_READY closes every refresh cycle
      * (lv_refr.c:429), after all flush_cb calls of that cycle. */
     lv_display_add_event_cb(disp, capture_refr_event_cb, LV_EVENT_REFR_READY, NULL);
+#if CONFIG_LUME_PERF_PROFILE
+    lv_display_add_event_cb(disp, render_start_cb, LV_EVENT_RENDER_START, NULL);
+    lv_display_add_event_cb(disp, render_ready_cb, LV_EVENT_RENDER_READY, NULL);
+#endif
 
     s_cap_lock = xSemaphoreCreateMutex();
     if (s_cap_lock == NULL) {

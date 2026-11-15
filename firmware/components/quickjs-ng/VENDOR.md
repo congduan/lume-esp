@@ -27,3 +27,8 @@ reference but unused by the firmware build.
   under `-Werror=all`. Downgraded to warnings rather than silenced.
 
 (Further per-file stubs/cuts, if any, are recorded here with the reason.)
+
+## r36b measurement hook
+
+`quickjs.c` wraps `JS_RunGC` with a `CONFIG_LUME_PERF_PROFILE` guarded
+`lume_perf` timer. The disabled build adds no instructions in the GC path.

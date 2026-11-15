@@ -1,0 +1,13 @@
+menu "Lume performance experiments"
+    config LUME_PERF_PROFILE
+        bool "One-second performance summary"
+        default n
+    config LUME_DRAW_BUF_LINES
+        int "Preferred DMA draw buffer height (20 or 48)"
+        range 20 48
+        default 20
+    config LUME_REFRESH_PERIOD_MS
+        int "LVGL refresh period in milliseconds (10, 15, or 33)"
+        range 10 33
+        default 33
+endmenu

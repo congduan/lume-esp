@@ -4,5 +4,5 @@
 idf_component_register(
     SRCS "lume_board.c" "lume_pmic.c" "lume_display.c" "lume_touch.c"
     INCLUDE_DIRS "include" "${CMAKE_SOURCE_DIR}/boards/${CONFIG_LUME_BOARD_DIR}"
-    PRIV_REQUIRES driver esp_lcd esp_timer lvgl lume-ui-bridge
+    PRIV_REQUIRES driver esp_lcd esp_timer lvgl lume-ui-bridge lume-perf
 )

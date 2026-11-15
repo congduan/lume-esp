@@ -26,6 +26,7 @@
 #include "lume_pins.h"
 #include "lume_board.h"
 #include "lume_board_internal.h"
+#include "lume_perf.h"
 
 static const char *TAG = "lume-board";
 

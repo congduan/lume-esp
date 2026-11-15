@@ -21,6 +21,7 @@
 #include "lume_ui_bridge.h"
 #include "lume_engine.h"     /* r4 P2: lume_engine_notify_removed() */
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
+#include "lume_perf.h"
 
 _Static_assert(sizeof(lume_ui_msg_t) <= 128, "UI queue record size budget");
 
@@ -1195,6 +1196,9 @@ static void apply_set_gesture(const lume_ui_msg_t *m)
 
 void lume_ui_bridge_drain(void)
 {
+#if CONFIG_LUME_PERF_PROFILE
+    int64_t drain_start = lume_perf_now();
+#endif
     lume_ui_msg_t m;
     while (s_ui_queue != NULL &&
            xQueueReceive(s_ui_queue, &m, 0) == pdTRUE) {
@@ -1228,6 +1232,9 @@ void lume_ui_bridge_drain(void)
         }
         heap_caps_free(m.text_heap);
     }
+#if CONFIG_LUME_PERF_PROFILE
+    lume_perf_add(LUME_PERF_DRAIN, lume_perf_now() - drain_start);
+#endif
 }
 
 static void drain_timer_cb(lv_timer_t *timer)

@@ -9,6 +9,7 @@ idf_component_register(
         "quickjs.c"
     INCLUDE_DIRS "."
     PRIV_INCLUDE_DIRS "."
+    PRIV_REQUIRES lume-perf
 )
 # Build options tuned for ESP32-S3 + PSRAM
 target_compile_definitions(${COMPONENT_LIB} PRIVATE

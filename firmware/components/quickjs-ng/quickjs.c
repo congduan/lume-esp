@@ -1,3 +1,4 @@
+#include "lume_perf.h"
 /*
  * QuickJS Javascript Engine
  *
@@ -7484,6 +7485,9 @@ static void gc_free_cycles(JSRuntime *rt)
 
 void JS_RunGC(JSRuntime *rt)
 {
+#if CONFIG_LUME_PERF_PROFILE
+    int64_t lume_gc_start = lume_perf_now();
+#endif
     /* decrement the reference of the children of each object. mark =
        1 after this pass. */
     gc_decref(rt);
@@ -7493,6 +7497,9 @@ void JS_RunGC(JSRuntime *rt)
 
     /* free the GC objects in a cycle */
     gc_free_cycles(rt);
+#if CONFIG_LUME_PERF_PROFILE
+    lume_perf_add(LUME_PERF_GC, lume_perf_now() - lume_gc_start);
+#endif
 }
 
 /* Return false if not an object or if the object has already been
