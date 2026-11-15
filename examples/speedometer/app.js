@@ -1,4 +1,15 @@
-/* Speedometer UI demonstration. No vehicle speed sensor is connected. */
+/* Speedometer UI demonstration. No vehicle speed sensor is connected.
+ *
+ * Redraw strategy (the board's JS engine is slow: one dial layer costs ~86 ms to
+ * build, so repainting it every frame cannot keep up with the 20 ms tick):
+ *   - the dial (background arc, colour bands, ticks, labels) is painted once,
+ *   - later frames repaint only the needle and return one dirty rectangle that
+ *     covers the old and the new needle, so the bridge publishes a few KB
+ *     instead of the whole 432x344 canvas.
+ * The needle never reaches the ticks (r=128 vs r=139..152) and the dial labels
+ * are Text widgets, so the canvas interior (r < 135) holds nothing but the
+ * background, the needle and the hub: clearing the needle box cannot erase
+ * static dial content. */
 var SPEED_MODE = 'demo'; /* 'demo', 'imu', or 'manual' */
 var speedTheme = { colors: { bg: '#08121C', surface: '#102333', surfaceAlt: '#1B3647', text: '#F1F7FA', textDim: '#8EACB8', accent: '#53E1C4', success: '#53E1C4', danger: '#FF667B', primary: '#08121C' } };
 lume.theme.set(speedTheme);
@@ -10,38 +21,95 @@ var tripStored = lume.storage.kv.get('drive.trip');
 if (typeof tripStored === 'number' && isFinite(tripStored) && tripStored >= 0) tripKm.set(tripStored / 1000);
 var speedClock = signal(new Date());
 var speedTimer = null, speedLast = Date.now(), speedSave = Date.now(), speedDialLast = Date.now();
+var DIAL_W = 432, DIAL_H = 344, DIAL_CX = 216, DIAL_CY = 178, DIAL_BG = '#08121C';
+var NEEDLE_R = 128, HUB_R = 9, NEEDLE_PAD = 3;
 function speedClamp(n) { return Math.max(0, Math.min(260, Number(n) || 0)); }
 function speedPolar(radius, degree) {
   var a = degree * Math.PI / 180;
-  return [Math.round(216 + radius * Math.cos(a)), Math.round(178 + radius * Math.sin(a))];
+  return [Math.round(DIAL_CX + radius * Math.cos(a)), Math.round(DIAL_CY + radius * Math.sin(a))];
 }
+function speedAngle(kmH) { return 135 + kmH * 270 / 260; }
 function speedArc(ctx, from, to, radius, color, width) {
   var points = [];
   for (var d = from; d <= to; d += 2) points.push(speedPolar(radius, d));
   if ((to - from) % 2) points.push(speedPolar(radius, to));
   ctx.polyline(points, color, width);
 }
-function speedDraw(ctx) {
-  var current = dialValue();
-  ctx.fillColor('#08121C'); ctx.fillRect(0, 0, 432, 344);
+/* One-off layer: everything that does not depend on the needle position. */
+function speedDialLayer(ctx) {
+  ctx.fillColor(DIAL_BG); ctx.fillRect(0, 0, DIAL_W, DIAL_H);
   speedArc(ctx, 135, 405, 158, '#264454', 4);
-  speedArc(ctx, 135, 135 + 270 * 120 / 260, 158, '#53E1C4', 5);
-  speedArc(ctx, 135 + 270 * 120 / 260, 135 + 270 * 200 / 260, 158, '#F8C461', 5);
-  speedArc(ctx, 135 + 270 * 200 / 260, 405, 158, '#FF667B', 5);
+  speedArc(ctx, 135, speedAngle(120), 158, '#53E1C4', 5);
+  speedArc(ctx, speedAngle(120), speedAngle(200), 158, '#F8C461', 5);
+  speedArc(ctx, speedAngle(200), 405, 158, '#FF667B', 5);
   for (var v = 0; v <= 260; v += 10) {
-    var angle = 135 + v * 270 / 260;
     var major = v % 20 === 0;
-    var p = speedPolar(major ? 139 : 145, angle), q = speedPolar(152, angle);
+    var p = speedPolar(major ? 139 : 145, speedAngle(v)), q = speedPolar(152, speedAngle(v));
     ctx.line(p[0], p[1], q[0], q[1], major ? '#C9DAE1' : '#55717F', major ? 2 : 1);
   }
+}
+/* Dial labels are widgets, not canvas text: they sit at r=119, inside the
+ * needle's sweep, so the needle's dirty rect has to be free to erase there. */
+function speedLabelWidgets() {
+  var out = [];
   for (var label = 0; label <= 260; label += 40) {
-    var t = speedPolar(119, 135 + label * 270 / 260);
-    ctx.text(t[0] - (label >= 100 ? 12 : 8), t[1] - 7, String(label), '#8EACB8', 14);
+    var t = speedPolar(119, speedAngle(label));
+    out.push(Text({
+      text: String(label),
+      style: {
+        position: 'absolute',
+        x: 24 + t[0] - (label >= 100 ? 12 : 8),
+        y: 64 + t[1] - 8,
+        width: 48, height: 18,
+        color: 'textDim', fontSize: 14
+      }
+    }));
   }
-  var tip = speedPolar(128, 135 + current * 270 / 260);
-  ctx.line(216, 178, tip[0], tip[1], '#F1F7FA', 4);
-  ctx.circle(216, 178, 9, '#53E1C4');
-  ctx.circle(216, 178, 4, '#08121C');
+  return out;
+}
+function speedNeedle(ctx, kmH) {
+  var tip = speedPolar(NEEDLE_R, speedAngle(kmH));
+  ctx.line(DIAL_CX, DIAL_CY, tip[0], tip[1], '#F1F7FA', 4);
+  ctx.circle(DIAL_CX, DIAL_CY, HUB_R, '#53E1C4');
+  ctx.circle(DIAL_CX, DIAL_CY, 4, DIAL_BG);
+}
+/* Bounding box of one needle pose, hub included: what a frame has to repaint. */
+function speedNeedleBox(kmH) {
+  var tip = speedPolar(NEEDLE_R, speedAngle(kmH));
+  var x1 = Math.min(DIAL_CX - HUB_R, tip[0]) - NEEDLE_PAD;
+  var y1 = Math.min(DIAL_CY - HUB_R, tip[1]) - NEEDLE_PAD;
+  var x2 = Math.max(DIAL_CX + HUB_R, tip[0]) + NEEDLE_PAD;
+  var y2 = Math.max(DIAL_CY + HUB_R, tip[1]) + NEEDLE_PAD;
+  if (x1 < 0) x1 = 0;
+  if (y1 < 0) y1 = 0;
+  if (x2 > DIAL_W) x2 = DIAL_W;
+  if (y2 > DIAL_H) y2 = DIAL_H;
+  return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
+}
+var speedDialDrawn = false, speedLastBox = null;
+function speedDraw(ctx) {
+  var current = dialValue(), box = speedNeedleBox(current);
+  if (!speedDialDrawn) {
+    speedDialDrawn = true;
+    speedDialLayer(ctx);
+    speedNeedle(ctx, current);
+    speedLastBox = box;
+    return;                     /* first frame: repaint the whole canvas */
+  }
+  /* Two rects, not one union: the bounding box of a rotating needle is not its
+   * swept area, and the union of two boxes ~90 deg apart reaches r=185 - past
+   * the ticks (139) and into the colour bands (155). Each box alone stays
+   * within r<132, where the canvas holds nothing but background and the hub. */
+  var prev = speedLastBox;
+  speedLastBox = box;
+  var moved = prev && (prev.x !== box.x || prev.y !== box.y || prev.w !== box.w || prev.h !== box.h);
+  var areas = moved ? [prev, box] : [box];
+  ctx.fillColor(DIAL_BG);
+  for (var i = 0; i < areas.length; i++) {
+    ctx.fillRect(areas[i].x, areas[i].y, areas[i].w, areas[i].h);
+  }
+  speedNeedle(ctx, current);
+  return areas;
 }
 function speedTick() {
   var now = Date.now(), dt = Math.min(100, Math.max(0, now - speedLast)); speedLast = now;
@@ -57,10 +125,12 @@ function speedTick() {
   if (now - speedSave > 10000) { lume.storage.kv.set('drive.trip', Math.round(tripKm() * 1000)); speedSave = now; }
   if (now - speedClock().getTime() >= 1000) speedClock.set(new Date());
 }
-View({ style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' } }, [
+var speedChildren = [
   Text({ text: 'LUME DRIVE', style: { position: 'absolute', x: 32, y: 24, width: 200, height: 32, color: 'textDim', fontSize: 14 } }),
   Text({ text: function () { var d = speedClock(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }, style: { position: 'absolute', x: 352, y: 24, width: 96, height: 32, textAlign: 'right', color: 'textDim', fontSize: 14 } }),
-  Canvas({ width: 432, height: 344, style: { position: 'absolute', x: 24, y: 64 }, onDraw: speedDraw }),
+  Canvas({ width: DIAL_W, height: DIAL_H, style: { position: 'absolute', x: 24, y: 64 }, onDraw: speedDraw })
+];
+speedChildren = speedChildren.concat(speedLabelWidgets()).concat([
   Text({ text: function () { return String(Math.round(speedShown())); }, style: { position: 'absolute', x: 144, y: 244, width: 192, height: 64, textAlign: 'center', color: 'text', fontSize: 48 } }),
   Text({ text: 'km/h', style: { position: 'absolute', x: 176, y: 306, width: 128, height: 24, textAlign: 'center', color: 'textDim', fontSize: 14 } }),
   View({ style: { position: 'absolute', x: 24, y: 396, width: 432, height: 60, background: 'surface', borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'row', justifyContent: 'space-between' } }, [
@@ -68,6 +138,7 @@ View({ style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' 
     Text({ text: function () { return tripKm().toFixed(2) + ' km'; }, style: { color: 'text', fontSize: 20, textAlign: 'right', width: 180 } })
   ])
 ]);
+View({ style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' } }, speedChildren);
 lume.app.onStart(function () { if (speedTimer === null) { speedLast = Date.now(); speedTimer = lume.system.setInterval(speedTick, 20); } });
 lume.app.onPause(function () { if (speedTimer !== null) { lume.system.clearInterval(speedTimer); speedTimer = null; } lume.storage.kv.set('drive.trip', Math.round(tripKm() * 1000)); });
 lume.app.onResume(function () { if (speedTimer === null) { speedLast = Date.now(); speedTimer = lume.system.setInterval(speedTick, 20); } });
