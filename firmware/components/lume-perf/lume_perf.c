@@ -12,7 +12,7 @@
  * at the boundary; every event belongs to one of the adjacent windows. */
 typedef struct { atomic_uint count, total_us, max_us; } stat_t;
 static stat_t s_stats[LUME_PERF_COUNT];
-static atomic_uint s_flushes, s_transactions, s_frames, s_js_heap, s_engine_stack;
+static atomic_uint s_flushes, s_transactions, s_frames, s_js_heap, s_js_heap_hwm, s_engine_stack;
 static const char *s_names[] = {"render", "flush", "drain", "eval", "gc"};
 int64_t lume_perf_now(void) { return esp_timer_get_time(); }
 void lume_perf_add(lume_perf_stage_t stage, int64_t elapsed_us)
@@ -32,7 +32,12 @@ void lume_perf_flush_count(unsigned transactions)
     atomic_fetch_add(&s_transactions, transactions);
 }
 void lume_perf_frame(void) { atomic_fetch_add(&s_frames, 1); }
-void lume_perf_js_heap(uint32_t bytes) { atomic_store(&s_js_heap, bytes); }
+void lume_perf_js_heap(uint32_t bytes)
+{
+    atomic_store(&s_js_heap, bytes);
+    unsigned old = atomic_load(&s_js_heap_hwm);
+    while (old < bytes && !atomic_compare_exchange_weak(&s_js_heap_hwm, &old, bytes)) {}
+}
 void lume_perf_engine_stack(uint32_t words) { atomic_store(&s_engine_stack, words); }
 void lume_perf_log_second(void)
 {
@@ -40,7 +45,7 @@ void lume_perf_log_second(void)
     int64_t now = esp_timer_get_time();
     if (last && now - last < 1000000) return;
     last = now;
-    ESP_LOGI("lume-perf", "fps=%u flush=%u tx=%u psram_largest=%u psram_free=%u psram_min_free=%u dma_largest=%u dma_min_free=%u lvgl_stack_words=%u engine_stack_words=%u js_heap=%u",
+    ESP_LOGI("lume-perf", "fps=%u flush=%u tx=%u psram_largest=%u psram_free=%u psram_min_free=%u dma_largest=%u dma_min_free=%u lvgl_stack_words=%u engine_stack_words=%u js_heap=%u js_heap_hwm=%u",
              atomic_exchange(&s_frames, 0), atomic_exchange(&s_flushes, 0),
              atomic_exchange(&s_transactions, 0),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
@@ -49,7 +54,7 @@ void lume_perf_log_second(void)
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
              (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
              (unsigned)uxTaskGetStackHighWaterMark(NULL), atomic_load(&s_engine_stack),
-             atomic_load(&s_js_heap));
+             atomic_load(&s_js_heap), atomic_exchange(&s_js_heap_hwm, 0));
     for (unsigned i = 0; i < LUME_PERF_COUNT; i++) {
         unsigned n = atomic_exchange(&s_stats[i].count, 0);
         unsigned total = atomic_exchange(&s_stats[i].total_us, 0);
