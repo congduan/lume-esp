@@ -48,8 +48,7 @@ are unchanged because full scope and on-device acceptance are still pending:
 
 - **Component library**: first slice landed — `runtime/shell.js` exposes optional
   `StatusBar` / `EdgeNavigation` / `Launcher` / `dispose` components, with
-  `runtime/types/lume.d.ts` types, `examples/shell_demo/`, a reworked
-  `examples/watch_launcher/`, 8 host harness cases (`tests/shell_components.js`)
+  `runtime/types/lume.d.ts` types, `examples/shell_demo/`, 8 host harness cases (`tests/shell_components.js`)
   and simulator E2E screenshots. Still JS-only: bundled by the CLI rather than
   embedded in firmware, no bundle switching (`onLaunch` only logs), no icon/theme
   system, no CI harness run, no site API docs. On-device feel pending board bring-up.

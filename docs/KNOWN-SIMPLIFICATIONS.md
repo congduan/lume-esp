@@ -596,7 +596,7 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - Click sends `onPress` through `__lume_dispatchPress`. Scroll offset reaches `__lume_dispatchScroll`, but browser touch injection does not yet reproduce native pan/swipe/longpress timing or hit testing. There is no multitouch or device performance simulation.
 - Images display a gray size placeholder; image decoding and LVGL contain scaling are deferred. Host `Fs` serves in-memory sample entries, not a mounted TF card. The host does not simulate IMU, battery changes, power, audio, network, or persistent storage.
 - File watching covers the selected `app.js` only. The simulator evaluates the app as a global script; it does not bundle imported modules. The generated `npm run sim` points at the simulator in the checkout used to create it, so moving or removing that checkout requires recreating or updating the script.
-- Counter, files, and watch_launcher DOM assertions and screenshots are in `artifacts/simulator`. Hardware visual acceptance remains for the board round.
+- Counter, files, and device_monitor DOM assertions and screenshots are in `artifacts/simulator`. Hardware visual acceptance remains for the board round.
 
 ## r23 / M4 CLI first slice
 

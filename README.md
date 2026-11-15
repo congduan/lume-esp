@@ -42,7 +42,7 @@ and captured automatically in CI — not mockups. Every image is 480×480, the a
 
 | | | |
 |:--:|:--:|:--:|
-| <img src="artifacts/emu/ui-refresh/watch_launcher.png" width="230"><br>**Launcher**<br><sub>virtualized app grid</sub> | <img src="artifacts/emu/ui-refresh/shell_demo.png" width="230"><br>**Dialog + Toast**<br><sub>overlays, modal touch blocking</sub> | <img src="artifacts/emu/ui-refresh/app_manager.png" width="230"><br>**App manager**<br><sub>install / launch / remove</sub> |
+| <img src="artifacts/emu/ui-refresh/device_monitor.png" width="230"><br>**Device monitor**<br><sub>PMIC / IMU / radio telemetry gauges</sub> | <img src="artifacts/emu/ui-refresh/shell_demo.png" width="230"><br>**Dialog + Toast**<br><sub>overlays, modal touch blocking</sub> | <img src="artifacts/emu/ui-refresh/app_manager.png" width="230"><br>**App manager**<br><sub>install / launch / remove</sub> |
 
 <sub>Design rules behind these screens: [docs/ui-guidelines.md](docs/ui-guidelines.md) — 24 px gutter,
 4/8/12/16/24/32 spacing scale, display/title/body/caption/micro type ramp, ≥56 px touch targets,
@@ -148,29 +148,27 @@ No `setState`, no re-render, no diff on the hot path: `count.set()` flows straig
 into a native text update. Signals connect reactive values to on-screen attributes
 directly.
 
-### 2. Apple Watch style launcher — honeycomb grid with Canvas icons
+### 2. Device monitor — live hardware telemetry
 
-Virtualized grid (only on-screen icons exist as real nodes) with canvas-drawn icons.
+Canvas gauges plus reactive text, driven by the `lume.*` hardware APIs:
 
 ```js
-List({ style: { width: '100%', height: '100%', scroll: 'vertical' },
-       items: rows, itemHeight: 104, overscan: 2,
-       renderItem: (rowApps, rowIndex) =>
-         View({ style: { display: 'flex', flexDirection: 'row',
-                         justifyContent: 'space-evenly', width: '100%' } },
-              rowApps.map(app => View({ onPress: () => launch(app.id) }, [
-                Canvas({ width: 48, height: 48,
-                         onDraw: c => { c.circle(24, 24, 22, app.color); } }),
-                Text({ text: app.label }),
-              ]))) });
+var battGauge = Canvas({ width: 196, height: 140, onDraw: function (ctx) {
+  var pct = clamp(battPct(), 0, 100);
+  gaugeFrame(ctx, 196, 140);
+  var lit = Math.round(12 * pct / 100);
+  /* 12-segment dial: dim dots for the unlit segments, colored when lit */
+  ...
+  ctx.text(84, 56, Math.round(pct) + '%', monitorTheme.colors.text, 14);
+  ctx.text(76, 80, battVolts(), monitorTheme.colors.textDim, 14);
+} });
+
+Text({ text: function () { return 'WiFi ' + netLine() + ' / BLE ' + bleLine(); } });
 ```
 
-1000 apps? The virtualized list still only creates ~20 nodes. Full source:
-[examples/watch_launcher/app.js](examples/watch_launcher/app.js).
-
-The launcher now reads the installed set from `lume.apps.entries()` and a tap
-switches the single live app (`lume deploy <dir> --id <app-id>`, see
-[docs/build.md](docs/build.md#multiple-apps-on-one-device)).
+Battery / charger state, die temperature, IMU tilt, WiFi/BLE and storage — all read
+through `lume.pmic` / `lume.imu` / `lume.net` and pushed into signals at 2 Hz.
+Full source: [examples/device_monitor/app.js](examples/device_monitor/app.js).
 
 ### 3. Files — a complete file manager app
 

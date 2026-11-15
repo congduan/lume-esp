@@ -8,7 +8,7 @@ From the repository root, run `node tools/simulator/sim.js examples/counter/app.
 
 The runner reads `firmware/components/lume-engine/lume_scripts.c` as its prelude source. It supports the prelude's plain global-script app format; app imports requiring the CLI esbuild bundle step are outside this initial simulator slice. `Fs` has sample, in-memory entries for the files example. Images are gray placeholders. CSS flex, typography, scroll physics and Canvas rasterization approximate LVGL, so check final visuals and frame rate on hardware. See [known simplifications](KNOWN-SIMPLIFICATIONS.md).
 
-Browser verification: `PLAYWRIGHT_MODULE=/path/to/playwright node tools/simulator/verify.js` runs five renderer assertions, checks counter/files/watch_launcher DOM, clicks the counter, and writes screenshots under `artifacts/simulator/`.
+Browser verification: `PLAYWRIGHT_MODULE=/path/to/playwright node tools/simulator/verify.js` runs five renderer assertions, checks counter/files/device_monitor DOM, clicks the counter, and writes screenshots under `artifacts/simulator/`.
 
 Requires Node.js 18 or newer and an ESP32-S3 with Lume firmware flashed. The CLI dependencies are installed once on the host:
 
