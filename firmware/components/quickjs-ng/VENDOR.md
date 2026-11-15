@@ -32,3 +32,18 @@ reference but unused by the firmware build.
 
 `quickjs.c` wraps `JS_RunGC` with a `CONFIG_LUME_PERF_PROFILE` guarded
 `lume_perf` timer. The disabled build adds no instructions in the GC path.
+
+## r43b host qjsc (no vendored source changes)
+
+`tools/lume/fetch-qjsc.sh` builds the host `qjsc` from this directory using the
+source list in `meson.build` (`qjs_srcs` + `qjs_libc_srcs` + `qjsc_srcs`). No
+vendored file is edited. Two quirks are handled on the host side, not by
+patching upstream:
+
+- `quickjs.c` includes `lume_perf.h` -> `sdkconfig.h`; the script supplies a
+  temporary stub defining `CONFIG_LUME_PERF_PROFILE 0` so the r36b hook is a
+  host no-op without ESP-IDF.
+- `JS_DetectModule()` defaults to "module", so plain Lume IIFE bundles must be
+  compiled with `qjsc -C` (classic script); otherwise the blob is a
+  `JS_TAG_MODULE` and `JS_EvalFunction()` runs it in module scope where the
+  prelude globals are invisible. See `docs/r43b-bytecode-report.md`.
