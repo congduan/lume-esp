@@ -81,12 +81,25 @@ function snapBox(r) {
   return { x: x, y: y, w: clamp(Math.round(r.x + r.w) - x, 1, W - x),
     h: clamp(Math.round(r.y + r.h) - y, 1, H - y) };
 }
-function disc(ctx, cx, cy, r, color) {
-  ctx.fillColor(color);
-  for (var y = -r; y <= r; y++) {
-    var half = Math.floor(Math.sqrt(r * r - y * y));
-    var x1 = Math.max(0, cx - half), x2 = Math.min(W, cx + half + 1);
-    if (x2 > x1 && cy + y >= 0 && cy + y < H) ctx.fillRect(x1, cy + y, x2 - x1, 1);
+/* r49 #6: the ball disc has a fixed shape; only its position changes. Its
+ * 2*BALL_R+1 horizontal rows are precomputed once (retained geometry) instead
+ * of recomputing sqrt()/floor()/max()/min() in JS on every frame. The rows are
+ * still drawn with fillRect (cheap span raster): a filled disc is not
+ * line-segment geometry, so C-side retained paths (which replay via the AA
+ * canvas_line) would cost far more core0 raster work than they save in JS. */
+var BALL_SPANS = [];
+for (var sy = -BALL_R; sy <= BALL_R; sy++) {
+  BALL_SPANS.push([sy, Math.floor(Math.sqrt(BALL_R * BALL_R - sy * sy))]);
+}
+function disc(ctx, cx, cy) {
+  ctx.fillColor(BALL_INK);
+  for (var i = 0; i < BALL_SPANS.length; i++) {
+    var sy = BALL_SPANS[i][0], half = BALL_SPANS[i][1], y = cy + sy;
+    if (y < 0 || y >= H) continue;
+    var x1 = cx - half, x2 = cx + half + 1;
+    if (x1 < 0) x1 = 0;
+    if (x2 > W) x2 = W;
+    if (x2 > x1) ctx.fillRect(x1, y, x2 - x1, 1);
   }
 }
 var painted = false, ballBox = null;
@@ -97,7 +110,7 @@ var scene = Canvas({ width: W, height: H, onDraw: function (ctx) {
   if (!painted) {
     ctx.clear();
     ctx.fillColor(BG); ctx.fillRect(0, 0, W, H);
-    disc(ctx, bx, by, BALL_R, BALL_INK);
+    disc(ctx, bx, by);
     painted = true; ballBox = box;
     return;                                 /* first frame: whole-canvas invalidate */
   }
@@ -106,7 +119,7 @@ var scene = Canvas({ width: W, height: H, onDraw: function (ctx) {
   var area = snapBox(unionBox(ballBox, box));
   ctx.fillColor(BG);
   ctx.fillRect(area.x, area.y, area.w, area.h);
-  disc(ctx, bx, by, BALL_R, BALL_INK);
+  disc(ctx, bx, by);
   ballBox = box;
   return [area];
 } });
