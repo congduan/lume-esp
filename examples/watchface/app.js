@@ -10,15 +10,32 @@ function faceTwo(n) { return ('0' + n).slice(-2); }
 function faceTime() { var d = faceNow(); return faceTwo(d.getHours()) + ':' + faceTwo(d.getMinutes()); }
 function faceDate() { var d = faceNow(); return (d.getMonth() + 1) + '月' + d.getDate() + '日  ' + FACE_DAYS[d.getDay()]; }
 function facePoint(r, deg) { var a = (deg - 90) * Math.PI / 180; return [Math.round(150 + Math.cos(a) * r), Math.round(150 + Math.sin(a) * r)]; }
-function faceArc(c, from, to, r, color, width) {
+/* Sample points for a polyline arc. Static pictures upload the points once as
+ * a retained path (r49 #6); dynamic progress arcs still rebuild their points
+ * per frame via faceArc(). */
+function faceArcPoints(from, to, r) {
   var points = []; for (var d = from; d <= to; d += 3) points.push(facePoint(r, d));
-  points.push(facePoint(r, to)); c.polyline(points, color, width);
+  points.push(facePoint(r, to)); return points;
 }
+function faceArc(c, from, to, r, color, width) { c.polyline(faceArcPoints(from, to, r), color, width); }
 function analogDraw(c) {
   var d = faceNow(), h = d.getHours() % 12, m = d.getMinutes(), s = d.getSeconds();
   c.fillColor('#08121C'); c.fillRect(0, 0, 300, 300);
   c.circle(150, 150, 144, '#1C3449'); c.circle(150, 150, 140, '#08121C');
-  for (var i = 0; i < 60; i++) { var a = i * 6, p = facePoint(i % 5 ? 126 : 116, a), q = facePoint(133, a); c.line(p[0], p[1], q[0], q[1], i % 5 ? '#667F8B' : '#E9F5F8', i % 5 ? 1 : 2); }
+  /* r49 #6: the 60 tick marks are static geometry, uploaded once as two
+   * retained paths (minor / major differ in colour and width) and replayed
+   * from C, instead of sampling 60 facePoint()/line() pairs in JS each frame. */
+  if (!c.minorTicks) {
+    var minor = [], major = [];
+    for (var i = 0; i < 60; i++) {
+      var a = i * 6, p = facePoint(i % 5 ? 126 : 116, a), q = facePoint(133, a);
+      (i % 5 ? minor : major).push([p[0], p[1], q[0], q[1]]);
+    }
+    c.minorTicks = c.retainSegments(minor, '#667F8B', 1);
+    c.majorTicks = c.retainSegments(major, '#E9F5F8', 2);
+  }
+  c.drawPath(c.minorTicks);
+  c.drawPath(c.majorTicks);
   var hp = facePoint(71, (h + m / 60) * 30), mp = facePoint(104, (m + s / 60) * 6), sp = facePoint(116, s * 6);
   c.line(150, 150, hp[0], hp[1], '#F4F8FA', 5);
   c.line(150, 150, mp[0], mp[1], '#F4F8FA', 3);
@@ -27,7 +44,18 @@ function analogDraw(c) {
 function ringDraw(c) {
   var d = faceNow(), b = faceBatt(), steps = faceSteps();
   c.fillColor('#08121C'); c.fillRect(0, 0, 300, 300);
-  faceArc(c, 0, 360, 136, '#1C3449', 8); faceArc(c, 0, 360, 111, '#1C3449', 8); faceArc(c, 0, 360, 86, '#1C3449', 8);
+  /* r49 #6: the three full background rings are static (~121 segments each,
+   * ~360 total); upload them once and replay from C. Retained paths replay the
+   * same canvas_line() raster as polyline(), so the picture is unchanged. The
+   * three progress arcs depend on battery/steps/seconds and stay per-frame. */
+  if (!c.bgRings) {
+    c.bgRings = [
+      c.retainPath(faceArcPoints(0, 360, 136), '#1C3449', 8),
+      c.retainPath(faceArcPoints(0, 360, 111), '#1C3449', 8),
+      c.retainPath(faceArcPoints(0, 360, 86), '#1C3449', 8)
+    ];
+  }
+  for (var i = 0; i < c.bgRings.length; i++) c.drawPath(c.bgRings[i]);
   faceArc(c, 0, 360 * b / 100, 136, '#40D8B0', 8);
   faceArc(c, 0, 360 * Math.min(1, steps / 6000), 111, '#F9C66A', 8);
   faceArc(c, 0, d.getSeconds() * 6, 86, '#FF7081', 8);
