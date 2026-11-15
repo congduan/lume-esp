@@ -45,14 +45,19 @@ def collect(source):
     def finish(lines):
         return re.sub(r'\s+', ' ', ' '.join(lines)).strip()
 
+    def complete(text):
+        """A signature ends at a top-level ';', not at any ';' (object types such
+        as `props?: {a?: X; b?: Y;}` carry one on their first line)."""
+        depth_delta = (text.count('{') - text.count('}')
+                       + text.count('(') - text.count(')'))
+        return depth_delta == 0 and text.rstrip().endswith(';')
+
     for line in source.splitlines():
         if pending is not None:
             qual, is_global, lines = pending
             lines.append(line.strip())
             text = ' '.join(lines)
-            balanced = (text.count('{') - text.count('}')
-                        + text.count('(') - text.count(')')) <= 0
-            if ';' in line and balanced:
+            if complete(text):
                 (globals_ if is_global else entries).append((qual, finish(lines)))
                 pending = None
             depth += line.count('{') - line.count('}')
@@ -79,7 +84,7 @@ def collect(source):
         fm = re.match(r'\s*function (\w+)(<[^>]*>)?\s*\(', line)
         if fm:
             qual = '.'.join([namespace] + [n for n, _ in nested] + [fm.group(1)])
-            if ';' in line:
+            if complete(line):
                 entries.append((qual, finish([line.strip()])))
             else:
                 pending = (qual, False, [line.strip()])
