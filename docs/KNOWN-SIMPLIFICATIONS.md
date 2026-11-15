@@ -906,3 +906,7 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - ID3v2.3/2.4 解析 TIT2/TPE1/TALB，支持 Latin-1、UTF-16 BOM、UTF-8 和常见 unsynchronisation；APIC 封面、压缩/加密帧、ID3v2.2、GBK LRC 和逐字歌词仍未实现。文本帧限 4096 B，标签限 16 MiB。
 - 曲库递归至四层、最多 256 首，按 ID3 标题或文件名排序；库页每页四首。`music.last` 每五秒保存文件与位置，重启恢复曲目但从头播放。按帧跳到存储位置要逐帧解码，长曲启动可能明显卡顿，因此留待板上性能评估。`lrc.offsets` 是文件路径到毫秒偏移的 JSON 映射，因 NVS 单 key 最长 15 字符，无法直接使用 `lrc.offset.<file>`；UI 每次增减 0.5 秒。KV 的 4 KiB 单值上限也限制了大量文件的偏移映射。
 - 音频、歌词观感、TF 子目录可靠性、排序与恢复时延、帧率和 NVS 持久化均未在真机验收。
+
+## r39b / esp32sim screenshot acceptance
+
+A patched esp32sim board model can boot the unmodified Lume firmware, inject JS bundles, and export 480×480 CO5300 screenshots in CI. The emulator's SPI/I2C models attach by host/bus/address and do not validate every physical GPIO route. The AXP2101 and audio codecs are register stubs; TF media, PMIC electrical behavior, audio output, touch timing and actual display timing remain unmodeled. The first CI version uploads artifacts for manual review, without a pixel baseline or a frame-rate gate. This is automated simulator evidence, not real-board acceptance. `image_gallery` currently evaluates and creates an Image node but its emulator screenshot shows background only. The no-IMU `imu_ball` variant does not crash; it uses the app's downward-gravity fallback and logs repeated QMI8658 warnings. See `docs/r39b-emu-report.md`.
