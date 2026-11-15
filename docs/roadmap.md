@@ -83,3 +83,19 @@ on-device acceptance are still pending:
   incl. the 4 `lume.ui.shell.*` + `lume.net.otaStatus` entries) and added
   `examples/shell_demo/` to the gallery. The "does not list `shell_demo` yet"
   line above is a `2172f50` snapshot, now superseded.
+
+Status after the r44 second compile-time board profile; milestone definitions
+and checkbox states are unchanged — the box stays `[ ]`:
+
+- **Board abstraction**: a second compile-time profile landed for the Waveshare
+  ESP32-S3-Touch-AMOLED-1.8 under
+  `firmware/boards/waveshare_esp32_s3_touch_amoled_1_8/`, wired into Kconfig
+  `choice LUME_BOARD` / `LUME_BOARD_DIR`. Default-board behaviour is unchanged
+  (byte-identical `idf.py size`, IRAM 16384/16384), both boards build green on
+  the host, the host harnesses / CLI tests pass, and one 368x448 esp32sim
+  screenshot was captured. It remains compile-time-only: the CST820 touch
+  protocol, TCA9554-routed resets, 16-column panel gap, SDMMC-vs-SDSPI and
+  absent ES7210 are known driver-level gaps, and there is still no runtime
+  hot-switch, no multi-board CI matrix and NO on-device acceptance.
+  "Additional targets demonstrated" is therefore still unmet — the checkbox
+  stays `[ ]`. See `docs/KNOWN-SIMPLIFICATIONS.md` (r44 entry).
