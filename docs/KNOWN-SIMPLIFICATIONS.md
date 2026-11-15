@@ -971,3 +971,16 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - C2 真快照 crossfade **放弃**：vendored lvgl 的 `LV_USE_SNAPSHOT` 编译为 0（`src/others/snapshot/lv_snapshot.c` 体内被 `#if` 裁空），开启需改 vendored 配置 / 代码；且 480×480×2 ≈ 450 KB 的一次性快照缓冲在 canvas 双缓冲已占两个 framebuffer 的紧张 PSRAM 预算下难保证。本轮硬约束禁止改 vendored，故只交付 C1，未做旧屏真快照 crossfade。
 - Task D（teardown 分块）**未实施**：Task A 数据显示 `JS_FreeRuntime` 占切换总耗时 3507 / 87536 = 4.0%（字节码缓存后 3479 / 25392 = 13.7%），均 < 30% 门槛，「数据不支持，不做」。
 - 桥 ABI 仅在枚举表尾追加 `LUME_OP_FIRSTFRAME`(14) / `LUME_OP_TRANSITION_COVER`(15) 并补 `_Static_assert`，既有 ID 不变；app 层 `lume.d.ts` 无新增；`lume_scripts.c` 的 prelude C 字符串形态原样保留（prelude_runner 与全部 host harness 全绿）。
+
+## r47 / Canvas 抗锯齿光栅（rendering backlog #1，host + sim 验证，无真机验收）
+
+- **范围**：`canvas_line` / `canvas_disc` 的「Bresenham 中心线 + 轴对齐方刷 / 八瓣 stamp 圆」整体替换为 header-only、全整数 8.8 定点覆盖率光栅 `firmware/components/lume-ui-bridge/include/lume_raster.h`：`lume_raster_line` 用点到线段精确距离 + 1px feather，`lume_raster_ring` 用 `|d−r|` 画连续圆环，`lume_raster_blend` 在 RGB565 通道上按 alpha/256 混合。全覆像素仍不透明直写，opaque 重绘擦除契约（speedometer 的 fillRect 清针）逐位不变。未改 app API / `runtime/types/lume.d.ts` / prelude C 字符串 / bridge ABI（`LUME_DRAW_CIRCLE` 仍为「半径 `a`、宽度 `draw_width`」，prelude `circle()` 仍传 `draw_width=1`）/ vendored；`canvas_span` 的 CLEAR/RECT 路径与 r46 profiling 代码未动。
+- **接受的简化**（均为有界、可复现，`tests/canvas_aa.c` 逐条覆盖）：
+  - **共享关节双混合最多差一个 feather 像素**：折线以两段独立 op 到达同一端点时，该关节像素可能被 `blend(blend(bg,a1),a2)` 两次混合，与钳位并集最多差一个 feather 像素；不透明核不受影响，远轻于被替换掉的暗缝。测试验证两段共线 width=1 线段的包络不扩大。
+  - **小半径环内孔退化**：当 `r ≤ hw+1`（`hw=(width−1)/2`，即环宽 ≥ `2r−1`、内半径 `r_in = r−hw ≤ 1`）时内孔与内羽化分支都不成立，圆环落成实心抗锯齿圆盘；`tests/canvas_aa.c` 用 `r=5 / width=16`（hw=7）覆盖此分支，`lume_raster_ring` 先 `if (r < 0 || width < 1) return` 再算 8.8 定点，无溢出。
+  - **纯轴对齐 width=1/2 线无羽化 = 无回归**：feather 带 `(hw, hw+1)` 内没有整数像素中心，轴对齐笔画仍是硬边；`width=1` 与旧 1px 方刷逐像素一致。附带口径：`hw=(width−1)/2` 使偶数宽度落到与奇数 `width−1` 相同的硬核（`width=2`→1px、`width=4`→3px），比旧方刷窄 1px，属本轮 AA redesign 的有意收窄，不是 staircase 回归；只有斜线 / 圆环才出现灰阶过渡。
+  - **零长线段画成实心方块**：`len2==0` 时 bbox 内每像素距离按 0 处理，得到 `(2·(hw+1)+1)²` 实心方块（width=1/2 → 3×3）而非圆帽点；有界、不越界、不溢出，测试按此断言，未做圆帽特化。
+- **越界与 stride**：`lume_raster_put` / 两个主循环都在写前判 `px<w`、`py<h`，`py*stride+px` 的 padding 列 `[w,stride)` 永不写穿；测试用 `STRIDE=68 > W=64` 的 `0xABCD` 哨兵 + 越过可见宽度的线段实证该保护。
+- **static 单读者**：`apply_canvas_draw` / `apply_canvas_path_draw` / drain 的 `CANVAS_BATCH` 三处 `static lume_raster_surf_t surf` 只由 LVGL task 的 drain timer 顺序访问，与文件内 `s_nodes` / `s_kinds` / `s_canvas_*` / `s_gesture_flags` 同一纪律（文件头线程约定）；合计约 72 B DRAM `.bss`，不进 IRAM。
+- **验证（全部宿主机 / sim）**：`tests/canvas_aa.c` 11/11 全绿（头注释已补 `-lm`）；默认板 `idf.py build` 绿 + `idf.py size`：Flash Code 1,950,600 → 1,951,228 B（**+628 B**，< ~4 KB）、**IRAM 16384/16384（100%，Remain 0，+0，AA 代码在 flash `.text`）**、DIRAM 230499 / Total 2921463；emu `examples/speedometer` + `examples/counter` 重启干净（0 条 `eval failed|RELOAD ERR`，tft.png 生成）。静态黄带边缘（y=82，app 重构未改该 `speedArc(...,158,...)` 几何）受控 A/B：pre-r47 **2 色硬阶** → r47 **8 色 6 段 RGB565 过渡**；放大对比见 hub 旧八瓣圆为断续青弧、r47 为连续环。详见 `docs/roadmap.md` r47 result。
+- **仍 open（全部真机验收）**：AMOLED 实际色彩 / 灰阶观感、笔画手感、局部脏区边界、板上帧时间、针脚双混合在真机是否可见，以及其余全部板级项一律未验；以上为 host / esp32sim 证据，不是真机验收。

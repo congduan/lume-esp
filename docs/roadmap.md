@@ -217,3 +217,47 @@ Size: Flash Code 1,941,940 -> 1,950,600 B (+8660, new cache/transition C code),
 IRAM unchanged at 16,384 B (100 % hard line respected, not exceeded). Bridge ABI
 only appends two op ids; app API and the prelude C-string form are unchanged.
 See `docs/KNOWN-SIMPLIFICATIONS.md` (r46) and the r46 war report.
+
+### r47 result — anti-aliased canvas stroke rasteriser (appended, milestone checkboxes untouched)
+
+Closes rendering-backlog item 1 on the host/simulator; on-device acceptance is
+still pending board bring-up. `canvas_line` / `canvas_disc` (integer Bresenham
+centreline + square brush, and the eight-stamp circle) are replaced by a
+header-only, all-integer 8.8 fixed-point coverage rasteriser
+(`firmware/components/lume-ui-bridge/include/lume_raster.h`): line coverage from
+exact point-to-segment distance with a 1 px feather, rings as one continuous
+annulus, RGB565 channel blending at alpha/256. Fully covered pixels stay opaque,
+so repaint/erase is bit-identical. No app API, prelude C-string, bridge ABI
+(`LUME_DRAW_CIRCLE` keeps radius `a` / width `draw_width`), or vendored change;
+r46 profiling code untouched.
+
+- **Host**: `tests/canvas_aa.c` (freestanding, `-lm`) 11/11 assertions green:
+  isqrt 8.8 contract, width=1 axis-aligned no feather, diagonal feather,
+  coverage monotonicity, zero-length stroke, width=4 envelope, continuous ring,
+  wide-ring-to-disc, 50 % blend, shared joint, set_colour. The stride sentinel
+  test now draws past the visible width so the px-bound check is exercised.
+- **Size** (default 2.16 board, `idf.py build` + `idf.py size`): Flash Code
+  1,950,600 -> 1,951,228 B (**+628 B**, under the ~4 KB budget); **IRAM
+  16384/16384 B (100 %, Remain 0, +0)** — the AA code stayed in flash `.text`,
+  not IRAM; Flash Data 828,512, DIRAM 230,499, Total 2,921,463 B. Three
+  `static lume_raster_surf_t` descriptors are ~72 B of DRAM `.bss`.
+- **emu** (esp32sim, real firmware image, 8 s): `examples/speedometer` and
+  `examples/counter` both reload clean — 0 "eval failed|RELOAD ERR", `tft.png`
+  generated. Controlled A/B at the static yellow band's top edge (y=82,
+  `speedArc(...,158,...)` geometry unchanged by the app's dial redraw
+  refactor): pre-r47 committed capture = **2 colours** (hard `(8,16,24)` ->
+  `(255,198,98)` step), r47 = **8 colours** with a 6-step RGB565 ramp
+  `(8,16,24)` -> `(16,24,24)` -> `(57,52,41)` -> `(98,85,49)` -> `(139,113,65)`
+  -> `(197,149,82)` -> `(246,194,98)` -> `(255,198,98)`. Whole-frame 57 -> 283
+  distinct colours (the app's dial labels also moved from canvas text to LVGL
+  Text widgets between the two captures, so the aggregate includes that change;
+  the isolated arc edge above is the rasteriser-only evidence). 4,649 changed
+  pixels, all inside the dial (x 80..400, y 82..356); zoomed hub crops show the
+  old eight-stamp circle as a broken teal arc -> a continuous ring, and the
+  jagged needle -> a smooth one.
+- **Not on-device acceptance**: host / esp32sim evidence only. AMOLED colour,
+  stroke feel, dirty-rect edges, frame time and dial legibility on the real
+  panel remain pending. Milestone checkboxes and the backlog numbering above
+  are unchanged; this section records the measurement only. Accepted
+  simplifications (joint double-blend, small-radius ring degeneracy,
+  axis-aligned no-feather) are in `docs/KNOWN-SIMPLIFICATIONS.md` (r47).
