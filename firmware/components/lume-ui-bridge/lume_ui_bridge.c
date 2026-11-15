@@ -1224,7 +1224,26 @@ void lume_ui_bridge_drain(void)
             case LUME_OP_CANVAS_DRAW: apply_canvas_draw(&m); break;
             case LUME_OP_IMAGE_SOURCE: apply_image_source(&m); break;
             case LUME_OP_CANVAS_INVALIDATE:
-                if (m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) lv_obj_invalidate(s_nodes[m.node_id]);
+                if (m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) {
+                    lv_obj_t *obj = s_nodes[m.node_id];
+                    if (!m.kind) lv_obj_invalidate(obj);
+                    else {
+                        lv_area_t bounds;
+                        lv_obj_update_layout(obj);
+                        lv_obj_get_coords(obj, &bounds);
+                        int32_t x1 = bounds.x1 + m.from, y1 = bounds.y1 + m.to;
+                        int32_t x2 = x1 + (int32_t)m.duration_ms - 1;
+                        int32_t y2 = y1 + (int32_t)m.token - 1;
+                        if (x1 < bounds.x1) x1 = bounds.x1;
+                        if (y1 < bounds.y1) y1 = bounds.y1;
+                        if (x2 > bounds.x2) x2 = bounds.x2;
+                        if (y2 > bounds.y2) y2 = bounds.y2;
+                        if (x1 <= x2 && y1 <= y2) {
+                            lv_area_t area = {.x1=x1, .y1=y1, .x2=x2, .y2=y2};
+                            lv_obj_invalidate_area(obj, &area);
+                        }
+                    }
+                }
                 break;
             default:
                 ESP_LOGW(TAG, "drain: unknown op %u", (unsigned)m.op);

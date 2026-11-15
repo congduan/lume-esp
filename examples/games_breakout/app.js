@@ -40,13 +40,20 @@ Text({parent:root,text:function(){return note();},style:{position:'absolute',x:1
 var oldBall=null,oldPaddle=null;
 var scene=Canvas({parent:root,width:BW,height:BH,style:{position:'absolute',x:48,y:91},onDraw:function(ctx){
  frame();
+ var areas=[];
  /* Transparent Canvas is unsupported: repaint only entity trails with board color.
     Bricks live in Views above this layer, so cleared trails do not erase them. */
- if(oldBall){ctx.fillColor('#0A1428');ctx.fillRect(oldBall.x-7,oldBall.y-7,14,14);}
- if(oldPaddle!==null){ctx.fillColor('#0A1428');ctx.fillRect(oldPaddle,BH-26,72,12);}
- ctx.fillColor('#FFFFFF');ctx.fillRect(Math.round(state.x)-5,Math.round(state.y)-5,10,10);
- ctx.fillColor('#5EE3C0');ctx.fillRect(Math.round(state.paddle),BH-25,72,10);
+ if(oldBall){ctx.fillColor('#0A1428');ctx.fillRect(oldBall.x-7,oldBall.y-7,14,14);areas.push({x:Math.max(0,oldBall.x-7),y:Math.max(0,oldBall.y-7),w:14,h:14});}
+ if(oldPaddle!==null){ctx.fillColor('#0A1428');ctx.fillRect(oldPaddle,BH-26,72,12);areas.push({x:oldPaddle,y:BH-26,w:72,h:12});}
+ ctx.fillColor('#FFFFFF');ctx.fillRect(Math.round(state.x)-5,Math.round(state.y)-5,10,10);areas.push({x:Math.round(state.x)-5,y:Math.round(state.y)-5,w:10,h:10});
+ ctx.fillColor('#5EE3C0');ctx.fillRect(Math.round(state.paddle),BH-25,72,10);areas.push({x:Math.round(state.paddle),y:BH-25,w:72,h:10});
  oldBall={x:Math.round(state.x),y:Math.round(state.y)};oldPaddle=Math.round(state.paddle);
+ if(areas.length===2)return;
+ var clipped=[];for(var i=0;i<areas.length;i++){
+  var a=areas[i],x1=Math.max(0,a.x),y1=Math.max(0,a.y),x2=Math.min(BW,a.x+a.w),y2=Math.min(BH,a.y+a.h);
+  if(x2>x1&&y2>y1)clipped.push({x:x1,y:y1,w:x2-x1,h:y2-y1});
+ }
+ return clipped.length?clipped:undefined;
 }});
 var bricks=[];
 for(var i=0;i<36;i++)(function(n){var b=state.bricks[n];bricks.push(View({parent:root,style:{position:'absolute',x:48+b.x,y:91+b.y,width:b.w,height:b.h,borderRadius:3,background:function(){brickRevision();return state.bricks[n].alive?['#F17A8A','#F8AB70','#F9D66C','#65D6B5','#63B8F0','#A48FE8'][Math.floor(n/6)]:'#0A1428';}}}));})(i);

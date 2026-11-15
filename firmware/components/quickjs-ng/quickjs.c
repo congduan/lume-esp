@@ -1,4 +1,6 @@
+#ifdef ESP_PLATFORM
 #include "lume_perf.h"
+#endif
 /*
  * QuickJS Javascript Engine
  *

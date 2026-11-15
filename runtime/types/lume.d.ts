@@ -112,8 +112,8 @@ declare namespace lume.ui {
     /** 1..480 pixels; all canvases share a 460,800-byte RGB565 budget. */
     width: number;
     height: number;
-    /** Runs on creation and when a signal read inside changes. */
-    onDraw(ctx: CanvasContext): void;
+    /** Runs on creation and when a signal read inside changes. Return one or up to eight local dirty rectangles; omit to invalidate all. */
+    onDraw(ctx: CanvasContext): void | {x: number; y: number; w: number; h: number} | Array<{x: number; y: number; w: number; h: number}>;
     parent?: Node;
     /** Layout styling; width and height must be specified above. */
     style?: Omit<Style, 'width' | 'height'>;

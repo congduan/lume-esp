@@ -7,7 +7,7 @@ function harness(script) {
     createNode: (...a) => { calls.push(['create', ...a]); return ++next; },
     setAttr: (...a) => calls.push(['attr', ...a]),
     canvasDraw: (...a) => calls.push(['draw', ...a]),
-    canvasInvalidate: id => calls.push(['invalidate', id]),
+    canvasInvalidate: (...args) => calls.push(['invalidate', ...args]),
     setPressEvent: id => calls.push(['press', id]),
     log: () => {}, _nowMs: () => 0, imu: {read: () => null}
   };
@@ -24,6 +24,10 @@ pass('drawing command order and final invalidate', () => {
   const h = harness(`Canvas({width:40,height:40,onDraw:function(c){c.clear();c.fillColor('#112233');c.fillRect(1,2,3,4);c.line(1,2,3,4,'#abcdef',2);c.polyline([[0,0],[1,1],[2,2]],'#ffffff',1);c.circle(4,5,2,'#00ff00');c.text(2,3,'ok','#ffffff',14);}})`);
   assert.deepStrictEqual(h.calls.filter(x => x[0] === 'draw').map(x => x[2]), [0,1,2,2,2,3,4]);
   assert.strictEqual(h.calls.at(-1)[0], 'invalidate');
+});
+pass('optional dirty rectangles preserve local coordinates', () => {
+  const h = harness('Canvas({width:40,height:40,onDraw:function(c){return [{x:1,y:2,w:3,h:4},{x:10,y:11,w:2,h:2}];}})');
+  assert.deepStrictEqual(h.calls.filter(x=>x[0]==='invalidate'), [['invalidate',1,1,2,3,4],['invalidate',1,10,11,2,2]]);
 });
 pass('signal change redraws once; equal value stays idle', () => {
   const h = harness('var s=signal(1);Canvas({width:8,height:8,onDraw:function(c){c.clear();c.fillRect(s(),0,1,1);}})');

@@ -437,6 +437,15 @@ static JSValue js_canvas_invalidate(JSContext *ctx, JSValueConst this_val, int a
     if (id < 1 || id >= LUME_MAX_NODES) return JS_ThrowRangeError(ctx,"lume: invalid canvas id");
     if (s_node_dead[id]) return JS_UNDEFINED;
     lume_ui_msg_t m; msg_init(&m); m.op = LUME_OP_CANVAS_INVALIDATE; m.node_id = id;
+    if (argc != 1) {
+        int32_t x, y, w, h;
+        if (argc != 5 || JS_ToInt32(ctx, &x, argv[1]) < 0 ||
+            JS_ToInt32(ctx, &y, argv[2]) < 0 || JS_ToInt32(ctx, &w, argv[3]) < 0 ||
+            JS_ToInt32(ctx, &h, argv[4]) < 0) return JS_ThrowTypeError(ctx, "lume: invalidate needs x,y,w,h");
+        if (x < 0 || y < 0 || w <= 0 || h <= 0 || x > 480 || y > 480 ||
+            w > 480 || h > 480) return JS_ThrowRangeError(ctx, "lume: invalid canvas rectangle");
+        m.kind = 1; m.from = x; m.to = y; m.duration_ms = w; m.token = h;
+    }
     if (lume_ui_bridge_post(&m) != 0) return JS_ThrowInternalError(ctx,"lume: ui queue full");
     return JS_UNDEFINED;
 }

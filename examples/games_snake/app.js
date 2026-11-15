@@ -58,13 +58,16 @@ Text({parent:root,text:function(){return note();},style:{position:'absolute',x:1
 var scene=Canvas({parent:root,width:384,height:384,style:{position:'absolute',x:48,y:88},onDraw:function(ctx){
   redraw();
   /* Canvas keeps its prior pixels; repaint only head, vacated tail and food. */
-  if(!dirty.length) {ctx.fillColor('#12332B');ctx.fillRect(0,0,384,384);for(var i=0;i<state.body.length;i++)dirty.push(state.body[i]);if(state.food)dirty.push(state.food);}
+  var full=!dirty.length;
+  if(full) {ctx.fillColor('#12332B');ctx.fillRect(0,0,384,384);for(var i=0;i<state.body.length;i++)dirty.push(state.body[i]);if(state.food)dirty.push(state.food);}
   for(var j=0;j<dirty.length;j++){
     var p=dirty[j], body=false;for(var k=0;k<state.body.length;k++)if(state.body[k].x===p.x&&state.body[k].y===p.y)body=true;
     var food=state.food&&state.food.x===p.x&&state.food.y===p.y;
     ctx.fillColor(food?'#FFB84D':body?'#57E49B':'#12332B');ctx.fillRect(p.x*CELL+1,p.y*CELL+1,CELL-2,CELL-2);
   }
+  var areas=[];for(var n=0;n<dirty.length;n++)areas.push({x:dirty[n].x*CELL+1,y:dirty[n].y*CELL+1,w:CELL-2,h:CELL-2});
   dirty=[];
+  if(!full)return areas;
 }});
 var period=180,timer=null,imuTimer=null;
 function snakeTick(){var r=snakeStep(state,Math.random);dirty=r.dirty;redraw.set(redraw()+1);
