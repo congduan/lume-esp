@@ -325,3 +325,110 @@ annulus in C. On-device acceptance is still pending board bring-up.
   Accepted simplifications (integer-degree angle discretisation, hard angular
   cut + round-cap seams, cap double-blend) are in
   `docs/KNOWN-SIMPLIFICATIONS.md` (r48).
+
+### r49 result — rendering backlog #6 + #7 (host / esp32sim, no on-device acceptance)
+
+Closes rendering-backlog items 6 and 7 on the host/simulator. Milestone
+checkboxes, milestone definitions and the backlog numbering above are
+unchanged. No board was available: everything below is compile-green +
+size + host/esp32sim evidence, **not hardware verification**.
+
+**Empirical corrections to the dispatch premise ("assume wrong, verify first").**
+Before editing, the implementation was read (`lume_scripts.c` prelude,
+`lume_ui_bridge.h` + `bridge_protocol.c`, the examples, and the emu/screenshot
+channels). Three premises in the r45 backlog note turned out to be stale:
+
+- `speedometer` is **not** a retained-path demonstration. `62746fb` landed
+  `retainPath` / `retainSegments` / `drawPath`, but the speedometer dial was
+  refactored in `02d64ed` to a paint-once flag and in r48 (`00f4982`) to the
+  native `ctx.arc`. Before r49 the retained-path API was exercised **only** by
+  `tests/canvas_mapping.js`; no shipped example used it.
+- The "three whole-frame examples rebuilding 276 segments" is true only for
+  `watchface` (three full background rings ~360 polyline segments + 60 ticks
+  rebuilt per frame). `dashboard`'s 276-segment gauge ring had already become a
+  native LVGL `Arc` widget (`battArc`), and its `arc()` helper is dead code; the
+  remaining canvas static geometry is ~11-19 hairlines. `imu_ball` was renamed
+  to `gravity_ball` in r36 and replaced by a single-ball incremental dirty-rect
+  demo; its per-frame geometry is a **moving filled disc** (49 `fillRect`
+  spans), not line segments.
+
+**#6 — move static/low-frequency geometry off per-frame JS** (three examples,
+each treated by what its geometry actually is, not copied rigidly):
+
+- `watchface`: `analogDraw`'s 60 tick marks -> two `retainSegments` paths
+  (48 minor + 12 major, split because they differ in colour/width);
+  `ringDraw`'s three full background rings -> three `retainPath` paths
+  (121 segments each). Both replay through the same `canvas_line()` raster as
+  the old `polyline()`/`line()`, so pixels are unchanged. The three progress
+  arcs and the three hands stay dynamic.
+- `dashboard`: the GAUGE separator, TRACE grid (10 lines) and SYSTEM
+  separators (8 lines) become per-page `retainSegments` paths replayed with
+  `drawPath`; dynamic text/trace/bars stay per frame.
+- `gravity_ball` (a filled disc, not line geometry): a `retainSegments` +
+  `drawPath(pid, bx, by)` variant was measured and **rejected** — it drops
+  core1 by 41M but raises core0 by 71M (49 anti-aliased `canvas_line` replays
+  instead of one cheap `canvas_span` per row), net total **+12 %**. The shipped
+  form caches the disc's 49 `[dy, half]` spans in JS once (`BALL_SPANS`) and
+  replays them as `fillRect` rows — no per-frame `sqrt`/`floor`/`max`/`min`,
+  identical pixels, identical dirty rects, `tests/gravity_ball.js` unchanged.
+
+emu A/B (esp32sim, same clean firmware image, only the injected app frame
+differs, fixed 8 s / 1,920,000,000 cycles, deterministic instruction count;
+stop lines):
+
+```text
+watchface    BEFORE core0 277183813 + core1 109426622 insns   total 386610435
+             AFTER  core0 277109240 + core1  69403611 insns   total 346512851   core1 -40023011 (-36.6%), total -40097584 (-10.4%)
+dashboard    BEFORE core0 206939394 + core1  73250145 insns   total 280189539
+(GAUGE)      AFTER  core0 206970149 + core1  73410988 insns   total 280381137   core1 +160843 (+0.22%), total +191598 (neutral / bundle-size timeline noise)
+dashboard    BEFORE core0 289855315 + core1  94606789 insns   total 384462104
+(TRACE,BOOT) AFTER  core0 289882616 + core1  92974922 insns   total 381857538   core1 -1631867 (-1.7%), total -2604566
+gravity_ball BEFORE core0 136262457 + core1 109877479 insns   total 246139936
+             AFTER  core0 137682272 + core1  99749037 insns   total 245431309   core1 -10128442 (-9.2%), total -708627 (-0.3%)
+```
+
+`dashboard`'s default GAUGE page is measurement-neutral because its per-frame
+JS geometry is ~one hairline on top of a ~73M core1 engine-idle baseline
+(`counter` core1 = 54,573,730); the retained grid's benefit shows on the TRACE
+page (same BOOT-press script for BEFORE and AFTER). All reloads clean — 0
+`eval failed|RELOAD ERR`, tft.png produced. Pixel comparison BEFORE vs AFTER
+is **bit-identical** for all three (0 changed pixels, 0 lost-ink, identical ink
+bbox): watchface (33,40,283,340), dashboard (24,28,455,469), gravity_ball
+(216,216,264,264).
+
+**#7 — `lume screenshot --scan N`** (new `tools/lume/scan.js`, `png.js`,
+`scan_specs.json`; wired into `lume.js`). esp32sim only writes one
+`--tft-png` at end of run, so N consecutive frames of the same deterministic
+execution are captured as N boots at increasing `--max-seconds` (fixed
+firmware + fixed app frame + fixed script). A dependency-free RGB8 PNG decoder
+(`zlib.inflateSync` + all five PNG row filters) feeds two per-frame assertions:
+(A) the expected layer set — every declared static-layer ROI still has
+`>= minInk` ink; (B) changed pixels in bounds — frame-to-frame changed pixels
+stay inside `dynamicRegion` and never intrude into a static-layer ROI. Exit
+0/1 like `lume check`, `--json` supported, products under
+`artifacts/check/<app>/scan/`. Specs are calibrated from esp32sim captures;
+`dashboard` uses a `press 0` BOOT-button action to reach the visible TRACE
+canvas (the default GAUGE page hides its canvas behind metric cards).
+
+- Positive: `speedometer` N=5 PASS (5/5, changed bbox confined to the needle
+  / value region), `dashboard` N=5 PASS (5/5), `--json` smoke-tested.
+- Negative (proves #7 is not a no-op): temporarily commented out
+  `canvas_publish(m.node_id, &m)` in the `LUME_OP_CANVAS_INVALIDATE` drain
+  (a mid-frame-blit-style break), rebuilt, re-scanned `speedometer` -> **all 5
+  frames FAIL** with `MISSING: band-left 83 < 400 ink; band-top 0 < 300 ink;
+  band-right 167 < 450 ink`, `RESULT: FAIL ... exit 1`. Restored the C file
+  via `git checkout`, rebuilt, re-scanned -> PASS again. No break code left.
+
+**Regression / size (all host, EXIT=0):** `lume check examples/counter`
+(regression backstop) + `dashboard` / `watchface` / `gravity_ball` all PASS
+(dashboard layout R1-R7 all PASS); 22/22 `tests/*.js` green
+(`JS_HARNESS_FAILURES=0`); `npm test --prefix tools/lume` 44 pass / 0 fail
+(new `scan.test.js` covers decodeRgb / inkCount / changedPixels /
+analyzeFrames / renderScan / injected-capture engine / no-spec CLI failure);
+`tests/canvas_aa.c` 19/19 and `tests/bridge_protocol.c` static assertions
+PASS; `gen_api_docs.py --check` (110 entries) and `check_website.py` green.
+`runtime/types/lume.d.ts` unchanged (retained-path API was already declared;
+no API change this round). Firmware `idf.py build && idf.py size`
+`BUILD_SIZE_EXIT=0`: **IRAM 16384/16384 (100 %, Remain 0)**, Flash Code
+1,954,564 B (identical to the r48 baseline — no firmware C change, +0 B),
+Flash Data 829,904, DIRAM 230,499, Total 2,926,191, `lume.bin` 0x2ca6f0.
