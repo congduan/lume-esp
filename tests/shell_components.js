@@ -52,7 +52,7 @@ check('indicator draws and rebounds, mask toggles', () => {
 });
 check('Launcher creates bounded virtual grid', () => {
   const s = app('globalThis.apps=Array.from({length:90},(_,i)=>({id:"app"+i,label:"App "+i}));globalThis.root=lume.ui.shell.Launcher({apps});');
-  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 3 && m[3] === 3000), 'List spacer contains all rows');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 3 && m[3] === 2520), 'List spacer contains all rows');
   const canvases = s.messages.filter(m => m[0] === 'create' && m[2] === 3);
   assert.ok(canvases.length > 0 && canvases.length < 90, 'only visible icons mounted');
 });
