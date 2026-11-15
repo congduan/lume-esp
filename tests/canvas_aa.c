@@ -1,7 +1,8 @@
-/* Host AA-raster check (r47): coverage envelope, blending, degenerate
+/* Host AA-raster check (r47 + r48): coverage envelope, blending, degenerate
  * strokes and shared-joint behaviour for lume_raster.h — the canvas stroke
- * path the bridge uses for lines, polylines/batches, retained paths and
- * circles. Freestanding: compiles against the header only.
+ * path the bridge uses for lines, polylines/batches, retained paths, circles
+ * and (r48) the native annulus arc. Freestanding: compiles against the header
+ * only.
  *
  *   gcc -std=c11 -Wall -Wextra -Werror \
  *     -I firmware/components/lume-ui-bridge/include \
@@ -200,6 +201,106 @@ int main(void)
     lume_raster_set_color(&surf, 0x07E0);         /* full green            */
     assert(surf.sr5 == 0 && surf.sg6 == 63u && surf.sb5 == 0);
     puts("PASS set_color channel decomposition exact");
+
+    /* ---- r48: native anti-aliased annulus arc (rendering backlog #2) ---- */
+    /* Partial arc 0..90 at (32,32) r=20 width=3 (screen convention: 0deg=+x,
+     * 90deg=down, clockwise). Band inside the wedge, round cap at the start,
+     * empty gap elsewhere, feathered AA edges, stride padding intact. */
+    surf_init(0x0000);
+    pad_arm();
+    lume_raster_arc(&surf, 32, 32, 20, 0, 90, 3);
+    assert(px(46, 46) == 0xFFFF);      /* 45deg, r=20: opaque band core    */
+    assert(px(52, 32) == 0xFFFF);      /* angle 0 boundary: band + cap     */
+    assert(px(52, 31) != 0x0000);      /* just outside start: round cap    */
+    assert(px(18, 46) == 0x0000);      /* 135deg gap: untouched            */
+    assert(px(10, 46) == 0x0000);      /* gap, off the tight bbox          */
+    assert(feather_count() > 0);       /* AA feather on band/cap edges     */
+    assert(pad_intact());
+    puts("PASS arc: wedge band, round end cap, empty gap, AA feather, padding intact");
+
+    /* Full circle crossing 0deg takes the r47 ring fast path: bit-identical. */
+    surf_init(0x0000);
+    lume_raster_ring(&surf, 32, 32, 20, 3);
+    static uint16_t ring_ref[STRIDE * H]; memcpy(ring_ref, buf, sizeof(buf));
+    surf_init(0x0000);
+    lume_raster_arc(&surf, 32, 32, 20, 270, 630, 3);   /* 270 -> 630 = full cw */
+    assert(memcmp(ring_ref, buf, sizeof(buf)) == 0);
+    puts("PASS arc: full 360deg sweep across 0deg is bit-identical to ring");
+
+    /* Angle normalisation / 0-degree wrap: arc(300,60) and arc(300,420)
+     * describe the same 120deg clockwise sweep and must rasterise equally. */
+    surf_init(0x0000);
+    lume_raster_arc(&surf, 32, 32, 20, 300, 60, 3);
+    static uint16_t wrap_a[STRIDE * H]; memcpy(wrap_a, buf, sizeof(buf));
+    surf_init(0x0000);
+    lume_raster_arc(&surf, 32, 32, 20, 300, 420, 3);
+    assert(memcmp(wrap_a, buf, sizeof(buf)) == 0);
+    assert(px(52, 32) == 0xFFFF);      /* 0deg is inside the 300->60 arc   */
+    assert(px(12, 32) == 0x0000);      /* 180deg is in the gap             */
+    puts("PASS arc: 0deg wrap normalisation, equivalent geometry, correct gap");
+
+    /* Seam continuity: no hard step / zero gap across the two arc ends. Scan
+     * the coverage (blue channel on black) around the 0deg start boundary at
+     * radius r: the cap (angle<0) blends into the band (angle>=0) with no
+     * uncovered pixel in between. */
+    surf_init(0x0000);
+    lume_raster_arc(&surf, 32, 32, 20, 0, 90, 3);
+    {
+        int gap = 0, saw_ink = 0;
+        for (int deg = -4; deg <= 4; deg++) {
+            int x = 32 + (int)(20 * __builtin_cos(deg * 3.14159265 / 180.0));
+            int y = 32 + (int)(20 * __builtin_sin(deg * 3.14159265 / 180.0));
+            int v = px(x, y) & 31;                 /* coverage proxy 0..31  */
+            if (v > 0) saw_ink = 1;
+            if (saw_ink && v == 0) gap = 1;        /* hole after ink = seam  */
+        }
+        assert(!gap);                            /* no zero gap at the seam  */
+    }
+    puts("PASS arc: end seam is continuous (no hard step / gap)");
+
+    /* Degenerate from==to: a bounded round dot at the endpoint, nothing
+     * beyond the cap, arc centre untouched. */
+    surf_init(0x0000);
+    lume_raster_arc(&surf, 32, 32, 20, 45, 45, 3);
+    assert(px(46, 46) == 0xFFFF);      /* dot centre (r=20, 45deg)         */
+    assert(px(32, 32) == 0x0000);      /* arc centre stays empty           */
+    assert(px(46, 41) == 0x0000);      /* 5px beyond cap (hw+1=2)          */
+    {
+        int ink = 0;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (px(x, y)) ink++;
+        assert(ink > 0 && ink < 40);   /* small bounded disc               */
+    }
+    puts("PASS arc: from==to degenerates to a bounded round dot");
+
+    /* Wide stroke (width >= 2r-1) closes the inner hole like the ring: a
+     * quarter arc 0..90 at r=5 width=16 becomes a filled quarter disc. */
+    surf_init(0x0000);
+    lume_raster_arc(&surf, 32, 32, 5, 0, 90, 16);
+    assert(px(32, 32) == 0xFFFF);      /* centre filled (no hole)          */
+    assert(px(40, 40) == 0xFFFF);      /* 45deg inside the disc            */
+    assert(px(22, 32) == 0x0000);      /* 180deg gap untouched             */
+    assert(px(32, 20) == 0x0000);      /* 270deg gap untouched             */
+    assert(px(32, 46) == 0x0000);      /* beyond outer feather (r+2)       */
+    puts("PASS arc: width>=2r-1 degenerates to a filled AA sector (no hole)");
+
+    /* bbox 先裁剪: partial arc whose centre is near the right edge, tight bbox
+     * clipped to the surface, stride padding columns stay intact. */
+    surf_init(0x0000);
+    pad_arm();
+    lume_raster_arc(&surf, 60, 32, 20, 0, 90, 3);
+    assert(px(63, 52) != 0x0000);      /* clipped edge still painted       */
+    assert(pad_intact());              /* no write past visible width       */
+    puts("PASS arc: bbox clipped to surface, stride padding intact");
+
+    /* r<=0 early return: no ink. */
+    surf_init(0x0000);
+    lume_raster_arc(&surf, 32, 32, 0, 0, 90, 3);
+    {
+        int ink = 0;
+        for (int y = 0; y < H; y++) for (int x = 0; x < W; x++) if (px(x, y)) ink++;
+        assert(ink == 0);
+    }
+    puts("PASS arc: r<=0 early return");
 
     puts("ALL CANVAS AA HOST TESTS PASSED");
     return 0;
