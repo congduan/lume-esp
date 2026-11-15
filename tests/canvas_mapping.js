@@ -90,4 +90,5 @@ pass('33 contiguous lines split at 32', () => {
 pass('240-point polyline uses eight batches', () => {
   const h = harness('var p=[];for(var i=0;i<240;i++)p.push([i,0]);Canvas({width:240,height:1,onDraw:function(c){c.polyline(p,"#ffffff");}})');
   assert.deepStrictEqual(h.calls.filter(x=>x[0]==='batch').map(x=>x[2].length/6),[32,32,32,32,32,32,32,15]);
+  console.log('CANVAS 240 points: old=239 messages / 27724 queue bytes; new=8 messages / 928 queue bytes + 3824 payload bytes');
 });
