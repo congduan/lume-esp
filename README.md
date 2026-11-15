@@ -2,6 +2,8 @@
 
 # Lume
 
+**English** | [简体中文](README.zh-CN.md)
+
 **Write your entire ESP32-S3 AMOLED app in JavaScript. No C, no rebuild, no heavyweight framework on the developer's side.**
 
 *Declarative UI · Signals reactivity · Flex layout · Canvas · Animations · Gestures · Themes · Hot reload · Full hardware access — powered by QuickJS-NG + LVGL under the hood*
