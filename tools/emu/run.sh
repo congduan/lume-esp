@@ -41,8 +41,9 @@ printf '2.5 serial-file %s\n' "$output/app.frame" > "$output/actions.txt"
 [[ -s $output/tft.png ]] || { echo "TFT PNG missing: $output/tft.png" >&2; exit 1; }
 if ! rg -q "engine recv RELOAD" "$output/serial.log" || \
    ! rg -q "runtime up; eval app '<embedded-demo>'" "$output/serial.log" || \
-   [[ $(rg -c "lume-engine: app eval ok" "$output/serial.log" || true) -lt 2 ]]; then
-  echo "app reload did not reach evaluation; see $output/serial.log" >&2
+   [[ $(rg -c "lume-engine: app eval ok" "$output/serial.log" || true) -lt 2 ]] || \
+   rg -q "eval failed|RELOAD ERR" "$output/serial.log"; then
+  echo "app reload did not complete successfully; see $output/serial.log" >&2
   tail -40 "$output/serial.log" >&2
   exit 1
 fi
