@@ -48,43 +48,47 @@ async function server(app, port) {
     });
     for (const [name, okay] of Object.entries(unit)) { assert.ok(okay, name); console.log('PASS renderer ' + name); }
     for (const [app, port, expected] of [
-      ['counter', 8766, 'taps: 0'], ['files', 8767, 'demo.txt'],
-      ['watch_launcher', 8768, 'battery 80%'], ['shell_demo', 8769, 'Shell demo'],
+      ['counter', 8766, 'TOTAL TAPS'], ['files', 8767, 'demo.txt'],
+      ['device_monitor', 8768, 'LIVE / 2 Hz'], ['shell_demo', 8769, 'Shell demo'],
     ]) {
       const child = await server(app, port);
       try {
         await page.goto(`http://localhost:${port}/`);
-        await page.locator('#device [data-node-id]').first().waitFor();
+        await page.locator('#device [data-node-id]').first().waitFor({ state: 'attached' });
         await page.getByText(expected, { exact: false }).first().waitFor({ timeout: 5000 });
         const count = await page.locator('#device [data-node-id]').count();
-        assert.ok(count >= (app === 'watch_launcher' ? 40 : 6), app + ' nodes');
+        assert.ok(count >= 6, app + ' nodes');
         if (app === 'counter') {
-          await page.getByText('Count', { exact: true }).click();
-          await page.getByText('taps: 1', { exact: true }).waitFor();
+          await page.getByText('Add one', { exact: true }).click();
+          await page.getByText('1', { exact: true }).waitFor();
         }
-        if (app === 'watch_launcher') {
-          assert.ok(await page.locator('#device canvas').count() >= 12, 'watch canvas icons');
-          assert.ok(await page.getByText('Lume', { exact: true }).count(), 'Launcher title');
+        if (app === 'device_monitor') {
+          assert.ok(await page.locator('#device canvas').count() >= 2, 'monitor gauges');
+          assert.ok(await page.getByText('Device', { exact: true }).count(), 'monitor title');
         }
         if (app === 'shell_demo') {
           assert.ok(await page.getByText('page 1 / 3', { exact: true }).count(), 'StatusBar and page rendered');
           const edges = await (await fetch(`http://localhost:${port}/messages`)).json();
-          const left = edges.messages.find(m => m[0] === 'gesture')[1];
+          const gids = edges.messages.filter(m => m[0] === 'gesture').map(m => m[1]);
+          const edge = gids[gids.length - 1]; // right-edge strip (registered last by EdgeNavigation)
           const inject = input => fetch(`http://localhost:${port}/input`, {
             method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(input),
           });
-          await inject({ type: 'gesture', id: left, kind: 0, x: 10, y: 200, t: 0 });
-          await inject({ type: 'gesture', id: left, kind: 1, x: 85, y: 200, t: 50 });
+          const swipeLeft = async () => {
+            await inject({ type: 'gesture', id: edge, kind: 0, x: 470, y: 200, t: 0 });
+            await inject({ type: 'gesture', id: edge, kind: 1, x: 380, y: 200, t: 50 });
+            await inject({ type: 'gesture', id: edge, kind: 2, x: 380, y: 200, t: 100 });
+          };
+          await swipeLeft();
           await page.waitForTimeout(250);
           assert.ok(await page.locator('#device canvas').count() >= 2, 'EdgeNavigation indicator canvas');
           await page.locator('#device').screenshot({ path: path.join(shots, 'EdgeNavigation.png') });
-          await inject({ type: 'gesture', id: left, kind: 2, x: 85, y: 200, t: 100 });
+          await swipeLeft();
           await page.getByText('page 3 / 3', { exact: true }).waitFor();
           console.log('PASS shell_demo injected edge swipe advances page screenshot=artifacts/simulator/EdgeNavigation.png');
         }
         await page.locator('#device').screenshot({ path: path.join(shots, app + '.png') });
         if (app === 'shell_demo') await page.locator('#device').screenshot({ path: path.join(shots, 'StatusBar.png') });
-        if (app === 'watch_launcher') await page.locator('#device').screenshot({ path: path.join(shots, 'Launcher.png') });
         console.log(`PASS ${app} DOM nodes=${count} expected=${JSON.stringify(expected)} screenshot=artifacts/simulator/${app}.png`);
       } finally { child.kill('SIGTERM'); }
     }

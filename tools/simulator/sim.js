@@ -50,7 +50,7 @@ const server = http.createServer(async (req, res) => {
     for await (const chunk of req) { body += chunk; if (body.length > 4096) { res.writeHead(413); res.end(); return; } }
     try {
       const input = JSON.parse(body);
-      if (!session || !Number.isInteger(input.id) || input.id < 1) throw Error('invalid node');
+      if (!session || !Number.isInteger(input.id) || input.id < 0) throw Error('invalid node');
       if (input.type === 'press') session.press(input.id);
       else if (input.type === 'scroll') session.scroll(input.id, Math.max(0, Number(input.y) || 0));
       else if (input.type === 'gesture') session.gesture(input.id, input.kind, input.x, input.y, input.t, input.dir, input.cancelled);
