@@ -20,8 +20,24 @@
 
 ## Screenshots
 
-Real firmware, rendered by the [esp32sim](https://github.com/mikroverk/esp32sim) board emulator
-and captured automatically in CI — not mockups. Every image is 480×480, the actual panel size.
+Real firmware, no mockups. The showcase images below are rendered by the
+[esp32sim](https://github.com/mikroverk/esp32sim) board emulator and captured automatically in CI;
+the launcher image is a `lume screenshot` frame read back from the physical board over USB.
+Every image is 480×480, the actual panel size.
+
+**On the board** — captured from the device, not the emulator:
+
+| |
+|:--:|
+| <img src="artifacts/board/launcher.png" width="230"><br>**Built-in launcher**<br><sub>15 installed apps, EDIT uninstall mode</sub> |
+
+What this frame shows, exactly: the home screen is the JS bundled in
+[`lume_scripts.c`](firmware/components/lume-engine/lume_scripts.c) (`lume_home_js`). Tiles carry the
+first letter of each app's label (`glyphOf`) on a rounded card, names longer than the tile are
+clipped with a trailing dot (`clip()`), so `device_monitor` reads `device_mo.`, and the
+3-column grid scrolls past the 12 tiles visible here. The status bar is clock / wifi / battery:
+wifi is blank, the battery reports `100%`, and the clock reads `00:48` because the RTC on this
+unit was not synced.
 
 **Apps**
 
