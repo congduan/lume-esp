@@ -2027,6 +2027,24 @@ static JSValue js_mp3_id3v1(JSContext *ctx, JSValueConst self, int argc, JSValue
     return obj;
 }
 
+static JSValue js_mp3_id3v2(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc<1) return JS_ThrowTypeError(ctx,"mp3.id3v2: expected path");
+    const char *path=JS_ToCString(ctx,argv[0]);
+    if (!path) return JS_EXCEPTION;
+    char title[128],artist[128],album[128];
+    int r=mp3_decoder_id3v2(path,title,artist,album);
+    JS_FreeCString(ctx,path);
+    if (r<0) return JS_NewInt32(ctx,r);
+    if (!r) return JS_NULL;
+    JSValue obj=JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx,obj,"title",JS_NewString(ctx,title));
+    JS_SetPropertyStr(ctx,obj,"artist",JS_NewString(ctx,artist));
+    JS_SetPropertyStr(ctx,obj,"album",JS_NewString(ctx,album));
+    return obj;
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -2242,6 +2260,7 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, mp3, "list", JS_NewCFunction(ctx, js_mp3_list, "list", 1));
     JS_SetPropertyStr(ctx, mp3, "readText", JS_NewCFunction(ctx, js_mp3_read_text, "readText", 1));
     JS_SetPropertyStr(ctx, mp3, "id3v1", JS_NewCFunction(ctx, js_mp3_id3v1, "id3v1", 1));
+    JS_SetPropertyStr(ctx, mp3, "id3v2", JS_NewCFunction(ctx, js_mp3_id3v2, "id3v2", 1));
     JS_SetPropertyStr(ctx, audio, "mp3", mp3);
     JS_SetPropertyStr(ctx, lume, "audio", audio);
     /* lume.ble (r25): NimBLE GATT peripheral (NUS-shaped RX/TX service),

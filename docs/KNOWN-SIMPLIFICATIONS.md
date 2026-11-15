@@ -898,3 +898,11 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - `lume.audio.mp3` 每次只打开一个 TF 卡文件，使用 4 KiB 输入窗口逐帧解码；`Fs` 仍为 LittleFS，不是 TF 卡 API。ID3v1 支持歌名/歌手，ID3v2 不解析；无标签时用文件名。曲库页显示排序后的前四首。
 - LRC 只接受 UTF-8 和最多 32767 字节；GBK 不支持，坏字节以替换字符显示。无 LRC 时显示歌名。时长依比特率估算，VBR 文件的进度可能漂移；无进度回调、定位跳转或退出位置恢复。
 - `playStream` 将 16 块以内的 PCM 复制到 PSRAM 队列并立即返回；单帧解码及 TF 读仍占用 engine timer tick，20 ms 截止时间、实际 DMA 排空和 ES8311 44.1 kHz 时钟须接板量测。真机音频、歌词同步、暂停/切歌、长曲稳定性尚未验收。
+
+## r38b / Canvas 合批、录音与播放器补强（主机验证）
+
+- Canvas 连续线段每 32 段合成一条 `CANVAS_BATCH` 消息；队列记录保留定长拷贝，PSRAM 线段负载在成功入队后由 LVGL drain 释放。240 点折线的宿主消息数由 239 降至 8；板上帧时间、队列水位与脏区画质仍待量测。
+- `audio.record()` 将 16 kHz 双声道 PCM PSRAM 块移交给 QuickJS ArrayBuffer；宿主 QuickJS harness 覆盖内容、finalizer 与 detach 各释放一次。真实录音、PSRAM 峰值与设备端 GC 时序仍待接板。
+- ID3v2.3/2.4 解析 TIT2/TPE1/TALB，支持 Latin-1、UTF-16 BOM、UTF-8 和常见 unsynchronisation；APIC 封面、压缩/加密帧、ID3v2.2、GBK LRC 和逐字歌词仍未实现。文本帧限 4096 B，标签限 16 MiB。
+- 曲库递归至四层、最多 256 首，按 ID3 标题或文件名排序；库页每页四首。`music.last` 每五秒保存文件与位置，重启恢复曲目但从头播放。按帧跳到存储位置要逐帧解码，长曲启动可能明显卡顿，因此留待板上性能评估。`lrc.offsets` 是文件路径到毫秒偏移的 JSON 映射，因 NVS 单 key 最长 15 字符，无法直接使用 `lrc.offset.<file>`；UI 每次增减 0.5 秒。KV 的 4 KiB 单值上限也限制了大量文件的偏移映射。
+- 音频、歌词观感、TF 子目录可靠性、排序与恢复时延、帧率和 NVS 持久化均未在真机验收。

@@ -2,6 +2,7 @@
 #define MINIMP3_ONLY_MP3
 #include "minimp3.h"
 #include "mp3_decoder.h"
+#include "id3v2.h"
 #include "lume_pins.h"
 #include "driver/spi_master.h"
 #include "driver/sdspi_host.h"
@@ -104,6 +105,15 @@ int mp3_decoder_id3v1(const char *name, char *title, char *artist)
     if (!ok) return 0;
     id3_field(title,tag+3); id3_field(artist,tag+33);
     return 1;
+}
+int mp3_decoder_id3v2(const char *name, char title[128], char artist[128], char album[128])
+{
+    char path[240];
+    if (!title || !artist || !album || card_path(name,path,sizeof path)<0) return -1;
+    if (mount_card()<0) return -2;
+    FILE *f=fopen(path,"rb"); if (!f) return -2;
+    int r=id3v2_parse(f,title,artist,album);
+    fclose(f); return r;
 }
 int mp3_decoder_open(const char *name, mp3_decoder_t **out)
 {

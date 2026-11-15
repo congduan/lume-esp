@@ -855,6 +855,8 @@ declare namespace lume.audio {
     /** UTF-8 LRC text, maximum 32767 bytes; -1 if larger. */
     function readText(path: string): string | number;
     function id3v1(path: string): { title: string; artist: string } | null | number;
+    /** v2.3/v2.4 TIT2, TPE1 and TALB as UTF-8; null without a v2 tag. */
+    function id3v2(path: string): { title: string; artist: string; album: string } | null | number;
   }
 }
 
