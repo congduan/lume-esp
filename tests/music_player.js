@@ -35,3 +35,8 @@ assert.equal(decoded,5); assert.equal(sent,4);
 assert.equal(evalIn('musicPending'),null);
 console.log('Scheduler: ticks=7 decoded=' + decoded + ' sent=' + sent +
             ' retry=' + (blocked-sent) + ' PASS');
+evalIn('musicStop()');
+assert.equal(evalIn('musicIndex'),-1);
+evalIn('musicSelect(-3)');
+assert.equal(evalIn('musicIndex'),0);
+console.log('Scheduler: stop and negative-index wrap PASS');

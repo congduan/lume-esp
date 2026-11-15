@@ -68,6 +68,7 @@ function musicReadLyrics(name) {
   return [];
 }
 function musicStop() {
+  musicIndex = -1;
   musicPending = null; musicEof = false;
   if (musicMp3) musicMp3.close();
   if (musicAudio && musicAudio.streamReset) musicAudio.streamReset();
@@ -75,7 +76,7 @@ function musicStop() {
 function musicSelect(index) {
   if (!musicMp3 || !musicFiles.length) return;
   musicStop();
-  musicIndex = (index + musicFiles.length) % musicFiles.length;
+  musicIndex = ((index % musicFiles.length) + musicFiles.length) % musicFiles.length;
   var name = musicFiles[musicIndex];
   var rc = musicMp3.open('/music/' + name);
   if (rc < 0) { musicStatus.set('Open failed ' + rc); return; }
