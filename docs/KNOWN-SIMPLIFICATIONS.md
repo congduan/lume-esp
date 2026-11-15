@@ -887,3 +887,8 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 - `runtime/shell.js` 是可选 bundle 模块。导入后 `lume.theme.set({colors, radius, spacing, fontScale})` 接受 `spacing` 非负整数像素；未显式设置 `View.style.padding` / `gap` 时，两者使用此值。局部显式值（含单边 padding）优先；换主题会更新继承值。未导入 shell 的内嵌 prelude 仍只有原有 colors/radius/fontScale 语义。本轮为满足零固件改动，没有修改内嵌 prelude。
 - Dialog 只支持居中卡片和堆叠，不支持拖拽移动。全屏遮罩注册点击处理以拦截下层触摸；`modal:false` 仅禁止点遮罩关闭。bundle 暂停/替换时清理组件。真实 LVGL 触摸命中仍待接板验收。
 - Toast 是单实例，新 `show()` 顶替当前并重置显示时长；淡出 180ms 后移除。浮层不注册点击处理，不应拦截触摸；真机触摸待验收。
+
+## r36b / 性能测量与 Canvas 局部失效（主机验证）
+
+- `CONFIG_LUME_PERF_PROFILE` 默认关；日志中的 flush 耗时只覆盖同步提交阶段，异步 DMA 完成时间尚未量。20/48 行 DMA buffer 和 33/15/10 ms 刷新周期的 FPS、p95/p99、内存余量、触摸与功耗 A/B 均待接板。默认保持 20 行/33 ms，不能用静态事务数代替实测收益。
+- Canvas 最多接收八个显式局部矩形。局部无效化与实际 CO5300 传输面积、画面完整性、撕裂效果待真机确认；目前主机 harness 只验证消息参数与游戏逻辑。
