@@ -92,13 +92,13 @@
         throw new TypeError('lume: Dialog button style must be plain, primary or danger');
       callback('Dialog onPress', button.onPress);
       var press = function () { if (dialogs[dialogs.length - 1] !== entry) return; closeDialog(entry); if (button.onPress) button.onPress(); };
-      if (button.style === 'plain' || !button.style) children.push(View({style:{height:44,width:'100%',
+      if (button.style === 'plain' || !button.style) children.push(View({style:{height:56,width:'100%',
         display:'flex',alignItems:'center',justifyContent:'center',padding:0,gap:0},onPress:press},
         [Text({text:String(button.label),style:{}})]));
-      else children.push(Button({title:String(button.label),style:{width:'100%',height:44,
+      else children.push(Button({title:String(button.label),style:{width:'100%',height:56,
         background:color(button.style === 'danger' ? 'danger' : 'primary', button.style === 'danger' ? '#C62828' : '#385CA5')},onPress:press}));
     });
-    entry.card = View({style:{width:360,height:'auto',alignItems:'stretch',display:'flex',
+    entry.card = View({style:{width:screen.w-48,height:'auto',alignItems:'stretch',display:'flex',
       flexDirection:'column',background:color('surface','#202632'),padding:16,gap:12,scroll:'none'},
       align:'center',onPress:function () {}},children);
     dialogs.push(entry);
@@ -119,8 +119,8 @@
     clearToast();
     var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
     var opacity = signal(1);
-    var id = Text({text:String(message),style:{x:40,y:options.position === 'top' ? 48 : screen.h - 84,
-      width:screen.w - 80,height:48,background:'#222222',borderRadius:12,padding:12,
+    var id = Text({text:String(message),style:{x:24,y:options.position === 'top' ? 48 : screen.h - 80,
+      width:screen.w - 48,height:56,background:'#222222',borderRadius:12,padding:12,
       textAlign:'center',opacity:opacity,transition:{property:'opacity',durationMs:180,easing:'ease-out'}}});
     var current = {id:id}; toast = current;
     current.timer = lume.system.setTimeout(function () {
@@ -144,7 +144,7 @@
   }
   function StatusBar(p) {
     p = p || {};
-    var height = positive('StatusBar height', p.height, 28, 480);
+    var height = positive('StatusBar height', p.height, 56, 480);
     var clock = signal('');
     var timer;
     if (p.clock) {
@@ -159,9 +159,9 @@
     var right = p.right === undefined ? '' : p.right;
     var id = View({ parent: p.parent, style: {
       display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-      alignItems: 'center', width: '100%', height: height, padding: 4,
+      alignItems: 'center', width: 432, height: height, padding: 0,
       background: p.background || '#111111', scroll: 'none',
-      x: p.x === undefined ? 0 : p.x, y: p.y === undefined ? 0 : p.y,
+      x: p.x === undefined ? 24 : p.x, y: p.y === undefined ? 24 : p.y,
     } }, [Text({ text: left, style: {} }), Text({ text: right, style: {} })]);
     cleanups[id] = function () { if (timer !== undefined) lume.system.clearInterval(timer); };
     return id;
@@ -241,15 +241,16 @@
       background: '#000000', scroll: 'none' } });
     var bar = p.statusBar === false ? null : StatusBar({ parent: root, left: p.title || 'Lume',
       right: p.right === undefined ? function () { return 'battery ' + lume.pmic.battPercent() + '%'; } : p.right });
-    var top = bar === null ? 0 : 28;
-    if (bar === null) Text({ parent: root, text: p.title || 'Lume', style: { x: 8, y: 4 } });
+    var top = bar === null ? 24 : 96;
+    var listTop = bar === null ? 96 : 168;
+    if (bar === null) Text({ parent: root, text: p.title || 'Lume', style: { x: 24, y: 40 } });
     Button({ parent: root, title: function () { return editing() ? 'done' : 'edit'; },
-      style: { x: 404, y: top + 2, width: 68, height: 30 },
+      style: { x: 400, y: top, width: 56, height: 56 },
       onPress: function () { editing.set(!editing()); } });
     var rows = [];
     for (var i = 0; i < apps.length; i += columns) rows.push(apps.slice(i, i + columns));
     var list = List({ parent: root,
-      style: { x: 0, y: top + 36, width: '100%', height: 480 - top - 36,
+      style: { x: 24, y: listTop, width: 432, height: 456 - listTop,
         background: '#000000', scrollbar: 'auto' },
       items: rows, itemHeight: 100, overscan: 1,
       renderItem: function (row) {
@@ -257,7 +258,7 @@
           justifyContent: 'space-evenly', width: '100%', height: 96, scroll: 'none' } },
           row.map(function (app) {
             return View({ style: { display: 'flex', flexDirection: 'column',
-              alignItems: 'center', width: Math.floor(460 / columns), height: 94, scroll: 'none',
+              alignItems: 'center', width: Math.floor(432 / columns), height: 94, scroll: 'none',
               opacity: function () { return launching() === app.id ? 0.55 : 1; } },
               onPress: function () {
                 if (editing()) return;
