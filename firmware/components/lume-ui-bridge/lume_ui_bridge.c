@@ -48,7 +48,8 @@ static uint8_t s_explicit_width[LUME_MAX_NODES], s_explicit_height[LUME_MAX_NODE
 static uint8_t s_align[LUME_MAX_NODES];            /* wire lume_align_t */
 static uint8_t s_align_target[LUME_MAX_NODES];     /* 0 = parent, else node_id */
 static int16_t s_align_ofs_x[LUME_MAX_NODES], s_align_ofs_y[LUME_MAX_NODES];
-static uint16_t *s_canvas_pixels[LUME_MAX_NODES];
+static uint16_t *s_canvas_pixels[LUME_MAX_NODES];   /* front: what lv_canvas displays */
+static uint16_t *s_canvas_work[LUME_MAX_NODES];     /* work: raster target (== front if the 2nd alloc failed) */
 static uint8_t *s_image_pixels[LUME_MAX_NODES];
 static lv_image_dsc_t s_image_dsc[LUME_MAX_NODES];
 static uint16_t s_canvas_w[LUME_MAX_NODES], s_canvas_h[LUME_MAX_NODES];
@@ -56,11 +57,11 @@ static uint16_t s_canvas_stride[LUME_MAX_NODES]; /* RGB565 pixels per row */
 static int16_t s_arc_start[LUME_MAX_NODES], s_arc_end[LUME_MAX_NODES]; /* LUME_NODE_ARC sweep */
 static size_t s_canvas_bytes;
 /* r27: canvas budget is one full framebuffer; geometry comes from the board
- * profile instead of a hardcoded frame size. */
-#define CANVAS_BUDGET ((size_t)LUME_LCD_H_RES * LUME_LCD_V_RES * (LUME_LCD_BPP / 8u))
+ * profile instead of a hardcoded frame size. Every canvas is double buffered
+ * (front + work), so the budget counts two full framebuffer images. */
+#define CANVAS_BUDGET ((size_t)LUME_LCD_H_RES * LUME_LCD_V_RES * (LUME_LCD_BPP / 8u) * 2u)
 static void clear_subtree(lv_obj_t *obj);
 static void release_dead_canvases(void);
-static void canvas_frame_close(void);
 static void release_dead_images(void)
 {
     for (uint16_t id = 1; id < LUME_MAX_NODES; id++) {
@@ -356,7 +357,6 @@ static void apply_animate(const lume_ui_msg_t *m)
 static void apply_reset(void)
 {
     lv_obj_t *screen = lv_screen_active();
-    canvas_frame_close();   /* a reset can land mid redraw: never leave the refresh paused */
     clear_subtree(screen);
     lv_obj_clean(screen);
     release_dead_canvases();
@@ -449,26 +449,34 @@ static void apply_create(const lume_ui_msg_t *m)
         }
         case LUME_NODE_CANVAS: {
             int32_t w = m->from, h = m->to;
+            size_t bytes = (size_t)lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565) * h;
             if (w < 1 || h < 1 || w > LUME_LCD_H_RES || h > LUME_LCD_V_RES ||
-                (size_t)w * h * 2u > CANVAS_BUDGET - s_canvas_bytes) {
+                bytes > (CANVAS_BUDGET - s_canvas_bytes) / 2u) {
                 ESP_LOGE(TAG, "canvas id=%u invalid dimensions/budget %ldx%ld", m->node_id, (long)w, (long)h);
                 fail_create(m->node_id);
                 return;
             }
-            size_t bytes = (size_t)lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565) * h;
-            if (bytes > CANVAS_BUDGET - s_canvas_bytes) { fail_create(m->node_id); return; }
             uint16_t *pixels = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
             if (!pixels) { ESP_LOGE(TAG, "canvas PSRAM allocation failed (%u)", (unsigned)bytes); fail_create(m->node_id); return; }
             memset(pixels, 0, bytes);
+            /* Second image: raster commands land here and are published on the
+             * closing invalidate, so a refresh never samples a half-drawn dial.
+             * Without it (PSRAM exhausted) the canvas degrades to the old
+             * single-buffer behaviour instead of failing to create. */
+            uint16_t *work = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
+            if (work) memset(work, 0, bytes);
+            else ESP_LOGW(TAG, "canvas id=%u single buffered (no PSRAM for the 2nd image, %u bytes)",
+                          (unsigned)m->node_id, (unsigned)bytes);
             obj = lv_canvas_create(parent);
-            if (!obj) { heap_caps_free(pixels); fail_create(m->node_id); return; }
+            if (!obj) { heap_caps_free(work); heap_caps_free(pixels); fail_create(m->node_id); return; }
             lv_canvas_set_buffer(obj, pixels, w, h, LV_COLOR_FORMAT_RGB565);
             lv_obj_set_size(obj, w, h);
             s_canvas_pixels[m->node_id] = pixels;
+            s_canvas_work[m->node_id] = work ? work : pixels;
             s_canvas_w[m->node_id] = w;
             s_canvas_h[m->node_id] = h;
             s_canvas_stride[m->node_id] = lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565) / 2u;
-            s_canvas_bytes += bytes;
+            s_canvas_bytes += bytes * (work ? 2u : 1u);
             break;
         }
         case LUME_NODE_ARC:
@@ -820,8 +828,12 @@ static void release_dead_canvases(void)
 {
     for (uint16_t id = 1; id < LUME_MAX_NODES; id++) {
         if (s_canvas_pixels[id] && !s_nodes[id]) {
-            s_canvas_bytes -= (size_t)s_canvas_stride[id] * 2u * s_canvas_h[id];
+            size_t bytes = (size_t)s_canvas_stride[id] * 2u * s_canvas_h[id];
+            bool split = s_canvas_work[id] != NULL && s_canvas_work[id] != s_canvas_pixels[id];
+            s_canvas_bytes -= bytes * (split ? 2u : 1u);
+            if (split) heap_caps_free(s_canvas_work[id]);
             heap_caps_free(s_canvas_pixels[id]);
+            s_canvas_work[id] = NULL;
             s_canvas_pixels[id] = NULL;
         }
     }
@@ -853,44 +865,19 @@ static void apply_image_source(const lume_ui_msg_t *m)
     if (old) heap_caps_free(old);
 }
 
-/* ---- canvas frame atomicity ----
- * Raster commands write straight into the RGB565 buffer the next refresh reads.
- * One onDraw frame arrives as a burst of Queue A records closed by
- * LUME_OP_CANVAS_INVALIDATE, and a burst can straddle several 5 ms drain ticks
- * (the engine task is still posting), so a display refresh that lands inside
- * that window blits a half-drawn canvas: on a gauge that shows up as a
- * flickering arc and a needle that comes and goes. The refresh timer is
- * therefore paused from the first raster command of a frame until the closing
- * invalidate, so every blit samples a finished frame. No extra framebuffer is
- * needed; the cost is that other widgets are not repainted for the duration of
- * one canvas frame (a few ms), and the flush that ends the frame happens on the
- * next refresh tick. drain_timer_cb() resumes the refresh if an app dies (or
- * throws) without closing its frame. */
-static bool s_canvas_frame_open;
-static uint32_t s_canvas_frame_start;
-#define CANVAS_FRAME_MAX_MS 100           /* watchdog: never pause the refresh longer */
-
-static lv_timer_t *canvas_refr_timer(void)
-{
-    lv_display_t *disp = lv_display_get_default();
-    return disp ? lv_display_get_refr_timer(disp) : NULL;
-}
-static void canvas_frame_open(void)
-{
-    if (s_canvas_frame_open) return;
-    lv_timer_t *timer = canvas_refr_timer();
-    if (timer == NULL) return;
-    s_canvas_frame_open = true;
-    s_canvas_frame_start = lv_tick_get();
-    lv_timer_pause(timer);
-}
-static void canvas_frame_close(void)
-{
-    if (!s_canvas_frame_open) return;
-    s_canvas_frame_open = false;
-    lv_timer_t *timer = canvas_refr_timer();
-    if (timer != NULL) lv_timer_resume(timer);
-}
+/* ---- canvas frame atomicity (double buffered) ----
+ * Raster commands for one onDraw frame arrive as a burst of Queue A records
+ * closed by LUME_OP_CANVAS_INVALIDATE. The burst is applied in place and can
+ * take tens of milliseconds (the engine task builds every segment in JS), so a
+ * display refresh that samples the single canvas buffer mid-burst blits a
+ * half-drawn canvas: on a gauge that shows as a flickering arc and a needle
+ * that comes and goes. Each canvas therefore owns two RGB565 buffers:
+ *   front = the buffer lv_canvas displays (always a finished frame)
+ *   work  = the buffer raster commands are written to
+ * The closing invalidate publishes work (swap on a full redraw, memcpy of the
+ * dirty rect on a partial one). Cost: two canvas-sized PSRAM buffers per node
+ * (CANVAS_BUDGET covers both). */
+static void canvas_publish(uint16_t id, const lume_ui_msg_t *m);
 
 /* Raster commands are applied only by the LVGL timer. The buffer belongs to
  * the canvas and is never shared with the engine; one final invalidate per
@@ -898,7 +885,7 @@ static void canvas_frame_close(void)
 static void canvas_px(uint16_t id, int32_t x, int32_t y, uint16_t color)
 {
     if (x >= 0 && y >= 0 && x < s_canvas_w[id] && y < s_canvas_h[id])
-        s_canvas_pixels[id][(size_t)y * s_canvas_stride[id] + x] = color;
+        s_canvas_work[id][(size_t)y * s_canvas_stride[id] + x] = color;
 }
 static void canvas_disc(uint16_t id, int32_t x, int32_t y, int r, uint16_t c)
 {
@@ -915,7 +902,6 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
 {
     uint16_t id = m->node_id;
     if (id == 0 || id >= LUME_MAX_NODES || !s_canvas_pixels[id]) return;
-    canvas_frame_open();   /* hold the refresh off until the closing invalidate */
     uint16_t c = lv_color_to_u16(lv_color_hex((uint32_t)m->value));
     int32_t x = m->from, y = m->to, a = (int32_t)m->duration_ms, b = (int32_t)m->token;
     switch (m->attr) {
@@ -952,18 +938,77 @@ static void apply_canvas_draw(const lume_ui_msg_t *m)
             break;
         }
         case LUME_DRAW_TEXT: {
+            /* Text is rasterised through LVGL's draw layer, which targets the
+             * canvas's current buffer (front). Point it at work for the
+             * duration, with invalidation suppressed: lv_canvas_finish_layer()
+             * invalidates the canvas itself, and this frame must stay invisible
+             * until its closing invalidate publishes it. */
+            lv_obj_t *obj = s_nodes[id];
+            lv_display_t *disp = lv_obj_get_display(obj);
+            uint16_t *front = s_canvas_pixels[id], *work = s_canvas_work[id];
+            lv_display_enable_invalidation(disp, false);
+            if (work != front) lv_canvas_set_buffer(obj, work, s_canvas_w[id], s_canvas_h[id], LV_COLOR_FORMAT_RGB565);
             lv_layer_t layer;
-            lv_canvas_init_layer(s_nodes[id], &layer);
+            lv_canvas_init_layer(obj, &layer);
             lv_draw_label_dsc_t dsc;
             lv_draw_label_dsc_init(&dsc);
             dsc.text = m->text_heap ? m->text_heap : m->text;
             dsc.color = lv_color_hex((uint32_t)m->value);
             lv_area_t area = {x, y, s_canvas_w[id]-1, s_canvas_h[id]-1};
             lv_draw_label(&layer, &dsc, &area);
-            lv_canvas_finish_layer(s_nodes[id], &layer);
+            lv_canvas_finish_layer(obj, &layer);
+            if (work != front) lv_canvas_set_buffer(obj, front, s_canvas_w[id], s_canvas_h[id], LV_COLOR_FORMAT_RGB565);
+            lv_display_enable_invalidation(disp, true);
             break;
         }
     }
+}
+
+/* Publish a finished canvas frame: point lv_canvas at work and make that
+ * buffer the display source. A full redraw swaps the two buffers (the app
+ * repaints every pixel, so the old front is free to become the next work); a
+ * dirty-rect invalidate copies just that rect onto the front image, keeping
+ * everything outside the rect intact. */
+static void canvas_publish(uint16_t id, const lume_ui_msg_t *m)
+{
+    lv_obj_t *obj = s_nodes[id];
+    uint16_t *front = s_canvas_pixels[id], *work = s_canvas_work[id];
+    int32_t w = s_canvas_w[id], h = s_canvas_h[id];
+    if (!m->kind) {
+        if (work != front) {
+            lv_canvas_set_buffer(obj, work, w, h, LV_COLOR_FORMAT_RGB565);
+            s_canvas_pixels[id] = work;
+            s_canvas_work[id] = front;
+        }
+        lv_obj_invalidate(obj);
+        return;
+    }
+    /* Dirty rect (canvas-local). */
+    int32_t x = m->from, y = m->to;
+    int32_t rw = (int32_t)m->duration_ms, rh = (int32_t)m->token;
+    if (x < 0) { rw += x; x = 0; }
+    if (y < 0) { rh += y; y = 0; }
+    if (x + rw > w) rw = w - x;
+    if (y + rh > h) rh = h - y;
+    if (rw <= 0 || rh <= 0) return;
+    if (work != front) {
+        size_t stride = s_canvas_stride[id];           /* RGB565 pixels per row */
+        for (int32_t row = 0; row < rh; row++) {
+            memcpy(front + (size_t)(y + row) * stride + x,
+                   work + (size_t)(y + row) * stride + x,
+                   (size_t)rw * sizeof(uint16_t));
+        }
+    }
+    lv_area_t bounds, area;
+    lv_obj_update_layout(obj);
+    lv_obj_get_coords(obj, &bounds);
+    area.x1 = bounds.x1 + x; area.y1 = bounds.y1 + y;
+    area.x2 = area.x1 + rw - 1; area.y2 = area.y1 + rh - 1;
+    if (area.x1 < bounds.x1) area.x1 = bounds.x1;
+    if (area.y1 < bounds.y1) area.y1 = bounds.y1;
+    if (area.x2 > bounds.x2) area.x2 = bounds.x2;
+    if (area.y2 > bounds.y2) area.y2 = bounds.y2;
+    if (area.x1 <= area.x2 && area.y1 <= area.y2) lv_obj_invalidate_area(obj, &area);
 }
 
 /* r4 P2: same subtree walk as clear_subtree(), but recording the node ids
@@ -1003,8 +1048,6 @@ static void apply_remove(const lume_ui_msg_t *m)
 
     clear_subtree(obj);   /* purge this node AND every descendant table entry */
     lv_obj_delete(obj);   /* deletes the whole LVGL subtree */
-    /* A deleted canvas never posts its closing invalidate: drop the pause. */
-    canvas_frame_close();
     release_dead_canvases();
     release_dead_images();
     ESP_LOGI(TAG, "remove id=%u (subtree purged, %d js owners)",
@@ -1282,28 +1325,10 @@ void lume_ui_bridge_drain(void)
                 break;
             case LUME_OP_IMAGE_SOURCE: apply_image_source(&m); break;
             case LUME_OP_CANVAS_INVALIDATE:
-                /* Frame complete: let the display refresh run again. Released
-                 * before the invalidate so the queued area is rendered. */
-                canvas_frame_close();
-                if (m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) {
-                    lv_obj_t *obj = s_nodes[m.node_id];
-                    if (!m.kind) lv_obj_invalidate(obj);
-                    else {
-                        lv_area_t bounds;
-                        lv_obj_update_layout(obj);
-                        lv_obj_get_coords(obj, &bounds);
-                        int32_t x1 = bounds.x1 + m.from, y1 = bounds.y1 + m.to;
-                        int32_t x2 = x1 + (int32_t)m.duration_ms - 1;
-                        int32_t y2 = y1 + (int32_t)m.token - 1;
-                        if (x1 < bounds.x1) x1 = bounds.x1;
-                        if (y1 < bounds.y1) y1 = bounds.y1;
-                        if (x2 > bounds.x2) x2 = bounds.x2;
-                        if (y2 > bounds.y2) y2 = bounds.y2;
-                        if (x1 <= x2 && y1 <= y2) {
-                            lv_area_t area = {.x1=x1, .y1=y1, .x2=x2, .y2=y2};
-                            lv_obj_invalidate_area(obj, &area);
-                        }
-                    }
+                /* Frame complete: publish the finished image. */
+                if (m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id] &&
+                    s_nodes[m.node_id] != NULL) {
+                    canvas_publish(m.node_id, &m);
                 }
                 break;
             default:
@@ -1322,13 +1347,6 @@ static void drain_timer_cb(lv_timer_t *timer)
 {
     (void)timer;
     /* Runs from lv_timer_handler() on the LVGL task. */
-    if (s_canvas_frame_open &&
-        lv_tick_elaps(s_canvas_frame_start) > CANVAS_FRAME_MAX_MS) {
-        /* An app that threw inside onDraw never posts its closing invalidate. */
-        ESP_LOGW(TAG, "canvas frame open > %d ms, resume refresh",
-                 CANVAS_FRAME_MAX_MS);
-        canvas_frame_close();
-    }
     lume_ui_bridge_drain();
 }
 
