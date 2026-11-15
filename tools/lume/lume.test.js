@@ -15,6 +15,9 @@ import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32
 import { parseQjsVersion, qjsVersion, assertEngineVersion, queryEngineVersion, compileBytecode, localQjsc } from './bytecode.js';
 import { openOta, otaAuthLine, OTA_PORT_DEFAULT } from './ota.js';
 import { decodeShot, bmpFromRgb565 } from './shot.js';
+import { check, render, parsePerf } from './check.js';
+import { extractLumeCatalog, namespaceMembers, levenshtein, findUnknownMembers, suggest, parseEvalError } from './check_suggest.js';
+import { parseLayoutRules } from './check_layout.js';
 
 const execFileAsync = promisify(execFile);
 const OTA_TOKEN = '0123456789abcdef0123456789abcdef';
@@ -440,5 +443,190 @@ test('CLI --ota usage, arg validation and no-board error output', async () => {
       execFileAsync(process.execPath, [cli, 'deploy', root, '--ota', '127.0.0.1',
         '--token', OTA_TOKEN, '--ota-port', String(closedPort)]),
       err => /cannot connect to OTA device at 127\.0\.0\.1/.test(err.stderr));
+  } finally { await rm(parent, { recursive: true, force: true }); }
+});
+
+/* ---- r45b `lume check` one-shot verification (injected I/O, no board) ---- */
+
+const RULES_PASS = Object.fromEntries(['R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'].map(r => [r, 'PASS']));
+const SERIAL_OK = [
+  'I (1881) lume-engine: app eval ok; entering event loop',
+  'I (2776) lume-engine: app eval ok; entering event loop',
+].join('\n');
+const SERIAL_BAD_API = [
+  'E (2759) lume-engine: JS exception [<lume-app>]: TypeError: not a function',
+  'E (2760) lume-engine: JS stack [<lume-app>]:     at <anonymous> (<lume-app>:1:14)',
+  "W (2760) lume-engine: reload/launch eval failed for ''",
+  'I (2902) lume-engine: app eval ok; entering event loop',  // HOME fallback, not success
+].join('\n');
+
+function emuOk(extra = {}) {
+  return { exitCode: 0, timedOut: false, stdout: '', stderr: '',
+           serialLog: SERIAL_OK, screenshot: 'artifacts/check/counter/tft.png', ...extra };
+}
+
+test('check: d.ts catalog + Levenshtein nearest-neighbour spelling hint', () => {
+  const catalog = extractLumeCatalog(`
+declare namespace lume.ai {
+  function setKey(key: string): number;
+  function chat(options: ChatOptions): ChatResult | number;
+}
+declare namespace lume.theme {
+  function set(theme: Theme): void;
+  function get(): Theme;
+}
+`);
+  assert.deepEqual(namespaceMembers(catalog, 'lume.ai'), ['setKey', 'chat']);
+  assert.equal(levenshtein('chet', 'chat'), 1);
+  assert.equal(levenshtein('xyz', 'chat'), 4);
+  const found = findUnknownMembers(
+    [{ file: 'app.js', text: 'lume.ai.chet({});\nlume.theme.get();' }], catalog);
+  assert.equal(found.length, 1);
+  assert.equal(found[0].expression, 'lume.ai.chet');
+  assert.equal(found[0].namespace, 'lume.ai');
+  assert.equal(found[0].line, 1);
+  assert.equal(suggest(found[0]), 'did you mean lume.ai.chat? (available: setKey, chat)');
+});
+
+test('check: parseEvalError reads the real JS exception/stack log format', () => {
+  const e = parseEvalError(SERIAL_BAD_API);
+  assert.equal(e.message, 'TypeError: not a function');
+  assert.equal(e.line, 1);                 // from "at <anonymous> (<lume-app>:1:14)"
+  assert.equal(e.tag, '<lume-app>');
+  assert.equal(parseEvalError(SERIAL_OK), null);
+  assert.equal(parseEvalError('RELOAD ERR bad-crc\n')?.message, 'bad-crc');
+});
+
+test('check: layout R1-R7 aggregation and best-effort perf parsing', () => {
+  const failTable = [
+    '  FAIL R1 card: no pixels',
+    'app                  R1    R2    R3    R4    R5    R6    R7',
+    'counter              FAIL  FAIL  PASS  PASS  PASS  PASS  PASS ',
+  ].join('\n');
+  assert.deepEqual(parseLayoutRules(failTable),
+    { R1: 'FAIL', R2: 'FAIL', R3: 'PASS', R4: 'PASS', R5: 'PASS', R6: 'PASS', R7: 'PASS' });
+  assert.deepEqual(parseLayoutRules(`app R1 R7\nx ${Object.values(RULES_PASS).join(' ')}`), RULES_PASS);
+  assert.deepEqual(parsePerf([
+    'I (1728) lume-perf: fps=2 flush=48',
+    'I (1728) lume-perf: render n=2 avg_us=10364 max_us=12143',
+    'I (1729) lume-perf: eval n=2 avg_us=41023 max_us=67668',
+  ].join('\n')), { fps: 2, renderAvgUs: 10364, renderMaxUs: 12143, evalAvgUs: 41023 });
+  assert.equal(parsePerf('I (1) tag: no profile lines\n'), null);
+});
+
+test('check: success path aggregates bundle/eval/layout/perf', async () => {
+  const result = await check('examples/counter', {}, {
+    bundle: async () => Buffer.alloc(2160),
+    runEmu: async () => emuOk(),
+    hasLayoutSpec: async () => true,
+    runLayout: async () => ({ ok: true, rules: RULES_PASS, failed: [], error: null }),
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.steps.map(s => s.step), ['bundle', 'eval', 'layout', 'perf']);
+  assert.equal(result.steps[0].bytes, 2160);
+  assert.equal(result.steps[1].ok, true);
+  assert.equal(result.steps[1].evalOkCount, 2);
+  assert.equal(result.steps[2].rules.R7, 'PASS');
+  assert.equal(result.steps[3].skipped, 'profile disabled');
+  assert.equal(result.screenshot, 'artifacts/check/counter/tft.png');
+  assert.match(render(result), /RESULT: PASS/);
+});
+
+test('check: layout FAIL is aggregated and fails the run', async () => {
+  const rules = { ...RULES_PASS, R1: 'FAIL', R2: 'FAIL' };
+  const result = await check('examples/counter', {}, {
+    bundle: async () => Buffer.alloc(2160),
+    runEmu: async () => emuOk(),
+    hasLayoutSpec: async () => true,
+    runLayout: async () => ({ ok: false, rules, failed: ['R1', 'R2'], error: null }),
+  });
+  assert.equal(result.ok, false);
+  const layout = result.steps.find(s => s.step === 'layout');
+  assert.equal(layout.rules.R1, 'FAIL');
+  assert.deepEqual(layout.failed, ['R1', 'R2']);
+  assert.match(render(result), /failed rules: R1, R2/);
+});
+
+test('check: bundle failure fails fast with esbuild file:line:column', async () => {
+  const err = new Error('build failed');
+  err.errors = [{ text: 'Unexpected ";"', location: { file: '/tmp/x/app.js', line: 1, column: 8 } }];
+  const result = await check('/tmp/x', {}, {
+    bundle: async () => { throw err; },
+    runEmu: async () => { throw new Error('must not run after bundle failure'); },
+    hasLayoutSpec: async () => { throw new Error('must not run'); },
+    runLayout: async () => { throw new Error('must not run'); },
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.steps.length, 1, 'stops at the bundle step');
+  assert.match(result.steps[0].error, /Unexpected ";" \(.*app\.js:1:8\)/);
+});
+
+test('check: eval failure carries raw message, original line and a spelling hint', async () => {
+  // Uses the real runtime/types/lume.d.ts catalog via check()'s default reader.
+  const result = await check('/tmp/lume-badapi', {}, {
+    bundle: async () => Buffer.alloc(40),
+    runEmu: async () => emuOk({ exitCode: 1, serialLog: SERIAL_BAD_API, screenshot: null }),
+    appSources: async () => [{ file: 'app.js', text: 'lume.ai.chet({ messages: [] });\n' }],
+    hasLayoutSpec: async () => false,
+  });
+  assert.equal(result.ok, false);
+  const e = result.steps.find(s => s.step === 'eval');
+  assert.equal(e.ok, false);
+  assert.equal(e.error, 'TypeError: not a function');
+  assert.equal(e.expression, 'lume.ai.chet');
+  assert.equal(e.line, 1);
+  assert.equal(e.hint, 'did you mean lume.ai.chat? (available: setKey, chat)');
+  assert.match(render(result), /did you mean lume\.ai\.chat\?/);
+});
+
+test('check: emulator timeout is a FAIL with a serial-log tail', async () => {
+  const result = await check('examples/counter', {}, {
+    bundle: async () => Buffer.alloc(2160),
+    runEmu: async () => emuOk({ exitCode: null, timedOut: true, serialLog: 'line1\nline2\n' }),
+    hasLayoutSpec: async () => false,
+  });
+  assert.equal(result.ok, false);
+  const e = result.steps.find(s => s.step === 'eval');
+  assert.match(e.error, /timed out/);
+  assert.match(e.tail, /line2/);
+});
+
+test('check: --no-emu skips emu/layout/perf but keeps the bundle check', async () => {
+  const result = await check('examples/counter', { noEmu: true }, {
+    bundle: async () => Buffer.alloc(2160),
+    runEmu: async () => { throw new Error('must not run'); },
+    hasLayoutSpec: async () => { throw new Error('must not run'); },
+    runLayout: async () => { throw new Error('must not run'); },
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.steps.filter(s => 'skipped' in s).length, 3);
+});
+
+test('check: CLI --json is valid JSON and exit codes are 0 (pass) / 1 (fail)', async () => {
+  const cli = new URL('./lume.js', import.meta.url).pathname;
+  // npm --prefix runs tests with cwd=tools/lume, so use an absolute app path.
+  const counterDir = new URL('../../examples/counter', import.meta.url).pathname;
+  const help = await execFileAsync(process.execPath, [cli, '--help']);
+  assert.match(help.stdout, /lume check <app-dir> \[--json\]/);
+
+  const ok = await execFileAsync(process.execPath,
+    [cli, 'check', counterDir, '--no-emu', '--json']);
+  const parsed = JSON.parse(ok.stdout);          // throws if not valid JSON
+  assert.equal(parsed.ok, true);
+  assert.equal(parsed.app, 'examples/counter');
+  assert.ok(Array.isArray(parsed.steps) && parsed.steps.length === 4);
+
+  const parent = await mkdtemp(join(tmpdir(), 'lume-check-empty-'));
+  try {
+    // No app.js -> bundle step fails -> exit 1, JSON must still parse.
+    await assert.rejects(
+      execFileAsync(process.execPath, [cli, 'check', parent, '--no-emu', '--json']),
+      err => {
+        assert.equal(err.code, 1);
+        const failed = JSON.parse(err.stdout);
+        assert.equal(failed.ok, false);
+        assert.equal(failed.steps[0].step, 'bundle');
+        return true;
+      });
   } finally { await rm(parent, { recursive: true, force: true }); }
 });
