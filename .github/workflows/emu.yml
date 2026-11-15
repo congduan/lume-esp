@@ -43,7 +43,7 @@ jobs:
           tools/emu/run.sh examples/files
           tools/emu/run.sh examples/image_gallery
           tools/emu/run.sh examples/games_2048
-          EMU_BOARD=lume-amoled216-no-imu EMU_OUTPUT_DIR=artifacts/emu/imu_ball_no_imu tools/emu/run.sh examples/imu_ball
+          EMU_BOARD=lume-amoled216-no-imu EMU_OUTPUT_DIR=artifacts/emu/gravity_ball_no_imu tools/emu/run.sh examples/gravity_ball
       - name: Upload screenshots and logs
         if: always()
         uses: actions/upload-artifact@v4

@@ -1,4 +1,10 @@
 # r36 imu_ball host report
+
+> 历史快照。本文记录的是 r36 的“三关重力迷宫”版本；该版本已被单球重力演示取代
+> （只有一个球、倾斜驱动重力、撞屏幕四边回弹，见 `examples/gravity_ball/README.md`，
+> 目录原为 `examples/imu_ball`）。
+> 文中的墙/洞/终点/计时/成绩/音效与截图均不再对应当前代码。
+
 ## Scope and limits
 - Game: three mazes, IMU tilt physics, walls, holes, goal, timer, persistent best times, short PCM effects.
 - Native firmware unchanged; no `idf.py build` was needed. On-device tilt feel, axis signs, difficulty, audio and Canvas frame time remain unverified.
