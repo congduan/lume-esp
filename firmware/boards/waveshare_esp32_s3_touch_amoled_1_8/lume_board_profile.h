@@ -163,10 +163,14 @@
  * Sources: BSP .c:27 BSP_LCD_CST816S_X_GAP (0x10) applied via
  * esp_lcd_panel_set_gap(panel, 0x10, 0) (BSP .c:461 / colorbar:104);
  * esp32sim waveshare_amoled18.rs X_OFFSET=16 + Co5300::new(368,448,16).
- * TODO(board): NOT consumed by lume_display.c yet — its flush_cb writes
- * CASET [x1,x2] straight from the LVGL area with no gap, so partial-window
- * updates target physical columns 0..367 instead of 16..383. Applying the
- * gap needs a driver change; deferred to the board bring-up round. */
+ * r45: now consumed by lume_display.c flush_cb, which adds this value to
+ * the CASET (column) coordinates so partial windows target physical
+ * columns 16..383. Lume has no esp_lcd_panel_handle_t (it drives the
+ * esp_lcd_panel_io directly with self-drawn CASET/RASET/RAMWR), so
+ * esp_lcd_panel_set_gap() is not applicable; the offset is added at the
+ * flush-path coordinate source instead. The init-table CASET stays
+ * 0..367, exactly as in the official BSP/demo (set_gap shifts only the
+ * draw window). */
 #define LUME_LCD_COLUMN_OFFSET 16
 
 /* ------------------------------------------------------------------ */

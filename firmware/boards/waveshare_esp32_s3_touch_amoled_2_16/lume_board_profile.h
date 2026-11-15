@@ -58,6 +58,11 @@
 #define LUME_LCD_V_RES        480
 #define LUME_LCD_BPP          16
 
+/* r45: the 2.16 CO5300 visible columns start at physical column 0 (no gap).
+ * lume_display.c flush_cb adds this to the CASET coordinates; 0 keeps the
+ * default board's flush path byte-for-byte unchanged. */
+#define LUME_LCD_COLUMN_OFFSET 0
+
 /* ------------------------------------------------------------------ */
 /* 3. Shared-I2C device addresses (7-bit)                             */
 /* ------------------------------------------------------------------ */

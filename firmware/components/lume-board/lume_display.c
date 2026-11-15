@@ -320,7 +320,12 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
     unsigned transactions = 0;
 #endif
     (void)disp;
-    int32_t x1 = area->x1, x2 = area->x2;
+    /* r45: CO5300 physical column gap (16 on the 1.8 V2, 0 on the 2.16).
+     * Add the profile offset to the CASET source coordinates only. The
+     * LVGL draw buffer, capture_copy_area() and px_count stay in logical
+     * coordinates (the offset cancels in x2-x1). Lume drives the
+     * esp_lcd_panel_io directly (no esp_lcd_panel_handle_t for set_gap). */
+    int32_t x1 = area->x1 + LUME_LCD_COLUMN_OFFSET, x2 = area->x2 + LUME_LCD_COLUMN_OFFSET;
     int32_t y1 = area->y1, y2 = area->y2;
 
     const size_t px_count = (size_t)(x2 - x1 + 1) * (size_t)(y2 - y1 + 1);
