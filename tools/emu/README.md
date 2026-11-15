@@ -15,6 +15,8 @@ tools/emu/run.sh examples/counter
 
 `run.sh` builds firmware with `idf.py build`. Set `EMU_SKIP_BUILD=1` when `firmware/build/{bootloader/bootloader.bin,partition_table/partition-table.bin,lume.bin}` are current. If ESP-IDF is not on `PATH`, `run.sh` sources `/opt/esp/esp-idf/export.sh`; other installations should source their own IDF environment first. `EMU_BIN` and `EMU_ROM` override the local esp32sim binary and ROM ELF. `EMU_SECONDS` controls emulated duration (default 8). `EMU_BOARD=lume-amoled216-no-imu` leaves the QMI8658 absent for failure testing. Output defaults to `artifacts/emu/<app>/tft.png`, `serial.log`, `actions.txt`, and `app.frame`.
 
+`EMU_BYTECODE=1` compiles the app with the host `qjsc` (build it once with `tools/lume/fetch-qjsc.sh`) and injects a `LUMB` bytecode frame instead of a `LUME` source frame; `prepare.mjs` accepts `--bytecode` for direct use. This exercises the firmware's `JS_ReadObject` + `JS_EvalFunction` path under the same boot/reload chain.
+
 `setup.sh` pins upstream esp32sim commit `56ea9b2a559f881aa52f44388cde1a71f9047088`, applies [the Lume patch](esp32sim-56ea9b2-lume.patch), and builds `esp32sim` under `tools/emu/.cache/`. The v0.3.0 release binary booted Lume successfully, but its CO5300 panel geometry is fixed at 368×448. The pinned source accepts `Co5300::new(width, height, column_offset)`, so a source patch is required for a 480×480 PNG. The patch adds `--board lume-amoled216` and a `serial-file` script action for binary hot-reload frames. No esp32sim source is vendored here.
 
 ## Board mapping

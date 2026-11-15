@@ -4,7 +4,7 @@
 // channel: the same frame() from protocol.js, same BACK/PAUS/RESM controls,
 // same RELOAD OK/ERR reply lines. Only the transport + AUTH handshake differ.
 import net from 'node:net';
-import { frame, cmdFrame } from './protocol.js';
+import { frame, cmdFrame, bytecodeFrame } from './protocol.js';
 import { decodeShot } from './shot.js';
 
 export const OTA_PORT_DEFAULT = 8765;
@@ -182,6 +182,12 @@ export async function openOta(ip, token, port = OTA_PORT_DEFAULT) {
     address,
     async push(source) {
       const bytes = frame(source);
+      await write(bytes);
+      await awaitReload(bytes.length - 12, 'bundle');
+    },
+    /** r43b: push a bytecodePayload() buffer in a "LUMB" frame. */
+    async pushBytecode(payload) {
+      const bytes = bytecodeFrame(payload);
       await write(bytes);
       await awaitReload(bytes.length - 12, 'bundle');
     },

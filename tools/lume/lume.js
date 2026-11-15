@@ -3,13 +3,13 @@ import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
-import { CONTROL, storeCommand, simpleCommand } from './protocol.js';
+import { CONTROL, storeCommand, storeCommandBuffer, simpleCommand } from './protocol.js';
 import { openPort } from './transport.js';
 import { openOta, OTA_PORT_DEFAULT } from './ota.js';
 import { bmpFromRgb565 } from './shot.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>] [--id <app-id>]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n`;
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--bytecode]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--bytecode]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --bytecode compiles the bundle with qjsc and pushes QuickJS bytecode\n  (build qjsc first: tools/lume/fetch-qjsc.sh); source mode stays the default.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n`;
 
 const APP_COMMANDS = new Set(['list', 'launch', 'remove', 'home']);
 
@@ -18,7 +18,7 @@ function parse(args) {
   if (command === '--help' || command === '-h' || !command) return { command: 'help' };
   if (command === '--version' || command === '-v') return { command: 'version' };
   if (!['create', 'dev', 'deploy', 'apps', 'screenshot'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
-  let dir, port, ota, token, otaPort, id, sub, subArg, ephemeral = false;
+  let dir, port, ota, token, otaPort, id, sub, subArg, ephemeral = false, bytecode = false;
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     if (a === '--port' && command !== 'create' && rest[i + 1]) port = rest[++i];
@@ -27,6 +27,7 @@ function parse(args) {
     else if (a === '--ota-port' && (command === 'deploy' || command === 'screenshot') && rest[i + 1]) otaPort = rest[++i];
     else if (a === '--id' && (command === 'dev' || command === 'deploy') && rest[i + 1]) id = rest[++i];
     else if (a === '--ephemeral' && (command === 'dev' || command === 'deploy')) ephemeral = true;
+    else if (a === '--bytecode' && command === 'deploy') bytecode = true;
     else if (!a.startsWith('-') && command === 'apps' && !sub) sub = a;
     else if (!a.startsWith('-') && command === 'apps' && !subArg) subArg = a;
     else if (!a.startsWith('-') && !dir) dir = a;
@@ -60,7 +61,7 @@ function parse(args) {
       throw new Error(`invalid app id: ${subArg}`);
     }
   }
-  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, ephemeral };
+  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, ephemeral, bytecode };
 }
 
 /* Directory name -> stable app id (same rules as lume_app_id.h). */
@@ -99,7 +100,13 @@ async function openDevice({ ota, token, otaPort, port }) {
  * device can report "stored" before it pays for the runtime switch. */
 async function install(device, dir, id, source) {
   const meta = await appMeta(dir);
-  const stored = await device.command(storeCommand(id, meta, source.toString('utf8')));
+  /* Bytecode payloads are binary: never UTF-8-decode/re-encode them. The
+   * firmware stores the raw bytes and the engine auto-detects the LQBC header
+   * at eval time, so STORE/LAUNCH works for both source and bytecode. */
+  const command = Buffer.isBuffer(source)
+    ? storeCommandBuffer(id, meta, source)
+    : storeCommand(id, meta, source.toString('utf8'));
+  const stored = await device.command(command);
   await device.commandReload(simpleCommand('LAUNCH', id));
   return stored;
 }
@@ -233,7 +240,7 @@ async function runDev(dir, portPath, id, ephemeral) {
 
 try {
   const opts = parse(process.argv.slice(2));
-  const { command, dir, port, ota, token, otaPort, id, sub, subArg, ephemeral } = opts;
+  const { command, dir, port, ota, token, otaPort, id, sub, subArg, ephemeral, bytecode } = opts;
   if (command === 'help') process.stdout.write(usage);
   else if (command === 'version') process.stdout.write(pkg.version + '\n');
   else if (command === 'create') process.stdout.write(`Created ${await create(dir)}\n`);
@@ -241,16 +248,22 @@ try {
   else if (command === 'apps') await runApps(sub, subArg, { port, ota, token, otaPort });
   else if (command === 'screenshot') await runScreenshot(dir && dir !== '.' ? dir : 'screenshot.bmp', { port, ota, token, otaPort });
   else {
-    const source = await bundle(dir);
+    let source = await bundle(dir);
     const appId = id ?? defaultId(dir);
     const device = await openDevice({ port, ota, token, otaPort });
     try {
+      if (bytecode) {
+        const bc = await import('./bytecode.js');
+        source = await bc.buildBytecodePayload(source);
+      }
+      const kind = bytecode ? ' (bytecode)' : '';
       if (ephemeral) {
-        await device.push(source);
-        process.stdout.write(`Pushed ${source.length} bytes to ${device.path ?? device.address} (not installed)\n`);
+        if (bytecode) await device.pushBytecode(source);
+        else await device.push(source);
+        process.stdout.write(`Pushed ${source.length} bytes${kind} to ${device.path ?? device.address} (not installed)\n`);
       } else {
         await install(device, dir, appId, source);
-        process.stdout.write(`Installed ${source.length} bytes as "${appId}" on ${device.path ?? device.address} and launched it\n`);
+        process.stdout.write(`Installed ${source.length} bytes${kind} as "${appId}" on ${device.path ?? device.address} and launched it\n`);
       }
     } finally { await device.close(); }
   }

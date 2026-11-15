@@ -1,5 +1,5 @@
 import { SerialPort } from 'serialport';
-import { frame, cmdFrame } from './protocol.js';
+import { frame, cmdFrame, bytecodeFrame } from './protocol.js';
 import { decodeShot } from './shot.js';
 
 const ACK_TIMEOUT_MS = 15000;
@@ -106,15 +106,21 @@ export async function openPort(path, { monitor = false } = {}) {
         }, ACK_TIMEOUT_MS) };
     });
   };
+  const pushFrame = async bytes => {
+    const result = startPending('bundle', { length: bytes.length - 12 });
+    // A write failure can reject before the caller receives this promise.
+    result.catch(() => {});
+    try { await write(bytes); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
+    return result;
+  };
   return {
     path: selected,
     async push(source) {
-      const bytes = frame(source);
-      const result = startPending('bundle', { length: bytes.length - 12 });
-      // A write failure can reject before the caller receives this promise.
-      result.catch(() => {});
-      try { await write(bytes); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
-      return result;
+      return pushFrame(frame(source));
+    },
+    /** r43b: push a bytecodePayload() buffer in a "LUMB" frame. */
+    async pushBytecode(payload) {
+      return pushFrame(bytecodeFrame(payload));
     },
     /** Command frame answered by CMD OK/ERR (store/list/remove/meta). */
     async command(text) {

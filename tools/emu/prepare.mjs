@@ -1,8 +1,12 @@
 import { writeFile } from 'node:fs/promises';
 import { bundle } from '../lume/bundle.js';
-import { frame } from '../lume/protocol.js';
-const [app, dest] = process.argv.slice(2);
-if (!app || !dest) throw new Error('usage: prepare.mjs APP FRAME');
-const bytes = await bundle(app);
-await writeFile(dest, frame(bytes));
-console.log(`bundle ${app}: ${bytes.length} bytes; frame ${bytes.length + 12} bytes`);
+import { frame, bytecodeFrame } from '../lume/protocol.js';
+import { buildBytecodePayload } from '../lume/bytecode.js';
+const [app, dest, mode] = process.argv.slice(2);
+if (!app || !dest) throw new Error('usage: prepare.mjs APP FRAME [--bytecode]');
+const isBytecode = mode === '--bytecode';
+const source = await bundle(app);
+const payload = isBytecode ? await buildBytecodePayload(source) : source;
+const framed = isBytecode ? bytecodeFrame(payload) : frame(payload);
+await writeFile(dest, framed);
+console.log(`bundle ${app}: source ${source.length} bytes; payload ${payload.length} bytes; frame ${framed.length} bytes (${isBytecode ? 'bytecode' : 'source'})`);

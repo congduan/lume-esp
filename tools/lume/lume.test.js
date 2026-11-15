@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, readdir, writeFile, rm } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runInNewContext } from 'node:vm';
@@ -10,7 +11,8 @@ import { promisify } from 'node:util';
 import { build } from 'esbuild';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
-import { frame, cmdFrame, storeCommand, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD } from './protocol.js';
+import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN } from './protocol.js';
+import { parseQjsVersion, qjsVersion, compileBytecode, localQjsc } from './bytecode.js';
 import { openOta, otaAuthLine, OTA_PORT_DEFAULT } from './ota.js';
 import { decodeShot, bmpFromRgb565 } from './shot.js';
 
@@ -28,6 +30,85 @@ test('frame bytes match firmware wire layout and CRC-32', () => {
   assert.equal(CONTROL.resume.toString('hex'), '5245534d');
   assert.throws(() => frame(''), /1\.\.262144/);
   assert.throws(() => frame(Buffer.alloc(MAX_PAYLOAD + 1)), /1\.\.262144/);
+});
+
+/* ---- r43b app-bundle bytecode (qjsc + frame protocol + version check) ---- */
+
+test('r43b bytecode frame uses LUMB magic with the same 12-byte header and CRC', () => {
+  const payload = Buffer.from([0x4c, 0x51, 0x42, 0x43, 0, 18, 0, 29,
+                               0, 0, 0, 0, 3, 0, 0, 0, 1, 2, 3]);
+  const bytes = bytecodeFrame(payload);
+  assert.equal(bytes.toString('ascii', 0, 4), MAGIC_BYTECODE);
+  assert.equal(bytes.readUInt32LE(4), payload.length);
+  assert.equal(bytes.readUInt32LE(8), crc32(payload));
+  assert.ok(bytes.subarray(12).equals(payload));
+  assert.throws(() => bytecodeFrame(Buffer.alloc(MAX_PAYLOAD + 1)), /1\.\.262144/);
+});
+
+test('r43b LQBC payload header round-trips a raw qjsc blob', () => {
+  const version = { major: 0, minor: 18, patch: 0, bcVersion: 29 };
+  const body = Buffer.from([29, 0xaa, 0x0a, 0xff, 0x00, 0x7f]);
+  const payload = bytecodePayload(body, version);
+  assert.equal(payload.length, BC_HDR_LEN + body.length);
+  assert.equal(payload.toString('ascii', 0, 4), BC_MAGIC);
+  assert.equal(payload[4], 0);
+  assert.equal(payload[5], 18);
+  assert.equal(payload[6], 0);
+  assert.equal(payload[7], 29);
+  assert.equal(payload.readUInt32LE(8), 0);          // reserved bytes zero
+  assert.equal(payload.readUInt32LE(12), body.length);
+  const parsed = parseBytecodePayload(payload);
+  assert.equal(parsed.major, 0);
+  assert.equal(parsed.minor, 18);
+  assert.equal(parsed.patch, 0);
+  assert.equal(parsed.bcVersion, 29);
+  assert.equal(parsed.reserved, 0);
+  assert.equal(parsed.bodyLen, body.length);
+  assert.ok(parsed.body.equals(body));
+  assert.equal(parseBytecodePayload(Buffer.from('not bytecode')), null);
+  assert.throws(() => bytecodePayload(Buffer.alloc(0), version), /empty/);
+  assert.throws(() => bytecodePayload(body, { major: 999, minor: 0, patch: 0, bcVersion: 29 }), /0\.\.255/);
+});
+
+test('engine version is read from the vendored QuickJS-NG sources', async () => {
+  const v = await qjsVersion();             // r43b pinned vendored version
+  assert.equal(v.version, '0.18.0');
+  assert.equal(v.bcVersion, 29);
+  assert.deepEqual(parseQjsVersion(
+    '#define QJS_VERSION_MAJOR 1\n#define QJS_VERSION_MINOR 2\n#define QJS_VERSION_PATCH 3\n',
+    '#define BC_VERSION 30\n'),
+    { major: 1, minor: 2, patch: 3, bcVersion: 30, version: '1.2.3' });
+  assert.throws(() => parseQjsVersion('nope', 'nope'), /QJS_VERSION_MAJOR/);
+});
+
+test('binary STORE keeps bytecode bytes intact (no UTF-8 round trip)', () => {
+  const body = Buffer.from([0x00, 0xff, 0x0a, 0x1d, 0x80, 0x4c, 0x51, 0x42, 0x43]);
+  const cmd = storeCommandBuffer('snake', { label: 'Snake' }, body);
+  assert.ok(Buffer.isBuffer(cmd));
+  assert.ok(cmd.subarray(-body.length).equals(body));
+  const framed = cmdFrame(cmd);
+  assert.equal(framed.toString('ascii', 0, 4), MAGIC_CMD);
+  assert.ok(framed.subarray(12).subarray(-body.length).equals(body));
+});
+
+test('qjsc compiles an esbuild bundle to loadable bytecode', { skip: !existsSync(localQjsc) }, async () => {
+  const parent = await mkdtemp(join(tmpdir(), 'lume-qjsc-test-'));
+  try {
+    await writeFile(join(parent, 'app.js'), 'globalThis.lumeProbe = 42;\n');
+    const src = await bundle(parent, { minify: false });
+    const body = await compileBytecode(src, localQjsc);
+    const v = await qjsVersion();
+    assert.equal(body[0], v.bcVersion);   // BC_VERSION is byte 0 of the blob
+    const payload = bytecodePayload(body, v);
+    const parsed = parseBytecodePayload(payload);
+    assert.equal(parsed.bodyLen, body.length);
+    assert.equal(parsed.body[0], v.bcVersion);
+    assert.equal(parsed.major, v.major);
+    const fr = bytecodeFrame(payload);
+    assert.equal(fr.toString('ascii', 0, 4), MAGIC_BYTECODE);
+    assert.equal(fr.readUInt32LE(4), payload.length);
+    assert.equal(crc32(fr.subarray(12)), fr.readUInt32LE(8));
+  } finally { await rm(parent, { recursive: true, force: true }); }
 });
 
 test('create writes complete offline scaffold and bundles with prelude globals', async () => {

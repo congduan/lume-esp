@@ -29,7 +29,10 @@ if [[ -z $rom ]]; then
   rom=$(find "$HOME/.espressif/tools/esp-rom-elfs" -name esp32s3_rev0_rom.elf -print -quit 2>/dev/null || true)
 fi
 [[ -s $rom ]] || { echo 'S3 ROM ELF missing; set EMU_ROM (see README)' >&2; exit 1; }
-node "$root/tools/emu/prepare.mjs" "$app" "$output/app.frame"
+prepare_args=("$app" "$output/app.frame")
+# EMU_BYTECODE=1 compiles the bundle with qjsc and injects a "LUMB" frame.
+if [[ ${EMU_BYTECODE:-0} == 1 ]]; then prepare_args+=(--bytecode); fi
+node "$root/tools/emu/prepare.mjs" "${prepare_args[@]}"
 printf '2.5 serial-file %s\n' "$output/app.frame" > "$output/actions.txt"
 "$sim" --chip s3 --board "${EMU_BOARD:-lume-amoled216}" --boot rom --rom "$rom" \
   --bootloader "$root/firmware/build/bootloader/bootloader.bin" \
