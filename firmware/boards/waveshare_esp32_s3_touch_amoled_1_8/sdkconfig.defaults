@@ -1,0 +1,46 @@
+# Board defaults — Waveshare ESP32-S3-Touch-AMOLED-1.8 (V2: CO5300 + CST820)
+#
+# Selected (together with the common firmware/sdkconfig.defaults) through the
+# SDKCONFIG_DEFAULTS list. A plain `idf.py build` still selects the 2.16 board;
+# this file is applied with:
+#   idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;boards/waveshare_esp32_s3_touch_amoled_1_8/sdkconfig.defaults" build
+# See firmware/boards/README.md (r44 note: regenerate/restore the tracked
+# firmware/sdkconfig when switching boards — existing sdkconfig values win
+# over defaults otherwise).
+#
+# Values verified against the Waveshare wiki (16 MB NOR-Flash, 8 MB stacked
+# PSRAM, ESP32-S3R8, Type-C USB) and the official ESP-IDF demo
+# examples/esp-idf/00_bsp_quickstart/sdkconfig.defaults (16MB / QIO / OCT
+# PSRAM @ 80M / 240 MHz / FREERTOS_HZ=1000).
+
+# Select this board profile (Kconfig choice LUME_BOARD). The default choice
+# in Kconfig.projbuild remains the 2.16 board; this line only takes effect
+# when THIS defaults file is applied.
+CONFIG_LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_8=y
+
+# 16MB flash (wiki "external 16MB Flash" / "16MB NOR-Flash"; official BSP
+# sdkconfig.defaults CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y)
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
+CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
+
+# 8MB Octal PSRAM — engine heap lives here (wiki "stacked 8MB PSRAM";
+# official BSP sdkconfig.defaults)
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_SPEED_80M=y
+CONFIG_SPIRAM_FETCH_INSTRUCTIONS=y
+CONFIG_SPIRAM_RODATA=y
+CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096
+CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=4096
+CONFIG_SPIRAM_USE_MALLOC=y
+
+# USB CDC console (hot-reload channel + logs) — Type-C USB interface per wiki
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# Partition table: board flash layout (path is project-root-relative)
+CONFIG_PARTITION_TABLE_CUSTOM=y
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="boards/waveshare_esp32_s3_touch_amoled_1_8/partitions.csv"
+
+# LVGL render backend color depth (matches RGB565 QSPI framebuffer)
+CONFIG_LV_COLOR_DEPTH_16=y

@@ -1,0 +1,8 @@
+﻿# Name,   Type, SubType, Offset,  Size, Flags
+# Waveshare ESP32-S3-Touch-AMOLED-1.8 — 16 MB NOR-Flash (wiki / official BSP
+# sdkconfig.defaults CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y). Same 16 MB layout as
+# the 2.16 board; kept board-local per the six-step flow in boards/README.md.
+nvs,      data, nvs,     0x9000,  0x6000,
+phy_init, data, phy,     0xf000,  0x1000,
+factory,  app,  factory, 0x10000, 0x640000,
+storage,  data, littlefs, 0x750000, 0x100000,
