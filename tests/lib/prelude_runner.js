@@ -40,12 +40,16 @@ function runApp(script, options = {}) {
     setGestureEvent: id => emit('gesture', id),
     canvasDraw: (...args) => emit('draw', ...args),
     canvasBatch: (id, lines) => emit('batch', id, [...lines]),
-    canvasInvalidate: id => emit('invalidate', id),
+    // Same arity as the native: (id) for a full canvas, (id, x, y, w, h) for a
+    // dirty rect. Harnesses rely on the rect to check the redraw budget.
+    canvasInvalidate: (...args) => emit('invalidate', ...args),
     nativeAnimate: (...args) => { emit('animate', ...args); return ++token; },
     nativeAnimateCancel: (...args) => emit('cancelAnimate', ...args),
     _nowMs: () => Date.now(), log: (...args) => options.onLog?.(...args),
     warn: (...args) => options.onWarn?.(...args),
-    imu: { read: () => null },
+    // Host-side IMU stand-in: read() returns null (no sensor) unless a harness
+    // injects samples, mirroring the native failure contract.
+    imu: { read: () => null, ...(options.imu || {}) },
     pmic: {
       battPercent: () => 80, battVoltageMv: () => 3980, vbusVoltageMv: () => 5020,
       usbConnected: () => 1, chargingStatus: () => 2, dieTempRaw: () => 6900,
@@ -121,7 +125,9 @@ function runApp(script, options = {}) {
   // Mirror the native global injected after bindings and before prelude eval.
   // The simulator uses this runner too; tests may supply another board size.
   const __lumeScreen = options.screen || { w: 480, h: 480 };
-  const ctx = vm.createContext({ lume, Fs, console, setTimeout, clearTimeout, ArrayBuffer, Uint8Array, __lumeScreen });
+  // DataView is a QuickJS built-in on the board and the PCM beeps use it; the
+  // host context must provide it or an app's tick path throws only on host.
+  const ctx = vm.createContext({ lume, Fs, console, setTimeout, clearTimeout, ArrayBuffer, DataView, Uint8Array, __lumeScreen });
   vm.runInContext(prelude, ctx, { filename: 'lume_prelude.js' });
   vm.runInContext(script, ctx, { filename: options.filename || 'app.js' });
   return {
