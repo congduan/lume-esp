@@ -40,12 +40,14 @@ void lume_perf_log_second(void)
     int64_t now = esp_timer_get_time();
     if (last && now - last < 1000000) return;
     last = now;
-    ESP_LOGI("lume-perf", "fps=%u flush=%u tx=%u psram_largest=%u psram_free=%u dma_largest=%u lvgl_stack_words=%u engine_stack_words=%u js_heap=%u",
+    ESP_LOGI("lume-perf", "fps=%u flush=%u tx=%u psram_largest=%u psram_free=%u psram_min_free=%u dma_largest=%u dma_min_free=%u lvgl_stack_words=%u engine_stack_words=%u js_heap=%u",
              atomic_exchange(&s_frames, 0), atomic_exchange(&s_flushes, 0),
              atomic_exchange(&s_transactions, 0),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM),
              (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM),
              (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
+             (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_DMA),
              (unsigned)uxTaskGetStackHighWaterMark(NULL), atomic_load(&s_engine_stack),
              atomic_load(&s_js_heap));
     for (unsigned i = 0; i < LUME_PERF_COUNT; i++) {
