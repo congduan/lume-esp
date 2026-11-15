@@ -28,6 +28,8 @@ The board stores a set of apps and runs **exactly one at a time**: switching app
 node tools/lume/lume.js deploy my-app                    # id = directory name
 node tools/lume/lume.js deploy my-app --id clock
 node tools/lume/lume.js deploy my-app --ephemeral        # run once, do not install
+tools/lume/fetch-qjsc.sh                                 # once: build host qjsc from vendored QuickJS-NG
+node tools/lume/lume.js deploy my-app --bytecode         # opt-in: push qjsc bytecode instead of source
 node tools/lume/lume.js apps                             # list installed apps
 node tools/lume/lume.js apps launch clock
 node tools/lume/lume.js apps remove clock
@@ -44,7 +46,7 @@ Boot behaviour: the device starts `/apps/.current` (the last launched app) when 
 
 Both commands auto-detect a single Espressif USB port; if needed, specify `--port /dev/ttyACM0` (or the platform's serial path). The device's `RELOAD OK <length>` confirms that the JS source evaluated; `RELOAD ERR <reason>` is shown as a CLI error. `--help` and `--version` are available. Baud is set to 115200; USB CDC does not use it as a physical bit rate.
 
-The scaffold uses `app.js` and a `package.json` `lume.entry` field. Apps use the prelude globals (`signal`, `View`, `Text`, `Button`, `lume`) directly. The CLI bundles imports from local modules via esbuild, emitting `iife`, `es2020` JavaScript source. The device's `JS_Eval(..., JS_EVAL_TYPE_GLOBAL)` accepts that source; it does not accept an ESM `export` statement or QuickJS bytecode. The CLI refuses empty or over 256 KiB bundles before opening the port. Development bundles are not minified, deployment bundles are.
+The scaffold uses `app.js` and a `package.json` `lume.entry` field. Apps use the prelude globals (`signal`, `View`, `Text`, `Button`, `lume`) directly. The CLI bundles imports from local modules via esbuild, emitting `iife`, `es2020` JavaScript source. The default source path is the device's `JS_Eval(..., JS_EVAL_TYPE_GLOBAL)`; it does not accept an ESM `export` statement. Since r43b, `lume deploy --bytecode` is an **opt-in** second path: the CLI compiles the bundle with a host `qjsc` built from the vendored QuickJS-NG sources (`tools/lume/fetch-qjsc.sh`, no external dependency) and pushes `LUMB`-framed bytecode; the device loads it with `JS_ReadObject` + `JS_EvalFunction`. Both paths coexist; the CLI queries the device engine version (`VER`) before a bytecode push and refuses locally on a mismatch. The CLI refuses empty or over 256 KiB bundles before opening the port. Development bundles are not minified, deployment bundles are. See `docs/r43b-bytecode-report.md`.
 
 ## Frame protocol cross-check
 
@@ -58,18 +60,21 @@ Source of truth: the shared portable codec [lume_frame.h](../firmware/components
 
 | Field | Firmware source | CLI source |
 |---|---|---|
-| Magic `LUME`, 4 bytes | `LUME_FRAME_MAGIC`, `lume_frame_parser_feed()` | `protocol.js:23` |
-| Payload length, u32 little endian, excludes 12-byte header | `lume_frame_encode()`, ST_HDR `load_le32` | `protocol.js:24` |
-| CRC-32 of payload, u32 little endian | `lume_frame_crc32()` (== `esp_crc32_le(0,…)` == `zlib.crc32`) | `protocol.js:5-15`, `:25` |
-| Payload bytes, 1..262144 | `LUME_FRAME_MAX_PAYLOAD` | `protocol.js:2`, `:17-27` |
-| `BACK`, `PAUS`, `RESM` four-byte controls | `LUME_FRAME_CTRL_*` | `protocol.js:3` |
+| Magic `LUME`, 4 bytes | `LUME_FRAME_MAGIC`, `lume_frame_parser_feed()` | `protocol.js:MAGIC_DATA` |
+| Payload length, u32 little endian, excludes 12-byte header | `lume_frame_encode()`, ST_HDR `load_le32` | `protocol.js:frame()/build()` |
+| CRC-32 of payload, u32 little endian | `lume_frame_crc32()` (== `esp_crc32_le(0,…)` == `zlib.crc32`) | `protocol.js:crc32()`, `build()` |
+| Payload bytes, 1..262144 | `LUME_FRAME_MAX_PAYLOAD` | `protocol.js:MAX_PAYLOAD`, `build()` |
+| `BACK`, `PAUS`, `RESM` four-byte controls | `LUME_FRAME_CTRL_*` | `protocol.js:CONTROL` |
 | Final `RELOAD OK/ERR` line | `lume_ota_reply()` (shared by USB + OTA) | `transport.js:24`, `ota.js` |
 | Command magic `LUMC`, same 12-byte header + CRC | `LUME_FRAME_CMD_MAGIC`, `LUME_FRAME_EV_CMD` | `protocol.js:cmdFrame()` |
-| Command text grammar (`STORE`/`LAUNCH`/`REMOVE`/`META`/`LIST`/`HOME`/`SHOT`) | `lume_cmd.h` / `lume_cmd.c` | `protocol.js:storeCommand()/simpleCommand()` |
+| Command text grammar (`STORE`/`LAUNCH`/`REMOVE`/`META`/`LIST`/`HOME`/`SHOT`/`VER`) | `lume_cmd.h` / `lume_cmd.c` | `protocol.js:storeCommand()/storeCommandBuffer()/simpleCommand()` |
 | `CMD OK` / `CMD ERR` lines | `lume_hotreload.c:cmd_reply()` | `transport.js`, `ota.js` |
+| Bytecode magic `LUMB`, same 12-byte header + CRC (r43b) | `LUME_FRAME_BYTECODE_MAGIC`, `LUME_FRAME_EV_BYTECODE`, `lume_frame_encode_bytecode()` | `protocol.js:bytecodeFrame()` |
+| `LQBC` 16-byte payload header (QJS version + BC_VERSION + body_len) | `lume_bytecode.h`, `lume_engine.c:eval_bytecode_buf()` | `protocol.js:bytecodePayload()/parseBytecodePayload()` |
+| `VER` -> `CMD OK ver <MAJOR.MINOR.PATCH>` | `lume_cmd.c` / `lume_engine_version()` | `bytecode.js:queryEngineVersion()/assertEngineVersion()` |
 | Screenshot reply (`SHOT <w> <h> <bytes> <crc>` + `S64<base64>` lines + `SHOT OK`) | `lume_hotreload.c:handle_shot()`, `lume_display.c` | `shot.js:decodeShot()` |
 
-Two frame kinds share one byte stream: `LUME` payloads are evaluated as app source, `LUMC` payloads are management commands and are never evaluated. A command frame is answered with `CMD OK …` / `CMD ERR <reason>`; `LAUNCH`/`HOME` are answered with the engine's `RELOAD OK/ERR` because the outcome is only known after the target app evaluated. `LIST` sends one `APP\t<id>\nMETA\t<id>\t<json>\n` block per app before `CMD OK list <n>`.
+Three frame kinds share one byte stream: `LUME` payloads are evaluated as app source, `LUMC` payloads are management commands and are never evaluated, `LUMB` payloads (r43b) are a `LQBC` header plus a raw qjsc bytecode blob staged through the same reload slot (the engine dispatches on the payload header at eval time, so the source path is unchanged). A command frame is answered with `CMD OK …` / `CMD ERR <reason>`; `LAUNCH`/`HOME` are answered with the engine's `RELOAD OK/ERR` because the outcome is only known after the target app evaluated. `LIST` sends one `APP\t<id>\nMETA\t<id>\t<json>\n` block per app before `CMD OK list <n>`. Old firmware treats `LUMB` as a bad magic and re-syncs; it answers `VER` with `CMD ERR verb`, which the CLI surfaces as a "update firmware" hint before any bytecode is pushed.
 
 ## Debug screenshot (`lume screenshot`)
 
@@ -113,6 +118,8 @@ the include path):
 ```bash
 gcc -std=c11 -Wall -Wextra -Werror \
   -I firmware/components/lume-ui-bridge/include \
+  -I firmware/components/lume-hotreload/include \
+  -I firmware/components/lume-engine/include \
   tests/bridge_protocol.c -o /tmp/lume_bridge_protocol && /tmp/lume_bridge_protocol
 
 gcc -std=c11 -Wall -Wextra -Werror \

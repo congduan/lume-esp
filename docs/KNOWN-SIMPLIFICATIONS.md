@@ -1,5 +1,13 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
+## r43b JS 运行时优化（GC 测量 / 字节码装载）；真机验收待接板
+
+- **不做 size-class 分流分配器**：esp32sim 上 `counter` / `games_snake` 各 30 s 实测 GC 仅 3 次 / 约 4.8 ms，全在启动阶段，稳态 0 次；三个分母下 GC 耗时占比均 <5 %。按本轮 B2 判定「暂不需要」，未改 `JS_NewRuntime2` 分配器，也就未动已满线的 IRAM（16384/16384）。数据与口径见 `docs/r43b-gc-report.md`。
+- **字节码装载只在 esp32sim 验证**：`qjsc -b -C` 产出的字节码能被真机固件的 `JS_ReadObject` + `JS_EvalFunction` 装载；版本不匹配会返回负错误码、`ESP_LOGE` 并回退，不崩溃。实际启动时间、真机装载耗时、`--bytecode` 经 USB/WiFi-OTA 推送（VER 预检、STORE/LAUNCH 二进制落盘、ACK 时序）和长跑 GC 行为留接板轮。见 `docs/r43b-bytecode-report.md`。
+- **字节码体积大于源码**：qjsc 默认保留源码/调试信息（counter 4694 B vs 源码 2160 B；snake 12173 B vs 3718 B）；收益在装载耗时（counter 15.7→10.4 ms，snake 35.8→19.5 ms，均为 esp32sim 观测值）。剥离（`-s`/`-s -s`）与压缩留后续评估，本轮不改默认。
+- **字节码与 QuickJS-NG 版本强绑定**：`QJS_VERSION_*` 与 `BC_VERSION` 不匹配时 CLI 本地拒包、固件 `RELOAD ERR bc-version`。升级 vendored quickjs-ng 后必须重跑 `tools/lume/fetch-qjsc.sh` 并重新烧固件。
+- **协议能力不向后兼容**：`LUMB` 帧与 `VER` 命令是新增能力；旧固件把 `LUMB` 当 bad-magic 重同步、把 `VER` 回 `CMD ERR verb`。源码模式不查 VER，因此旧固件仍可正常推源码。
+
 ## r36 Tilt Maze host acceptance; board tuning pending
 
 - `examples/imu_ball` uses a simplified 2D ball model: constant in-plane acceleration,
@@ -81,7 +89,7 @@ Owner：主控接板后跑，M1 不据此验收。
 - **帧协议极简**：固定 12 字节头（`LUME` + `u32le total_len` + `u32le crc32`），
   `total_len` 是 payload 字节数（不含头），上限 256KB；`crc32` = `esp_crc32_le(0, payload, len)`
   （即标准 CRC-32 / `zlib.crc32`），只校验 payload。无版本号、flags、帧序号、压缩/分片。
-- **M1 仍是 JS_Eval 源码路径**：payload 直接当 JS 源码 eval，不做 bytecode 编译管线。
+- **r43b 起源码与字节码路径共存**：`LUME` payload 仍直接当 JS 源码 `JS_Eval(...GLOBAL)`；`LUMB` payload 走 `JS_ReadObject` + `JS_EvalFunction` 的 qjsc 字节码（详见 `docs/r43b-bytecode-report.md`）。源码仍是默认路径，字节码为 `--bytecode` 显式选项；引擎按 `LQBC` 头自动分流，两条路径共用一个 staging 槽。
 - **OK 在 eval 成功后才发**：每帧恰好一条 `RELOAD ...` 应答；校验通过只触发引擎重载，
   最终 `RELOAD OK <len>` / `RELOAD ERR eval-failed` 由引擎在 eval 结果确定后经回调发出
   （校验期失败由 RX 任务直接发 `RELOAD ERR <reason>`），避免发过早的 OK。eval 失败时
