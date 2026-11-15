@@ -821,7 +821,7 @@ declare namespace lume.audio {
   interface Options { sampleRate?: 16000; channels?: 2; bits?: 16; }
   /** 0 success; -1 bad argument, -2 driver/I2C/I2S failure, -3 board not ready. */
   function play(pcm: ArrayBuffer, opts?: Options): number;
-  /** 0 < seconds <= 10; PSRAM buffer copied into the returned ArrayBuffer.
+  /** 0 < seconds <= 10; PSRAM buffer becomes the returned ArrayBuffer backing store.
    * On failure returns -1 argument, -2 driver, -3 board, -4 allocation. */
   function record(seconds: number, opts?: Options): ArrayBuffer | number;
   /** 0..100; returns 0 or negative error code. */

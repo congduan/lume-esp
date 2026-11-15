@@ -1863,6 +1863,15 @@ static JSValue js_audio_play(JSContext *ctx, JSValueConst self, int argc, JSValu
     return JS_NewInt32(ctx, lume_audio_play(data, len));
 }
 
+/* QuickJS-NG calls realloc_func(ptr, 0) on finalization and detach.
+ * This buffer is fixed-size; nonzero resize requests are refused. */
+static void *record_pcm_realloc(JSRuntime *rt, void *opaque, void *ptr, size_t size)
+{
+    (void)rt; (void)opaque;
+    if (size == 0) heap_caps_free(ptr);
+    return NULL;
+}
+
 static JSValue js_audio_record(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
 {
     (void)self;
@@ -1890,8 +1899,11 @@ static JSValue js_audio_record(JSContext *ctx, JSValueConst self, int argc, JSVa
     uint8_t *pcm = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
     if (!pcm) return JS_NewInt32(ctx, LUME_AUDIO_ERR_MEMORY);
     int r = lume_audio_record(pcm, bytes);
-    JSValue result = r < 0 ? JS_NewInt32(ctx, r) : JS_NewArrayBufferCopy(ctx, pcm, bytes);
-    heap_caps_free(pcm);
+    if (r < 0) { heap_caps_free(pcm); return JS_NewInt32(ctx, r); }
+    JSValue result = JS_NewArrayBuffer(ctx, pcm, bytes, 0,
+                                       record_pcm_realloc, NULL, false);
+    /* Constructor failure happens before ownership transfer. */
+    if (JS_IsException(result)) heap_caps_free(pcm);
     return result;
 }
 
