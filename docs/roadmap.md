@@ -261,3 +261,67 @@ r46 profiling code untouched.
   are unchanged; this section records the measurement only. Accepted
   simplifications (joint double-blend, small-radius ring degeneracy,
   axis-aligned no-feather) are in `docs/KNOWN-SIMPLIFICATIONS.md` (r47).
+
+### r48 result — native anti-aliased annulus arc op (appended, milestone checkboxes untouched)
+
+Closes rendering-backlog item 2 on the host/simulator: the canvas-level
+`ctx.arc(cx, cy, r, from, to, width, color)` op, **not** backlog item 3's LVGL
+`Arc` widget route. The speedometer dial stops sampling ~276 polyline segments
+in JS — each dial arc is now one native call rasterised as a true continuous
+annulus in C. On-device acceptance is still pending board bring-up.
+
+- **Raster** — `lume_raster_arc` in `include/lume_raster.h` (header-only, all
+  integer / 8.8 fixed point / no float / no per-pixel transcendental). Radial
+  band `|d-r|` with the r47 1px feather, clipped to the `[from,to]` wedge by
+  two **cross-product half-plane** tests (the float-free, integer equivalent of
+  an atan2 range check), plus **round end caps** at both ends using r47 line
+  endpoint-clamped semantics (min of the two squared 8.8 endpoint distances,
+  one `lume_raster_isqrt` per pixel for the whole op). An integer q14
+  quarter-sine LUT (91 entries, 182 B flash `.rodata`) supplies cos/sin for
+  the endpoints and the tight bbox. A full 360° sweep takes the
+  `lume_raster_ring` fast path (bit-identical); `from==to` is a bounded round
+  dot; `width>=2r-1` closes the inner hole into a filled sector (r47
+  degeneracy). A tight angular bbox is clipped to the surface before the loops.
+- **Bridge ABI** — only appends `LUME_DRAW_ARC = 5` to `lume_draw_t`
+  (`LUME_OP_CANVAS_DRAW` and every earlier draw id unchanged). No new
+  `lume_op_t`, no `lume_ui_msg_t` field (still exactly 128 B on host): the
+  fixed record's spare fields carry the arc — `image_w` = radius,
+  `duration_ms`/`token` = the two signed degree angles. `_Static_assert`s added
+  in `tests/bridge_protocol.c`. Prelude: `ctx.arc(...)` added to Canvas 2D,
+  `runtime/types/lume.d.ts` signature synced; `ctx.polyline` and retained
+  paths (`retainSegments` / `drawPath`) untouched (backward compat).
+- **Example** — `examples/speedometer` `speedArc` now calls `ctx.arc`; the
+  colour bands + track ring go native, ticks (`ctx.line`) and needle
+  (`ctx.line` / `ctx.circle`) unchanged. **JS dial-frame geometry: 276
+  polyline points (272 segments) -> 4 native arc ops (0 JS points)**, measured
+  by instrumenting `speedDialLayer(ctx)` on both app versions (27 tick lines
+  unchanged in both).
+- **Host** — `tests/canvas_aa.c` 19/19 (11 r47 + 8 r48: wedge/cap/gap, full
+  circle == ring memcmp, 0°-wrap normalisation, seam continuity, dot/wide
+  degeneracy, bbox clip + stride sentinel, r<=0); ABI static-assert harness
+  compiles; `tests/canvas_mapping.js` +2 arc tests (14 PASS); all 22
+  `tests/*.js` harnesses green; `npm test --prefix tools/lume` 32 pass / 0
+  fail / 1 skipped; `gen_api_docs.py --check` and `check_website.py` green.
+- **Size** — `idf.py build` + `idf.py size`, `BUILD_EXIT=0 / SIZE_EXIT=0`:
+  Flash Code **1,951,228 -> 1,954,564 B (+3,336 B, < ~4 KB budget)**;
+  **IRAM 16384/16384 (100 %, Remain 0, +0)** — all new code stayed in flash
+  `.text` / `.rodata`, not IRAM; Flash Data 828,512 -> 829,904; DIRAM 230,499
+  unchanged; Total 2,921,463 -> 2,926,191 B.
+- **emu A/B** (esp32sim, same firmware image, only the injected app differs;
+  fixed 8 s / 1,920,000,000 cycles, deterministic instruction count): BEFORE
+  polyline **406,648,268 insns** (core1 engine 85,085,505); AFTER arc
+  **403,956,287 insns** (core1 81,057,077). **Total -0.66 % (did not worsen);
+  JS core1 -4.03 M / -4.7 %** — the one-time dial-layer JS geometry cost is
+  removed (the dial is painted once; steady frames repaint only the needle, so
+  the difference is diluted over the 8 s window, but does not regress). Both
+  reload clean — 0 `eval failed|RELOAD ERR`, tft.png produced. Pixel checks:
+  AA multi-step ramp at diagonal band edges (e.g. 150° = 5 distinct colours),
+  no background gap / seam hole across 140..400° and at the 260°/343° band
+  joins, 2071 changed pixels all inside the dial bbox (x 80..400, y 82..356),
+  dial-disc distinct colours 263 -> 283.
+- **Not on-device acceptance** — host / esp32sim evidence only. AMOLED colour,
+  arc-edge feel, seam visibility on the real panel and frame time remain
+  pending. Milestone checkboxes and the backlog numbering above are unchanged.
+  Accepted simplifications (integer-degree angle discretisation, hard angular
+  cut + round-cap seams, cap double-blend) are in
+  `docs/KNOWN-SIMPLIFICATIONS.md` (r48).
