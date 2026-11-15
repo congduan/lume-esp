@@ -45,6 +45,12 @@
 #define LUME_PIN_I2S_DIN      10
 #define LUME_PIN_AUDIO_PA     46
 
+/* TF card, SPI3. Waveshare board documentation and schematic. */
+#define LUME_PIN_SD_MOSI      1
+#define LUME_PIN_SD_CLK       2
+#define LUME_PIN_SD_MISO      3
+#define LUME_PIN_SD_CS        41
+
 /* ------------------------------------------------------------------ */
 /* 2. Display geometry (RGB565)                                       */
 /* ------------------------------------------------------------------ */
