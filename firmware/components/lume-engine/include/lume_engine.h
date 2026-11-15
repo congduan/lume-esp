@@ -23,6 +23,9 @@ void lume_engine_start(void);
  * The id was copied into the engine's launch slot before the event is posted;
  * the target source is read from LittleFS when the event is consumed. */
 #define LUME_EVT_LAUNCH 9
+/* r46 Task C: LVGL task -> engine task, the black overlay has finished fading
+ * in (screen is covered); the engine may now RESET/teardown. node_id unused. */
+#define LUME_EVT_TRANSITION_COVERED 10
 typedef struct {
     uint8_t  type;        /* LUME_EVT_* */
     uint16_t node_id;
@@ -44,6 +47,9 @@ int lume_engine_post_back(void);
 int lume_engine_post_lifecycle(uint8_t type);
 void lume_engine_post_anim_complete(uint32_t token);
 void lume_engine_post_scroll(uint16_t node_id, int32_t y);
+/* r46 Task C: LVGL-task sink (called by the ui-bridge fade-in completion) to
+ * enqueue one LUME_EVT_TRANSITION_COVERED. Pure Queue B op. */
+void lume_engine_post_transition_covered(void);
 /* r21: LVGL-task sink; enqueues one LUME_EVT_GESTURE (pure queue op). */
 void lume_engine_post_gesture(uint16_t node_id, uint8_t kind, int16_t x, int16_t y,
                               uint32_t t, uint8_t dir, uint8_t cancelled);

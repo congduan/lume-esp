@@ -21,3 +21,22 @@ menu "Lume performance experiments"
           latency line. Uses emulated microseconds (deterministic under
           esp32sim), NOT wall-clock. Off by default: no production overhead.
 endmenu
+
+menu "Lume app-switch transition (r46)"
+    config LUME_APP_TRANSITION_DISABLE
+        bool "Disable crossfade-through-black (=y: behave like pre-r46 baseline)"
+        default n
+        help
+          Regression switch. When enabled, launch/reload tears down and
+          rebuilds exactly as before r46 (synchronous RESET, blank period,
+          no overlay, no fade). The engine does not wait for any cover
+          handshake and does not post the FIRSTFRAME reveal trigger.
+    config LUME_APP_TRANSITION_MS
+        int "Crossfade fade-in / fade-out duration (ms)"
+        range 100 500
+        default 200
+        help
+          Duration of each opacity fade on the LVGL task. The overlay fades
+          in to opaque black before teardown and back out after the new
+          app's first frame. 500 ms is a fixed LVGL-side reveal fallback.
+endmenu

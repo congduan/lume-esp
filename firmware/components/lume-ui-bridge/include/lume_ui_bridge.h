@@ -163,6 +163,11 @@ typedef enum {
      * -done (first-frame latency measurement); also the transition reveal
      * trigger (Task C). Appended at the tail: existing IDs are unchanged. */
     LUME_OP_FIRSTFRAME,
+    /* r46 Task C: engine posts this when a switch is accepted. The LVGL task
+     * creates a top-layer black overlay and fades it in (lv_anim); when the
+     * fade completes it posts a COVERED event back through the existing
+     * reverse sink/queue, and the engine then starts teardown/RESET. */
+    LUME_OP_TRANSITION_COVER,
 } lume_op_t;
 
 #define LUME_CANVAS_BATCH_MAX 32
@@ -218,6 +223,10 @@ typedef void (*lume_scroll_sink_fn)(uint16_t node_id, int32_t y);
 typedef void (*lume_gesture_sink_fn)(uint16_t node_id, uint8_t kind,
                                     int16_t x, int16_t y, uint32_t t,
                                     uint8_t dir, uint8_t cancelled);
+/* r46 Task C: LVGL task -> engine task "screen is covered, safe to teardown"
+ * handshake. Pure queue op into Queue B, no new lock. */
+typedef void (*lume_transition_sink_fn)(void);
+void lume_ui_bridge_set_transition_sink(lume_transition_sink_fn fn);
 void lume_ui_bridge_set_anim_sink(lume_anim_sink_fn fn);
 void lume_ui_bridge_set_press_sink(lume_press_sink_fn fn);
 void lume_ui_bridge_set_scroll_sink(lume_scroll_sink_fn fn);

@@ -1367,6 +1367,171 @@ static void apply_set_gesture(const lume_ui_msg_t *m)
     ESP_LOGI(TAG, "gesture registered id=%u", (unsigned)m->node_id);
 }
 
+/* ------------------------------------------------------------------ */
+/* r46 Task C: crossfade-through-black app-switch transition (C1).      */
+/* All of this runs on the LVGL task (drain timer / lv_anim / lv_timer). */
+/* The engine task only posts COVER then FIRSTFRAME into Queue A and    */
+/* waits for the COVERED reverse event on Queue B -- no new lock.        */
+/*   COVER      -> build a top-layer black overlay, fade opacity 0->255  */
+/*   fade done  -> COVERED event + start a 500 ms reveal fallback timer  */
+/*   FIRSTFRAME -> reveal (fade 255->0, then delete the overlay)         */
+/*   fallback   -> reveal anyway if FIRSTFRAME never arrived             */
+/* The overlay is a clickable full-screen object on lv_layer_top(), so   */
+/* touch during the whole transition is its hit target and never reaches */
+/* the app UI underneath (which is being torn down). It is NOT a child of */
+/* the active screen, so apply_reset()/RESET does not delete it.         */
+/* When LUME_APP_TRANSITION_DISABLE=y none of this is compiled and the    */
+/* switch behaves exactly like pre-r46 (bare synchronous RESET).         */
+/* ------------------------------------------------------------------ */
+#if !CONFIG_LUME_APP_TRANSITION_DISABLE
+
+static lv_obj_t   *s_trans_overlay;      /* top-layer black cover, NULL = idle */
+static lv_timer_t *s_trans_fallback;     /* 500 ms reveal fallback (one-shot) */
+static lume_transition_sink_fn s_transition_sink;
+
+static void trans_fallback_cb(lv_timer_t *t);
+static void transition_reveal(void);
+
+/* No-op input consumer: the clickable overlay is the LVGL hit target, so
+ * presses/clicks never dispatch to the engine for the UI being torn down. */
+static void trans_input_cb(lv_event_t *e)
+{
+    (void)e;
+}
+
+static void trans_opa_exec(void *var, int32_t v)
+{
+    lv_obj_set_style_opa((lv_obj_t *)var, (lv_opa_t)v, 0);
+}
+
+static void transition_on_covered(void)
+{
+    if (s_transition_sink) {
+        s_transition_sink();          /* -> LUME_EVT_TRANSITION_COVERED */
+    }
+    if (s_trans_fallback) {
+        lv_timer_delete(s_trans_fallback);
+    }
+    s_trans_fallback = lv_timer_create(trans_fallback_cb, 500, NULL);
+    lv_timer_set_repeat_count(s_trans_fallback, 1);
+    ESP_LOGI(TAG, "transition: covered (fade-in done)");
+}
+
+static void trans_cover_completed(lv_anim_t *a)
+{
+    (void)a;
+    transition_on_covered();
+}
+
+static void trans_reveal_completed(lv_anim_t *a)
+{
+    lv_obj_t *o = (lv_obj_t *)lv_anim_get_user_data(a);
+    if (o != NULL) {
+        lv_obj_delete(o);
+    }
+    if (s_trans_overlay == o) {
+        s_trans_overlay = NULL;
+    }
+    ESP_LOGI(TAG, "transition: revealed (overlay removed)");
+}
+
+static void transition_reveal(void)
+{
+    if (s_trans_fallback) {
+        lv_timer_delete(s_trans_fallback);
+        s_trans_fallback = NULL;
+    }
+    lv_obj_t *o = s_trans_overlay;
+    if (o == NULL) {
+        return;                       /* idempotent: no active overlay */
+    }
+    /* Cancel any in-flight fade so a back-to-back COVER can re-cover the
+     * same overlay without a flash. */
+    lv_anim_delete(o, trans_opa_exec);
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, o);
+    lv_anim_set_exec_cb(&a, trans_opa_exec);
+    lv_anim_set_values(&a, (int32_t)lv_obj_get_style_opa(o, 0), LV_OPA_TRANSP);
+    lv_anim_set_duration(&a, CONFIG_LUME_APP_TRANSITION_MS);
+    lv_anim_set_user_data(&a, o);
+    lv_anim_set_completed_cb(&a, trans_reveal_completed);
+    lv_anim_start(&a);
+    /* s_trans_overlay stays set until the fade-out completes so a new COVER
+     * can cancel and re-cover the same object. */
+}
+
+static void trans_fallback_cb(lv_timer_t *t)
+{
+    (void)t;
+    /* One-shot timer (repeat_count 1) is auto-deleted by LVGL. */
+    s_trans_fallback = NULL;
+    if (s_trans_overlay != NULL) {
+        ESP_LOGW(TAG, "transition: 500ms first-frame fallback -> reveal");
+        transition_reveal();
+    }
+}
+
+static void transition_start_cover(void)
+{
+    if (s_trans_fallback) {
+        lv_timer_delete(s_trans_fallback);
+        s_trans_fallback = NULL;
+    }
+    if (s_trans_overlay != NULL) {
+        /* Back-to-back switch: cancel the previous fade (in or out) and
+         * re-cover the same overlay from its current opacity. */
+        lv_anim_delete(s_trans_overlay, trans_opa_exec);
+    } else {
+        lv_obj_t *o = lv_obj_create(lv_layer_top());
+        if (o == NULL) {
+            ESP_LOGE(TAG, "transition: overlay create failed");
+            return;                   /* degrade to the bare (blank) switch */
+        }
+        lv_obj_remove_style_all(o);
+        lv_obj_set_size(o, LUME_LCD_H_RES, LUME_LCD_V_RES);
+        lv_obj_set_pos(o, 0, 0);
+        lv_obj_set_style_bg_color(o, lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(o, 0, 0);
+        lv_obj_set_style_border_width(o, 0, 0);
+        lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(o, trans_input_cb, LV_EVENT_PRESSED, NULL);
+        lv_obj_add_event_cb(o, trans_input_cb, LV_EVENT_RELEASED, NULL);
+        lv_obj_add_event_cb(o, trans_input_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_set_style_opa(o, LV_OPA_TRANSP, 0);
+        s_trans_overlay = o;
+        ESP_LOGI(TAG, "transition: overlay created (%dx%d)",
+                 LUME_LCD_H_RES, LUME_LCD_V_RES);
+    }
+    int32_t from = (int32_t)lv_obj_get_style_opa(s_trans_overlay, 0);
+    if (from >= LV_OPA_COVER) {
+        /* Already opaque (a reveal was in progress): signal immediately. */
+        transition_on_covered();
+        return;
+    }
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, s_trans_overlay);
+    lv_anim_set_exec_cb(&a, trans_opa_exec);
+    lv_anim_set_values(&a, from, (int32_t)LV_OPA_COVER);
+    lv_anim_set_duration(&a, CONFIG_LUME_APP_TRANSITION_MS);
+    lv_anim_set_completed_cb(&a, trans_cover_completed);
+    lv_anim_start(&a);
+}
+
+void lume_ui_bridge_set_transition_sink(lume_transition_sink_fn fn)
+{
+    s_transition_sink = fn;
+}
+#else
+/* Transition disabled: keep the symbol linkable, do nothing. */
+void lume_ui_bridge_set_transition_sink(lume_transition_sink_fn fn)
+{
+    (void)fn;
+}
+#endif
+
 void lume_ui_bridge_drain(void)
 {
 #if CONFIG_LUME_PERF_PROFILE
@@ -1420,10 +1585,19 @@ void lume_ui_bridge_drain(void)
                 /* r46 Task A: the engine posts this AFTER all initial UI
                  * messages, so by now the new app's first frame is applied.
                  * token carries the app-eval-done emulated timestamp; report
-                 * the LVGL-side first-frame drain latency. (Task C also uses
-                 * this as the transition reveal trigger.) */
+                 * the LVGL-side first-frame drain latency. */
                 lume_perf_switch_firstframe((int64_t)m.token);
+#if !CONFIG_LUME_APP_TRANSITION_DISABLE
+                /* r46 Task C: first frame is up -> fade the black overlay out
+                 * and reveal the new app (no-op when no overlay is active). */
+                transition_reveal();
+#endif
                 break;
+#if !CONFIG_LUME_APP_TRANSITION_DISABLE
+            case LUME_OP_TRANSITION_COVER:
+                transition_start_cover();
+                break;
+#endif
             default:
                 ESP_LOGW(TAG, "drain: unknown op %u", (unsigned)m.op);
                 break;

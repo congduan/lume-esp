@@ -2737,6 +2737,18 @@ void lume_engine_post_anim_complete(uint32_t token)
         ESP_LOGW(TAG, "animation complete token=%lu dropped: evt queue full",
                  (unsigned long)token);
 }
+
+void lume_engine_post_transition_covered(void)
+{
+    /* r46 Task C: the engine is actively draining Queue B while it waits for
+     * this signal, so a bounded timeout is plenty and never blocks the LVGL
+     * task for long. */
+    lume_engine_evt_t evt = { .type = LUME_EVT_TRANSITION_COVERED };
+    if (s_evt_queue == NULL ||
+        xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(50)) != pdTRUE) {
+        ESP_LOGW(TAG, "transition COVERED event dropped: evt queue full");
+    }
+}
 static void dispatch_anim_complete(uint32_t token)
 {
     JSValue global = JS_GetGlobalObject(s_ctx);
@@ -3230,10 +3242,12 @@ static void engine_task(void *arg)
 
         call_app_hook("__lume_start");
 
-#if CONFIG_LUME_SWITCH_PROFILE
-        /* r46 Task A: posted AFTER all initial UI messages and __lume_start.
-         * Queue A FIFO ensures the LVGL task drains it only once the first
-         * frame is fully applied; token = app-eval-done emulated timestamp. */
+/* r46 Task A/C: posted when either measurement or the crossfade transition
+ * is enabled. It comes AFTER all initial UI messages and __lume_start; Queue
+ * A FIFO ensures the LVGL task drains it only once the first frame is fully
+ * applied. token = app-eval-done emulated timestamp (first-frame latency);
+ * on the LVGL side it is also the transition reveal trigger. */
+#if CONFIG_LUME_SWITCH_PROFILE || !CONFIG_LUME_APP_TRANSITION_DISABLE
         {
             lume_ui_msg_t ff;
             msg_init(&ff);
@@ -3368,6 +3382,41 @@ static void engine_task(void *arg)
          * the next outer-loop iteration). Start one measurement window. */
         lume_perf_switch_begin();
 
+        /* r46 Task C: crossfade-through-black. Post COVER to the LVGL task,
+         * then wait (existing Queue B handshake, no new lock) for the fade-in
+         * to finish BEFORE we RESET/teardown, so the old screen is hidden
+         * behind an opaque overlay instead of flashing blank. The LVGL task
+         * owns the whole animation; the engine only waits for the COVERED
+         * signal. The overlay absorbs touch on the LVGL side; any queued
+         * input left over from before the switch is discarded here. */
+#if !CONFIG_LUME_APP_TRANSITION_DISABLE
+        {
+            lume_ui_msg_t cover;
+            msg_init(&cover);
+            cover.op = LUME_OP_TRANSITION_COVER;
+            (void)lume_ui_bridge_post(&cover);
+            const TickType_t deadline = xTaskGetTickCount() +
+                pdMS_TO_TICKS(CONFIG_LUME_APP_TRANSITION_MS + 150);
+            bool covered = false;
+            for (;;) {
+                TickType_t now = xTaskGetTickCount();
+                if (now >= deadline) break;
+                lume_engine_evt_t tev;
+                if (xQueueReceive(s_evt_queue, &tev, deadline - now) != pdTRUE)
+                    break;
+                if (tev.type == LUME_EVT_TRANSITION_COVERED) {
+                    covered = true;
+                    break;
+                }
+                /* Swallow everything else: no press dispatch into UI we are
+                 * about to destroy; redundant reload/launch events coalesce. */
+            }
+            if (!covered) {
+                ESP_LOGW(TAG, "transition: cover wait timed out, proceeding");
+            }
+        }
+#endif
+
         /* ---- teardown ----
          * Only the engine task ever dereferences s_ctx (bindings, dispatch_*).
          * The reverse channel (press sink) and the reload request path only
@@ -3429,6 +3478,9 @@ static void engine_task(void *arg)
 
 void lume_engine_start(void)
 {
+    /* r46 Task C: registered once (never changes), before the engine task and
+     * LVGL task can post a COVERED event. */
+    lume_ui_bridge_set_transition_sink(lume_engine_post_transition_covered);
     s_stage_mutex = xSemaphoreCreateMutex();
     if (s_stage_mutex == NULL) {
         ESP_LOGE(TAG, "engine_start: stage mutex create failed (OOM)");
