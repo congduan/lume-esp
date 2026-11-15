@@ -73,7 +73,7 @@ The console capture does not include the USB `RELOAD OK` reply, although the fir
 
 ## Step 3: application captures
 
-Each application was bundled from its own `examples/<name>/app.js` and injected as a `LUME` frame. Review [counter](../artifacts/emu/counter/tft.png), [files](../artifacts/emu/files/tft.png), [games_2048](../artifacts/emu/games_2048/tft.png), [image_gallery](../artifacts/emu/image_gallery/tft.png), [imu_ball](../artifacts/emu/imu_ball/tft.png), and [imu_ball_no_imu](../artifacts/emu/imu_ball_no_imu/tft.png). The exact artifacts are in `artifacts/emu/<name>/tft.png`; `serial.log` is generated locally and uploaded by CI, but excluded from Git to avoid committing per-run OTA tokens. Selected raw output:
+Each application was bundled from its own `examples/<name>/app.js` and injected as a `LUME` frame. Review [counter](../artifacts/emu/counter/tft.png), [files](../artifacts/emu/files/tft.png), [games_2048](../artifacts/emu/games_2048/tft.png) and [image_gallery](../artifacts/emu/image_gallery/tft.png). The `imu_ball` / `imu_ball_no_imu` captures in this round were the pre-rename maze build; those files were deleted, and that example is now `examples/gravity_ball` (CI writes `artifacts/emu/gravity_ball_no_imu/`). The exact artifacts are in `artifacts/emu/<name>/tft.png`; `serial.log` is generated locally and uploaded by CI, but excluded from Git to avoid committing per-run OTA tokens. Selected raw output:
 
 ```text
 # counter
