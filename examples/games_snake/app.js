@@ -16,8 +16,13 @@ function gameBeep(hz, ms) {
 function gameAabb(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
 var GRID = 24, CELL = 16;
-/* Board tuning point: adjust threshold and axis signs on the physical board. */
-var IMU_THRESHOLD = 2.4, IMU_X_SIGN = 1, IMU_Y_SIGN = 1;
+/* Board tuning point: adjust threshold and axis signs on the physical board.
+ * The QMI8658 reports the raw sensor frame, not the LVGL screen frame. On this
+ * board it reads az≈+9.5 lying flat screen-up (+Z out of the panel), and the
+ * in-plane axes reach the screen with a handedness that the datasheet cannot
+ * tell us: with both signs +1 tilting steered the snake backwards, with both -1
+ * vertical was still reversed. These values come from on-device tilt tests. */
+var IMU_THRESHOLD = 2.4, IMU_X_SIGN = -1, IMU_Y_SIGN = 1;
 function snakeTurn(state, dir) {
   var opposite = {left:'right',right:'left',up:'down',down:'up'};
   if (dir && dir !== opposite[state.dir]) state.next = dir;
