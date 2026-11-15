@@ -8,6 +8,13 @@
 # Target
 CONFIG_IDF_TARGET="esp32s3"
 
+# Compiler optimisation (r43b). IDF's default is CONFIG_COMPILER_OPTIMIZATION_DEBUG
+# (-Og), which was silently costing a large share of the QuickJS interpreter and LVGL
+# software-rendering throughput. -O2 keeps assertions enabled (see ASSERTIONS_ENABLE
+# below) so failure modes are unchanged; only code generation differs.
+CONFIG_COMPILER_OPTIMIZATION_PERF=y
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_ENABLE=y
+
 # FreeRTOS tick for smooth UI
 CONFIG_FREERTOS_HZ=1000
 
