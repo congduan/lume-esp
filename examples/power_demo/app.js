@@ -5,15 +5,15 @@ var lastActivity=lume._nowMs();
 var state=signal('awake at '+Math.floor(lastActivity));
 var netStatus=lume.net.deinit();
 var touch=function(){lastActivity=lume._nowMs();};
-View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:32,gap:16},onPress:touch},[
+View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:24,gap:16},onPress:touch},[
   View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[
     Text({text:'Power',style:{fontSize:24,color:'text'}}),
     Text({text:'Sleep and wake status',style:{fontSize:13,color:'textDim'}})
   ]),
-  View({style:{width:'100%',height:224,background:'surface',borderRadius:20,padding:24,display:'flex',flexDirection:'column',justifyContent:'center',gap:12}},[
-    Text({text:'CURRENT STATE',style:{fontSize:13,color:'textDim'}}),
-    Text({text:function(){return state().indexOf('awake')===0?'Awake':state().indexOf('sleep')===0?'Asleep':'Attention';},style:{fontSize:40,color:'success'}}),
-    Text({text:function(){return state();},style:{fontSize:13,color:'textDim',longMode:'wrap'}})
+  View({style:{width:'100%',height:224,background:'surface',borderRadius:20,padding:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8}},[
+    Text({text:'CURRENT STATE',style:{fontSize:13,color:'textDim',textAlign:'center'}}),
+    Text({text:function(){return state().indexOf('awake')===0?'Awake':state().indexOf('sleep')===0?'Asleep':'Attention';},style:{fontSize:40,color:'success',textAlign:'center'}}),
+    Text({text:function(){return state();},style:{fontSize:13,color:'textDim',longMode:'wrap',textAlign:'center'}})
   ]),
   View({style:{width:'100%',height:96,display:'flex',flexDirection:'column',padding:0,gap:8}},[
     Button({title:'Keep awake',style:{width:'100%',height:56,background:'accent',borderRadius:999},onPress:touch}),

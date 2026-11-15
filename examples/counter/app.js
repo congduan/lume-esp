@@ -21,15 +21,15 @@ var card = View({ style: {
   Text({text:'Every touch counts',style:{fontSize:13,color:'textDim'}})
 ]);
 View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',
-  display:'flex',flexDirection:'column',justifyContent:'space-between',padding:32,gap:16}},[
+  display:'flex',flexDirection:'column',justifyContent:'space-between',padding:24,gap:16}},[
   View({style:{width:'100%',height:72,display:'flex',flexDirection:'row',justifyContent:'space-between',alignItems:'center',padding:0,gap:8}},[
-    View({style:{width:180,height:72,display:'flex',flexDirection:'column',padding:0,gap:4}},[
+    View({style:{width:180,height:72,display:'flex',flexDirection:'column',justifyContent:'center',padding:0,gap:4}},[
       Text({text:'Counter',style:{fontSize:24,color:'text'}}),
       Text({text:'A little daily tally',style:{fontSize:13,color:'textDim'}})
     ]),
-    View({style:{width:152,height:40,display:'flex',flexDirection:'row',background:'surfaceAlt',borderRadius:999,padding:4,gap:4}},[
-      darkButton=Button({title:'Dark',style:{width:68,height:32,borderRadius:999,background:'surface'},onPress:function(){lume.theme.set(darkTheme);}}),
-      lightButton=Button({title:'Light',style:{width:68,height:32,borderRadius:999,background:'surface'},onPress:function(){lume.theme.set(lightTheme);}})
+    View({style:{width:152,height:56,display:'flex',flexDirection:'row',background:'surfaceAlt',borderRadius:999,padding:0,gap:0}},[
+      darkButton=Button({title:'Dark',style:{width:76,height:56,borderRadius:999,background:'surface'},onPress:function(){lume.theme.set(darkTheme);}}),
+      lightButton=Button({title:'Light',style:{width:76,height:56,borderRadius:999,background:'surface'},onPress:function(){lume.theme.set(lightTheme);}})
     ])
   ]),
   card,

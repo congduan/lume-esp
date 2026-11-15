@@ -9,14 +9,16 @@ function poll(){seconds.set(seconds()+1);var sample=lume.imu.read();motion.set(s
 function startPolling(){if(pollId===null)pollId=lume.system.setInterval(poll,1000);}
 function stopPolling(){if(pollId!==null)lume.system.clearInterval(pollId);pollId=null;}
 lume.app.onStart(startPolling);lume.app.onPause(stopPolling);lume.app.onResume(startPolling);
-function axis(label,value){return View({style:{width:120,height:132,background:'surface',borderRadius:12,padding:12,display:'flex',flexDirection:'column',justifyContent:'center',gap:12}},[
-  Text({text:label,style:{fontSize:13,color:'textDim'}}),Text({text:value,style:{fontSize:24,color:'text'}})
+function axis(label,value){return View({style:{width:136,height:128,background:'surface',borderRadius:12,padding:12,display:'flex',flexDirection:'column',justifyContent:'center',gap:12}},[
+  Text({text:label,style:{fontSize:13,color:'textDim',translateY:2}}),Text({text:value,style:{fontSize:24,color:'text',translateY:2}})
 ]);}
-View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:32,gap:16}},[
+View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:24,gap:16}},[
   View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[Text({text:'Motion',style:{fontSize:24,color:'text'}}),Text({text:'Live accelerometer',style:{fontSize:13,color:'textDim'}})]),
-  View({style:{width:'100%',height:184,display:'flex',flexDirection:'column',padding:0,gap:12}},[
-    View({style:{width:'100%',height:132,display:'flex',flexDirection:'row',padding:0,gap:12}},[axis('X  /  m/s2',axisX),axis('Y  /  m/s2',axisY),axis('Z  /  m/s2',axisZ)]),
-    Text({text:function(){return motion();},style:{fontSize:13,color:'textDim'}})
+  View({style:{width:'100%',height:208,display:'flex',flexDirection:'column',padding:0,gap:16}},[
+    View({style:{width:'100%',height:128,display:'flex',flexDirection:'row',padding:0,gap:12}},[axis('X  /  m/s2',axisX),axis('Y  /  m/s2',axisY),axis('Z  /  m/s2',axisZ)]),
+    View({style:{width:'100%',height:64,background:'surfaceAlt',borderRadius:12,padding:16,display:'flex',flexDirection:'column',justifyContent:'center'}},[
+      Text({text:function(){return motion();},style:{fontSize:13,color:'textDim'}})
+    ])
   ]),
   View({style:{width:'100%',height:96,display:'flex',flexDirection:'column',padding:0,gap:8}},[
     Button({title:'Poll now',style:{width:'100%',height:56,background:'accent',borderRadius:999},onPress:poll}),
