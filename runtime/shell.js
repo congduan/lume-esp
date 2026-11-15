@@ -5,6 +5,12 @@
   /* Shell-owned spacing extension: the embedded prelude remains unchanged. */
   var nativeThemeSet = lume.theme.set, nativeThemeGet = lume.theme.get;
   var spacing, spaced = {};
+  if (!Object.keys(nativeThemeGet().colors).length) {
+    nativeThemeSet({colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',
+      surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',
+      danger:'#FF6B79',success:'#40D8B0'},radius:12,fontScale:1});
+    spacing = 12;
+  }
   lume.theme.set = function (next) {
     if (!next || typeof next !== 'object' || Array.isArray(next)) return nativeThemeSet(next);
     var value = next.spacing;
@@ -48,6 +54,20 @@
     return id;
   };
   function color(name, fallback) { return function () { return lume.theme.get().colors[name] || fallback; }; }
+  function Card(p) {
+    p = p || {};
+    var style = {background:'surface',borderRadius:12,padding:16,gap:12,
+      display:'flex',flexDirection:'column',scroll:'none'};
+    Object.keys(p.style || {}).forEach(function (key) { style[key] = p.style[key]; });
+    return View({parent:p.parent,style:style,onPress:p.onPress},p.children || []);
+  }
+  function IconButton(p) {
+    p = p || {};
+    var size = positive('IconButton size',p.size,56,120);
+    var style = {width:size,height:size,borderRadius:999,background:'surfaceAlt'};
+    Object.keys(p.style || {}).forEach(function (key) { style[key] = p.style[key]; });
+    return Button({parent:p.parent,title:p.title || '',style:style,onPress:p.onPress});
+  }
   var dialogs = [], toast = null;
   function closeDialog(entry) {
     if (entry.closed) return;
@@ -262,6 +282,8 @@
     return root;
   }
   shell.StatusBar = StatusBar;
+  shell.Card = Card;
+  shell.IconButton = IconButton;
   shell.EdgeNavigation = EdgeNavigation;
   shell.Launcher = Launcher;
   shell.Dialog = Dialog;

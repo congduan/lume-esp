@@ -150,6 +150,12 @@ declare namespace lume.ui {
 
 /** Optional JS bundle module: import runtime/shell.js before using these components. */
 declare namespace lume.ui.shell {
+  /** Surface card with 12 px corners, 16 px padding and 12 px child gap. */
+  function Card(props?: {parent?: lume.ui.Node; style?: lume.ui.Style;
+    children?: lume.ui.Node[]; onPress?: () => void}): lume.ui.Node;
+  /** Round button for compact actions. Default touch target is 56 px. */
+  function IconButton(props?: {parent?: lume.ui.Node; title?: string;
+    size?: number; style?: lume.ui.Style; onPress?: () => void}): lume.ui.Node;
   interface DialogButton {
     label: string;
     style?: 'plain' | 'primary' | 'danger';

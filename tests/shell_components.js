@@ -12,6 +12,11 @@ function drag(s, id, from, to) {
   s.gesture(id, 1, to, 200, 50);
   s.gesture(id, 2, to, 200, 100);
 }
+check('Card and IconButton expose watch-sized defaults', () => {
+  const s = app('globalThis.card=lume.ui.shell.Card({children:[Text({text:"Metric"})]});globalThis.icon=lume.ui.shell.IconButton({title:"Mode"});');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[1] === s.ctx.card && m[2] === 10 && m[3] === 16));
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[1] === s.ctx.icon && m[2] === 2 && m[3] === 56));
+});
 check('StatusBar getter follows signal', () => {
   const s = app('globalThis.value=signal(1);globalThis.bar=lume.ui.shell.StatusBar({left:()=>"L"+value(),right:"R"});');
   assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 0 && m[3] === 'L1'));
