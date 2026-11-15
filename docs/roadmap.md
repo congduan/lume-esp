@@ -98,3 +98,67 @@ and checkbox states are unchanged — the box stays `[ ]`:
   hot-switch, no multi-board CI matrix and NO on-device acceptance.
   "Additional targets demonstrated" is therefore still unmet — the checkbox
   stays `[ ]`. See `docs/KNOWN-SIMPLIFICATIONS.md` (r44 entry).
+
+## Rendering backlog (measured, not scheduled)
+
+Milestone definitions and checkbox states above are unchanged; this section only
+records what the canvas work left undone, with the on-device numbers that justify
+the order, so the same ground is not re-derived later. All measurements are probe
+apps on the Waveshare 2.16 board (432×344 canvas, 276 segments, dial repainted
+every frame unless stated otherwise).
+
+Landed, do not re-open:
+
+- **Frame atomicity** — two RGB565 images per canvas (`front` displayed / `work`
+  raster target); the closing `CANVAS_INVALIDATE` publishes (`lv_canvas_set_buffer`
+  swap on a full redraw, rect `memcpy` on dirty rects). A refresh can no longer
+  blit a half-drawn canvas. Cost: the canvas budget is two framebuffers.
+- **Prelude fast path** — one dial frame 205 → 86 ms (one-entry colour cache,
+  integer fast-path range checks, single-pass `polyline`).
+- **Span raster** — one row run per span with 32-bit paired stores; drain 1.36 ms
+  average, 42 ms maximum for a whole-frame burst.
+- **Retained paths** — `retainPath` / `retainSegments` / `drawPath` (8 paths per
+  canvas, ≤240 segments, 32 KB total): a full repaint that rebuilt 276 segments
+  in JS per frame went 68.7 → 3.5 ms of JS and ~9 → ~36 fps.
+
+Next, in the order I would take it:
+
+1. **Anti-aliased canvas raster.** `canvas_line()` stamps an axis-aligned square
+   brush along an integer Bresenham centreline and `canvas_span()` writes pure
+   colour, so every stroke edge is a hard 1 px staircase — and a 4–5 px stroke
+   turns it into 4–5 px steps, which is what makes the gauge arc look blocky.
+   Sampling density is *not* the problem: at r=158 a 2° step is a 5.5 px chord
+   with a 0.024 px sagitta, so finer polylines change nothing. Fix: coverage from
+   the distance to the segment with a 1 px feather (integer squared distance plus
+   a small table), same treatment for `canvas_disc` and rect edges. ~30 lines of
+   C, no API change, and the speedometer needle, `dashboard`, `watchface` and
+   `imu_ball` all benefit at once. Cost to watch: one squared-distance test per
+   pixel (~5k px for a 5 px arc).
+2. **Native ring/annulus op** — `ctx.arc(cx, cy, r, from, to, width, color)`
+   rasterised as a scanline annulus (per row the x span between the inner and
+   outer radius) with vertical coverage. Exact geometry (the dial stops sampling
+   276 segments in JS at all) and the only path to phone-smooth joins and caps
+   without supersampling. Also the natural place to add dashes and gradients.
+3. **Bands as native `Arc` widgets** — zero new code: `Arc` already exposes
+   value/start/end/thickness/track/color and `lv_draw_sw_arc()` renders through an
+   LVGL mask (8-bit coverage), i.e. it is anti-aliased. Cost: three stacked
+   transparent `Arc` widgets for the three colour bands, with the Canvas kept for
+   ticks and needle. Try this first if only the example matters.
+4. **Bigger display draw buffers** (r33 item, currently blocked) — 20 lines
+   (4.2 % of the screen). Measured internal DMA headroom is 21.5 KB largest /
+   16.7 KB minimum free, while 48 lines needs 46 KB, so this cannot move until
+   internal RAM is freed elsewhere. Full-canvas `render` measures 26 ms average,
+   so it is the next lever once memory allows.
+5. **USB CDC reliability under load.** With an app at full frame rate, host
+   transfers lose bytes (`frame rejected: bad-crc`, `screenshot payload truncated
+   456240 != 460800`, launch ACK timeouts). Not a rendering defect, but it blocks
+   automated visual checks, so the screenshot-scan regression harness described
+   below cannot run in CI before it is fixed.
+6. **Move whole-frame examples onto retained paths** — `dashboard`, `watchface`
+   and `imu_ball` still rebuild geometry in JS every frame; the 36 fps probe shows
+   what the move buys. Mechanical, low risk.
+7. **Productise the half-frame check** — the statistical harness used here (take
+   N screenshots, assert every frame has all expected layers and that each dirty
+   rect stays inside its static region) is what caught the mid-frame blit and the
+   needle-union bug. It should live in `tools/lume` as a `screenshot --scan N`
+   mode so future canvas work is guarded automatically.
