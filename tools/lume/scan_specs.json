@@ -1,0 +1,34 @@
+{
+  "_comment": "Per-app contracts for `lume screenshot --scan N`. roi is the canvas region (screen coords, 480x480) in which changed pixels are measured. layers are static canvas geometry that must be present in EVERY frame (expected layer set); minInk is calibrated from an esp32sim capture. dynamicRegion bounds where frame-to-frame changes are allowed; changed pixels may never intrude into a layer ROI. start/step are the deterministic esp32sim --max-seconds samples (fixed firmware + fixed app frame + fixed script). scriptLines are extra host actions appended after the 2.5s serial-file injection.",
+  "speedometer": {
+    "roi": [24, 64, 456, 408],
+    "backgroundSample": [2, 2],
+    "inkThreshold": 24,
+    "changeThreshold": 24,
+    "start": 3.5,
+    "step": 0.2,
+    "scriptLines": [],
+    "dynamicRegion": [100, 100, 380, 384],
+    "layers": [
+      { "name": "band-left",  "roi": [85, 170, 130, 310], "minInk": 400 },
+      { "name": "band-top",   "roi": [190, 82, 290, 112], "minInk": 300 },
+      { "name": "band-right", "roi": [350, 170, 398, 310], "minInk": 450 }
+    ]
+  },
+  "dashboard": {
+    "roi": [40, 40, 440, 400],
+    "backgroundSample": [2, 2],
+    "inkThreshold": 16,
+    "changeThreshold": 16,
+    "start": 3.9,
+    "step": 0.2,
+    "scriptLines": ["3.6 press 0 200"],
+    "dynamicRegion": [40, 175, 440, 400],
+    "layers": [
+      { "name": "grid-top",    "roi": [84, 82, 424, 90],  "minInk": 150 },
+      { "name": "grid-upper",  "roi": [84, 132, 424, 140], "minInk": 150 },
+      { "name": "grid-lower",  "roi": [84, 232, 424, 240], "minInk": 150 },
+      { "name": "grid-bottom", "roi": [84, 282, 424, 290], "minInk": 130 }
+    ]
+  }
+}
