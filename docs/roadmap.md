@@ -432,3 +432,52 @@ no API change this round). Firmware `idf.py build && idf.py size`
 `BUILD_SIZE_EXIT=0`: **IRAM 16384/16384 (100 %, Remain 0)**, Flash Code
 1,954,564 B (identical to the r48 baseline — no firmware C change, +0 B),
 Flash Data 829,904, DIRAM 230,499, Total 2,926,191, `lume.bin` 0x2ca6f0.
+
+### r50 result — CI 测试流水线 (appended, milestone checkboxes untouched)
+
+Appended note only: milestone definitions, checkbox states and the rendering-
+backlog numbering above are unchanged. This round moves the existing local
+verification loop into GitHub Actions; no firmware C, embedded prelude, bridge
+ABI, frame-protocol or `runtime/types/lume.d.ts` change. It closes the
+"no CI harness run" status gap recorded in the `2172f50` snapshot above.
+
+- **`tests.yml` (new)** — host regression matrix triggered by `push` to `main`
+  (curated `paths`), `pull_request` and `workflow_dispatch`; one `ubuntu-latest`
+  / node 20 job runs `npm ci --prefix tools/lume`, 22 JS host harnesses,
+  `npm test`, 8 C host assertion harnesses, `gen_api_docs.py --check` +
+  `check_website.py`, plus a `hashFiles()`-guarded
+  `lume check examples/counter --no-emu` step. Every run block uses
+  `set -euo pipefail` (no `|| true`); `if: failure()` uploads tee'd diagnostics.
+  The 8 C commands are copied verbatim from `docs/build.md` and the `.c`
+  file-header comments; `id3v2.c` / `mp3_decoder.c` / `record_buffer.c` have
+  **no** command in their headers, so those three were derived empirically
+  (r38b report / minimp3 header-only / vendored-QuickJS host build with an
+  `sdkconfig.h` stub) with provenance recorded in the workflow. `--no-emu`
+  covers the **bundle step only** — eval / layout R1-R7 / perf are skipped
+  (`check.js:164-209`) — so it is documented as bundle-only, NOT a layout gate.
+- **`emu.yml`** — a `screenshot --scan 5 examples/speedometer --json` +
+  `examples/dashboard --json` gate appended after the existing screenshot
+  matrix, reusing the `setup.sh` / `fetch-rom.sh` esp32sim + ROM cache
+  (`EMU_BIN` / `EMU_ROM`) and the esp-idf-ci-action firmware images. `set -e`
+  plus scan's exit-1-on-fail turns a broken scan red; `artifacts/check/<app>/scan/`
+  now rides the `if: always()` artifact upload. esp32sim is a headless chip
+  emulator writing PNGs (no display / font dependency), so the step stays in
+  the push-triggered job rather than being downgraded to dispatch-only. Local
+  ROM bytes equal the CI-pinned `20260528` sha256, so no ROM version skew.
+
+**Verification (all host / esp32sim, EXIT=0; NO real device / 无真机):**
+`JS_HARNESS_COUNT=22 JS_HARNESS_FAILURES=0`; 8/8 C harnesses compiled + run
+EXIT=0 (`ALL_C_HARNESSES_DONE`); `npm test --prefix tools/lume` 44 pass /
+0 fail; `gen_api_docs.py --check` "api.html is up to date with lume.d.ts
+(110 entries)" and `check_website.py` "API missing: none / API invented: none";
+`lume check examples/counter --no-emu` `RESULT: PASS (4 steps, 0 failed;
+exit 0)`; `speedometer` N=5 and `dashboard` N=5 both `RESULT: PASS (5 frames,
+0 failed; exit 0)` with `--json` smoke (`ok=True`, 5/5 frames). Workflow YAML
+`yaml.safe_load` OK for both files; `actionlint` is not installed on the host
+— skipped. Firmware `idf.py build && idf.py size` `BUILD_SIZE_EXIT=0`:
+**IRAM 16384/16384 (100 %, Remain 0)**, Flash Code 1,954,564 B, Flash Data
+829,904, DIRAM 230,499, Total 2,926,191, `lume.bin` 0x2ca6f0 — byte-for-byte
+the r49 baseline (no firmware C change, +0 B). On-device acceptance (display /
+touch / audio / sleep current / radio / persistence / bundle push) is still
+**not** performed. CI coverage gaps are recorded in
+`docs/KNOWN-SIMPLIFICATIONS.md` (r50 entry).
