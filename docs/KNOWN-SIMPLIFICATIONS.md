@@ -20,18 +20,27 @@
 - **字节码与 QuickJS-NG 版本强绑定**：`QJS_VERSION_*` 与 `BC_VERSION` 不匹配时 CLI 本地拒包、固件 `RELOAD ERR bc-version`。升级 vendored quickjs-ng 后必须重跑 `tools/lume/fetch-qjsc.sh` 并重新烧固件。
 - **协议能力不向后兼容**：`LUMB` 帧与 `VER` 命令是新增能力；旧固件把 `LUMB` 当 bad-magic 重同步、把 `VER` 回 `CMD ERR verb`。源码模式不查 VER，因此旧固件仍可正常推源码。
 
-## r36 Tilt Maze host acceptance; board tuning pending
+## r36 gravity_ball (was `examples/imu_ball`): single-ball demo; board tuning pending
 
-- `examples/imu_ball` uses a simplified 2D ball model: constant in-plane acceleration,
-  linear damping, speed cap, circle/rectangle collision and fixed restitution.
-  There is no rolling-friction parameter table or mechanical tilt simulation.
-- QMI8658 acceleration is converted to m/s² in the native driver; the app
-  assumes `ax` maps to screen x and `ay` to screen y. Axis signs, gain, dead
-  zone, rebound, level difficulty and sound volume need on-device tuning.
-- The app redraws its 400×400 Canvas at 20 fps. Host simulator rendering
-  cannot establish board frame rate; if it is slow, evaluate dirty rectangles
-  in a later board round. Audio, visual alignment and tilt feel also await
-  board acceptance.
+- `examples/gravity_ball` (renamed from `examples/imu_ball`, and its host
+  harness from `tests/imu_ball.js` to `tests/gravity_ball.js`) is a minimal demo
+  after the r36 maze game: the canvas
+  shows one ball, tilt drives a constant in-plane acceleration, edges reflect
+  with a fixed restitution, linear damping and a speed cap bound the motion.
+  The maze (walls, holes, goal, per-level timer, best times, PCM beeps) was
+  removed together with its audio/KV usage. There is still no rolling-friction
+  parameter table, mechanical tilt simulation or ball rotation rendering.
+- QMI8658 acceleration is converted to m/s² in the native driver; the app maps
+  `ax` to screen x and `ay` to screen y (`AXIS_X`/`SIGN_X`/`AXIS_Y`/`SIGN_Y` at
+  the top of `app.js`). Board feedback: tilting left raised `ax`, i.e. the raw
+  axis is opposite to screen +x, so `SIGN_X = -1`. `SIGN_Y`, `GAIN` and
+  `DEAD_ZONE` are still tuned by eye on the board.
+- The Canvas is 480×480 and redraws at 20 fps, but a frame now repaints only
+  the ball's old+new box (50 draw records, ~3k pixels for the default
+  `BALL_R = 24`) instead of the whole canvas; the host harness pins that budget
+  and replays the rect commands to assert one ball and no ghost. Board frame
+  rate, bounce feel, the Y sign and display latency still await board
+  acceptance — a green host harness is not a hardware check.
 
 
 ## r34 host fixes; board acceptance pending
@@ -537,7 +546,8 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 ## r16 Canvas MVP
 
 - Canvas uses vendored LVGL 9.3 `lv_canvas_create` and `lv_canvas_set_buffer` with RGB565 pixels allocated by `heap_caps_malloc(..., MALLOC_CAP_SPIRAM)`. Buffers are owned by the bridge and released after LVGL object deletion. A canvas is at most 480×480; all live canvases share a 460,800-byte budget. Actual allocation is `lv_draw_buf_width_to_stride(width, LV_COLOR_FORMAT_RGB565) × height`; for an even width this is `width × height × 2`. The 220×120 example uses 52,800 bytes; a 480×480 canvas uses 460,800 bytes (~450 KiB). This budget is in addition to the JS heap, display draw buffers, and app staging in PSRAM.
-- `onDraw` is an owned signal effect. It runs at creation and once per changed signal value read in its previous run. Each call posts fixed-size raster commands through Queue A, followed by one `CANVAS_INVALIDATE`; the LVGL timer drains them in order. There is no per-frame callback. The chosen one-way queue avoids blocking LVGL on the engine task or sharing a mutable pixel pointer across tasks. Large polylines can spend multiple timer periods posting and are limited to 240 points; draws are not atomic against an intermediate LVGL refresh. The sample uses 12 points.
+- `onDraw` is an owned signal effect. It runs at creation and once per changed signal value read in its previous run. Each call posts fixed-size raster commands through Queue A, followed by one `CANVAS_INVALIDATE`; the LVGL timer drains them in order. There is no per-frame callback. The chosen one-way queue avoids blocking LVGL on the engine task or sharing a mutable pixel pointer across tasks. Large polylines can spend multiple timer periods posting and are limited to 240 points. The sample uses 12 points.
+- Frame atomicity (fix, previously "draws are not atomic against an intermediate LVGL refresh"): a raster burst can straddle several 5 ms drain ticks, so the display refresh timer is paused from the first raster command of a frame until its `CANVAS_INVALIDATE` and resumed right before that invalidate. A refresh can therefore never blit a half-drawn canvas (previously visible as a flickering arc and an intermittently missing needle on the speedometer gauge). Costs: other widgets are not repainted for the length of one canvas frame (a few ms, no extra PSRAM), and a frame that never closes (app throws inside `onDraw` after the first command) is released by a 100 ms watchdog in the drain timer. Two canvases drawing interleaved share one window, so their frames can still overlap; this is not a double buffer.
 - Coordinates are integer canvas-local pixels; clipping occurs in the bridge. Colors are opaque RGB565. Text uses LVGL's default 14px font through a canvas draw layer and is limited to 63 UTF-8 bytes. `clear()` fills opaque black. Antialiased curves, path reuse, alpha blending, image blit, and dynamic canvas resizing are deferred.
 - Signal callbacks and text draw cost have host/build validation only. Real-device rendering, timing, and visual quality remain for the board acceptance round.
 
@@ -929,7 +939,7 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 
 ## r39b / esp32sim screenshot acceptance
 
-A patched esp32sim board model can boot the unmodified Lume firmware, inject JS bundles, and export 480×480 CO5300 screenshots in CI. The emulator's SPI/I2C models attach by host/bus/address and do not validate every physical GPIO route. The AXP2101 and audio codecs are register stubs; TF media, PMIC electrical behavior, audio output, touch timing and actual display timing remain unmodeled. The first CI version uploads artifacts for manual review, without a pixel baseline or a frame-rate gate. This is automated simulator evidence, not real-board acceptance. `image_gallery` currently evaluates and creates an Image node but its emulator screenshot shows background only. The no-IMU `imu_ball` variant does not crash; it uses the app's downward-gravity fallback and logs repeated QMI8658 warnings. See `docs/r39b-emu-report.md`.
+A patched esp32sim board model can boot the unmodified Lume firmware, inject JS bundles, and export 480×480 CO5300 screenshots in CI. The emulator's SPI/I2C models attach by host/bus/address and do not validate every physical GPIO route. The AXP2101 and audio codecs are register stubs; TF media, PMIC electrical behavior, audio output, touch timing and actual display timing remain unmodeled. The first CI version uploads artifacts for manual review, without a pixel baseline or a frame-rate gate. This is automated simulator evidence, not real-board acceptance. `image_gallery` currently evaluates and creates an Image node but its emulator screenshot shows background only. The no-IMU `gravity_ball` variant (then called `imu_ball`) does not crash; it uses the app's downward-gravity fallback and logs repeated QMI8658 warnings. See `docs/r39b-emu-report.md`.
 
 ## r40b / small-screen example UI (simulator acceptance)
 

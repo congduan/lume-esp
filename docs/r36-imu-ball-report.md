@@ -9,7 +9,7 @@
 - Game: three mazes, IMU tilt physics, walls, holes, goal, timer, persistent best times, short PCM effects.
 - Native firmware unchanged; no `idf.py build` was needed. On-device tilt feel, axis signs, difficulty, audio and Canvas frame time remain unverified.
 - Driver evidence: `firmware/components/lume-imu/lume_imu_hw.c` uses `(4.0f / 32768.0f) * 9.80665f` for accelerometer samples (±4g range), and returns `ax/ay/az` in m/s².
-- Simulator screenshot: `artifacts/simulator/imu_ball_game.png` (480×480 device capture); final run reported `PASS simulator draws=2024 screenshot=artifacts/simulator/imu_ball_game.png`.
+- Simulator screenshot: `artifacts/simulator/imu_ball_game.png` (480×480 device capture; the file was deleted together with the maze version); final run reported `PASS simulator draws=2024 screenshot=artifacts/simulator/imu_ball_game.png`.
 
 ## Raw host output
 

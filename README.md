@@ -34,9 +34,9 @@ and captured automatically in CI — not mockups. Every image is 480×480, the a
 
 **Games** (ESP32-S3 + single-point touch + IMU)
 
-| | | | |
-|:--:|:--:|:--:|:--:|
-| <img src="artifacts/emu/ui-refresh/games_2048.png" width="172"><br>**2048**<br><sub>swipe + merge</sub> | <img src="artifacts/emu/ui-refresh/games_snake.png" width="172"><br>**Snake**<br><sub>tilt or swipe steering</sub> | <img src="artifacts/emu/ui-refresh/games_breakout.png" width="172"><br>**Breakout**<br><sub>touch paddle, 6 levels</sub> | <img src="artifacts/emu/ui-refresh/imu_ball.png" width="172"><br>**Gravity maze**<br><sub>accelerometer physics</sub> |
+| | | |
+|:--:|:--:|:--:|
+| <img src="artifacts/emu/ui-refresh/games_2048.png" width="230"><br>**2048**<br><sub>swipe + merge</sub> | <img src="artifacts/emu/ui-refresh/games_snake.png" width="230"><br>**Snake**<br><sub>tilt or swipe steering</sub> | <img src="artifacts/emu/ui-refresh/games_breakout.png" width="230"><br>**Breakout**<br><sub>touch paddle, 6 levels</sub> |
 
 **Shell components** ([runtime/shell.js](runtime/shell.js) — status bar, launcher, dialogs, toasts)
 
@@ -172,15 +172,17 @@ Full source: [examples/device_monitor/app.js](examples/device_monitor/app.js).
 
 ### 3. Files — a complete file manager app
 
-TF-card directory browsing with Fs API, selection highlighting via signal-bound styles,
-lifecycle-aware refresh, theme colors.
+TF-card directory browsing with the Fs API: create a folder, preview a text file,
+delete with confirmation, virtualized `List` whose rows keep the name on the left and
+the row action on the right, lifecycle-aware refresh.
 
 ```js
 function loadDir(path) {
-  const list = Fs.list(path);
-  if (typeof list === 'number') { status.set('read failed: ' + list); return; }
-  entries.set(list.map(name => ({ name, isDir: isDirPath(path + name) })));
-  cwd.set(path);
+  const clean = path.replace(/\/+$/, '') || '/';   // LittleFS rejects a trailing '/'
+  const list = Fs.list(clean);
+  if (typeof list === 'number') { notify('Read failed: ' + list); return; }
+  entries.set(list.map(name => ({ name: name, isDir: isDirPath(path + name) })));
+  cwd.set(clean === '/' ? '/' : clean + '/');
 }
 ```
 
@@ -192,8 +194,8 @@ Full source: [examples/files/app.js](examples/files/app.js).
 // Battery telemetry → UI
 Text({ text: () => 'battery: ' + lume.pmic.battPercent() + '%' });
 
-// IMU tilt → reactive style
-const s = lume.imu.read();            // { acc:[x,y,z], gyro:[x,y,z] } | null
+// IMU tilt → gravity direction for the app (m/s²)
+const s = lume.imu.read();            // { ax, ay, az, gx, gy, gz } | null
 
 // Voice memo: mic → PSRAM → TF card → speaker
 const clip = lume.audio.record(5);
