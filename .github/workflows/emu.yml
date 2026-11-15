@@ -1,0 +1,53 @@
+name: Emulated board screenshots
+
+on:
+  push:
+    paths:
+      - 'firmware/**'
+      - 'examples/**'
+      - 'tools/emu/**'
+      - '.github/workflows/emu.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install app bundler
+        run: npm ci --prefix tools/lume
+      - name: Build firmware with ESP-IDF
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.5.5
+          target: esp32s3
+          path: firmware
+      - name: Build pinned esp32sim with Lume board patch
+        run: tools/emu/setup.sh
+      - name: Fetch S3 mask ROM
+        run: tools/emu/fetch-rom.sh
+      - name: Capture screenshots and serial logs
+        env:
+          EMU_SKIP_BUILD: '1'
+          EMU_BIN: tools/emu/.cache/bin/esp32sim
+          EMU_ROM: tools/emu/.cache/rom/esp32s3_rev0_rom.elf
+        run: |
+          tools/emu/run.sh examples/counter
+          tools/emu/run.sh examples/files
+          tools/emu/run.sh examples/image_gallery
+          tools/emu/run.sh examples/games_2048
+          EMU_BOARD=lume-amoled216-no-imu EMU_OUTPUT_DIR=artifacts/emu/imu_ball_no_imu tools/emu/run.sh examples/imu_ball
+      - name: Upload screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lume-emu-${{ github.run_number }}
+          path: artifacts/emu/
+          if-no-files-found: warn
