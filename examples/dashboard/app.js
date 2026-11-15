@@ -40,7 +40,9 @@ function polarX(cx, r, deg) { return Math.round(cx + r * Math.cos(deg * Math.PI 
 function polarY(cy, r, deg) { return Math.round(cy + r * Math.sin(deg * Math.PI / 180)); }
 
 /* polyline() emits one line per adjacent point pair, so `step` is a direct
- * message cost: 5 deg is smooth, 10 deg is fine for a dim background ring. */
+ * message cost: 5 deg is smooth, 10 deg is fine for a dim background ring.
+ * Kept for reference; the GAUGE ring is now a native Arc widget, so the
+ * canvas's own static geometry is just the hairline grids/separators below. */
 function arc(ctx, cx, cy, r, startDeg, endDeg, color, width, step) {
   var inc = step || 10;
   var pts = [];
@@ -49,6 +51,32 @@ function arc(ctx, cx, cy, r, startDeg, endDeg, color, width, step) {
   }
   if (pts.length > 1) ctx.polyline(pts, color, width);
 }
+
+/* r49 #6: hairline grids/separators are static geometry. Upload each page's
+ * lines once as a retained path and replay it from C, instead of queueing
+ * ctx.line() calls in JS on every publish(). Retained paths replay the same
+ * canvas_line() raster, so the picture is unchanged. */
+function gaugeStaticLines() { return [[16, 268, W - 16, 268]]; }
+function traceStaticLines() {
+  var segs = [], x0 = 44, y0 = 44, width = 340, height = 200;
+  for (var g = 0; g <= 4; g++) {
+    var gy = Math.round(y0 + height * g / 4);
+    segs.push([x0, gy, x0 + width, gy]);
+  }
+  for (var gx = 0; gx <= 4; gx++) {
+    var xx = Math.round(x0 + width * gx / 4);
+    segs.push([xx, y0, xx, y0 + height]);
+  }
+  return segs;
+}
+function systemStaticLines() {
+  /* readSlow() always publishes nine info rows, so eight separators at fixed
+   * y positions. */
+  var segs = [];
+  for (var i = 0; i < 8; i++) segs.push([16, 82 + i * 30, W - 16, 82 + i * 30]);
+  return segs;
+}
+var STATIC_LINES = [gaugeStaticLines(), traceStaticLines(), systemStaticLines()];
 
 var CHARGE_STATES = ['trickle', 'pre-charge', 'CC', 'CV', 'done', 'idle'];
 var NET_STATES = ['idle', 'joining', 'linked', 'got ip'];
@@ -97,6 +125,13 @@ var canvas = Canvas({ width: W, height: H, style: { x: SAFE, y: SAFE, borderRadi
     ctx.clear();
     ctx.fillColor(hubTheme.colors.bg);
     ctx.fillRect(0, 0, W, H);
+    /* r49 #6: the page's static hairline geometry is uploaded once and
+     * replayed from C; drawGauge/drawTrace/drawSystem now draw only the
+     * dynamic text, traces and bars. */
+    if (!ctx.pagePaths) ctx.pagePaths = [0, 0, 0];
+    var p = v.page;
+    if (!ctx.pagePaths[p]) ctx.pagePaths[p] = ctx.retainSegments(STATIC_LINES[p], hubTheme.colors.surfaceAlt, 1);
+    ctx.drawPath(ctx.pagePaths[p]);
     if (v.page === 1) drawTrace(ctx, v);
     else if (v.page === 2) drawSystem(ctx, v);
     else drawGauge(ctx, v);
@@ -154,8 +189,7 @@ function drawGauge(ctx, v) {
   ctx.text(248, 200, 'UPTIME', C_DIM, 14);
   ctx.text(248, 218, v.uptime, C_TEXT, 14);
 
-  /* hairline separator + 3-axis strip */
-  ctx.line(16, 268, W - 16, 268, hubTheme.colors.surfaceAlt, 1);
+  /* 3-axis strip (the hairline separator is now a retained path, r49 #6) */
   ctx.text(16, 282, 'ACCEL', C_DIM, 14);
   ctx.text(16, 316, 'X ' + v.ax.toFixed(2), C_RED, 14);
   ctx.text(136, 316, 'Y ' + v.ay.toFixed(2), C_GREEN, 14);
@@ -176,16 +210,8 @@ function drawTrace(ctx, v) {
   ctx.text(16, 8, 'ACCEL TRACE', C_DIM, 14);
   ctx.text(300, 8, '5 Hz / +-10', hubTheme.colors.surfaceAlt, 14);
 
-  /* hairline grid */
-  for (var g = 0; g <= 4; g++) {
-    var gy = Math.round(y0 + height * g / 4);
-    ctx.line(x0, gy, x0 + width, gy, g === 2 ? hubTheme.colors.surfaceAlt : hubTheme.colors.surfaceAlt, 1);
-  }
-  for (var gx = 0; gx <= 4; gx++) {
-    var xx = Math.round(x0 + width * gx / 4);
-    ctx.line(xx, y0, xx, y0 + height, hubTheme.colors.surfaceAlt, 1);
-  }
-
+  /* The 5+5 hairline grid is a retained path now (r49 #6); only the live
+   * trace polylines and the legend below are dynamic. */
   var data = v.trace;
   if (data.length > 1) {
     var series = [
@@ -223,7 +249,7 @@ function drawSystem(ctx, v) {
     var y = 62 + i * 30;
     ctx.text(16, y, rows[i][0], C_DIM, 14);
     ctx.text(200, y, rows[i][1], C_TEXT, 14);
-    if (i < rows.length - 1) ctx.line(16, y + 20, W - 16, y + 20, hubTheme.colors.surfaceAlt, 1);
+    /* Row separators are a retained path (r49 #6). */
   }
 }
 
