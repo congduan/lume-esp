@@ -122,8 +122,15 @@ static void lvgl_task(void *arg)
         }
         if (atomic_exchange(&s_redraw_pending, false)) lume_display_invalidate_all();
         lume_display_capture_tick();
-        lv_timer_handler();
-        vTaskDelay(pdMS_TO_TICKS(10));
+        uint32_t wait_ms = lv_timer_handler();
+#if CONFIG_LUME_PERF_PROFILE
+        lume_perf_log_second();
+#endif
+        /* LV_NO_TIMER_READY is UINT32_MAX. Bound sleep so a cross-task
+         * invalidation can still be serviced promptly; zero means retry. */
+        if (wait_ms == 0) wait_ms = 1;
+        if (wait_ms > 10) wait_ms = 10;
+        vTaskDelay(pdMS_TO_TICKS(wait_ms));
     }
 }
 
@@ -202,6 +209,7 @@ esp_err_t lume_board_init(void)
 
     lv_display_t *disp = NULL;
     ESP_RETURN_ON_ERROR(lume_display_init(&disp), TAG, "CO5300/LVGL display init failed");
+    lv_timer_set_period(lv_display_get_refr_timer(disp), CONFIG_LUME_REFRESH_PERIOD_MS);
 
     /* 4. Touch -> LVGL indev (M1: LVGL only; M3 also posts to the JS queue). */
     ESP_RETURN_ON_ERROR(lume_touch_init(bus, disp), TAG, "CST9220/LVGL indev init failed");

@@ -2685,6 +2685,14 @@ CONFIG_WIFI_PROV_STA_ALL_CHANNEL_SCAN=y
 # end of Wi-Fi Provisioning Manager
 
 #
+# Lume performance experiments
+#
+# CONFIG_LUME_PERF_PROFILE is not set
+CONFIG_LUME_DRAW_BUF_LINES=20
+CONFIG_LUME_REFRESH_PERIOD_MS=33
+# end of Lume performance experiments
+
+#
 # LittleFS
 #
 # CONFIG_LITTLEFS_SDMMC_SUPPORT is not set
