@@ -1,0 +1,188 @@
+name: Host regression matrix
+
+# r50: move the local verification loop into a CI gate. Everything here is a
+# host-only check (no board, no esp32sim); a green run is NOT on-device
+# acceptance. Emulator screenshots / scan live in emu.yml.
+#
+# Hard gate: every run block uses `set -euo pipefail`. There is no `|| true`,
+# so any failing harness / test / compiler command turns the job red.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'tests/**'
+      - 'runtime/**'
+      - 'tools/lume/**'
+      - 'tools/simulator/**'
+      - 'examples/**'
+      - 'firmware/components/lume-engine/**'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    paths:
+      - 'tests/**'
+      - 'runtime/**'
+      - 'tools/lume/**'
+      - 'tools/simulator/**'
+      - 'examples/**'
+      - 'firmware/components/lume-engine/**'
+      - '.github/workflows/tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Prepare diagnostics dir
+        run: mkdir -p artifacts/ci
+
+      - name: Install CLI dependencies
+        run: npm ci --prefix tools/lume
+
+      # 22 standalone CommonJS harnesses. They read repo-root-relative paths
+      # (e.g. firmware/components/lume-engine/lume_scripts.c, examples/*/app.js)
+      # and files_dialog.js requires esbuild from tools/lume/node_modules, so
+      # run them from the repo root (the default working-directory) after npm ci.
+      # Output is tee'd to a log so the failure() artifact can collect it.
+      - name: JS host harnesses (22)
+        run: |
+          set -euo pipefail
+          {
+            count=0
+            for f in tests/*.js; do
+              count=$((count + 1))
+              echo "===== [$count] $f ====="
+              node "$f"
+              echo "$f EXIT=0"
+            done
+            echo "JS_HARNESS_COUNT=$count JS_HARNESS_FAILURES=0"
+          } 2>&1 | tee artifacts/ci/js-harnesses.log
+
+      - name: CLI unit tests (node --test)
+        run: |
+          set -euo pipefail
+          npm test --prefix tools/lume 2>&1 | tee artifacts/ci/npm-test.log
+
+      # 8 C host assertion harnesses. Compile commands are copied verbatim from
+      # docs/build.md "Debug screenshot" + the .c file-header comments; the last
+      # three have NO command in their header, so their provenance is recorded:
+      #   id3v2.c        -> docs/r38b-preboard-report.md:66 (cc)
+      #   mp3_decoder.c  -> derived empirically (minimp3 header-only, fixture
+      #                     tests/fixtures/silence-44100.mp3, cwd=repo root, -lm)
+      #   record_buffer.c-> derived from the r38b note + tools/lume/fetch-qjsc.sh
+      #                     recipe: vendored QuickJS sources + an sdkconfig.h stub
+      #                     (CONFIG_LUME_PERF_PROFILE 0) because quickjs.c pulls
+      #                     lume_perf.h unconditionally.
+      # image_header.c needs the board include dir on the path (lume_pins.h).
+      - name: C host assertion harnesses (8)
+        run: |
+          set -euo pipefail
+          command -v gcc >/dev/null || { echo "gcc missing" >&2; exit 1; }
+          {
+            echo "===== [1/8] ota_protocol.c (docs/build.md) ====="
+            gcc -std=c11 -Wall -Wextra -Werror \
+              -I firmware/components/lume-hotreload/include \
+              tests/ota_protocol.c firmware/components/lume-hotreload/lume_frame.c \
+              -o /tmp/lume_ota_protocol && /tmp/lume_ota_protocol
+            echo "ota_protocol EXIT=0"
+
+            echo "===== [2/8] apps_protocol.c (docs/build.md) ====="
+            gcc -std=c11 -Wall -Wextra -Werror \
+              -I firmware/components/lume-hotreload/include \
+              -I firmware/components/lume-engine/include \
+              tests/apps_protocol.c \
+              firmware/components/lume-hotreload/lume_frame.c \
+              firmware/components/lume-hotreload/lume_cmd.c \
+              -o /tmp/lume_apps_protocol && /tmp/lume_apps_protocol
+            echo "apps_protocol EXIT=0"
+
+            echo "===== [3/8] bridge_protocol.c (docs/build.md) ====="
+            gcc -std=c11 -Wall -Wextra -Werror \
+              -I firmware/components/lume-ui-bridge/include \
+              -I firmware/components/lume-hotreload/include \
+              -I firmware/components/lume-engine/include \
+              tests/bridge_protocol.c -o /tmp/lume_bridge_protocol && /tmp/lume_bridge_protocol
+            echo "bridge_protocol EXIT=0"
+
+            echo "===== [4/8] image_header.c (docs/build.md; board include path) ====="
+            gcc -std=c11 -Wall -Wextra -Werror \
+              -I firmware/components/lume-engine/include \
+              -I firmware/components/lume-board/include \
+              -I firmware/boards/waveshare_esp32_s3_touch_amoled_2_16 \
+              tests/image_header.c \
+              firmware/components/lume-engine/lume_image_header.c \
+              firmware/components/lume-engine/lume_image_pixels.c \
+              -o /tmp/lume_image_header && /tmp/lume_image_header
+            echo "image_header EXIT=0"
+
+            echo "===== [5/8] canvas_aa.c (file-header comment; -lm) ====="
+            gcc -std=c11 -Wall -Wextra -Werror \
+              -I firmware/components/lume-ui-bridge/include \
+              tests/canvas_aa.c -o /tmp/lume_canvas_aa -lm && /tmp/lume_canvas_aa
+            echo "canvas_aa EXIT=0"
+
+            echo "===== [6/8] id3v2.c (r38b report:66; cc) ====="
+            cc -Wall -Wextra -Ifirmware/components/mp3_decoder/include \
+              tests/id3v2.c firmware/components/mp3_decoder/id3v2.c \
+              -o /tmp/lume-id3v2-test && /tmp/lume-id3v2-test
+            echo "id3v2 EXIT=0"
+
+            echo "===== [7/8] mp3_decoder.c (derived; minimp3 header-only) ====="
+            gcc -std=c11 -Wall -Wextra -Werror \
+              tests/mp3_decoder.c -o /tmp/lume_mp3_decoder -lm && /tmp/lume_mp3_decoder
+            echo "mp3_decoder EXIT=0"
+
+            echo "===== [8/8] record_buffer.c (derived; vendored QuickJS host build) ====="
+            stub=$(mktemp -d)
+            printf '#define CONFIG_LUME_PERF_PROFILE 0\n' > "$stub/sdkconfig.h"
+            gcc -O2 -std=gnu11 -D_GNU_SOURCE -DQUICKJS_NG_BUILD -funsigned-char \
+              -I firmware/components/quickjs-ng \
+              -I "$stub" -I firmware/components/lume-perf/include \
+              tests/record_buffer.c \
+              firmware/components/quickjs-ng/quickjs.c \
+              firmware/components/quickjs-ng/dtoa.c \
+              firmware/components/quickjs-ng/libregexp.c \
+              firmware/components/quickjs-ng/libunicode.c \
+              -o /tmp/lume_record_buffer -lm -lpthread -ldl && /tmp/lume_record_buffer
+            rm -rf "$stub"
+            echo "record_buffer EXIT=0"
+
+            echo "ALL_C_HARNESSES_DONE"
+          } 2>&1 | tee artifacts/ci/c-harnesses.log
+
+      - name: API docs + website freshness
+        run: |
+          set -euo pipefail
+          {
+            python3 scripts/gen_api_docs.py --check
+            python3 scripts/check_website.py
+          } 2>&1 | tee artifacts/ci/docs-check.log
+
+      # Optional fast-path regression (no esp32sim). Guarded with hashFiles()
+      # so it is skipped when the counter app or bundler are absent.
+      # COVERAGE NOTE: `--no-emu` runs the bundle step only; eval, layout R1-R7
+      # and perf are SKIPPED (check.js:164-209). This is NOT a layout gate and
+      # must not be labelled as one. The full check (with layout) needs the
+      # esp32sim images and lives in `lume check <app>` / emu.yml.
+      - name: Quick bundle regression (lume check --no-emu)
+        if: ${{ hashFiles('examples/counter/app.js', 'tools/lume/bundle.js') != '' }}
+        run: |
+          set -euo pipefail
+          node tools/lume/lume.js check examples/counter --no-emu 2>&1 \
+            | tee artifacts/ci/quick-check.log
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lume-tests-failure-${{ github.run_number }}
+          path: artifacts/ci/
+          if-no-files-found: warn
