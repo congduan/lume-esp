@@ -8,6 +8,18 @@
  * DEFAULT board is still waveshare_esp32_s3_touch_amoled_2_16 — nothing in
  * this file changes the default build.
  *
+ * r45 UPDATE: the three driver-level gaps flagged in the "Sources that
+ * CONFLICT" list below are now RESOLVED in lume-board/ behind compile-time
+ * macros LUME_TOUCH_CHIP (dual CST9220/CST816S touch paths),
+ * LUME_HAS_IO_EXPANDER_RESET (TCA9554 reset) and LUME_LCD_COLUMN_OFFSET
+ * (16-column flush gap). The register table / bit map / gap value were
+ * re-verified against espressif/esp_lcd_touch_cst816s v1.1.1~1, the Waveshare
+ * BSP v2.0.3 + ESP-IDF demos, the SensorLib CST816 driver and esp32sim; the
+ * "conflict list" is kept as the r44 snapshot. NOTE 0x15 is the I2C SLAVE
+ * ADDRESS, not a chip-ID register (CST816S chip id lives at 0xA7). This is
+ * STILL compile-time / simulator / vendor-source evidence with NO on-device
+ * power-on; see docs/KNOWN-SIMPLIFICATIONS.md (r45 entry).
+ *
  * This is a COMPILE-TIME parameter set ONLY. No hardware has been attached:
  * every board-level acceptance item (panel power-on, colour, touch
  * orientation, column gap, PMIC rails, audio, sleep current, radio,

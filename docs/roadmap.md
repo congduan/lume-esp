@@ -99,6 +99,28 @@ and checkbox states are unchanged — the box stays `[ ]`:
   "Additional targets demonstrated" is therefore still unmet — the checkbox
   stays `[ ]`. See `docs/KNOWN-SIMPLIFICATIONS.md` (r44 entry).
 
+Status after the r45 1.8 driver-level gap closure; milestone definitions and
+checkbox states are unchanged — the box stays `[ ]`:
+
+- **Board abstraction** (still `[ ]`): r45 closed the three already-evidenced
+  driver gaps behind compile-time profile macros — dual CST9220/CST816S touch
+  protocol paths (`LUME_TOUCH_CHIP`), TCA9554 IO-expander reset for 1.8
+  (`LUME_HAS_IO_EXPANDER_RESET`, default 2.16 direct-GPIO unchanged), and the
+  CO5300 16-column gap wired into `lume_display.c` flush (`LUME_LCD_COLUMN_OFFSET`,
+  applied at the CASET source because Lume has no `esp_lcd_panel_handle_t` for
+  `esp_lcd_panel_set_gap`). Registers / bit map / gap value were verified against
+  `espressif/esp_lcd_touch_cst816s` v1.1.1~1, the Waveshare BSP v2.0.3 and
+  ESP-IDF demos, the SensorLib CST816 driver and esp32sim. Default-board build
+  is zero-regression (`idf.py size` byte-for-byte identical to the b66bebc
+  baseline); both boards build green, host harnesses (22 JS + C ABI + 33 CLI
+  tests) pass, and the 1.8 build was confirmed to genuinely use the 1.8 profile.
+  **All evidence is compile-time / simulator / vendor-source — there is still
+  NO on-device acceptance** (no power-on, touch, color, gap, reset timing,
+  audio, sleep current, radio, persistence or bundle push), no runtime
+  hot-switch, and no multi-board CI matrix; SDMMC / absent ES7210 remain open
+  gaps. "Additional targets demonstrated" is still unmet — the checkbox stays
+  `[ ]`. See `docs/KNOWN-SIMPLIFICATIONS.md` (r45 entry).
+
 ## Rendering backlog (measured, not scheduled)
 
 Milestone definitions and checkbox states above are unchanged; this section only

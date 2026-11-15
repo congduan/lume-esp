@@ -12,6 +12,42 @@ both profiles are compile-time parameter sets and NEITHER has on-device
 acceptance. See `docs/KNOWN-SIMPLIFICATIONS.md` (r27 / r31 / r44 entries) and
 `docs/r27-board-param-audit.md`. The default board is still the 2.16 profile.
 
+### r45 status (driver-level gap closure, still no on-device acceptance)
+
+r45 closed the three known driver-level gaps for the 1.8 V2 profile. All of it
+is behind compile-time profile macros; the default 2.16 board is unchanged
+(`idf.py size` byte-for-byte identical to the b66bebc baseline).
+
+- **Touch**: `lume_touch.c` now selects the touch protocol by `LUME_TOUCH_CHIP`
+  — 2.16 = `LUME_TOUCH_CHIP_CST9220` (16-bit registers / 10-byte frame,
+  verbatim), 1.8 = `LUME_TOUCH_CHIP_CST816S` (8-bit registers / 6-byte frame
+  @ 0x15). Registers verified against `espressif/esp_lcd_touch_cst816s`
+  v1.1.1~1 (`DATA_START_REG 0x02`, `CHIP_ID_REG 0xA7`; CST820 id 0xB7), the
+  Waveshare SensorLib `TouchDrvCST816` driver and the esp32sim Cst820 model.
+  Note 0x15 is the I2C slave address, **not** a chip-ID register.
+- **Reset**: 1.8 LCD/touch/power resets are on the TCA9554 IO expander @ 0x20
+  (`LUME_HAS_IO_EXPANDER_RESET`), not ESP GPIOs (BSP `BSP_LCD_RST` /
+  `BSP_LCD_TOUCH_RST = GPIO_NUM_NC`). Bit map — REG_OUTPUT 0x01 / REG_CONFIG
+  0x03, LCD_RST BIT(0) / DSI_PWR_EN BIT(1) / TOUCH_RST BIT(2) / SD_CS BIT(7) —
+  and the 20/150 ms sequence come from the official Waveshare ESP-IDF demos
+  `90_axp2101_pmu` / `92_qmi8658_imu` `board_variant.c`. Default 2.16 keeps
+  direct-GPIO reset.
+- **Panel gap**: `flush_cb` adds `LUME_LCD_COLUMN_OFFSET` (1.8 = 16, 2.16 = 0)
+  to the CASET column coordinates. `esp_lcd_panel_set_gap()` is not applicable:
+  Lume drives `esp_lcd_panel_io` directly (self-drawn CASET/RASET/RAMWR, no
+  `esp_lcd_panel_handle_t`). Confirmed 0x10 from BSP
+  `BSP_LCD_CST816S_X_GAP`, the colorbar demo `V2_PANEL_X_GAP` and esp32sim
+  `X_OFFSET=16`.
+
+Both boards build green on the host, host harnesses / CLI tests pass, and the
+1.8 build was checked to genuinely use the `1_8` profile (sdkconfig.h,
+`flags.make`, `.d` deps and compiled strings). **This is compile-time /
+simulator / vendor-source evidence only — the 1.8 board has still NOT been
+powered on**: lighting, color, touch orientation, gap, reset timing, audio,
+sleep current, radio, persistence and bundle push remain deferred. SDMMC (TF
+card), absent ES7210 and runtime board switching stay open gaps. See
+`docs/KNOWN-SIMPLIFICATIONS.md` (r45 entry).
+
 ## Layout
 
 ```
