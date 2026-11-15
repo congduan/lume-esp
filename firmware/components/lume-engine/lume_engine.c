@@ -38,6 +38,7 @@
 #include "lume_net.h"
 #include "lume_ble.h"
 #include "lume_audio.h"
+#include "mp3_decoder.h"
 #include "lume_power.h"
 #include "lume_image.h"
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
@@ -1868,6 +1869,109 @@ static JSValue js_audio_stop(JSContext *ctx, JSValueConst self, int argc, JSValu
     return JS_NewInt32(ctx, lume_audio_stop());
 }
 
+static JSValue js_audio_play_stream(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 2) return JS_ThrowTypeError(ctx, "playStream: expected PCM and options");
+    size_t len;
+    uint8_t *data=JS_GetArrayBuffer(ctx,&len,argv[0]);
+    if (!data || !JS_IsObject(argv[1])) return JS_NewInt32(ctx,LUME_AUDIO_ERR_ARG);
+    const char *names[]={"sampleRate","channels","bits"};
+    int32_t values[3];
+    for (int i=0;i<3;i++) {
+        JSValue v=JS_GetPropertyStr(ctx,argv[1],names[i]);
+        if (JS_IsException(v)) return JS_EXCEPTION;
+        if (JS_ToInt32(ctx,&values[i],v)<0) { JS_FreeValue(ctx,v); return JS_EXCEPTION; }
+        JS_FreeValue(ctx,v);
+    }
+    return JS_NewInt32(ctx,lume_audio_play_stream(data,len,values[0],values[1],values[2]));
+}
+static JSValue js_audio_stream_finished(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{ (void)self; (void)argc; (void)argv; return JS_NewBool(ctx,lume_audio_stream_finished()); }
+static JSValue js_audio_stream_pause(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{ (void)self; if (argc<1) return JS_ThrowTypeError(ctx,"streamPause: expected bool"); return JS_NewInt32(ctx,lume_audio_stream_pause(JS_ToBool(ctx,argv[0]))); }
+static JSValue js_audio_stream_reset(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{ (void)self; (void)argc; (void)argv; return JS_NewInt32(ctx,lume_audio_stream_reset()); }
+
+static mp3_decoder_t *s_mp3;
+static JSValue js_mp3_open(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc<1) return JS_ThrowTypeError(ctx,"mp3.open: expected path");
+    const char *path=JS_ToCString(ctx,argv[0]);
+    if (!path) return JS_EXCEPTION;
+    mp3_decoder_close(s_mp3); s_mp3=NULL;
+    int r=mp3_decoder_open(path,&s_mp3);
+    JS_FreeCString(ctx,path);
+    return JS_NewInt32(ctx,r);
+}
+static JSValue js_mp3_decode(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    if (!s_mp3) return JS_NewInt32(ctx,-3);
+    int16_t pcm[2304]; /* minimp3 maximum: 1152 stereo samples */
+    mp3_frame_info_t info;
+    int r=mp3_decoder_decode(s_mp3,pcm,&info);
+    if (r<=0) return r<0 ? JS_NewInt32(ctx,r) : JS_NULL;
+    JSValue obj=JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx,obj,"pcm",JS_NewArrayBufferCopy(ctx,(uint8_t *)pcm,
+                        (size_t)info.samples*info.channels*2));
+    JS_SetPropertyStr(ctx,obj,"sampleRate",JS_NewInt32(ctx,info.sample_rate));
+    JS_SetPropertyStr(ctx,obj,"channels",JS_NewInt32(ctx,info.channels));
+    JS_SetPropertyStr(ctx,obj,"bitrateKbps",JS_NewInt32(ctx,info.bitrate_kbps));
+    JS_SetPropertyStr(ctx,obj,"byteOffset",JS_NewInt64(ctx,info.byte_offset));
+    JS_SetPropertyStr(ctx,obj,"fileBytes",JS_NewInt64(ctx,info.file_bytes));
+    JS_SetPropertyStr(ctx,obj,"samples",JS_NewInt32(ctx,info.samples));
+    return obj;
+}
+static JSValue js_mp3_close(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{ (void)self; (void)argc; (void)argv; mp3_decoder_close(s_mp3); s_mp3=NULL; return JS_NewInt32(ctx,0); }
+typedef struct { JSContext *ctx; JSValue array; uint32_t count; } mp3_list_ctx_t;
+static void mp3_list_emit(void *arg,const char *name)
+{ mp3_list_ctx_t *c=arg; JS_SetPropertyUint32(c->ctx,c->array,c->count++,JS_NewString(c->ctx,name)); }
+static JSValue js_mp3_list(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc<1) return JS_ThrowTypeError(ctx,"mp3.list: expected directory");
+    const char *path=JS_ToCString(ctx,argv[0]);
+    if (!path) return JS_EXCEPTION;
+    mp3_list_ctx_t c={ctx,JS_NewArray(ctx),0};
+    int r=mp3_decoder_list(path,mp3_list_emit,&c);
+    JS_FreeCString(ctx,path);
+    if (r<0) { JS_FreeValue(ctx,c.array); return JS_NewInt32(ctx,r); }
+    return c.array;
+}
+static JSValue js_mp3_read_text(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc<1) return JS_ThrowTypeError(ctx,"mp3.readText: expected path");
+    const char *path=JS_ToCString(ctx,argv[0]);
+    if (!path) return JS_EXCEPTION;
+    char *buf=malloc(32768);
+    if (!buf) { JS_FreeCString(ctx,path); return JS_NewInt32(ctx,-4); }
+    int r=mp3_decoder_read_text(path,buf,32768);
+    JS_FreeCString(ctx,path);
+    JSValue ret=r<0 ? JS_NewInt32(ctx,r) : JS_NewStringLen(ctx,buf,r);
+    free(buf);
+    return ret;
+}
+static JSValue js_mp3_id3v1(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc<1) return JS_ThrowTypeError(ctx,"mp3.id3v1: expected path");
+    const char *path=JS_ToCString(ctx,argv[0]);
+    if (!path) return JS_EXCEPTION;
+    char title[61],artist[61];
+    int r=mp3_decoder_id3v1(path,title,artist);
+    JS_FreeCString(ctx,path);
+    if (r<0) return JS_NewInt32(ctx,r);
+    if (!r) return JS_NULL;
+    JSValue obj=JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx,obj,"title",JS_NewString(ctx,title));
+    JS_SetPropertyStr(ctx,obj,"artist",JS_NewString(ctx,artist));
+    return obj;
+}
+
 static void register_bindings(JSContext *ctx)
 {
     JSValue global = JS_GetGlobalObject(ctx);
@@ -2071,6 +2175,18 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, audio, "record", JS_NewCFunction(ctx, js_audio_record, "record", 2));
     JS_SetPropertyStr(ctx, audio, "setVolume", JS_NewCFunction(ctx, js_audio_volume, "setVolume", 1));
     JS_SetPropertyStr(ctx, audio, "stop", JS_NewCFunction(ctx, js_audio_stop, "stop", 0));
+    JS_SetPropertyStr(ctx, audio, "playStream", JS_NewCFunction(ctx, js_audio_play_stream, "playStream", 2));
+    JS_SetPropertyStr(ctx, audio, "streamFinished", JS_NewCFunction(ctx, js_audio_stream_finished, "streamFinished", 0));
+    JS_SetPropertyStr(ctx, audio, "streamPause", JS_NewCFunction(ctx, js_audio_stream_pause, "streamPause", 1));
+    JS_SetPropertyStr(ctx, audio, "streamReset", JS_NewCFunction(ctx, js_audio_stream_reset, "streamReset", 0));
+    JSValue mp3 = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, mp3, "open", JS_NewCFunction(ctx, js_mp3_open, "open", 1));
+    JS_SetPropertyStr(ctx, mp3, "decode", JS_NewCFunction(ctx, js_mp3_decode, "decode", 0));
+    JS_SetPropertyStr(ctx, mp3, "close", JS_NewCFunction(ctx, js_mp3_close, "close", 0));
+    JS_SetPropertyStr(ctx, mp3, "list", JS_NewCFunction(ctx, js_mp3_list, "list", 1));
+    JS_SetPropertyStr(ctx, mp3, "readText", JS_NewCFunction(ctx, js_mp3_read_text, "readText", 1));
+    JS_SetPropertyStr(ctx, mp3, "id3v1", JS_NewCFunction(ctx, js_mp3_id3v1, "id3v1", 1));
+    JS_SetPropertyStr(ctx, audio, "mp3", mp3);
     JS_SetPropertyStr(ctx, lume, "audio", audio);
     /* lume.ble (r25): NimBLE GATT peripheral (NUS-shaped RX/TX service),
      * hardware in lume-ble. Natives self-register, so the prelude needs no
@@ -2655,6 +2771,8 @@ static void engine_task(void *arg)
                 ESP_LOGE(TAG, "embedded/last-good/home app eval failed (unexpected)");
             }
             call_app_hook("__lume_shutdown");
+            mp3_decoder_close(s_mp3); s_mp3 = NULL;
+            if (!lume_audio_stream_finished()) (void)lume_audio_stream_reset();
             lume_ui_msg_t failed_reset;
             msg_init(&failed_reset);
             failed_reset.op = LUME_OP_RESET;
@@ -2824,6 +2942,8 @@ static void engine_task(void *arg)
          * post to FreeRTOS queues and never touch s_ctx, so no other task can
          * be using this context here. Free context first, then runtime. */
         call_app_hook("__lume_shutdown");
+        mp3_decoder_close(s_mp3); s_mp3 = NULL;
+        if (!lume_audio_stream_finished()) (void)lume_audio_stream_reset();
         lume_ui_msg_t reset_msg;
         msg_init(&reset_msg);
         reset_msg.op = LUME_OP_RESET;

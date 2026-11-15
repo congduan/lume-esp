@@ -9,6 +9,10 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
+#include "esp_heap_caps.h"
+#include "esp_timer.h"
+#include <string.h>
 
 /* Codec I2C addresses come from the board profile (lume_pins.h). */
 #define ES8311 LUME_I2C_ADDR_ES8311
@@ -19,6 +23,62 @@ static i2s_chan_handle_t s_tx, s_rx;
 static bool s_ready;
 static bool s_i2s_ready;
 static int s_volume = 85;
+typedef struct { uint8_t *data; size_t bytes; int rate; unsigned generation; } stream_chunk_t;
+static QueueHandle_t s_stream_queue;
+static TaskHandle_t s_stream_task;
+static volatile int s_stream_pending, s_stream_paused;
+static int s_tx_rate = 16000;
+static unsigned s_stream_generation;
+static int64_t s_stream_drain_until_us;
+static int tx_rate(int rate)
+{
+    if (s_tx_rate == rate) return 0;
+    if (i2s_channel_disable(s_tx) != ESP_OK) return LUME_AUDIO_ERR_DRIVER;
+    i2s_std_clk_config_t cfg = I2S_STD_CLK_DEFAULT_CONFIG(rate);
+    if (i2s_channel_reconfig_std_clock(s_tx, &cfg) != ESP_OK ||
+        i2s_channel_enable(s_tx) != ESP_OK) return LUME_AUDIO_ERR_DRIVER;
+    s_tx_rate = rate;
+    return 0;
+}
+
+static void stream_worker(void *arg)
+{
+    (void)arg;
+    stream_chunk_t chunk;
+    unsigned active_generation = s_stream_generation;
+    for (;;) {
+        if (xQueueReceive(s_stream_queue, &chunk, portMAX_DELAY) != pdTRUE) continue;
+        while (s_stream_paused && chunk.generation == s_stream_generation)
+            vTaskDelay(pdMS_TO_TICKS(10));
+        if (chunk.generation != s_stream_generation) goto discard;
+        if (chunk.generation != active_generation) {
+            /* Drop stale DMA samples before the next track starts. */
+            i2s_channel_disable(s_tx);
+            i2s_channel_enable(s_tx);
+            active_generation = chunk.generation;
+        }
+        if (tx_rate(chunk.rate) < 0) goto discard;
+        size_t at = 0;
+        while (at < chunk.bytes && s_tx_rate == chunk.rate &&
+               chunk.generation == s_stream_generation) {
+            while (s_stream_paused && chunk.generation == s_stream_generation)
+                vTaskDelay(pdMS_TO_TICKS(10));
+            size_t sent = 0;
+            esp_err_t err = i2s_channel_write(s_tx, chunk.data + at,
+                chunk.bytes - at, &sent, pdMS_TO_TICKS(1000));
+            if (err != ESP_OK || !sent) break;
+            at += sent;
+        }
+        /* i2s_channel_write returns after copying to DMA, before the last
+         * sample leaves the pin. Default DMA is 6 x 240 frames. */
+        __atomic_store_n(&s_stream_drain_until_us,
+            esp_timer_get_time() + (int64_t)1440 * 1000000 / chunk.rate + 2000,
+            __ATOMIC_SEQ_CST);
+discard:
+        heap_caps_free(chunk.data);
+        __atomic_sub_fetch(&s_stream_pending, 1, __ATOMIC_SEQ_CST);
+    }
+}
 
 static int put(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t val)
 {
@@ -155,6 +215,8 @@ int lume_audio_play(const void *pcm, size_t bytes)
     if (!pcm || !bytes || (bytes & 3)) return LUME_AUDIO_ERR_ARG;
     int r = lume_audio_init();
     if (r < 0) return r;
+    if (!lume_audio_stream_finished()) return LUME_AUDIO_ERR_STATE;
+    if (tx_rate(16000) < 0) return LUME_AUDIO_ERR_DRIVER;
     if (bits(s_dac, 0x31, 0x60, 0x00) < 0) return LUME_AUDIO_ERR_DRIVER;
     const uint8_t *p=pcm;
     while (bytes) {
@@ -167,11 +229,73 @@ int lume_audio_play(const void *pcm, size_t bytes)
     return 0;
 }
 
+int lume_audio_play_stream(const void *pcm, size_t bytes, int rate, int channels, int bit_depth)
+{
+    if (!pcm || !bytes || bytes > 4608 || (bytes & 3) || channels != 2 ||
+        bit_depth != 16 || (rate != 44100 && rate != 48000 && rate != 32000 && rate != 16000))
+        return LUME_AUDIO_ERR_ARG;
+    int r = lume_audio_init();
+    if (r < 0) return r;
+    if (!s_stream_queue) {
+        s_stream_queue = xQueueCreate(16, sizeof(stream_chunk_t));
+        if (!s_stream_queue) return LUME_AUDIO_ERR_MEMORY;
+        if (xTaskCreate(stream_worker, "lume_audio_stream", 4096, NULL, 5,
+                        &s_stream_task) != pdPASS) {
+            vQueueDelete(s_stream_queue);
+            s_stream_queue = NULL;
+            return LUME_AUDIO_ERR_MEMORY;
+        }
+    }
+    if (uxQueueSpacesAvailable(s_stream_queue) == 0) return LUME_AUDIO_ERR_STATE;
+    uint8_t *copy = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!copy) return LUME_AUDIO_ERR_MEMORY;
+    memcpy(copy, pcm, bytes);
+    if (bits(s_dac, 0x31, 0x60, 0x00) < 0) { heap_caps_free(copy); return LUME_AUDIO_ERR_DRIVER; }
+    stream_chunk_t chunk = {copy, bytes, rate, s_stream_generation};
+    __atomic_add_fetch(&s_stream_pending, 1, __ATOMIC_SEQ_CST);
+    if (xQueueSend(s_stream_queue, &chunk, 0) != pdTRUE) {
+        __atomic_sub_fetch(&s_stream_pending, 1, __ATOMIC_SEQ_CST);
+        heap_caps_free(copy);
+        return LUME_AUDIO_ERR_STATE;
+    }
+    return 0;
+}
+
+bool lume_audio_stream_finished(void)
+{
+    return __atomic_load_n(&s_stream_pending, __ATOMIC_SEQ_CST) == 0 &&
+        esp_timer_get_time() >= __atomic_load_n(&s_stream_drain_until_us,
+                                                __ATOMIC_SEQ_CST);
+}
+
+int lume_audio_stream_pause(bool paused)
+{
+    s_stream_paused = paused;
+    if (!s_dac) return LUME_AUDIO_ERR_STATE;
+    return bits(s_dac, 0x31, 0x60, paused ? 0x60 : 0x00);
+}
+int lume_audio_stream_reset(void)
+{
+    ++s_stream_generation;
+    s_stream_paused=0;
+    __atomic_store_n(&s_stream_drain_until_us,0,__ATOMIC_SEQ_CST);
+    if (s_stream_queue) {
+        stream_chunk_t chunk;
+        while (xQueueReceive(s_stream_queue,&chunk,0)==pdTRUE) {
+            heap_caps_free(chunk.data);
+            __atomic_sub_fetch(&s_stream_pending,1,__ATOMIC_SEQ_CST);
+        }
+    }
+    return lume_audio_stop();
+}
+
 int lume_audio_record(void *pcm, size_t bytes)
 {
     if (!pcm || !bytes || (bytes & 3)) return LUME_AUDIO_ERR_ARG;
     int r = lume_audio_init();
     if (r < 0) return r;
+    if (!lume_audio_stream_finished()) return LUME_AUDIO_ERR_STATE;
+    if (tx_rate(16000) < 0) return LUME_AUDIO_ERR_DRIVER;
     uint8_t *p=pcm;
     while (bytes) {
         size_t got=0;
