@@ -465,7 +465,7 @@ static JSValue js_canvas_batch(JSContext *ctx, JSValueConst this_val, int argc, 
     }
     if (s_node_dead[id]) { heap_caps_free(lines); return JS_UNDEFINED; }
     lume_ui_msg_t m; msg_init(&m); m.op = LUME_OP_CANVAS_BATCH; m.node_id = id;
-    m.canvas_lines = lines; m.canvas_count = n / 6;
+    m.image_pixels = lines; m.image_w = n / 6;
     if (lume_ui_bridge_post(&m) != 0) {
         heap_caps_free(lines);
         return JS_ThrowInternalError(ctx, "lume: ui queue full");

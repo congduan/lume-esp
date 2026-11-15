@@ -1208,7 +1208,7 @@ void lume_ui_bridge_drain(void)
             (m.text_heap == NULL && m.text_len >= LUME_TEXT_MAX)) {
             ESP_LOGE(TAG, "drain: invalid text length %u", (unsigned)m.text_len);
             heap_caps_free(m.text_heap);
-            heap_caps_free(m.canvas_lines);
+            if (m.op == LUME_OP_CANVAS_BATCH) heap_caps_free(m.image_pixels);
             continue;
         }
         if (m.text_heap) m.text_heap[m.text_len] = '\0';
@@ -1224,9 +1224,9 @@ void lume_ui_bridge_drain(void)
             case LUME_OP_ANIMATE_CANCEL: cancel_anim(m.node_id, m.attr); break;
             case LUME_OP_CANVAS_DRAW: apply_canvas_draw(&m); break;
             case LUME_OP_CANVAS_BATCH:
-                if (m.canvas_lines && m.canvas_count <= LUME_CANVAS_BATCH_MAX) {
-                    for (uint8_t i = 0; i < m.canvas_count; i++) {
-                        lume_canvas_line_t *line = &m.canvas_lines[i];
+                if (m.image_pixels && m.image_w <= LUME_CANVAS_BATCH_MAX) {
+                    for (uint8_t i = 0; i < m.image_w; i++) {
+                        lume_canvas_line_t *line = &((lume_canvas_line_t *)m.image_pixels)[i];
                         lume_ui_msg_t draw = {0};
                         draw.op = LUME_OP_CANVAS_DRAW; draw.node_id = m.node_id;
                         draw.attr = LUME_DRAW_LINE; draw.from = line->x1; draw.to = line->y1;
@@ -1264,7 +1264,7 @@ void lume_ui_bridge_drain(void)
                 break;
         }
         heap_caps_free(m.text_heap);
-        heap_caps_free(m.canvas_lines);
+        if (m.op == LUME_OP_CANVAS_BATCH) heap_caps_free(m.image_pixels);
     }
 #if CONFIG_LUME_PERF_PROFILE
     lume_perf_add(LUME_PERF_DRAIN, lume_perf_now() - drain_start);

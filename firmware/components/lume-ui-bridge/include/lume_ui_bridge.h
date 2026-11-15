@@ -187,11 +187,9 @@ typedef struct {
     /* Canvas draw: attr=opcode, value=color, from/to=x/y,
      * duration_ms/token=w/h or x2/y2, draw_width=stroke/size. */
     uint16_t draw_width;
-    void *image_pixels;                  /* IMAGE_SOURCE: ownership passes to queue on success */
-    uint16_t image_w, image_h;
+    void *image_pixels;                  /* IMAGE_SOURCE or CANVAS_BATCH owned payload */
+    uint16_t image_w, image_h;          /* BATCH: image_w is segment count */
     uint8_t image_alpha;
-    lume_canvas_line_t *canvas_lines; /* BATCH: queue owns on successful post */
-    uint8_t canvas_count;
 } lume_ui_msg_t;
 
 /* How the bridge hands a CLICKED event back to the engine task. Registered by
