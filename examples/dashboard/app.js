@@ -14,12 +14,7 @@
  * the canvas redraws on every publish(), so every page is kept under ~100
  * primitives. polyline() expands to one line per point pair, hence the strict
  * point counts below. */
-var hubTheme = { colors: {
-  primary: '#060B12',
-  surface: '#101B27',
-  accent: '#2563EB',
-  text: '#E6F0FA'
-}, radius: 10, fontScale: 1 };
+var hubTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
 lume.theme.set(hubTheme);
 
 var SAFE = 40;
@@ -27,14 +22,14 @@ var W = 400;
 var H = 360;
 var TRACE_POINTS = 24;
 
-var C_TEXT = '#E6F0FA';
-var C_DIM = '#5C7794';
-var C_TRACK = '#1B3145';
-var C_FACE = '#0F1E2C';
-var C_RED = '#F87171';
-var C_GREEN = '#34D399';
-var C_BLUE = '#38BDF8';
-var C_AMBER = '#FBBF24';
+var C_TEXT = hubTheme.colors.text;
+var C_DIM = hubTheme.colors.textDim;
+var C_TRACK = hubTheme.colors.surfaceAlt;
+var C_FACE = hubTheme.colors.surface;
+var C_RED = hubTheme.colors.danger;
+var C_GREEN = hubTheme.colors.success;
+var C_BLUE = hubTheme.colors.accent;
+var C_AMBER = hubTheme.colors.accent;
 
 function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 function num(v, digits) {
@@ -93,14 +88,14 @@ var storageText = '--';
 /* Full-bleed backdrop: the panel is 480x480 and the canvas only covers the
  * 400x360 content area, so without this the inset showed the screen's own
  * black. Created first so it stays the bottom-most node. */
-var backdrop = View({ style: { x: 0, y: 0, width: 480, height: 480, background: '#0B1622',
+var backdrop = View({ style: { x: 0, y: 0, width: 480, height: 480, background: hubTheme.colors.bg,
   borderWidth: 0, borderRadius: 0, scroll: 'none' } });
 
 var canvas = Canvas({ width: W, height: H, style: { x: SAFE, y: SAFE, borderRadius: 0 },
   onDraw: function (ctx) {
     var v = view();
     ctx.clear();
-    ctx.fillColor('#0B1622');
+    ctx.fillColor(hubTheme.colors.bg);
     ctx.fillRect(0, 0, W, H);
     if (v.page === 1) drawTrace(ctx, v);
     else if (v.page === 2) drawSystem(ctx, v);
@@ -119,6 +114,25 @@ var battArc = Arc({
   start: 135, end: 45, thickness: 10, track: C_TRACK
 });
 
+/* Native metric cards make the landing page readable at arm's length.
+ * The existing canvas still renders TRACE and SYSTEM without changing navigation. */
+var gaugeCards=[View({style:{x:0,y:0,width:480,height:396,background:'bg',scroll:'none'}})];
+function metricCard(x,y,label,value,unit){
+  var id=View({style:{x:x,y:y,width:196,height:128,background:'surface',borderRadius:12,padding:16,
+    display:'flex',flexDirection:'column',justifyContent:'space-between',gap:8,scroll:'none'}},[
+    Text({text:label,style:{fontSize:13,color:'textDim'}}),
+    Text({text:value,style:{fontSize:24,color:'text'}}),
+    Text({text:unit,style:{fontSize:11,color:'textDim'}})
+  ]);gaugeCards.push(id);
+}
+metricCard(32,80,'BATTERY',function(){return Math.round(view().pct)+'%';},'Charge level');
+metricCard(252,80,'TEMPERATURE',function(){return view().temp;},'Board sensor');
+metricCard(32,220,'USB POWER',function(){return view().vbus;},'VBUS input');
+metricCard(252,220,'UPTIME',function(){return view().uptime;},'Since start');
+gaugeCards.push(Text({text:'LUME HUB',style:{x:32,y:32,width:300,height:32,fontSize:24,color:'text'}}));
+gaugeCards.push(Text({text:function(){return view().charge+'  /  accelerometer live';},style:{x:32,y:364,width:416,height:24,fontSize:13,color:'textDim'}}));
+lume.setAttr(battArc,5,0);
+
 function drawGauge(ctx, v) {
   var cx = 112, cy = 132, r = 64;
   ctx.text(16, 8, 'BATTERY', C_DIM, 14);
@@ -128,7 +142,7 @@ function drawGauge(ctx, v) {
    * Canvas rasteriser. Only the centred readout is painted here. */
   var pct = clamp(v.pct, 0, 100);
   ctx.text(cx - 20, cy - 18, Math.round(pct) + '%', C_TEXT, 14);
-  ctx.text(cx - 24, cy + 4, v.volts, '#8FA6BC', 14);
+  ctx.text(cx - 24, cy + 4, v.volts, hubTheme.colors.textDim, 14);
 
   /* readout column */
   ctx.text(248, 44, 'TEMP', C_DIM, 14);
@@ -141,7 +155,7 @@ function drawGauge(ctx, v) {
   ctx.text(248, 218, v.uptime, C_TEXT, 14);
 
   /* hairline separator + 3-axis strip */
-  ctx.line(16, 268, W - 16, 268, '#1B3145', 1);
+  ctx.line(16, 268, W - 16, 268, hubTheme.colors.surfaceAlt, 1);
   ctx.text(16, 282, 'ACCEL', C_DIM, 14);
   ctx.text(16, 316, 'X ' + v.ax.toFixed(2), C_RED, 14);
   ctx.text(136, 316, 'Y ' + v.ay.toFixed(2), C_GREEN, 14);
@@ -160,16 +174,16 @@ function drawTrace(ctx, v) {
   var x0 = 44, y0 = 44, width = 340, height = 200;
   var mid = y0 + height / 2;
   ctx.text(16, 8, 'ACCEL TRACE', C_DIM, 14);
-  ctx.text(300, 8, '5 Hz / +-10', '#2E4761', 14);
+  ctx.text(300, 8, '5 Hz / +-10', hubTheme.colors.surfaceAlt, 14);
 
   /* hairline grid */
   for (var g = 0; g <= 4; g++) {
     var gy = Math.round(y0 + height * g / 4);
-    ctx.line(x0, gy, x0 + width, gy, g === 2 ? '#2A4661' : '#16283A', 1);
+    ctx.line(x0, gy, x0 + width, gy, g === 2 ? hubTheme.colors.surfaceAlt : hubTheme.colors.surfaceAlt, 1);
   }
   for (var gx = 0; gx <= 4; gx++) {
     var xx = Math.round(x0 + width * gx / 4);
-    ctx.line(xx, y0, xx, y0 + height, '#16283A', 1);
+    ctx.line(xx, y0, xx, y0 + height, hubTheme.colors.surfaceAlt, 1);
   }
 
   var data = v.trace;
@@ -198,18 +212,18 @@ function drawTrace(ctx, v) {
   ctx.text(120, 268, 'Y ' + v.ay.toFixed(2), C_GREEN, 14);
   ctx.text(224, 268, 'Z ' + v.az.toFixed(2), C_BLUE, 14);
   ctx.text(16, 300, 'samples ' + data.length + ' / ' + TRACE_POINTS, C_DIM, 14);
-  ctx.text(16, 330, 'swipe left / right to change page', '#2E4761', 14);
+  ctx.text(16, 330, 'swipe left / right to change page', hubTheme.colors.surfaceAlt, 14);
 }
 
 function drawSystem(ctx, v) {
   ctx.text(16, 8, 'SYSTEM', C_DIM, 14);
-  ctx.text(16, 26, 'runtime inventory', '#2E4761', 14);
+  ctx.text(16, 26, 'runtime inventory', hubTheme.colors.surfaceAlt, 14);
   var rows = v.info;
   for (var i = 0; i < rows.length; i++) {
     var y = 62 + i * 30;
     ctx.text(16, y, rows[i][0], C_DIM, 14);
     ctx.text(200, y, rows[i][1], C_TEXT, 14);
-    if (i < rows.length - 1) ctx.line(16, y + 20, W - 16, y + 20, '#16283A', 1);
+    if (i < rows.length - 1) ctx.line(16, y + 20, W - 16, y + 20, hubTheme.colors.surfaceAlt, 1);
   }
 }
 
@@ -306,7 +320,8 @@ function go(page) {
   currentPage = page;
   /* The arc is a native node layered over the canvas, so it does not get
    * erased by a canvas repaint: hide it explicitly off page 0. */
-  if (typeof battArc === 'number') lume.setAttr(battArc, 5, page === 0 ? 1 : 0);
+  if (typeof battArc === 'number') lume.setAttr(battArc, 5, 0);
+  for(var c=0;c<gaugeCards.length;c++)lume.setAttr(gaugeCards[c],5,page===0?1:0);
   if (page === 1) {
     buf = [];
     for (var i = 0; i < 6; i++) buf.push([0, 0, 0]);
@@ -345,7 +360,7 @@ function tab(x, index, label) {
   return Button({ title: label, style: {
     x: x, y: 404, width: 128, height: 36,
     background: function () { return view().page === index ? 'accent' : 'surface'; },
-    borderColor: '#22405A', borderWidth: 1, borderRadius: 10
+    borderColor: hubTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 10
   }, onPress: function () { go(index); } });
 }
 
@@ -354,5 +369,5 @@ tab(176, 1, 'TRACE');
 tab(312, 2, 'SYSTEM');
 
 /* Bottom indicator pill: a quiet hint that an upward swipe leaves the app. */
-View({ style: { width: 64, height: 3, background: '#2E4761', borderRadius: 2 },
+View({ style: { width: 64, height: 3, background: hubTheme.colors.surfaceAlt, borderRadius: 2 },
   align: 'bottom-mid', alignOffset: { y: -10 } });

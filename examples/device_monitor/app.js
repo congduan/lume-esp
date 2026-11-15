@@ -11,12 +11,7 @@
  *
  * Canvas draws into a fixed-size buffer (196x140) because a canvas has an
  * intrinsic pixel size; everything else is sized by the layout. */
-var monitorTheme = { colors: {
-  primary: '#08111C',
-  surface: '#132436',
-  accent: '#1E88E5',
-  text: '#E8F2FF'
-}, radius: 10, fontScale: 1 };
+var monitorTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
 lume.theme.set(monitorTheme);
 
 /* AXP2101 STATUS2[2:0] charger state, NET/BLE state names (runtime/types/lume.d.ts). */
@@ -60,12 +55,12 @@ var bleReady = false;
 
 function gaugeFrame(ctx, w, h) {
   ctx.clear();
-  ctx.fillColor('#0E1B28');
+  ctx.fillColor(monitorTheme.colors.surface);
   ctx.fillRect(0, 0, w, h);
-  ctx.line(0, 0, w - 1, 0, '#22405A', 1);
-  ctx.line(w - 1, 0, w - 1, h - 1, '#22405A', 1);
-  ctx.line(w - 1, h - 1, 0, h - 1, '#22405A', 1);
-  ctx.line(0, h - 1, 0, 0, '#22405A', 1);
+  ctx.line(0, 0, w - 1, 0, monitorTheme.colors.surfaceAlt, 1);
+  ctx.line(w - 1, 0, w - 1, h - 1, monitorTheme.colors.surfaceAlt, 1);
+  ctx.line(w - 1, h - 1, 0, h - 1, monitorTheme.colors.surfaceAlt, 1);
+  ctx.line(0, h - 1, 0, 0, monitorTheme.colors.surfaceAlt, 1);
 }
 
 var battGauge = Canvas({ width: GAUGE_W, height: GAUGE_H, onDraw: function (ctx) {
@@ -73,39 +68,39 @@ var battGauge = Canvas({ width: GAUGE_W, height: GAUGE_H, onDraw: function (ctx)
   gaugeFrame(ctx, GAUGE_W, GAUGE_H);
   var lit = Math.round(12 * pct / 100);
   var i, rad, px, py;
-  ctx.fillColor('#20374D');
+  ctx.fillColor(monitorTheme.colors.surfaceAlt);
   for (i = lit; i < 12; i++) {
     rad = (135 + 270 * i / 11) * Math.PI / 180;
     px = Math.round(98 + 52 * Math.cos(rad));
     py = Math.round(70 + 52 * Math.sin(rad));
     ctx.fillRect(px - 4, py - 4, 9, 9);
   }
-  ctx.fillColor(pct >= 60 ? '#34D399' : pct >= 25 ? '#FBBF24' : '#F87171');
+  ctx.fillColor(pct >= 60 ? monitorTheme.colors.success : pct >= 25 ? monitorTheme.colors.accent : monitorTheme.colors.danger);
   for (i = 0; i < lit; i++) {
     rad = (135 + 270 * i / 11) * Math.PI / 180;
     px = Math.round(98 + 52 * Math.cos(rad));
     py = Math.round(70 + 52 * Math.sin(rad));
     ctx.fillRect(px - 4, py - 4, 9, 9);
   }
-  ctx.text(84, 56, Math.round(pct) + '%', '#FFFFFF', 14);
-  ctx.text(76, 80, battVolts(), '#9FB6CC', 14);
+  ctx.text(84, 56, Math.round(pct) + '%', monitorTheme.colors.text, 14);
+  ctx.text(76, 80, battVolts(), monitorTheme.colors.textDim, 14);
 } });
 
 var tiltGauge = Canvas({ width: GAUGE_W, height: GAUGE_H, onDraw: function (ctx) {
   gaugeFrame(ctx, GAUGE_W, GAUGE_H);
-  ctx.fillColor('#20374D');
+  ctx.fillColor(monitorTheme.colors.surfaceAlt);
   for (var i = 0; i < 8; i++) {
     var rad = (i * 45) * Math.PI / 180;
     ctx.fillRect(Math.round(98 + 48 * Math.cos(rad)) - 2,
       Math.round(66 + 48 * Math.sin(rad)) - 2, 5, 5);
   }
-  ctx.line(60, 66, 136, 66, '#1B3145', 1);
-  ctx.line(98, 28, 98, 104, '#1B3145', 1);
+  ctx.line(60, 66, 136, 66, monitorTheme.colors.surfaceAlt, 1);
+  ctx.line(98, 28, 98, 104, monitorTheme.colors.surfaceAlt, 1);
   var bx = Math.round(98 + clamp(rollSig() * 1.1, -40, 40));
   var by = Math.round(66 + clamp(pitchSig() * 1.1, -40, 40));
-  ctx.circle(bx, by, 8, '#38BDF8');
-  ctx.circle(bx, by, 3, '#08111C');
-  ctx.text(66, 118, tiltLine(), '#9FB6CC', 14);
+  ctx.circle(bx, by, 8, monitorTheme.colors.accent);
+  ctx.circle(bx, by, 3, monitorTheme.colors.bg);
+  ctx.text(66, 118, tiltLine(), monitorTheme.colors.textDim, 14);
 } });
 
 /* --- building blocks ---------------------------------------------------- */
@@ -114,7 +109,7 @@ var tiltGauge = Canvas({ width: GAUGE_W, height: GAUGE_H, onDraw: function (ctx)
 function card(width, label, value) {
   return View({ style: {
     width: width, height: ROW_H,
-    background: 'surface', borderColor: '#22405A', borderWidth: 1, borderRadius: 10,
+    background: 'surface', borderColor: monitorTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 10,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', padding: 6, scroll: 'none'
   }, onPress: function () { refresh(); } }, [
@@ -211,28 +206,23 @@ lume.app.onStart(startPolling);
 lume.app.onPause(stopPolling);
 lume.app.onResume(startPolling);
 
-/* --- screen tree: one flex column, no absolute coordinates -------------- */
-
-var screenRoot = View({ style: {
-  width: '100%', height: '100%', background: 'primary', scroll: 'none',
-  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-  padding: SAFE
-}, onPress: function () { refresh(); } }, [
-  row([battGauge, tiltGauge], GAUGE_H),
-  card(WIDE, 'Power', function () { return powerLine(); }),
-  card(WIDE, 'Accel m/s2', function () { return accelLine(); }),
-  card(WIDE, 'Gyro deg/s', function () { return gyroLine(); }),
-  card(WIDE, 'WiFi', function () { return netLine(); }),
-  row([
-    card(SMALL_W, 'Temp', function () { return tempLine(); }),
-    card(SMALL_W, 'Store', function () { return storeLine(); }),
-    card(SMALL_W, 'BLE', function () { return bleLine(); })
-  ], ROW_H)
+/* Four metric cards leave room for a readable status footer. */
+lume.setAttr(battGauge,5,0);lume.setAttr(tiltGauge,5,0);
+function monitorMetric(label,value,large){return View({style:{width:196,height:128,background:'surface',borderRadius:12,padding:16,
+  display:'flex',flexDirection:'column',justifyContent:'space-between',gap:8},onPress:refresh},[
+  Text({text:label,style:{fontSize:13,color:'textDim'}}),
+  Text({text:value,style:{fontSize:large?24:16,color:'text',longMode:'dots'}}),
+  Text({text:'LIVE SENSOR',style:{fontSize:11,color:'textDim'}})
+]);}
+var screenRoot=View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',padding:32,gap:12},onPress:refresh},[
+  View({style:{width:'100%',height:48,display:'flex',flexDirection:'row',justifyContent:'space-between',padding:0}},[
+    Text({text:'Device',style:{fontSize:24,color:'text'}}),Text({text:'LIVE / 2 Hz',style:{fontSize:13,color:'textDim'}})
+  ]),
+  row([monitorMetric('BATTERY',function(){return Math.round(battPct())+'%';},true),monitorMetric('TEMPERATURE',function(){return tempLine();},true)],128),
+  row([monitorMetric('POWER',function(){return powerLine();},false),monitorMetric('ACCEL / m/s2',function(){return accelLine();},false)],128),
+  View({style:{width:'100%',height:64,background:'surfaceAlt',borderRadius:12,padding:12,display:'flex',flexDirection:'column',gap:4}},[
+    Text({text:function(){return 'WiFi '+netLine()+' / BLE '+bleLine();},style:{width:'100%',fontSize:13,color:'textDim',longMode:'dots'}}),
+    Text({text:function(){return 'Storage '+storeLine()+' / gyro '+gyroLine();},style:{width:'100%',fontSize:11,color:'textDim',longMode:'dots'}})
+  ])
 ]);
-
-lume.gesture.on(screenRoot, 'swipe', function (e) {
-});
-
-/* Bottom indicator pill (swipe-up hint). */
-View({ style: { width: 64, height: 3, background: '#2E4761', borderRadius: 2 },
-  align: 'bottom-mid', alignOffset: { y: -10 } });
+lume.gesture.on(screenRoot,'swipe',function(e){});

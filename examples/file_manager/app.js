@@ -9,19 +9,14 @@
  *
  * There is no on-screen keyboard in the runtime, so NEW creates "folder-N"
  * automatically instead of prompting for a name. */
-var fmTheme = { colors: {
-  primary: '#08111C',
-  surface: '#132436',
-  accent: '#1E88E5',
-  text: '#E8F2FF'
-}, radius: 10, fontScale: 1 };
+var fmTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
 lume.theme.set(fmTheme);
 
-var SAFE = 40;
+var SAFE = 32;
 var WIDE = 480 - SAFE * 2;
 var LIST_Y = 88;
-var LIST_H = 300;
-var ROW_H = 44;
+var LIST_H = 272;
+var ROW_H = 48;
 var Fs = lume.storage.Fs;
 
 var cwd = signal('/');
@@ -184,17 +179,17 @@ function makeDir() {
 
 /* --- UI ----------------------------------------------------------------- */
 
-var backdrop = View({ style: { x: 0, y: 0, width: 480, height: 480, background: 'primary',
+var backdrop = View({ style: { x: 0, y: 0, width: 480, height: 480, background: 'bg',
   borderWidth: 0, borderRadius: 0, scroll: 'none' } });
 
 /* path bar */
 View({ style: {
   x: SAFE, y: SAFE, width: WIDE, height: 40,
-  background: 'surface', borderColor: '#22405A', borderWidth: 1, borderRadius: 10,
+  background: 'surface', borderColor: fmTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 12,
   display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
   alignItems: 'center', padding: 8, scroll: 'none'
 } }, [
-  Text({ text: function () { return trim(cwd(), 26); }, style: {} }),
+  Text({ text: function () { return 'Files / '+trim(cwd(), 20); }, style: {} }),
   Text({ text: function () { return lume.storage.Fs.mounted() === true ? 'mounted' : 'no fs'; },
     style: {} })
 ]);
@@ -204,35 +199,39 @@ List({
   items: entries,
   itemHeight: ROW_H,
   style: { x: SAFE, y: LIST_Y, width: WIDE, height: LIST_H,
-    background: 'surface', borderColor: '#22405A', borderWidth: 1, borderRadius: 10,
+    background: 'surface', borderColor: fmTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 12,
     scrollbar: 'off' },   /* the rail stole touches on the right edge */
   renderItem: function (entry) {
     return View({ style: {
-      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6,
+      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
       width: '100%', height: ROW_H, padding: 8, borderRadius: 8, scroll: 'none',
-      background: function () { return selected() === entry.name ? '#1E3A5C' : '#101E2C'; }
+      background: function () { return selected() === entry.name ? 'surfaceAlt' : (entries().indexOf(entry) % 2 ? 'surfaceAlt' : 'surface'); }
     }, onPress: function () { open(entry); } }, [
+      View({style:{width:4,height:32,background:function(){return selected()===entry.name?'accent':'surface';},borderRadius:8}}),
       Text({ text: entry.isDir ? 'DIR ' : 'FILE', style: { width: 40 } }),
       Text({ text: trim(entry.name, 22), style: { width: 226 } }),
       Button({ title: function () { return pendingDelete() === entry.name ? 'SURE' : 'DEL'; },
-        style: { width: 60, height: 30, background: '#7F1D1D',
-          borderColor: '#B91C1C', borderWidth: 1, borderRadius: 7 },
+        style: { width: 60, height: 32, background: fmTheme.colors.danger,
+          borderColor: fmTheme.colors.danger, borderWidth: 1, borderRadius: 8 },
         onPress: function () { askDelete(entry.name); } })
     ]);
   }
 });
 
+Text({text:function(){return entries().length?'':'[ ]';},style:{x:200,y:180,width:80,fontSize:40,color:'textDim',textAlign:'center'}});
+Text({text:function(){return entries().length?'':'No files in this folder';},style:{x:SAFE,y:232,width:WIDE,fontSize:13,color:'textDim',textAlign:'center'}});
+
 /* preview overlay: a canvas that draws the first 8 lines of the file */
-var previewCanvas = Canvas({ width: WIDE, height: 300, style: { x: SAFE, y: LIST_Y, borderRadius: 0 },
+var previewCanvas = Canvas({ width: WIDE, height: 272, style: { x: SAFE, y: LIST_Y, borderRadius: 0 },
   onDraw: function (ctx) {
     var p = preview();
     ctx.clear();
-    ctx.fillColor('#04090F');
-    ctx.fillRect(0, 0, WIDE, 300);
+    ctx.fillColor(fmTheme.colors.bg);
+    ctx.fillRect(0, 0, WIDE, 272);
     if (p === null) return;
-    ctx.text(10, 8, trim(p.name, 40), '#5C7794', 14);
+    ctx.text(10, 8, trim(p.name, 40), fmTheme.colors.textDim, 14);
     for (var i = 0; i < p.lines.length; i++) {
-      ctx.text(10, 36 + i * 30, p.lines[i], '#E6F0FA', 14);
+      ctx.text(10, 36 + i * 30, p.lines[i], fmTheme.colors.text, 14);
     }
   } });
 
@@ -240,12 +239,12 @@ lume.setAttr(previewCanvas, 5, 0);   /* ATTR_VISIBLE = 5, hidden until VIEW */
 
 /* status line + action bar */
 Text({ text: function () { return trim(status(), 46); },
-  style: { x: SAFE, y: 394, width: WIDE, height: 18 } });
+  style: { x: SAFE, y: 368, width: WIDE, height: 18 } });
 
 function action(x, label, handler) {
   return Button({ title: label, style: {
-    x: x, y: 408, width: 94, height: 32,
-    background: 'surface', borderColor: '#22405A', borderWidth: 1, borderRadius: 9
+    x: x, y: 392, width: 94, height: 56,
+    background: 'surface', borderColor: fmTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 9
   }, onPress: handler });
 }
 
@@ -267,5 +266,5 @@ lume.app.onStart(function () { loadDir(cwd()); });
 lume.app.onResume(function () { loadDir(cwd()); });
 
 /* Bottom indicator pill (swipe-up hint). */
-View({ style: { width: 64, height: 3, background: '#2E4761', borderRadius: 2 },
+View({ style: { width: 64, height: 3, background: fmTheme.colors.surfaceAlt, borderRadius: 2 },
   align: 'bottom-mid', alignOffset: { y: -10 } });

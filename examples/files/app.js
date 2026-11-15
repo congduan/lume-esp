@@ -7,7 +7,7 @@
  * 删除经 Dialog 确认 + 递归（POSIX remove() 对非空目录会失败）。
  */
 import '../../runtime/shell.js';
-lume.theme.set({ colors: { primary: '#0B1724', surface: '#132436', text: '#FFFFFF', danger: '#B3261E' }, radius: 10 });
+lume.theme.set({ colors: { bg:'#07111D', primary:'#07111D', surface:'#132435', surfaceAlt:'#1C3449', text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0', danger:'#FF6B79', success:'#40D8B0' }, radius: 12, spacing:12 });
 
 /* ============ 状态 ============ */
 const cwd = signal('/');
@@ -96,47 +96,48 @@ function removeSelected() {
 View({ style: {
   width: '100%', height: '100%', background: 'primary', scroll: 'none',
   display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-  padding: 40
+  padding: 32
 }}, [
   /* 顶栏：返回 + 路径 + 占位 */
   View({ style: {
     display: 'flex', flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', width: '100%', height: 44,
-    background: 'surface', borderRadius: 10,
-    paddingLeft: 10, paddingRight: 10, scroll: 'none'
+    background: 'surface', borderRadius: 12,
+    paddingLeft: 12, paddingRight: 12, scroll: 'none'
   }}, [
     Button({
       title: '<',
-      style: { width: 44, height: 30, borderRadius: 8 },
+      style: { width: 44, height: 32, borderRadius: 8, background:'surfaceAlt' },
       onPress: function () {
         if (cwd() !== '/') loadDir(cwd().replace(/[^/]+\/$/, '') || '/');
       },
     }),
-    Text({ text: function () { return cwd(); }, style: {} }),
+    Text({ text: function () { return 'Files / ' + cwd(); }, style: {} }),
     View({ style: { width: 44, height: 30 } }),           // 占位保持路径居中
   ]),
 
   /* 文件列表（固定高度，窗口化渲染） */
   List({
-    items: entries, itemHeight: 42,
-    style: { width: '100%', height: 260, background: 'surface', borderRadius: 10,
+    items: entries, itemHeight: 48,
+    style: { width: '100%', height: 272, background: 'surface', borderRadius: 12,
              scrollbar: 'off' },
     renderItem: function (e) { return View({
       style: {
         display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
-        width: '100%', height: 42, paddingLeft: 10, borderRadius: 8,
+        width: '100%', height: 48, paddingLeft: 12, borderRadius: 8,
         background: function () {
-          return selected() === e.name ? '#2A4A7A' : '#101828';
+          return selected() === e.name ? 'surfaceAlt' : (entries().indexOf(e) % 2 ? 'surfaceAlt' : 'surface');
         },
         scroll: 'none'
       },
       onPress: function () { openEntry(e.name); },
     }, [
+      View({style:{width:4,height:32,background:function(){return selected()===e.name?'accent':'surface';},borderRadius:8}}),
       Text({ text: e.isDir ? '[DIR]' : '[FILE]' }),
       Text({ text: e.name }),
       Button({
         title: 'DEL',
-        style: { width: 56, height: 28, borderRadius: 7 },
+        style: { width: 56, height: 32, borderRadius: 8, background:'danger' },
         onPress: function () { askDelete(e.name); },
       }),
     ]); },
@@ -145,13 +146,16 @@ View({ style: {
   /* 底部操作行 */
   View({ style: {
     display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
-    width: '100%', height: 44
+    width: '100%', height: 56
   }}, [
-    Button({ title: 'del selected', style: { width: 130, height: 40, borderRadius: 10 },
+    Button({ title: 'del selected', style: { width: 144, height: 56, borderRadius: 999, background:'accent' },
              onPress: removeSelected }),
     Text({ text: function () { return status(); }, style: { flexGrow: 1 } }),
   ]),
 ]);
+
+Text({text:function(){return entries().length?'':'[ ]';},style:{x:200,y:180,width:80,fontSize:40,color:'textDim',textAlign:'center'}});
+Text({text:function(){return entries().length?'':'No files in this folder';},style:{x:64,y:232,width:352,fontSize:13,color:'textDim',textAlign:'center'}});
 
 /* ============ 生命周期 ============ */
 lume.app.onResume(function () { loadDir(cwd()); });   // 回前台重读目录
