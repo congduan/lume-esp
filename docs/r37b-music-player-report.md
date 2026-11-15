@@ -72,6 +72,7 @@ LRC skip untimed: PASS
 LRC sort: PASS
 LRC bad GBK bytes: PASS
 Scheduler: ticks=7 decoded=5 sent=4 retry=2 PASS
+Scheduler: stop and negative-index wrap PASS
 
 $ PLAYWRIGHT_MODULE=/tmp/lume-playwright/node_modules/playwright node tools/simulator/verify_music_player.js
 PASS library screenshot=artifacts/simulator/MusicLibrary.png
