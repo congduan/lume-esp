@@ -44,10 +44,26 @@ jobs:
           tools/emu/run.sh examples/image_gallery
           tools/emu/run.sh examples/games_2048
           EMU_BOARD=lume-amoled216-no-imu EMU_OUTPUT_DIR=artifacts/emu/gravity_ball_no_imu tools/emu/run.sh examples/gravity_ball
-      - name: Upload screenshots and logs
+      - name: Scan regression (speedometer + dashboard, N=5)
+        # Reuses the esp32sim + S3 ROM built by setup.sh / fetch-rom.sh above
+        # and the firmware images from espressif/esp-idf-ci-action. scan.js
+        # reads EMU_BIN / EMU_ROM (scan.js:simBin()/findRom()) and requires
+        # firmware/build/*.bin (scan.js:images()); EMU_SKIP_BUILD is a run.sh
+        # knob, not consumed by scan.js. Output is --json (parseable); a FAIL
+        # exits 1 and, with set -e, turns the job red (no || true).
+        env:
+          EMU_BIN: tools/emu/.cache/bin/esp32sim
+          EMU_ROM: tools/emu/.cache/rom/esp32s3_rev0_rom.elf
+        run: |
+          set -euo pipefail
+          node tools/lume/lume.js screenshot --scan 5 examples/speedometer --json
+          node tools/lume/lume.js screenshot --scan 5 examples/dashboard --json
+      - name: Upload screenshots, logs and scan products
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lume-emu-${{ github.run_number }}
-          path: artifacts/emu/
+          path: |
+            artifacts/emu/
+            artifacts/check/
           if-no-files-found: warn
