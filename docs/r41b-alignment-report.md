@@ -10,15 +10,15 @@ Command: `python3 tools/emu/check_layout.py --all tools/emu/layout_expectations.
 
 ```text
 app                  R1    R2    R3    R4    R5    R6    R7
-counter              PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-power_demo           PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-imu_poll             PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-heart_curve          PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-dashboard            PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-device_monitor       PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-files                PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-file_manager         PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-ai_chat              PASS  PASS  PASS  PASS  PASS  PASS  PASS 
+counter              PASS  PASS  PASS  PASS  PASS  PASS  PASS
+power_demo           PASS  PASS  PASS  PASS  PASS  PASS  PASS
+imu_poll             PASS  PASS  PASS  PASS  PASS  PASS  PASS
+heart_curve          PASS  PASS  PASS  PASS  PASS  PASS  PASS
+dashboard            PASS  PASS  PASS  PASS  PASS  PASS  PASS
+device_monitor       PASS  PASS  PASS  PASS  PASS  PASS  PASS
+files                PASS  PASS  PASS  PASS  PASS  PASS  PASS
+file_manager         PASS  PASS  PASS  PASS  PASS  PASS  PASS
+ai_chat              PASS  PASS  PASS  PASS  PASS  PASS  PASS
 music_player         PASS  PASS  PASS  PASS  PASS  PASS  PASS
 ```
 
@@ -316,15 +316,15 @@ music_player: artifacts/emu/ui-refresh/music_player.png
   PASS R6 vol4: screen inset >= 24
 
 app                  R1    R2    R3    R4    R5    R6    R7
-counter              PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-power_demo           PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-imu_poll             PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-heart_curve          PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-dashboard            PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-device_monitor       PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-files                PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-file_manager         PASS  PASS  PASS  PASS  PASS  PASS  PASS 
-ai_chat              PASS  PASS  PASS  PASS  PASS  PASS  PASS 
+counter              PASS  PASS  PASS  PASS  PASS  PASS  PASS
+power_demo           PASS  PASS  PASS  PASS  PASS  PASS  PASS
+imu_poll             PASS  PASS  PASS  PASS  PASS  PASS  PASS
+heart_curve          PASS  PASS  PASS  PASS  PASS  PASS  PASS
+dashboard            PASS  PASS  PASS  PASS  PASS  PASS  PASS
+device_monitor       PASS  PASS  PASS  PASS  PASS  PASS  PASS
+files                PASS  PASS  PASS  PASS  PASS  PASS  PASS
+file_manager         PASS  PASS  PASS  PASS  PASS  PASS  PASS
+ai_chat              PASS  PASS  PASS  PASS  PASS  PASS  PASS
 music_player         PASS  PASS  PASS  PASS  PASS  PASS  PASS
 ```
 
