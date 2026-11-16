@@ -121,9 +121,16 @@
           const text = new TextDecoder().decode(bytes);
           const img = new Image();
           img.onload = () => {
+            /* Render at the NODE's box, not the SVG's intrinsic size: apps size
+             * Image nodes via style (abc123 uses 320x320 for a 100x100 viewBox).
+             * drawImage(img, 0, 0) painted the SVG at 100x100 in the corner,
+             * leaving the rest of the node transparent -> 'tiny letter' bug. */
+            const host0 = document.querySelector('#device [data-node-id="' + id + '"]');
+            const W = host0 ? (host0.clientWidth || img.width) : img.width;
+            const H = host0 ? (host0.clientHeight || img.height) : img.height;
             const c = document.createElement('canvas');
-            c.width = img.width || 100; c.height = img.height || 100;
-            c.getContext('2d').drawImage(img, 0, 0);
+            c.width = W; c.height = H;
+            c.getContext('2d').drawImage(img, 0, 0, W, H);
             if (!globalThis.LUME_IMAGE_BITMAPS) globalThis.LUME_IMAGE_BITMAPS = {};
             globalThis.LUME_IMAGE_BITMAPS[id] = c;
             const mount = () => {
