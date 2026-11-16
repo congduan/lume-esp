@@ -29,6 +29,7 @@
     ['sokoban','▣','Sokoban','推箱子','10 puzzles, swipe to push','十关推箱子'],
     ['lcd_dual','◫','LCD dual','双屏 LCD','Segment-LCD catch & dodge','幽灵段接面包与闪避'],
     ['memory','▸','Memory Match','记忆翻牌','4x4 pair-matching card game','4x4 配对翻牌'],
+    ['minesweeper','✸','Minesweeper','扫雷','10x10 grid, tap dig + long-press flag','10x10 扫雷：点开 + 长按插旗'],
   ];
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');
