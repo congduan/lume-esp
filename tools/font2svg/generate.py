@@ -32,7 +32,7 @@ def outline(glyph_set, glyph_name, box):
     scale = min(w / (right - left), h / (top - bottom))
     dx = x + (w - (right - left) * scale) / 2 - left * scale
     dy = y + (h - (top - bottom) * scale) / 2 + top * scale
-    path_pen = SVGPathPen(glyph_set)
+    path_pen = SVGPathPen(glyph_set, ntos=lambda n: f"{round(n, 2):g}")
     rounded = RoundingPen(path_pen, roundFunc=lambda n: round(n, 2),
                           transformRoundFunc=lambda n: round(n, 2))
     glyph_set[glyph_name].draw(TransformPen(rounded, (scale, 0, 0, -scale, dx, dy)))
