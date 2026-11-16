@@ -616,7 +616,7 @@ LLM 首 token ~500ms（网关按句切分，首句完成即送 TTS）｜TTS 首�
 - **A：job drain + Promise**——一切 async API 的前置，改动最小；prelude/timer 回调路径
   回归（回调产生 Promise 现状静默丢失，补后行为变化）。
 - **B：`lume.net.ws`**——esp_websocket 组件 + 事件派发 + owned payload。
-- **C：`audio.recordStream` + `audio.stop`**——镜像 playStream 架构，环缓冲 64KB 级。
+- **C：`audio.recordStream` + `audio.stopStream`**——r72 已实现：64 KiB PSRAM RX 环、独立音频任务、八块有界引擎队列与最旧块淘汰；首个受益者 `examples/spectrum`。E 刀可直接复用 16 kHz PCM 帧上行，真机时延与双向 DMA 并发仍待接板验收。
 - **D：网关服务**（Node，独立仓库/目录）——协议先行可定：上游二选一待拍板
   （①小智官方协议：复用小智生态角色/记忆/配置；②直连 ASR/LLM/TTS 三件：自由度大不受
   小智服务端约束）。

@@ -215,3 +215,21 @@ returns `{status, body, contentLength, truncated}` or a negative error code. `bo
 | `choices[0].message.content`, `choices[0].finish_reason`, `usage` | `content`, `finishReason`, `usage` result |
 
 Contract source: [DeepSeek Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/). ESP-IDF transport source: [ESP HTTP Client v5.5](https://docs.espressif.com/projects/esp-idf/en/release-v5.5/esp32/api-reference/protocols/esp_http_client.html).
+
+## Microphone stream (r72)
+
+`lume.audio.recordStream({chunkSamples: 1024, onChunk(pcm, samples), onError?(code)})`
+starts one 16 kHz signed 16-bit interleaved stereo RX stream. `chunkSamples`
+accepts 512, 1024 (default), or 2048 frames. A 64 KiB PSRAM RX ring is filled
+by an audio task. An eight-chunk engine queue transfers owned PCM to QuickJS;
+when full, it discards the oldest audio chunk and increments
+`lume.audio.recordStreamDropped()`. The JS callback runs on the engine task,
+never on the I2S task. Return from it within a few milliseconds: do only small
+FFT work or set a signal; defer string building, decoding, and rendering to a
+timer tick. `lume.audio.stopStream()` stops capture and drains queued chunks.
+
+Start returns `0`, `-1` for arguments, `-2` for codec/I2S failure, `-3` for
+board unavailable or busy, and `-4` for allocation. Only one recording stream
+may run. The RX slave uses TX master BCLK/WS: while recording, playback at a
+rate other than 16 kHz is rejected with `-3`. The synchronous `record()` also
+returns `-3` during a stream. `stopStream()` returns `-3` if no stream runs.
