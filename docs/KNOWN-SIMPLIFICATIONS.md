@@ -1,5 +1,17 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
+## r70 / abc123 幼儿字母数字卡（host + browser + esp32sim 证据，无真机验收）
+
+- **范围**：新增 `examples/abc123/app.js` + `tests/abc123.js`；playground 四处同步（build.mjs apps、page.js picker、index.html script、verify.mjs 24→25）并重新生成 `website/playground/{apps,sources}` 产物；README Apps 表加格、roadmap 新开「幼儿教育」叙事行、本条与 `docs/r70-abc-report.md`。固件 C、prelude C 字符串、bridge ABI、帧协议、`runtime/types/lume.d.ts`、vendored 组件全部未改。未推送。
+- **字号上限实证（本刀最大技术决策）**：`runtime/types/lume.d.ts:54-57` 与 `firmware/components/lume-ui-bridge/lume_ui_bridge.c:660-667` 实证 Text `fontSize` 经 `theme.fontScale` 相乘后仍被 **snap 到 14/20/32 三档**，渲染上限 32 px，远达不到 480 屏 ≥60%（~290 px）的单字巨幕。故大字形一律 Canvas 手绘：数字用七段 fillRect（与 calculator 同一抽象，也是数字写法启蒙的正确视觉），字母用粗笔画 polyline，全部为手授权点路径，`ctx.polyline` 上限 240 点 / 8-16 px 宽；**不引字体轮廓解析库**，简报「需字体解析即停」条款未触发。HUD/底部文案用 20 px Text（=20 档），符合「无小字 ≥20」。
+- **ctx.circle 实为描边环**：r47 把 `LUME_DRAW_CIRCLE` 从八个实心 stamp 改成 `lume_raster_ring`（`lume_ui_bridge.c:962-966`），`ctx.circle(x,y,r,c)` 现在是 **1px 空心环**，不是实心圆。数字卡要「实心圆点」故改用 `ctx.arc(x,y,r,0,360,r+2,c)`——整圆扫 + 宽度 > 2r 触发 r48 登记的空腔闭合退化，得到实心圆点；浏览器 renderer 的 op5 同参也能画出实心。A-E 图标中的苹果有意保留空心环 + 绿柄，作为简笔涂鸦风。
+- **交互取舍**：全屏单手势——屏幕下部（y≥74）任意点击 = 下一张；顶部 74px HUD 条点击 = 切模式（seq→rand→case→seq，切换即重置为首卡）。**无 exit / 无 back / 无家长锁**：单 app 锁屏归 launcher/boot 策略，本 app 不提供任何退出路径，幼儿乱点不会误退。只用一个 `lume.gesture.on(root,'tap')` + 坐标分区，没有第二个可点击节点，避免 LVGL 事件冒泡导致「切模式顺带翻页」双触发。
+- **语音开关不做**：无 TTS 固件能力（audio 仅裸 PCM / playStream / MP3 解码，无语音合成绑定），登记不实现，非本轮缺口。
+- **大小写对照模式**：`case` 模式字母左右并排显示大写 + 简化小写笔画（手绘近似，非字体轮廓）；每字形约 54% 屏高，低于单字形模式（62.9% / 数字 60.4%），因并排对照主动让出宽度，如实登记。数字无大小写，`case` 模式下数字仍按单七段字形显示（语义不变、顺序不变）。
+- **随机模式**：Fisher-Yates 洗牌成 36 张袋，抽完才重洗，保证未抽完不重复；模式切换重置袋与序号。
+- **playground 计数口径**：本分支基于 origin/main r68（24 apps），只加 abc123 → 25 apps。并行 r69 worktree 另有 `examples/sokoban/`（未并入本分支），两刀合并后总数应为 **26**，由主控合并时统一四处计数，避免各自把对方 app 计入导致重复/构建缺文件。
+- **仍 open（全部真机验收）**：点屏/色彩、弹跳动画流畅度、HUD 在真机 AMOLED 的可读性、20ms tick 帧率、bundle 推送一律未验。`lume check` 绿 + 10 条 host harness 绿 + 25-app 浏览器 verify 绿 + esp32sim 截图 ≠ 真机验收。
+
 ## r51b / emu.yml 矩阵移除 image_gallery（CI 专有行为分歧，本地无法复现）
 
 - **现象**：GitHub Actions 的 esp32sim 矩阵里 `examples/image_gallery` 间歇性失败（r47 绿、r48 一红一绿、r49/r50/r51 连红），失败模式固定：注入 frame 后 `runtime up; eval app` 打出、app 自己的 `js: gallery: eval start` 与首个 `create id=1 kind=4`（Image 节点）也打出，随后 eval 静默挂起——既无 `app eval ok` 也无 `eval failed`/`RELOAD ERR`，`[emu] stop` emulated 8.000s 正常结束。失败轮指令数 ~1.2G，本地成功轮 ~132M（9 倍分歧，块缓存 25572 vs 30729），说明 CI 上固件确实走进了不同的执行路径（疑似 Image 解码相关忙等/重试），但无任何错误日志。

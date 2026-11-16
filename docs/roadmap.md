@@ -732,6 +732,10 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 本刀起，roadmap 在「经典 app 复刻生态」下新开**Retro classics**叙事行，收编自研、原创近似的街机风格像素游戏（不点名原商标、不逐像素复制原始精灵位图）。已落地两款：`examples/invaders/`、`examples/frogger/`，均在 playground 24-app 列表内；像素字体统一沿用 14px Montserrat，真机手感/帧率/音效待接板验收。详见 `docs/r68-retro-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`（r68）。
 
+### 幼儿教育（r70 起的新分组，非复刻线）
+
+与上面的社区复刻候选**无关**：教育品类自开叙事行，不放在 Retro classics / 复刻表里。已落地 `examples/abc123/`（`docs/r70-abc-report.md`）：36 张卡（A-Z + 0-9），顺序 / 随机 / 大小写对照三模式，全屏单手势点屏翻页 + 顶部 HUD 切模式，点击弹跳反馈，数字卡按值画实心圆点、A-E 配极简 Canvas 图标。关键技术实证：Text 字号被 bridge 钉死在 14/20/32 三档（`lume_ui_bridge.c:660-667`），故大字形走 Canvas 手绘矢量（数字七段 + 字母粗笔画），不引字体解析器。真机点屏/色彩/触感待接板验收。
+
 ### P2 — 有依赖缺口或需固件刀，如实标注后缓做
 
 | 候选 | 价值 | 缺口（诚实原则） |
