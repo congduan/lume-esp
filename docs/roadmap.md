@@ -712,7 +712,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 | **俄罗斯方块**（已落地 `3bfa796`，见 `docs/r62-tetris-report.md`） | 经典品类在 ESP32 生态已被反复验证（LED 矩阵/小屏实现众多），但圆屏高分辨率彩色版缺位 = 差异化空间。10×20 格缩放进 canvas，pan 手势横移 + tap 旋转 + swipe 软降，hiscore 走 `lume.storage.kv`（key ≤15 字符） | 网格类 = canvas 最舒适区（games_2048/breakout 先例）；方块预览+next 提示用双 canvas 或分区重绘；纯 app 层，无缺口 |
 | **闭环目标环表盘**（已落地 r63，见 `docs/r63-ringface-report.md`；智能手表原生风格：三同心环 complications） | r48 原生 AA `ctx.arc`：三条进度弧及三条低亮度轨道；步数估算接 IMU 或 demo 数据、电量接 PMIC、站立计数接 timer | watchface 第 4 面已接入 swipe 循环；每帧六条原生弧、46,656 px 脏区；纯 app 层 |
 | **模块化信息格表盘**（已落地 r64，见 `docs/r64-modular-report.md`；智能手表 modular 风格：多 complication 网格） | 一次演示主题+Card+signals+轮询全家桶：天气/电池/温度/日历小格，数据源接 `lume.net.httpRequest` 与本地传感器 | watchface 第 5 面已接入 swipe 循环；零 canvas——卡片走原生 View/Text（canvas 全 app 预算 228,544/230,400 px 已满）；纯 app 层 |
-| **桌面宠物**（像素电子宠物：喂食/抚摸/作息） | 触摸=抚摸、长按=喂食、翻腕（IMU）=惊醒——单点触摸+IMU 全用上；像素动画走 fillRect 预计算 spans（gravity_ball 模式）；**热更新 = 皮肤商店独有卖点**（换宠物/换装免刷机） | 帧动画 = 每拍局部脏区，性能无忧；状态机（睡眠/饥饿/情绪）纯 JS；纯 app 层 |
+| **桌面宠物**（已落地 r65，见 `docs/r65-pet-report.md`；像素电子宠物：喂食/抚摸/作息） | 触摸=抚摸、长按=喂食、翻腕（IMU）=惊醒——单点触摸+IMU 全用上；像素动画走 fillRect 预计算 spans（gravity_ball 模式）；**热更新 = 皮肤商店独有卖点**（换宠物/换装免刷机） | `examples/pet/app.js`：16×16 像素表 → spans 预计算，每拍只重画脏区（闲置 72–96×12 px，睡时不重绘）；状态机纯 JS；两套皮肤 + `lume.storage.kv` 记忆，热更新换肤；host + esp32sim 验证，纯 app 层 |
 
 ### P1 — 第二批（有差异化亮点或需性能 spike）
 

@@ -1067,3 +1067,14 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - SVG rasterization supports solid fill/stroke/opacity and the documented geometry/path subset. `transform` is unsupported. Gradients, filters and text are unsupported. The bitmap target is at most 480×480 with a centered `viewBox` meet mapping.
 - Host harness, firmware build and emulator checks do not constitute board acceptance. Display appearance, touch feel, memory pressure under real workload and transfer behavior remain for on-device verification.
 - The fill and stroke sampler visits every flattened edge for each covered pixel sample. A 100×100 circle icon did not finish app evaluation within the emulator's 8-second simulated window; the checked SVG smoke example uses an 80×80 rectangle and path. Latency for complex SVGs needs board profiling before treating them as interactive assets.
+
+## r65 / 桌面宠物（host + esp32sim 证据，无真机验收）
+
+- **范围**：新增 `examples/pet/app.js` + `tests/pet.js`，只动 examples/tests/文档；固件 C、prelude C 字符串、bridge ABI、帧协议、`runtime/types/lume.d.ts`、vendored quickjs-ng/lvgl 全部未改。未推送。
+- **像素手法**：16×16 调色板索引二维数组 → 每行同色连续段预计算成 `[y,x,w,color]` fillRect spans（gravity_ball 模式），所有 (皮肤,状态,帧) 组合在加载时一次算好；每拍只对「上一帧与当前帧不同」的单元格包围盒做 `fillColor(BG)+fillRect` 清除与局部重绘。闲置 4 帧只动眼睛行，实测脏区 72–96×12 px；睡眠态 1 帧静止且 tick 不 bump 重绘信号，40 拍零 draw / 零 invalidate。脏区是精灵局部盒，不是全 480×480 画布。
+- **状态机**：`IDLE / HAPPY / HUNGRY / SURPRISED / SLEEP` 纯 JS。20 Hz `setInterval`；饥饿 +2.5/s、快乐 −1.2/s，睡眠衰减减半；HAPPY 2.5 s、SURPRISED 1.5 s 后回落；16 s 无交互自动入睡。数值是演示调参，不是真实宠物养成模型。
+- **交互实证口径**：tap→抚摸（`lume.gesture.on(scene,'tap')`）、longpress→喂食、IMU 幅度偏离 ~9.81 且 debounce 后→惊醒。手势经 prelude 的归一化 DOWN/MOVE/UP 流驱动；esp32sim 用独立 `/tmp` 脚本注入 `touch x y 1/1/0`，串口实证 `PET PET happy=75 state=HAPPY`。**翻腕惊醒只在 host harness 用注入 IMU 样本验证**——esp32sim 默认静止 IMU，未做真机翻腕；启动瞬间的近零 IMU 向量被当作「传感器未就绪」忽略，避免开机误惊醒。
+- **皮肤商店卖点**：两套皮肤（CAT / SLIME）同时换配色与像素几何；`lume.storage.kv.set('pet.skin', i)`（8 字符 ≤ 15 字符上限）记忆，新运行时按索引恢复。换肤 = 纯数据变更，固件不动，可由 `lume dev` 热更新推送。这只是给 app 作者的示范：本轮**未**实现在线商店/OTA 拉取/预览购买流程，皮肤表硬编码在 app.js 内。
+- **KV 取值注意**：`kv.get()` 的负值可能是存储的数字也可能是错误码，故只判断 `=== 1`，其余（含 −2/7/字符串/null）一律回退皮肤 0；不拿 `r < 0` 当错误判别。
+- **字体限制**：HUD/文案只用 ASCII 与中文，Zzz 与图标都用像素点画，未使用 ·/☂/☁/☀ 等固件缺字形的符号。
+- **仍 open（全部真机验收）**：点屏/色彩、触摸方向与手感、翻腕（IMU）惊醒的真机手感与轴向/阈值、睡眠电流、bundle 推送与持久化跨断电、20–30 fps 真机帧率、KV 真机跨电源周期保存一律未验。`lume check` 绿 + host harness 绿 + esp32sim 截图 ≠ 真机验收。
