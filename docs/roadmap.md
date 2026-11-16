@@ -697,7 +697,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 | 候选 | 价值与复刻要点 | 可行性口径 |
 |---|---|---|
-| **俄罗斯方块** | 经典品类在 ESP32 生态已被反复验证（LED 矩阵/小屏实现众多），但圆屏高分辨率彩色版缺位 = 差异化空间。10×20 格缩放进 canvas，pan 手势横移 + tap 旋转 + swipe 软降，hiscore 走 `lume.storage.kv`（key ≤15 字符） | 网格类 = canvas 最舒适区（games_2048/breakout 先例）；方块预览+next 提示用双 canvas 或分区重绘；纯 app 层，无缺口 |
+| **俄罗斯方块**（已落地 `3bfa796`，见 `docs/r62-tetris-report.md`） | 经典品类在 ESP32 生态已被反复验证（LED 矩阵/小屏实现众多），但圆屏高分辨率彩色版缺位 = 差异化空间。10×20 格缩放进 canvas，pan 手势横移 + tap 旋转 + swipe 软降，hiscore 走 `lume.storage.kv`（key ≤15 字符） | 网格类 = canvas 最舒适区（games_2048/breakout 先例）；方块预览+next 提示用双 canvas 或分区重绘；纯 app 层，无缺口 |
 | **闭环目标环表盘**（智能手表原生风格：三同心环 complications） | r48 原生 AA `ctx.arc` 正中靶心——三个抗锯齿同心环各一条原生指令；步数目标接 IMU 或 demo 数据、电量接 PMIC、站立时段接 timer | watchface 现有三面（数字/模拟/环形信息）之外的第 4 面，swipe 翻面直接挂进现有切换；静态刻度走 retained paths；纯 app 层 |
 | **模块化信息格表盘**（智能手表 modular 风格：多 complication 网格） | 一次演示主题+Card+signals+轮询全家桶：天气/电池/温度/日历小格，数据源接 `lume.net.httpRequest` 与本地传感器 | 与 dashboard 定位区分：表盘口径（时间为主视觉+小格环绕）非遥测口径；与 device_monitor 不重复（它是 2Hz 遥测仪表）；纯 app 层 |
 | **桌面宠物**（像素电子宠物：喂食/抚摸/作息） | 触摸=抚摸、长按=喂食、翻腕（IMU）=惊醒——单点触摸+IMU 全用上；像素动画走 fillRect 预计算 spans（gravity_ball 模式）；**热更新 = 皮肤商店独有卖点**（换宠物/换装免刷机） | 帧动画 = 每拍局部脏区，性能无忧；状态机（睡眠/饥饿/情绪）纯 JS；纯 app 层 |
