@@ -105,7 +105,39 @@
       setPin: () => 0, write: () => 0, read: () => 1, toggle: () => 0,
       pwmAttach: () => 0, pwmDuty: () => 0, pwmFree: () => 0,
     },
-    image: { sizeOf: () => -1, _setSource: () => -1 },
+    image: {
+      /* Browser SVG support: sizeOf parses width/height attrs (default 100x100
+       * viewBox convention); _setSource rasterises the SVG via an <img> and
+       * hands the bitmap to the renderer through LUME_IMAGE_BITMAPS[nodeId]. */
+      sizeOf: bytes => {
+        try {
+          const text = new TextDecoder().decode(bytes);
+          const w = /width\s*=\s*"(\d+)/.exec(text), h = /height\s*=\s*"(\d+)/.exec(text);
+          return { width: w ? +w[1] : 100, height: h ? +h[1] : 100 };
+        } catch (e) { return -2; }
+      },
+      _setSource: (id, bytes) => {
+        try {
+          const text = new TextDecoder().decode(bytes);
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement('canvas');
+            c.width = img.width || 100; c.height = img.height || 100;
+            c.getContext('2d').drawImage(img, 0, 0);
+            if (!globalThis.LUME_IMAGE_BITMAPS) globalThis.LUME_IMAGE_BITMAPS = {};
+            globalThis.LUME_IMAGE_BITMAPS[id] = c;
+            const mount = () => {
+              const host = document.querySelector('#device [data-node-id="' + id + '"]');
+              if (host && !host.querySelector('canvas')) { host.textContent = ''; host.appendChild(c.cloneNode ? c : c); }
+            };
+            mount();
+            setTimeout(mount, 100); setTimeout(mount, 400); /* node may attach after decode */
+          };
+          img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(text);
+          return 0;
+        } catch (e) { return -2; }
+      },
+    },
     audio: {
       play: () => 0, record: () => -3, setVolume: () => 0, stop: () => 0,
       playStream: () => 0, streamFinished: () => true,
