@@ -70,6 +70,18 @@ hot-reload events stall during a scan. Requires the station started; the
 driver may reject a scan during an ongoing association (`-2`). Real scan
 results on hardware are deferred to the on-board round.
 
+r57 WebSocket client: `lume.net.ws.connect(url, {headers?, onOpen?,
+onMessage?, onClose?, onError?}, cb)` starts a `ws://` or `wss://` connection.
+`cb(error, handle)` runs once, on open or connection failure; omit `cb` for a
+`Promise<handle>`. The handle has `send(string | ArrayBuffer): number` and
+`close(): number`. A string sends a text frame; an ArrayBuffer sends a binary
+frame. `onMessage` receives a string or ArrayBuffer. All callbacks run on the
+engine task; keep them short so touch and timers remain responsive. There are
+two concurrent handles and a 64 KiB incoming message cap. Errors are negative
+numbers (`-1` argument/handle, `-2` transport, `-3` no WiFi IP, `-4` slots
+full). Events may be dropped when the engine queue is saturated. The example
+is `examples/ws_echo/app.js`; board WiFi and TLS acceptance remains pending.
+
 r25 implementation note: the design-only `Ble` entry from the r11 note is now
 implemented as a **separate `lume.ble` namespace** (not under `lume.net`), so
 the WiFi/HTTP contract stays untouched. New component

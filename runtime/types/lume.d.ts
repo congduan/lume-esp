@@ -665,6 +665,24 @@ declare namespace lume.apps {
  * main controller's board round.
  */
 declare namespace lume.net {
+  namespace ws {
+    interface Connection {
+      /** String sends a text frame; ArrayBuffer sends a binary frame. */
+      send(data: string | ArrayBuffer): number;
+      close(): number;
+    }
+    interface Options {
+      headers?: Record<string, string>;
+      onOpen?: (connection: Connection) => void;
+      onMessage?: (data: string | ArrayBuffer) => void;
+      onClose?: () => void;
+      onError?: (error: number) => void;
+    }
+    /** Starts a client connection. Callback receives (null, handle) on open or
+     * (negative error, null) on failure; callbacks run on the engine task.
+     * At most two connections and 64 KiB per incoming message. */
+    function connect(url: string, options?: Options, cb?: (error: number | null, handle: Connection | null) => void): Promise<Connection> | void;
+  }
   /** status().state enum values, also exposed as lume.net.DISCONNECTED etc. */
   const DISCONNECTED: 0;
   const CONNECTING: 1;

@@ -1053,3 +1053,10 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - The engine drains at most 64 QuickJS jobs after each event dispatch and `__lume_tick`, before the next queue wait. A self-feeding Promise chain continues over later turns, leaving event dispatch and timer checks reachable. A job exception is logged and stops that turn's drain; the remaining jobs can run on the next turn.
 - `async`/`await` continuations can now update signals and UI. This does not make synchronous native calls asynchronous: `lume.ai.chat()` still blocks the engine task as described under r34.
 - The Node prelude harness checks the async button callback and reactive Text update. Firmware execution and Promise job scheduling require esp32sim or board verification; Node vm microtasks alone do not validate QuickJS's queue. Physical board acceptance remains open.
+
+## r57 / WebSocket client
+
+- The device accepts at most two concurrent WebSocket clients and 64 KiB per received logical message. The component may split frames across DATA events; the transport copies and reassembles them before engine dispatch. Oversized/invalid frames report `onError(-2)` and drop that message.
+- The engine event queue is bounded. A saturated queue can drop WS events; message payloads are freed on post failure and after dispatch. Sustained streaming throughput and backpressure still need board measurement.
+- `send()` can block the engine for up to one second while the ESP WebSocket transport writes. Keep UI callbacks short and avoid sending large frames from a touch handler. Connection setup remains asynchronous on the component task.
+- The host C test covers message ownership and continuation frames; the Node test covers callback routing and text/binary types. esp32sim has no connected WS echo endpoint in this worktree. Physical WiFi association, TLS trust, reconnect behavior, frame throughput, memory peaks, and touch responsiveness during audio streaming remain pending board acceptance.

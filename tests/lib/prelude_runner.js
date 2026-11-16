@@ -66,6 +66,7 @@ function runApp(script, options = {}) {
       status: () => ({ state: 0, ip: null }),
       otaStatus: () => ({ running: false, wifiReady: false, tokenReady: false, port: 8765, token: '' }),
       httpGet: () => -3,
+      ws: { _connect: () => -3, _send: () => -1, _close: () => -1 },
       // Host-side scan stand-in (no radio): two fake APs, RSSI-sorted.
       scan: () => [
         { ssid: 'Demo-AP', rssi: -42, auth: 3 },
