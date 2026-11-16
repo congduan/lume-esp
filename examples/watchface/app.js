@@ -1,10 +1,17 @@
-/* Three swipeable watch faces. Time is the device's Date clock. */
-var WATCHFACE_START_PAGE = 0; /* 0 digital, 1 analog, 2 rings; useful for captures */
+/* Four swipeable watch faces. Time is the device's Date clock. */
+var WATCHFACE_START_PAGE = 0; /* 0 digital, 1 analog, 2 info rings, 3 activity goals */
 var faceTheme = { colors: { primary: '#08121C', bg: '#08121C', surface: '#132435', surfaceAlt: '#1C3449', text: '#F4F8FA', textDim: '#92AAB6', accent: '#40D8B0', danger: '#FF7081', success: '#40D8B0' } };
 lume.theme.set(faceTheme);
 var faceNow = signal(new Date()), facePage = WATCHFACE_START_PAGE;
 var faceSteps = signal(0), faceTimer = null;
-var faceBatt = signal(0);
+var faceBatt = signal(78), faceBattLive = signal(false);
+var goalProgress = signal([24, 18, 35]); /* demo percentages; 1 Hz animation */
+var goalSteps = 0, goalExerciseSeconds = 0, goalStandSlots = 0, goalLastStandMinute = -1;
+var goalMotion = false, goalArmed = true, goalLastStep = 0, goalSampleTimer = null, goalBase = null;
+var goalValues = signal([120, 9, 4]);
+var goalColors = ['#FF5C70', '#81E46A', '#5ADDE7'];
+var goalTracks = ['#48202C', '#25442D', '#1B4048'];
+function goalClamp(n) { return Math.max(0, Math.min(100, isFinite(n) ? n : 0)); }
 var FACE_DAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 function faceTwo(n) { return ('0' + n).slice(-2); }
 function faceTime() { var d = faceNow(); return faceTwo(d.getHours()) + ':' + faceTwo(d.getMinutes()); }
@@ -60,6 +67,43 @@ function ringDraw(c) {
   faceArc(c, 0, 360 * Math.min(1, steps / 6000), 111, '#F9C66A', 8);
   faceArc(c, 0, d.getSeconds() * 6, 86, '#FF7081', 8);
 }
+function goalDraw(c) {
+  var progress = goalProgress(), radii = [100, 81, 62], width = 16;
+  c.fillColor('#08121C'); c.fillRect(0, 0, 220, 220);
+  for (var i = 0; i < 3; i++) {
+    c.arc(110, 110, radii[i], 270, 630, width, goalTracks[i]);
+    /* Native AA op; no JS point sampling. A zero goal has track only. */
+    if (progress[i] > 0) c.arc(110, 110, radii[i], 270,
+      270 + Math.round(360 * goalClamp(progress[i]) / 100), width, goalColors[i]);
+  }
+  return { x: 2, y: 2, w: 216, h: 216 }; /* 46,656 of 48,400 canvas pixels */
+}
+function goalSample() {
+  var imu = lume.imu.read();
+  if (!imu || !isFinite(imu.ax) || !isFinite(imu.ay) || !isFinite(imu.az)) return;
+  var magnitude = Math.sqrt(imu.ax * imu.ax + imu.ay * imu.ay + imu.az * imu.az);
+  var moving = Math.abs(magnitude - 9.81) > 1.35, now = Date.now();
+  if (!moving) { goalArmed = true; return; }
+  if (goalArmed && now - goalLastStep >= 300) {
+    if (!goalMotion) goalBase = goalProgress();
+    goalSteps++; goalLastStep = now; goalArmed = false; goalMotion = true;
+  }
+}
+function goalTick() {
+  var next, values;
+  if (goalMotion) {
+    if (Date.now() - goalLastStep < 5000) goalExerciseSeconds++;
+    var minute = Math.floor(goalExerciseSeconds / 60);
+    if (goalExerciseSeconds > 0 && minute !== goalLastStandMinute) { goalStandSlots++; goalLastStandMinute = minute; }
+    values = [120 + Math.round(goalSteps * 0.04), 9 + Math.floor(goalExerciseSeconds / 60), 4 + goalStandSlots];
+    next = [goalClamp(goalBase[0] + goalSteps / 125), goalClamp(goalBase[1] + goalExerciseSeconds / 18), goalClamp(goalBase[2] + goalStandSlots * 8)];
+  } else {
+    var old = goalProgress();
+    next = [goalClamp(old[0] + 0.8), goalClamp(old[1] + 0.6), goalClamp(old[2] + 0.4)];
+    values = [Math.round(next[0] * 5), Math.round(next[1] * 0.5), Math.round(next[2] * 0.12)];
+  }
+  goalProgress.set(next); goalValues.set(values);
+}
 var faceRoot = View({ style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' } });
 var facePages = [];
 function facePanel() { return View({ parent: faceRoot, style: { position: 'absolute', x: 0, y: 0, width: 480, height: 480, background: 'bg', scroll: 'none' } }); }
@@ -78,17 +122,28 @@ Text({ parent: rings, text: 'LUME / ACTIVITY', style: { position: 'absolute', x:
 var ringCanvas = Canvas({ parent: rings, width: 300, height: 300, style: { position: 'absolute', x: 90, y: 96 }, onDraw: ringDraw });
 Text({ parent: rings, text: function () { return faceTime(); }, style: { position: 'absolute', x: 152, y: 214, width: 176, height: 52, textAlign: 'center', fontSize: 32, color: 'text' } });
 Text({ parent: rings, text: function () { return faceBatt() + '%  ·  ' + faceSteps() + ' 步'; }, style: { position: 'absolute', x: 48, y: 409, width: 384, height: 28, textAlign: 'center', fontSize: 14, color: 'textDim' } });
-function faceShow(n) { facePage = (n + 3) % 3; for (var i = 0; i < 3; i++) lume.setAttr(facePages[i], 5, i === facePage ? 1 : 0); }
+var goals = facePanel(); facePages.push(goals);
+Text({ parent: goals, text: 'LUME / GOALS', style: { position: 'absolute', x: 32, y: 34, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+var goalCanvas = Canvas({ parent: goals, width: 220, height: 220, style: { position: 'absolute', x: 130, y: 132 }, onDraw: goalDraw });
+Text({ parent: goals, text: function () { return faceTime(); }, style: { position: 'absolute', x: 175, y: 198, width: 130, height: 50, textAlign: 'center', fontSize: 32, color: 'text' } });
+Text({ parent: goals, text: function () { var v = goalValues(); return v[0] + ' kcal'; }, style: { position: 'absolute', x: 185, y: 249, width: 110, height: 22, textAlign: 'center', fontSize: 14, color: 'danger' } });
+Text({ parent: goals, text: function () { var v = goalValues(); return v[1] + ' 分钟 / ' + v[2] + ' 次'; }, style: { position: 'absolute', x: 165, y: 272, width: 150, height: 22, textAlign: 'center', fontSize: 14, color: 'text' } });
+Text({ parent: goals, text: function () { return (goalMotion ? 'IMU 步数估算' : 'DEMO 动画') + ' / 电量 ' + faceBatt() + '%' + (faceBattLive() ? '' : ' DEMO'); }, style: { position: 'absolute', x: 60, y: 413, width: 360, height: 24, textAlign: 'center', fontSize: 14, color: 'textDim' } });
+function faceShow(n) { facePage = (n + facePages.length) % facePages.length; for (var i = 0; i < facePages.length; i++) lume.setAttr(facePages[i], 5, i === facePage ? 1 : 0); }
 function faceSwipe(e) { if (e.dir === 'left') faceShow(facePage + 1); if (e.dir === 'right') faceShow(facePage - 1); }
 lume.gesture.on(faceRoot, 'swipe', faceSwipe);
 lume.gesture.on(analogCanvas, 'swipe', faceSwipe);
 lume.gesture.on(ringCanvas, 'swipe', faceSwipe);
+lume.gesture.on(goalCanvas, 'swipe', faceSwipe);
 faceShow(facePage);
 function faceTick() {
   faceNow.set(new Date());
-  var b = lume.pmic.battPercent(); if (typeof b === 'number' && b >= 0 && b <= 100) faceBatt.set(b);
+  var b = lume.pmic.battPercent(); if (typeof b === 'number' && b >= 0 && b <= 100) { faceBattLive.set(true); faceBatt.set(b); }
   var imu = lume.imu.read(); if (imu && Math.abs(imu.ax) + Math.abs(imu.ay) > 1.3) faceSteps.set(faceSteps() + 1);
+  goalTick();
 }
-lume.app.onStart(function () { faceTick(); if (faceTimer === null) faceTimer = lume.system.setInterval(faceTick, 1000); });
-lume.app.onPause(function () { if (faceTimer !== null) { lume.system.clearInterval(faceTimer); faceTimer = null; } });
-lume.app.onResume(function () { faceTick(); if (faceTimer === null) faceTimer = lume.system.setInterval(faceTick, 1000); });
+function faceStart() { faceTick(); if (faceTimer === null) faceTimer = lume.system.setInterval(faceTick, 1000); if (goalSampleTimer === null) goalSampleTimer = lume.system.setInterval(goalSample, 100); }
+function faceStop() { if (faceTimer !== null) { lume.system.clearInterval(faceTimer); faceTimer = null; } if (goalSampleTimer !== null) { lume.system.clearInterval(goalSampleTimer); goalSampleTimer = null; } }
+lume.app.onStart(faceStart);
+lume.app.onPause(faceStop);
+lume.app.onResume(faceStart);
