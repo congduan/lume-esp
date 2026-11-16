@@ -16,7 +16,11 @@
     ['heart_curve','♥','Heart curve','心形曲线','Canvas drawing','画布绘图'],
     ['speedometer','⌁','Speedometer','速度表','Motion display','运动显示'],
     ['power_demo','⚡','Power demo','电源演示','Power state UI','电源状态界面'],
-    ['watchface','◴','Watchface','表盘','Analog and digital','模拟与数字表盘'],
+    ['watchface','◴','Watchface','表盘','Five faces','五种表盘'],
+    ['games_tetris','▚','Tetris','俄罗斯方块','Pan, rotate, drop','拖动旋转降落'],
+    ['game_of_life','◦','Game of Life','生命游戏','Cellular automata','细胞自动机'],
+    ['pet','ᵔ','Desktop pet','桌面宠物','Feed and pet it','喂养与抚摸'],
+    ['async_demo','↻','Async demo','异步演示','async / await','异步Await'],
   ];
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');

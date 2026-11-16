@@ -64,6 +64,7 @@ species + palette) is one data change persisted in `lume.storage.kv`. Because
 the firmware never changes, a new skin ships as a hot-reload push via
 `lume dev` — no rebuild, no reflash.
 
+| <img src="artifacts/emu/ui-refresh/svg_icon.png" width="230"><br>**SVG icons**<br><sub>mini-SVG rasterizer</sub> | <img src="artifacts/emu/ui-refresh/async_demo.png" width="230"><br>**Async demo**<br><sub>async / await</sub> | <img src="artifacts/emu/ui-refresh/weather.png" width="230"><br>**Weather**<br><sub>forecast + sample data</sub> | <img src="artifacts/emu/ui-refresh/ws_echo.png" width="230"><br>**WS echo**<br><sub>WebSocket client</sub> | <img src="artifacts/emu/ui-refresh/game_of_life.png" width="230"><br>**Game of Life**<br><sub>torus grid, retained lines</sub> | <img src="artifacts/emu/ui-refresh/launcher.png" width="230"><br>**Launcher**<br><sub>multi-app grid (emulator)</sub> |
 **Games** (ESP32-S3 + single-point touch + IMU)
 
 | | | | | | |

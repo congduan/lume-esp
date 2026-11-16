@@ -111,9 +111,9 @@ try {
     await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x, y - 70, { steps: 5 }); await page.mouse.up();
     if (errors.length || await page.locator('#error').isVisible()) throw Error(errors.join('\n') || await page.locator('#error').textContent());
   });
-  await check('all 16 examples load without runtime errors', async () => {
+  await check('all examples load without runtime errors', async () => {
     const names = await page.locator('.app-item').evaluateAll(items => items.map(item => item.dataset.app));
-    if (names.length !== 16) throw Error(`expected 16 examples, got ${names.length}`);
+    if (names.length !== 20) throw Error(`expected 21 examples, got ${names.length}`);
     for (const name of names) {
       await page.locator(`[data-app="${name}"]`).click();
       const count = await page.locator('#device .lume-node').count();

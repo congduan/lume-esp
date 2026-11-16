@@ -8,8 +8,9 @@ const out = join(root, 'website/playground');
 const require = createRequire(join(root, 'tools/lume/package.json'));
 const { build } = require('esbuild');
 const apps = ['counter', 'clock', 'games_snake', 'games_2048', 'games_breakout',
-  'mario', 'calculator', 'weather', 'music_player', 'dashboard', 'gravity_ball',
-  'typewriter', 'heart_curve', 'speedometer', 'power_demo', 'watchface'];
+  'games_tetris', 'mario', 'game_of_life', 'pet', 'calculator', 'weather', 'music_player',
+  'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo',
+  'watchface', 'async_demo'];
 const source = await readFile(join(root, 'firmware/components/lume-engine/lume_scripts.c'), 'utf8');
 const start = 'const char lume_prelude_js[] =\n';
 const part = source.split(start)[1];
@@ -37,5 +38,5 @@ for (const name of apps) {
   console.log(`PASS bundle ${name} ${Buffer.byteLength(code)} bytes`);
 }
 await writeFile(join(out, 'sources.js'), `window.LUME_SOURCES = ${JSON.stringify(sources)};\n`);
-console.log('PASS esbuild-wasm assets and 16 editable sources');
+console.log('PASS esbuild-wasm assets and 20 editable sources');
 console.log(`PASS prelude ${Buffer.byteLength(prelude)} bytes; ${apps.length} apps`);
