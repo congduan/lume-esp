@@ -688,3 +688,38 @@ r54:      Total image size: 2926703 bytes (.bin may be padded larger)
 Profile firmware was built in `build-r54-profile` with `CONFIG_LUME_PERF_PROFILE=1`; its `quickjs.c` object needed `-g0` after debug-symbol assembly stalled under host swap, then `idf.py build` completed and linked the image. This changed debug information only, not optimization or source. Profile-off `tools/emu/run.sh examples/counter` completed reload/eval and produced a TFT image with no allocator lines. Raw 8 s stop line: `[emu] stop: Halted — core0 149980033 + core1 54622219 insns in 13.1s wall = 15.6 Minsn/s; emulated 8.000s (1920000000 cycles); 319200 exceptions, 23689 interrupts`. The repository's earlier counter core1 value was 54,573,730; this is the same instruction-count scale, and the r54 default Flash Code is byte-identical to same-HEAD baseline.
 
 Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test --prefix tools/lume` printed `# tests 44`, `# pass 43`, `# fail 0`, `# skipped 1`. All evidence here is host or esp32sim. Physical display, touch, memory fragmentation, power, radio, storage and bundle push remain pending board acceptance; the counter does not count direct C/canvas PSRAM allocations or task stacks (see `KNOWN-SIMPLIFICATIONS.md`).
+
+## 经典 app 复刻生态（2026-11-16 立项，分优先级候选清单）
+
+背景：对社区圆屏/手表项目生态做过一轮调研（s0lness 维护的 awesome-esp32 类目录 + 高星仓库扫描，溯源与逐项 star 数据留在内部调研文档，不在此点名外部项目）。结论：社区最活跃的复刻方向收敛于三类——**AI agent 桌面屏、桌面宠物、经典游戏/表盘**；其中十余个高星项目原生跑在与默认板同款的 AMOLED 圆屏硬件上，复刻这些品类 = 直接覆盖现成目标用户群。本节只收「**纯 app 层可复刻、演示价值高、与现有 examples 不重复**」的候选，复杂度与依赖缺口逐条如实标注。性能口径（所有候选的设计前提）：canvas 20-30fps、无 image blit（静态资产可走 SVG）、单点触摸、retained paths 可用于静态层；刀序上优先挑能复用 r47/r48 canvas AA 与 retained paths 的候选。
+
+### P0 — 第一批 demo/宣传刀（硬件/API 全对齐，难度低，建议排进下一轮）
+
+| 候选 | 价值与复刻要点 | 可行性口径 |
+|---|---|---|
+| **俄罗斯方块** | 经典品类在 ESP32 生态已被反复验证（LED 矩阵/小屏实现众多），但圆屏高分辨率彩色版缺位 = 差异化空间。10×20 格缩放进 canvas，pan 手势横移 + tap 旋转 + swipe 软降，hiscore 走 `lume.storage.kv`（key ≤15 字符） | 网格类 = canvas 最舒适区（games_2048/breakout 先例）；方块预览+next 提示用双 canvas 或分区重绘；纯 app 层，无缺口 |
+| **闭环目标环表盘**（智能手表原生风格：三同心环 complications） | r48 原生 AA `ctx.arc` 正中靶心——三个抗锯齿同心环各一条原生指令；步数目标接 IMU 或 demo 数据、电量接 PMIC、站立时段接 timer | watchface 现有三面（数字/模拟/环形信息）之外的第 4 面，swipe 翻面直接挂进现有切换；静态刻度走 retained paths；纯 app 层 |
+| **模块化信息格表盘**（智能手表 modular 风格：多 complication 网格） | 一次演示主题+Card+signals+轮询全家桶：天气/电池/温度/日历小格，数据源接 `lume.net.httpRequest` 与本地传感器 | 与 dashboard 定位区分：表盘口径（时间为主视觉+小格环绕）非遥测口径；与 device_monitor 不重复（它是 2Hz 遥测仪表）；纯 app 层 |
+| **桌面宠物**（像素电子宠物：喂食/抚摸/作息） | 触摸=抚摸、长按=喂食、翻腕（IMU）=惊醒——单点触摸+IMU 全用上；像素动画走 fillRect 预计算 spans（gravity_ball 模式）；**热更新 = 皮肤商店独有卖点**（换宠物/换装免刷机） | 帧动画 = 每拍局部脏区，性能无忧；状态机（睡眠/饥饿/情绪）纯 JS；纯 app 层 |
+
+### P1 — 第二批（有差异化亮点或需性能 spike）
+
+| 候选 | 价值与复刻要点 | 可行性口径 |
+|---|---|---|
+| **一键飞行（Flappy 类）** | 单点触摸玩法与硬件形态天作之合；障碍柱水平推进 = 镜头动场景，脏区只救局部动 | ⚠️ 性能 spike 先行：柱体连续推进需全帧重绘（230k px@20fps 是 r35b 实测瓶颈位），需先量出柱体分段 fillRect + 局部失效的真实帧率再立项； Bird/柱体像素精灵用预计算 spans |
+| **康威生命游戏** | 触摸播种种细胞 + 观察演化，「圆屏上的涌现」演示价值高、实现极小；演示 retained paths（静态网格线）+ canvas（活细胞）分层 | 全帧重绘场景：细胞网格 ≤60×60 时 JS 侧每帧遍历+fillRect 活细胞即可控（死细胞不画）；代际间隔 200-500ms 低于帧率压力 |
+| **记忆翻牌 / 扫雷** | 单点触摸网格游戏最低成本品类；翻牌动画走 signal transition + lv_anim；扫雷旗帜=长按手势（gesture 层已有） | 与 games_* 不重复（都是新玩法）；hiscore 走 KV；纯 app 层，半天级工作量 |
+| **流体粒子沙盒**（IMU 晃动 + 触摸扰动） | 宣传效果天花板：圆屏 AMOLED 上粒子随重力流转 | ⚠️ 参考社区同款实证需降级到 200-300 粒子（JS 单线程无 SIMD）；粒子间作用用简化近似（网格邻域）；IMU 单位是 m/s² 非 g |
+| **体感挥杆迷你高尔夫**（程序化关卡） | IMU 挥杆速度触发击球——手表形态差异化王牌（手机做不了）；关卡程序化生成无素材依赖 | 挥杆检测用 QMI8658 加速度峰值阈值（gravity_ball impactSpeed 先例）；物理简化为 2D 坡度+摩擦；纯 app 层 |
+
+### P2 — 有依赖缺口或需固件刀，如实标注后缓做
+
+| 候选 | 价值 | 缺口（诚实原则） |
+|---|---|---|
+| **猜词游戏（Wordle 类）** | 热度高、每日一题适合「每天看一眼圆屏」粘性叙事 | 🔴 blocked：无键盘硬件 + Input/键盘组件未建（M5 组件缺口已登记）。变体路线：字母环选字（tap 旋转+确认）可绕开键盘，但输入体验打折 |
+| **按住说话语音伴侣** | playStream/recordStream 的终极演示，与语音助手路线（见上节）E 刀合并 | 🔴 blocked：`audio.recordStream`（C 刀）未落地；实时对话链路时延是真机硬仗 |
+| **全屏精灵卷轴游戏**（横向卷轴平台跳跃完整版） | mario 单屏已证明玩法链路 | 🔴 blocked：真精灵图与卷轴的钥匙 = 固件 canvas drawImage blit（deferred 登记）；先 app 层单屏 demo 攒数据，再评估 B 刀 |
+
+### 与现有 examples 的去重边界
+
+2048/贪吃蛇（体感）/打砖块/单屏马里奥/重力滚球（游戏）、watchface 三面（表盘）、dashboard/speedometer/device_monitor（仪表）、music_player/ai_chat/typewriter（多媒体与 AI）已覆盖的玩法与形态不再重复立项；上表候选均按「新玩法或新形态」筛选。社区生态复刻的完整溯源（逐项 star、适配要点、排除名单及理由）见内部调研文档（`references/community-replication-candidates.md`），对外文档一律不点名外部项目。
