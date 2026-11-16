@@ -2950,13 +2950,18 @@ static void dispatch_audio_record(void)
     rx_evt_t e;
     if (!s_rx_evt_queue || xQueueReceive(s_rx_evt_queue, &e, 0) != pdTRUE) return;
     if (e.generation == lume_audio_record_generation() &&
-        lume_audio_record_stream_active()) {
+        (lume_audio_record_stream_active() || e.samples < 0)) {
         JSValue global = JS_GetGlobalObject(s_ctx);
         JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_dispatchAudioChunk");
         if (JS_IsFunction(s_ctx, fn)) {
+            JSValue pcm = e.pcm ? JS_NewArrayBufferCopy(s_ctx, e.pcm, e.bytes) : JS_NULL;
+            int samples = e.samples;
+            if (JS_IsException(pcm)) {
+                JS_FreeValue(s_ctx, JS_GetException(s_ctx));
+                pcm = JS_NULL; samples = LUME_AUDIO_ERR_MEMORY;
+            }
             JSValue args[2] = {
-                e.pcm ? JS_NewArrayBufferCopy(s_ctx, e.pcm, e.bytes) : JS_NULL,
-                JS_NewInt32(s_ctx, e.samples)
+                pcm, JS_NewInt32(s_ctx, samples)
             };
             JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 2, args);
             if (JS_IsException(ret)) dump_js_exception(s_ctx, "__lume_dispatchAudioChunk");

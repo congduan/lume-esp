@@ -54,14 +54,23 @@ static void record_worker(void *arg)
         unsigned generation = __atomic_load_n(&s_rx_generation, __ATOMIC_ACQUIRE);
         size_t bytes = (size_t)s_rx_chunk_samples * 4;
         size_t at = 0;
+        bool read_failed = false;
         /* Each chunk fits a ring slot; no read crosses the ring boundary. */
         if (s_rx_write + bytes > RX_RING_BYTES) s_rx_write = 0;
         while (at < bytes && generation == __atomic_load_n(&s_rx_generation, __ATOMIC_ACQUIRE)) {
             size_t got = 0;
             esp_err_t err = i2s_channel_read(s_rx, s_rx_ring + s_rx_write + at,
                                                bytes - at, &got, pdMS_TO_TICKS(100));
-            if (err != ESP_OK && err != ESP_ERR_TIMEOUT) break;
+            if (err != ESP_OK && err != ESP_ERR_TIMEOUT) { read_failed = true; break; }
             at += got;
+        }
+        if (read_failed) {
+            if (generation == __atomic_load_n(&s_rx_generation, __ATOMIC_ACQUIRE)) {
+                /* Leave generation unchanged so the engine can deliver onError. */
+                __atomic_store_n(&s_rx_active, 0, __ATOMIC_RELEASE);
+                if (s_rx_sink) s_rx_sink(NULL, 0, LUME_AUDIO_ERR_DRIVER, generation);
+            }
+            continue;
         }
         if (at != bytes || !__atomic_load_n(&s_rx_active, __ATOMIC_ACQUIRE) ||
             generation != __atomic_load_n(&s_rx_generation, __ATOMIC_ACQUIRE)) continue;
