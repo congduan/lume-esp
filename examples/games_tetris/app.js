@@ -97,7 +97,7 @@ Text({parent:root,text:function(){return 'LINES '+lines();},style:{position:'abs
 Text({parent:root,text:function(){return note();},style:{position:'absolute',x:104,y:439,fontSize:14,color:'#E9ECFF'}});
 function mark(cells){for(var i=0;i<cells.length;i++)dirtyCells.push(cells[i]);}
 function refresh(old,result){mark(old);if(result&&result.dirtyRows.length){for(var j=0;j<result.dirtyRows.length;j++)for(var x=0;x<TW;x++)dirtyCells.push({x:x,y:result.dirtyRows[j]});}
-  if(result&&result.lines)pendingLine=result.lines;
+  if(result&&result.lines){pendingLine=result.lines;fullBoard=true;}
   if(!state.over)mark(tetrisCells(state.piece));boardRev.set(boardRev()+1);
   if(result){score.set(state.score);best.set(gameSave('tetris',state.score,best()));level.set(state.level);lines.set(state.lines);nextRev.set(nextRev()+1);
     if(state.over){note.set('GAME OVER - TAP');stop();}}
