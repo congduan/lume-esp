@@ -35,6 +35,34 @@
   const editorPanel = document.querySelector('#editor-panel');
   const examplesPanel = document.querySelector('#examples-panel');
   let esbuildReady;
+  const shareStatus = document.querySelector('#share-status');
+  const maxHashLength = 8192;
+  function status(en, zh) { shareStatus.textContent = document.documentElement.lang === 'zh' ? zh : en; }
+  async function encodeSource(source) {
+    if (typeof CompressionStream !== 'function') return '#code0=' + encodeURIComponent(source);
+    const stream = new Blob([new TextEncoder().encode(source)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    let binary = '';
+    for (let offset = 0; offset < bytes.length; offset += 32768) binary += String.fromCharCode(...bytes.subarray(offset, offset + 32768));
+    return '#code=' + btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
+  }
+  async function decodeSource(hash) {
+    if (hash.startsWith('#code0=')) return decodeURIComponent(hash.slice(7));
+    if (!hash.startsWith('#code=')) return null;
+    if (typeof DecompressionStream !== 'function') throw Error('This browser cannot open compressed share links');
+    const encoded = hash.slice(6).replaceAll('-', '+').replaceAll('_', '/');
+    const binary = atob(encoded);
+    const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new TextDecoder().decode(await new Response(stream).arrayBuffer());
+  }
+  async function updateHash(source) {
+    const hash = await encodeSource(source);
+    if (hash.length > maxHashLength) { status('Source too large; share link unavailable.', '源码过大，分享链接不可用。'); return false; }
+    history.replaceState(null, '', location.pathname + location.search + hash);
+    shareStatus.textContent = '';
+    return true;
+  }
   function setMode(next) {
     mode = next;
     editorPanel.hidden = next !== 'editor'; examplesPanel.hidden = next !== 'examples';
@@ -74,6 +102,7 @@
     setMode('editor');
     const source = sourceCode.value;
     try {
+      await updateHash(source);
       if (!esbuildReady) esbuildReady = fetch('vendor/esbuild.wasm').then(r => { if (!r.ok) throw Error(`Wasm HTTP ${r.status}`); return r.arrayBuffer(); }).then(bytes => WebAssembly.compile(bytes)).then(wasmModule => esbuild.initialize({ wasmModule, worker: true }));
       await esbuildReady;
       const result = await esbuild.build({ stdin: { contents: source, sourcefile: 'app.js', loader: 'js' }, bundle: true, write: false, format: 'iife', platform: 'neutral', target: 'es2020', logLevel: 'silent' });
@@ -132,7 +161,18 @@
   document.querySelector('#examples-tab').addEventListener('click', () => select(current));
   document.querySelector('#editor-tab').addEventListener('click', () => setMode('editor'));
   document.querySelector('#run').addEventListener('click', runEditor);
+  document.querySelector('#share').addEventListener('click', async () => {
+    try {
+      if (!await updateHash(sourceCode.value)) return;
+      await navigator.clipboard.writeText(location.href);
+      status('Link copied!', '链接已复制！');
+    } catch (error) { showError(error); }
+  });
   sourceCode.addEventListener('keydown', event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); runEditor(); } });
   document.querySelector('#restart').addEventListener('click', () => mode === 'editor' ? runEditor() : select(current));
   renderList(); select(current);
+  if (location.hash.startsWith('#code=' ) || location.hash.startsWith('#code0=')) {
+    if (location.hash.length > maxHashLength) showError(new Error('Share link is too long'));
+    else decodeSource(location.hash).then(source => { sourceCode.value = source; setMode('editor'); return runEditor(); }).catch(showError);
+  }
 })();

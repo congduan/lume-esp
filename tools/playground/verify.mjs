@@ -68,6 +68,25 @@ try {
     if (errors.length) throw Error(errors.join('\n'));
   });
   await page.locator('#examples-tab').click();
+  await check('hash restores editor source and share copies reloadable URL', async () => {
+    const sample = "View({style:{width:480,height:480,background:'#111111'}},[Text({text:'Shared test'})]);";
+    await page.goto(pageUrl + '#code0=' + encodeURIComponent(sample));
+    await page.reload();
+    await page.locator('#editor-tab[aria-selected=true]').waitFor();
+    await page.locator('#device').getByText('Shared test').waitFor();
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.locator('#share').click();
+    await page.locator('#share-status').getByText('Link copied!').waitFor();
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    if (!copied.includes('#code=')) throw Error('compressed hash missing');
+    if (copied !== page.url()) throw Error('clipboard URL mismatch');
+    await page.reload();
+    await page.locator('#editor-tab[aria-selected=true]').waitFor();
+    await page.locator('#device').getByText('Shared test').waitFor();
+    console.log(`  share hash: ${new URL(copied).hash.length} chars`);
+    if (errors.length || await page.locator('#error').isVisible()) throw Error(errors.join('\n') || await page.locator('#error').textContent());
+  });
+  await page.locator('#examples-tab').click();
   await check('counter button updates count without errors', async () => {
     await page.locator('[data-app="counter"]').click();
     await page.getByText('Add one', { exact: true }).click();
