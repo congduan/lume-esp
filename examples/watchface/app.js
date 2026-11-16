@@ -1,10 +1,12 @@
-/* Four swipeable watch faces. Time is the device's Date clock. */
-var WATCHFACE_START_PAGE = 0; /* 0 digital, 1 analog, 2 info rings, 3 activity goals */
-var faceTheme = { colors: { primary: '#08121C', bg: '#08121C', surface: '#132435', surfaceAlt: '#1C3449', text: '#F4F8FA', textDim: '#92AAB6', accent: '#40D8B0', danger: '#FF7081', success: '#40D8B0' } };
+/* Five swipeable watch faces. Time is the device's Date clock. */
+var WATCHFACE_START_PAGE = 0; /* 0 digital, 1 analog, 2 info rings, 3 goals, 4 modular */
+var faceTheme = { colors: { primary: '#08121C', bg: '#08121C', surface: '#132435', surfaceAlt: '#1C3449', text: '#F4F8FA', textDim: '#92AAB6', accent: '#40D8B0', danger: '#FF7081', success: '#40D8B0' }, radius: 16, spacing: 12 };
 lume.theme.set(faceTheme);
 var faceNow = signal(new Date()), facePage = WATCHFACE_START_PAGE;
 var faceSteps = signal(0), faceTimer = null;
 var faceBatt = signal(78), faceBattLive = signal(false);
+var modularWeather = signal('--°');
+var modularSteps = signal(0), modularWeatherTimer = null;
 var goalProgress = signal([24, 18, 35]); /* demo percentages; 1 Hz animation */
 var goalSteps = 0, goalExerciseSeconds = 0, goalStandSlots = 0, goalLastStandMinute = -1;
 var goalMotion = false, goalArmed = true, goalLastStep = 0, goalSampleTimer = null, goalBase = null;
@@ -87,6 +89,7 @@ function goalSample() {
   if (goalArmed && now - goalLastStep >= 300) {
     if (!goalMotion) goalBase = goalProgress();
     goalSteps++; goalLastStep = now; goalArmed = false; goalMotion = true;
+    modularSteps.set(goalSteps); /* Same debounced IMU estimate as the goals face. */
   }
 }
 function goalTick() {
@@ -129,12 +132,49 @@ Text({ parent: goals, text: function () { return faceTime(); }, style: { positio
 Text({ parent: goals, text: function () { var v = goalValues(); return v[0] + ' kcal'; }, style: { position: 'absolute', x: 185, y: 249, width: 110, height: 22, textAlign: 'center', fontSize: 14, color: 'danger' } });
 Text({ parent: goals, text: function () { var v = goalValues(); return v[1] + ' 分钟 / ' + v[2] + ' 次'; }, style: { position: 'absolute', x: 165, y: 272, width: 150, height: 22, textAlign: 'center', fontSize: 14, color: 'text' } });
 Text({ parent: goals, text: function () { return (goalMotion ? 'IMU 步数估算' : 'DEMO 动画') + ' / 电量 ' + faceBatt() + '%' + (faceBattLive() ? '' : ' DEMO'); }, style: { position: 'absolute', x: 60, y: 413, width: 360, height: 24, textAlign: 'center', fontSize: 14, color: 'textDim' } });
+/* The other four faces already reserve 228,544 of 230,400 canvas pixels.
+ * This face uses retained native widgets only; each value owns its Text effect. */
+var modular = facePanel(); facePages.push(modular);
+Text({ parent: modular, text: 'LUME / MODULAR', style: { position: 'absolute', x: 32, y: 34, width: 300, height: 24, fontSize: 14, color: 'textDim' } });
+Text({ parent: modular, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 82, width: 416, height: 76, textAlign: 'center', fontSize: 48, color: 'text' } });
+Text({ parent: modular, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 160, width: 416, height: 30, textAlign: 'center', fontSize: 14, color: 'textDim' } });
+function modularCard(x, y, label, value, detail, color) {
+  var card = View({ parent: modular, style: { position: 'absolute', x: x, y: y, width: 202, height: 104, background: 'surface', borderRadius: faceTheme.radius, scroll: 'none' } });
+  Text({ parent: card, text: label, style: { position: 'absolute', x: 16, y: 12, width: 170, height: 23, fontSize: 14, color: 'textDim' } });
+  var valueNode = Text({ parent: card, text: value, style: { position: 'absolute', x: 16, y: 39, width: 170, height: 38, fontSize: 24, color: color || 'text' } });
+  Text({ parent: card, text: detail, style: { position: 'absolute', x: 16, y: 79, width: 170, height: 20, fontSize: 14, color: 'textDim' } });
+  return { card: card, value: valueNode };
+}
+var modularWeatherCard = modularCard(32, 210, 'WEATHER', function () { return modularWeather(); }, 'LOCAL', 'accent');
+var modularBatteryCard = modularCard(246, 210, 'BATTERY', function () { return faceBatt() + '%'; }, function () { return faceBattLive() ? 'PMIC' : 'DEMO'; }, 'accent');
+var modularCalendarCard = modularCard(32, 326, 'CALENDAR', function () { var d = faceNow(); return FACE_DAYS[d.getDay()]; }, function () { var d = faceNow(); return (d.getMonth() + 1) + '月' + d.getDate() + '日'; });
+var modularStepsCard = modularCard(246, 326, 'STEPS', function () { return modularSteps() + ' 步'; }, 'IMU EST.', 'accent');
+function modularPollWeather() {
+  /* wttr.in chooses the current location; no city is assumed by the example.
+   * Text-only output: the firmware font has no weather-symbol glyphs, and a
+   * missing glyph renders as a tofu box on device. */
+  var response = lume.net.httpRequest({ url: 'https://wttr.in/?format=j1', timeoutMs: 3000 });
+  if (typeof response === 'number' || !response || response.status !== 200 || response.truncated) {
+    modularWeather.set('--°');
+    lume.log('modular weather unavailable; showing --°'); return;
+  }
+  try {
+    var data = JSON.parse(response.body), current = data.current_condition && data.current_condition[0];
+    var temp = Number(current && current.temp_C);
+    if (!isFinite(temp) || !current) throw new Error('weather fields');
+    modularWeather.set(Math.round(temp) + '°');
+  } catch (e) {
+    modularWeather.set('--°');
+    lume.log('modular weather invalid; showing --°');
+  }
+}
 function faceShow(n) { facePage = (n + facePages.length) % facePages.length; for (var i = 0; i < facePages.length; i++) lume.setAttr(facePages[i], 5, i === facePage ? 1 : 0); }
 function faceSwipe(e) { if (e.dir === 'left') faceShow(facePage + 1); if (e.dir === 'right') faceShow(facePage - 1); }
 lume.gesture.on(faceRoot, 'swipe', faceSwipe);
 lume.gesture.on(analogCanvas, 'swipe', faceSwipe);
 lume.gesture.on(ringCanvas, 'swipe', faceSwipe);
 lume.gesture.on(goalCanvas, 'swipe', faceSwipe);
+for (var modularGestureCard of [modularWeatherCard, modularBatteryCard, modularCalendarCard, modularStepsCard]) lume.gesture.on(modularGestureCard.card, 'swipe', faceSwipe);
 faceShow(facePage);
 function faceTick() {
   faceNow.set(new Date());
@@ -142,8 +182,8 @@ function faceTick() {
   var imu = lume.imu.read(); if (imu && Math.abs(imu.ax) + Math.abs(imu.ay) > 1.3) faceSteps.set(faceSteps() + 1);
   goalTick();
 }
-function faceStart() { faceTick(); if (faceTimer === null) faceTimer = lume.system.setInterval(faceTick, 1000); if (goalSampleTimer === null) goalSampleTimer = lume.system.setInterval(goalSample, 100); }
-function faceStop() { if (faceTimer !== null) { lume.system.clearInterval(faceTimer); faceTimer = null; } if (goalSampleTimer !== null) { lume.system.clearInterval(goalSampleTimer); goalSampleTimer = null; } }
+function faceStart() { faceTick(); if (faceTimer === null) faceTimer = lume.system.setInterval(faceTick, 1000); if (goalSampleTimer === null) goalSampleTimer = lume.system.setInterval(goalSample, 100); if (modularWeatherTimer === null) { modularPollWeather(); modularWeatherTimer = lume.system.setInterval(modularPollWeather, 600000); } }
+function faceStop() { if (faceTimer !== null) { lume.system.clearInterval(faceTimer); faceTimer = null; } if (goalSampleTimer !== null) { lume.system.clearInterval(goalSampleTimer); goalSampleTimer = null; } if (modularWeatherTimer !== null) { lume.system.clearInterval(modularWeatherTimer); modularWeatherTimer = null; } }
 lume.app.onStart(faceStart);
 lume.app.onPause(faceStop);
 lume.app.onResume(faceStart);

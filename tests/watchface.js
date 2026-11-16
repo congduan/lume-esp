@@ -1,23 +1,54 @@
-/* Fourth face integration over the firmware prelude's real canvas bridge. */
+/* Five faces over the firmware prelude's real UI and canvas bridge. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const { runApp } = require('./lib/prelude_runner');
 
 const source = fs.readFileSync('examples/watchface/app.js', 'utf8');
-const h = runApp(source);
+const logs = [];
+const h = runApp(source, { onLog: (...args) => logs.push(args.join(' ')) });
 const evalJs = code => vm.runInContext(code, h.ctx);
 const page = () => evalJs('facePage');
-assert.equal(evalJs('facePages.length'), 4);
+assert.equal(evalJs('facePages.length'), 5);
 assert.equal(page(), 0);
-for (const expected of [1, 2, 3, 0]) {
+for (const expected of [1, 2, 3, 4, 0]) {
   evalJs("faceSwipe({dir:'left'})");
   assert.equal(page(), expected);
 }
 evalJs("faceSwipe({dir:'right'})");
-assert.equal(page(), 3);
+assert.equal(page(), 4);
 assert.equal(h.messages.filter(m => m[0] === 'attr' && m[2] === 5).at(-1)[3], 1);
-console.log('PASS watchface four-page swipe cycle');
+console.log('PASS watchface five-page swipe cycle');
+
+const canvases = h.messages.filter(m => m[0] === 'create' && m[2] === 3);
+const canvasPixels = canvases.reduce((sum, m) => sum + m[4] * m[5], 0);
+assert.equal(canvases.length, 4);
+assert.equal(canvasPixels, 228544);
+assert.ok(canvasPixels <= 230400);
+assert.ok(h.messages.filter(m => m[0] === 'create' && m[2] === 3)
+  .every(m => m[3] !== evalJs('modular')));
+console.log(`PASS watchface canvas budget ${canvasPixels}/230400 px; modular uses zero canvas`);
+
+assert.equal(evalJs('faceTheme.spacing'), 12);
+assert.equal(evalJs('modularBatteryCard.card') !== evalJs('modularWeatherCard.card'), true);
+assert.equal(evalJs('modularCalendarCard.card') !== evalJs('modularStepsCard.card'), true);
+const weatherValue = evalJs('modularWeatherCard.value');
+const otherValues = ['modularBatteryCard', 'modularCalendarCard', 'modularStepsCard']
+  .map(name => evalJs(`${name}.value`));
+const beforeWeather = h.messages.length;
+h.lume.net.httpRequest = () => ({ status: 200, truncated: false, body: JSON.stringify({current_condition:[{temp_C:'23',weatherCode:'113'}]}) });
+evalJs('modularPollWeather()');
+assert.equal(evalJs('modularWeather()'), '23°');
+const weatherUpdates = h.messages.slice(beforeWeather).filter(m => m[0] === 'attr' && m[2] === 0);
+assert.ok(weatherUpdates.some(m => m[1] === weatherValue));
+assert.ok(weatherUpdates.every(m => !otherValues.includes(m[1])));
+console.log('PASS watchface weather updates only its own complication text');
+
+h.lume.net.httpRequest = () => -3;
+evalJs('modularPollWeather()');
+assert.equal(evalJs('modularWeather()'), '--°');
+assert.ok(logs.some(line => line.includes('weather unavailable; showing --°')));
+console.log('PASS watchface weather WiFi-down fallback --°');
 
 const id = evalJs('goalCanvas');
 const arcs = h.messages.filter(m => m[0] === 'draw' && m[1] === id && m[2] === 5);
