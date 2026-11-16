@@ -86,6 +86,15 @@ try {
     console.log(`  share hash: ${new URL(copied).hash.length} chars`);
     if (errors.length || await page.locator('#error').isVisible()) throw Error(errors.join('\n') || await page.locator('#error').textContent());
   });
+  await check('oversized source keeps existing share hash', async () => {
+    const before = await page.evaluate(() => location.hash);
+    let seed = 1;
+    const large = Array.from({length: 20000}, () => { seed = (Math.imul(seed, 1664525) + 1013904223) | 0; return String.fromCharCode(33 + ((seed >>> 0) % 90)); }).join('');
+    await page.locator('#source-code').fill(large);
+    await page.locator('#share').click();
+    await page.locator('#share-status').getByText('Source too large').waitFor();
+    if (await page.evaluate(() => location.hash) !== before) throw Error('oversized hash was written');
+  });
   await page.locator('#examples-tab').click();
   await check('counter button updates count without errors', async () => {
     await page.locator('[data-app="counter"]').click();
