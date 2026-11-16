@@ -193,6 +193,10 @@ CI release notes.
 
 Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 16 screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
 
+### Real firmware in your browser
+
+The Playground's Firmware tab (and [run.html?wasm&fw=lume](https://congduan.github.io/lume-esp/run.html?wasm&fw=lume) directly) boots the **unmodified Lume firmware** through the [esp32sim](https://mikroverk.github.io/esp32sim/) WebAssembly emulator — same QuickJS-NG engine, same LVGL rendering pipeline as the board, self-hosted via CI (fw-sync workflow). Verified booting to the launcher home screen; no hot reload in this mode.
+
 ### Host Simulator
 
 Preview without a board: `node tools/simulator/sim.js examples/counter/app.js`, then open

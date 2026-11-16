@@ -43,6 +43,12 @@ JS-defined routes and pages, token-gated LAN access, bounded HTTP parsing, and
 host tests. Browser access over real WiFi remains a board acceptance item; see
 `docs/r71-webserv-report.md`.
 
+Firmware distribution (r74): the unmodified Lume firmware boots in the browser
+through the esp32sim WASM emulator — `run.html?wasm&fw=lume` on the Pages
+origin, trio + manifest synced from `firmware.yml` artifacts by `fw-sync.yml`,
+surfaced as the Playground Firmware tab. Verified booting to the launcher home
+screen (CO5300 panel); see `docs/r74-realfw-report.md`.
+
 ## M5 — ecosystem
 - [ ] Component library
 - [ ] Docs site + example gallery

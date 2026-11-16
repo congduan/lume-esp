@@ -1136,3 +1136,10 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **音效**：两 app 均无音效，与 r68 两 app 一致（pending board），不是遗漏。
 - **emu 性能证据口径**：10 s emu 的 `SOKO/LCD PERF js_avg_ms=...` 是模拟器内 JS+桥接耗时，不等于真机帧率；`[emu] stop` 的 INSNs 是 esp32sim 确定性指令计数。串口无 `eval failed|RELOAD ERR`、无掉帧日志；唯一 `error` 行是 PHY 校准噪声，与 app 无关。
 - **仍 open（全部真机验收）**：点屏/色彩、幽灵段在真机非背光 LCD 上的实际可见度与对比、swipe/tap 阈值手感、真机帧率、音效、KV 跨电源持久化、bundle 推送一律未验。`lume check` 绿 + 双 harness 绿 + 26-app 浏览器 verify/交互绿 + esp32sim 截图 ≠ 真机验收。
+## r74 / real firmware in browser (esp32sim WASM self-host)
+
+- The self-hosted esp32sim runner (website/run.html + wasm/* + vendor/xterm + assets/atech) is vendored from the official mikroverk/esp32sim distribution (MIT) and pinned by commit at fetch time; it is not rebuilt from source. Updating the engine means re-copying files — no automated upstream-sync.
+- esp32sim models the Waveshare AMOLED-1.8 V2 board: CO5300 368x448 QSPI panel and a CST820-class touch IC. The real board is 480x480 with a CST9220; panel geometry and touch IC differ, so this is pipeline-level fidelity (real QuickJS-NG + LVGL + CO5300 driver code paths), not hardware acceptance.
+- The simulator's touch model only drives the controller the firmware expects imperfectly: the firmware logs repeated `lume-touch: touch bus down after 10 read errors, resetting` in the emulator. Boot, rendering, and serial are unaffected; touch interaction in the browser emulator is not yet usable and awaits either an upstream board-profile fix or a lume board-profile shim.
+- `website/wasm/fw/` ships a seeded firmware trio (Build firmware run 41) so the first Pages deployment works; afterwards fw-sync.yml overwrites it from each successful firmware.yml build and regenerates lume.json with a `_note` (commit SHA + build date). The ROM ELF is the Apache-2.0 espressif esp-rom-elfs artifact, redistributed per license.
+- No hot reload in the browser firmware mode; the app JS inside the emulated flash is whatever the CI build embedded. `lume dev` on real hardware remains the only hot-reload path.
