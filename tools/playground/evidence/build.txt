@@ -1,0 +1,17 @@
+PASS bundle counter 2160 bytes
+PASS bundle clock 3319 bytes
+PASS bundle games_snake 3719 bytes
+PASS bundle games_2048 3243 bytes
+PASS bundle games_breakout 4308 bytes
+PASS bundle mario 6028 bytes
+PASS bundle calculator 2968 bytes
+PASS bundle weather 7705 bytes
+PASS bundle music_player 8483 bytes
+PASS bundle dashboard 6845 bytes
+PASS bundle gravity_ball 2443 bytes
+PASS bundle typewriter 1595 bytes
+PASS bundle heart_curve 1795 bytes
+PASS bundle speedometer 3705 bytes
+PASS bundle power_demo 1857 bytes
+PASS bundle watchface 4349 bytes
+PASS prelude 60352 bytes; 16 apps
