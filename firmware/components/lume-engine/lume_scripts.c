@@ -141,6 +141,7 @@ const char lume_prelude_js[] =
 "    __audioStreamOptions = null;\n"
 "    return rc;\n"
 "  };\n"
+"}\n"
 "/* ---- LAN web server: JS-defined routes (r71) -------------------------\n"
 " * C owns only HTTP + sockets; every route and page body is written here and\n"
 " * hot-distributed with the app. CALLBACK DISCIPLINE: a handler is invoked\n"
