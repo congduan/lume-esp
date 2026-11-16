@@ -51,6 +51,11 @@ unit was not synced.
 | <img src="artifacts/emu/ui-refresh/imu_poll.png" width="230"><br>**IMU**<br><sub>sensor cards, 20 Hz polling</sub> | <img src="artifacts/emu/ui-refresh/heart_curve.png" width="230"><br>**Heart curve**<br><sub>Canvas polyline plotting</sub> | <img src="artifacts/emu/ui-refresh/clock.png" width="230"><br>**Clock**<br><sub>frames, timers, lifecycle</sub> |
 | <img src="artifacts/emu/ui-refresh/typewriter.png" width="230"><br>**Typewriter**<br><sub>per-character reveal + blinking cursor</sub> | <img src="artifacts/emu/ui-refresh/ble_uart.png" width="230"><br>**BLE UART**<br><sub>scan, connect, echo terminal</sub> | <img src="artifacts/emu/ui-refresh/mochi.png" width="230"><br>**Mochi**<br><sub>gesture toy</sub> |
 | <img src="artifacts/emu/ui-refresh/pet.png" width="230"><br>**Desktop pet**<br><sub>pixel sprite, state machine, swappable skins</sub> | <img src="artifacts/emu/ui-refresh/gestures.png" width="230"><br>**Gestures**<br><sub>tap / longpress / pan / swipe</sub> | <img src="artifacts/emu/ui-refresh/power_demo.png" width="230"><br>**Power**<br><sub>sleep / wake demo</sub> |
+| <img src="artifacts/emu/ui-refresh/game_of_life.png" width="230"><br>**Game of Life**<br><sub>torus grid, retained grid lines + live cells</sub> | | |
+
+The [Game of Life](examples/game_of_life/app.js) is the non-scoring "emergence"
+demo: a torus grid whose static grid lines are uploaded once as a retained
+path while each generation only repaints a tight dirty rect of live cells.
 
 The [desktop pet](examples/pet/app.js) is a skin-store demo for app authors: the
 creature is a 2-D pixel grid rasterised into `fillRect` spans, its
