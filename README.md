@@ -145,6 +145,10 @@ shot.bmp` — the frame comes back over the same USB/WiFi channel as a CRC-check
 See [build and development](docs/build.md) for protocol details, controls, and the WiFi OTA /
 CI release notes.
 
+### Try it in your browser
+
+Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 16 circular-screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
+
 ### Host Simulator
 
 Preview without a board: `node tools/simulator/sim.js examples/counter/app.js`, then open
