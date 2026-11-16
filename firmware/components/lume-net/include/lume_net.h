@@ -231,3 +231,17 @@ typedef struct {
  * written. Sorted by RSSI descending.
  * Returns 0, -1 (bad args), -2 (driver), -3 (WiFi not ready). */
 int lume_net_scan(lume_net_scan_item_t *out, int max, int *count);
+
+/* WebSocket events originate on the component task. The sink takes ownership
+ * of data (including on queue failure); ids are generation-tagged. */
+typedef void (*lume_net_ws_sink_t)(uint32_t id, int event, uint8_t *data,
+                                   size_t len, int binary);
+#define LUME_WS_OPEN 1
+#define LUME_WS_MESSAGE 2
+#define LUME_WS_CLOSE 3
+#define LUME_WS_ERROR 4
+void lume_net_ws_set_sink(lume_net_ws_sink_t sink);
+int lume_net_ws_connect(const char *url, const char *headers, uint32_t *id);
+int lume_net_ws_send(uint32_t id, const uint8_t *data, size_t len, bool binary);
+int lume_net_ws_close(uint32_t id);
+void lume_net_ws_close_all(void);
