@@ -10,7 +10,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "build:playground": "node ../playground/build.mjs"
   },
   "dependencies": {
     "esbuild": "0.28.2",
