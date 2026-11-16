@@ -54,6 +54,9 @@ static const char *TAG = "lume-engine";
 #define EVT_DROP_LOG_EVERY 16   /* one warning per N dropped press events */
 
 static QueueHandle_t s_evt_queue;   /* Queue B: LVGL -> engine */
+typedef struct { uint8_t *pcm; size_t bytes; int samples; unsigned generation; } rx_evt_t;
+static QueueHandle_t s_rx_evt_queue; /* eight owned RX chunks, oldest audio first eviction */
+static volatile unsigned s_rx_dropped;
 static JSRuntime *s_rt;
 static JSContext *s_ctx;
 static void ws_post(uint32_t id, int event, uint8_t *data, size_t len, int binary)
@@ -62,6 +65,28 @@ static void ws_post(uint32_t id, int event, uint8_t *data, size_t len, int binar
         .ws_event = event, .ws_data = data, .ws_len = len, .ws_binary = binary };
     TickType_t wait = event == LUME_WS_MESSAGE ? 0 : pdMS_TO_TICKS(20);
     if (!s_evt_queue || xQueueSend(s_evt_queue, &evt, wait) != pdTRUE) free(data);
+}
+static void audio_record_post(uint8_t *pcm, size_t bytes, int samples, unsigned generation)
+{
+    rx_evt_t evt = { pcm, bytes, samples, generation }, old;
+    if (!s_rx_evt_queue) { heap_caps_free(pcm); return; }
+    if (xQueueSend(s_rx_evt_queue, &evt, 0) == pdTRUE) return;
+    /* This queue contains audio only: evicting its head never loses a touch,
+     * lifecycle, or WebSocket event from Queue B. */
+    if (xQueueReceive(s_rx_evt_queue, &old, 0) == pdTRUE) {
+        heap_caps_free(old.pcm);
+        __atomic_add_fetch(&s_rx_dropped, 1, __ATOMIC_RELAXED);
+    }
+    if (xQueueSend(s_rx_evt_queue, &evt, 0) != pdTRUE) {
+        heap_caps_free(pcm);
+        __atomic_add_fetch(&s_rx_dropped, 1, __ATOMIC_RELAXED);
+    }
+}
+static void audio_record_drain(void)
+{
+    rx_evt_t evt;
+    if (!s_rx_evt_queue) return;
+    while (xQueueReceive(s_rx_evt_queue, &evt, 0) == pdTRUE) heap_caps_free(evt.pcm);
 }
 static bool s_node_live[LUME_MAX_NODES]; /* cleared only after LVGL remove acknowledgement */
 static bool s_node_dead[LUME_MAX_NODES]; /* failed ids stay reserved until runtime reset */
@@ -2398,6 +2423,28 @@ static JSValue js_audio_stream_pause(JSContext *ctx, JSValueConst self, int argc
 static JSValue js_audio_stream_reset(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
 { (void)self; (void)argc; (void)argv; return JS_NewInt32(ctx,lume_audio_stream_reset()); }
 
+static JSValue js_audio_record_stream(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    int32_t samples = 1024;
+    if (argc && JS_ToInt32(ctx, &samples, argv[0]) < 0) return JS_EXCEPTION;
+    int r = lume_audio_record_stream(samples);
+    if (r == 0) __atomic_store_n(&s_rx_dropped, 0, __ATOMIC_RELAXED);
+    return JS_NewInt32(ctx, r);
+}
+static JSValue js_audio_stop_stream(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    int r = lume_audio_record_stop_stream();
+    audio_record_drain();
+    return JS_NewInt32(ctx, r);
+}
+static JSValue js_audio_record_dropped(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    return JS_NewUint32(ctx, __atomic_load_n(&s_rx_dropped, __ATOMIC_RELAXED));
+}
+
 static mp3_decoder_t *s_mp3;
 static JSValue js_mp3_open(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
 {
@@ -2715,6 +2762,9 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, audio, "streamFinished", JS_NewCFunction(ctx, js_audio_stream_finished, "streamFinished", 0));
     JS_SetPropertyStr(ctx, audio, "streamPause", JS_NewCFunction(ctx, js_audio_stream_pause, "streamPause", 1));
     JS_SetPropertyStr(ctx, audio, "streamReset", JS_NewCFunction(ctx, js_audio_stream_reset, "streamReset", 0));
+    JS_SetPropertyStr(ctx, audio, "_recordStream", JS_NewCFunction(ctx, js_audio_record_stream, "_recordStream", 1));
+    JS_SetPropertyStr(ctx, audio, "_stopStream", JS_NewCFunction(ctx, js_audio_stop_stream, "_stopStream", 0));
+    JS_SetPropertyStr(ctx, audio, "recordStreamDropped", JS_NewCFunction(ctx, js_audio_record_dropped, "recordStreamDropped", 0));
     JSValue mp3 = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, mp3, "open", JS_NewCFunction(ctx, js_mp3_open, "open", 1));
     JS_SetPropertyStr(ctx, mp3, "decode", JS_NewCFunction(ctx, js_mp3_decode, "decode", 0));
@@ -2893,6 +2943,29 @@ static void dispatch_ws(const lume_engine_evt_t *e)
     }
     JS_FreeValue(s_ctx, fn);
     JS_FreeValue(s_ctx, global);
+}
+
+static void dispatch_audio_record(void)
+{
+    rx_evt_t e;
+    if (!s_rx_evt_queue || xQueueReceive(s_rx_evt_queue, &e, 0) != pdTRUE) return;
+    if (e.generation == lume_audio_record_generation() &&
+        lume_audio_record_stream_active()) {
+        JSValue global = JS_GetGlobalObject(s_ctx);
+        JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_dispatchAudioChunk");
+        if (JS_IsFunction(s_ctx, fn)) {
+            JSValue args[2] = {
+                e.pcm ? JS_NewArrayBufferCopy(s_ctx, e.pcm, e.bytes) : JS_NULL,
+                JS_NewInt32(s_ctx, e.samples)
+            };
+            JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 2, args);
+            if (JS_IsException(ret)) dump_js_exception(s_ctx, "__lume_dispatchAudioChunk");
+            JS_FreeValue(s_ctx, ret);
+            JS_FreeValue(s_ctx, args[0]); JS_FreeValue(s_ctx, args[1]);
+        }
+        JS_FreeValue(s_ctx, fn); JS_FreeValue(s_ctx, global);
+    }
+    heap_caps_free(e.pcm);
 }
 
 int lume_engine_post_lifecycle(uint8_t type)
@@ -3374,6 +3447,8 @@ static void engine_task(void *arg)
                 ESP_LOGE(TAG, "embedded/last-good/home app eval failed (unexpected)");
             }
             call_app_hook("__lume_shutdown");
+            (void)lume_audio_record_stop_stream();
+            audio_record_drain();
             mp3_decoder_close(s_mp3); s_mp3 = NULL;
             if (!lume_audio_stream_finished()) (void)lume_audio_stream_reset();
             lume_ui_msg_t failed_reset;
@@ -3560,6 +3635,7 @@ static void engine_task(void *arg)
                 }
             }
             drain_removals();
+            dispatch_audio_record();
             call_app_hook("__lume_tick");
             /* JS callbacks and timers can enqueue Promise reactions. Run them
              * before waiting again so await continuations can update the UI.
@@ -3627,6 +3703,8 @@ static void engine_task(void *arg)
          * post to FreeRTOS queues and never touch s_ctx, so no other task can
          * be using this context here. Free context first, then runtime. */
         call_app_hook("__lume_shutdown");
+        (void)lume_audio_record_stop_stream();
+        audio_record_drain();
         lume_net_ws_close_all();
         mp3_decoder_close(s_mp3); s_mp3 = NULL;
         if (!lume_audio_stream_finished()) (void)lume_audio_stream_reset();
@@ -3692,12 +3770,14 @@ void lume_engine_start(void)
         abort();
     }
     s_evt_queue = xQueueCreate(EVT_QUEUE_LEN, sizeof(lume_engine_evt_t));
-    if (s_evt_queue == NULL) {
+    s_rx_evt_queue = xQueueCreate(8, sizeof(rx_evt_t));
+    if (s_evt_queue == NULL || s_rx_evt_queue == NULL) {
         /* Without this queue the engine task would call xQueueReceive(NULL).
          * Abort at boot rather than run a silently broken engine. */
         ESP_LOGE(TAG, "engine_start: evt queue create failed (OOM)");
         abort();
     }
+    lume_audio_record_set_sink(audio_record_post);
     BaseType_t ok = xTaskCreatePinnedToCore(engine_task, "lume-js",
                                             ENGINE_TASK_STACK, NULL, 5,
                                             NULL, 1);

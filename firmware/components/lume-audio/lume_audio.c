@@ -30,6 +30,86 @@ static volatile int s_stream_pending, s_stream_paused;
 static int s_tx_rate = 16000;
 static unsigned s_stream_generation;
 static int64_t s_stream_drain_until_us;
+/* Eight 8192-byte slots: a 64 KiB PSRAM RX ring. RX stays enabled from init;
+ * the task alone reads it while a stream is active. TX provides its 16 kHz
+ * BCLK/WS, so a concurrent playStream at another rate is rejected. */
+#define RX_RING_BYTES (64 * 1024)
+static uint8_t *s_rx_ring;
+static TaskHandle_t s_rx_task;
+static lume_audio_record_sink_t s_rx_sink;
+static volatile int s_rx_active;
+static volatile unsigned s_rx_generation;
+static int s_rx_chunk_samples;
+static size_t s_rx_write;
+static int tx_rate(int rate);
+
+static void record_worker(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        if (!__atomic_load_n(&s_rx_active, __ATOMIC_ACQUIRE)) {
+            vTaskDelay(pdMS_TO_TICKS(10));
+            continue;
+        }
+        unsigned generation = __atomic_load_n(&s_rx_generation, __ATOMIC_ACQUIRE);
+        size_t bytes = (size_t)s_rx_chunk_samples * 4;
+        size_t at = 0;
+        /* Each chunk fits a ring slot; no read crosses the ring boundary. */
+        if (s_rx_write + bytes > RX_RING_BYTES) s_rx_write = 0;
+        while (at < bytes && generation == __atomic_load_n(&s_rx_generation, __ATOMIC_ACQUIRE)) {
+            size_t got = 0;
+            esp_err_t err = i2s_channel_read(s_rx, s_rx_ring + s_rx_write + at,
+                                               bytes - at, &got, pdMS_TO_TICKS(100));
+            if (err != ESP_OK && err != ESP_ERR_TIMEOUT) break;
+            at += got;
+        }
+        if (at != bytes || !__atomic_load_n(&s_rx_active, __ATOMIC_ACQUIRE) ||
+            generation != __atomic_load_n(&s_rx_generation, __ATOMIC_ACQUIRE)) continue;
+        uint8_t *copy = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (copy) {
+            memcpy(copy, s_rx_ring + s_rx_write, bytes);
+            lume_audio_record_sink_t sink = s_rx_sink;
+            if (sink) sink(copy, bytes, s_rx_chunk_samples, generation);
+            else heap_caps_free(copy);
+        } else if (s_rx_sink) s_rx_sink(NULL, 0, LUME_AUDIO_ERR_MEMORY, generation);
+        s_rx_write = (s_rx_write + bytes) % RX_RING_BYTES;
+    }
+}
+
+void lume_audio_record_set_sink(lume_audio_record_sink_t sink) { s_rx_sink = sink; }
+unsigned lume_audio_record_generation(void) { return __atomic_load_n(&s_rx_generation, __ATOMIC_ACQUIRE); }
+bool lume_audio_record_stream_active(void) { return __atomic_load_n(&s_rx_active, __ATOMIC_ACQUIRE) != 0; }
+
+int lume_audio_record_stream(int chunk_samples)
+{
+    if (chunk_samples != 512 && chunk_samples != 1024 && chunk_samples != 2048)
+        return LUME_AUDIO_ERR_ARG;
+    if (lume_audio_record_stream_active()) return LUME_AUDIO_ERR_STATE;
+    int r = lume_audio_init();
+    if (r < 0) return r;
+    /* RX is a slave of TX on the board's shared BCLK/WS pins. */
+    if (!lume_audio_stream_finished()) return LUME_AUDIO_ERR_STATE;
+    if (tx_rate(16000) < 0) return LUME_AUDIO_ERR_DRIVER;
+    if (!s_rx_ring) {
+        s_rx_ring = heap_caps_malloc(RX_RING_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+        if (!s_rx_ring) return LUME_AUDIO_ERR_MEMORY;
+    }
+    if (!s_rx_task && xTaskCreate(record_worker, "lume_audio_rx", 4096, NULL, 5,
+                                  &s_rx_task) != pdPASS) return LUME_AUDIO_ERR_MEMORY;
+    s_rx_write = 0;
+    s_rx_chunk_samples = chunk_samples;
+    __atomic_add_fetch(&s_rx_generation, 1, __ATOMIC_ACQ_REL);
+    __atomic_store_n(&s_rx_active, 1, __ATOMIC_RELEASE);
+    return 0;
+}
+
+int lume_audio_record_stop_stream(void)
+{
+    if (!lume_audio_record_stream_active()) return LUME_AUDIO_ERR_STATE;
+    __atomic_store_n(&s_rx_active, 0, __ATOMIC_RELEASE);
+    __atomic_add_fetch(&s_rx_generation, 1, __ATOMIC_ACQ_REL);
+    return 0;
+}
 static int tx_rate(int rate)
 {
     if (s_tx_rate == rate) return 0;
@@ -242,6 +322,7 @@ int lume_audio_play_stream(const void *pcm, size_t bytes, int rate, int channels
     if (!pcm || !bytes || bytes > 4608 || (bytes & 3) || channels != 2 ||
         bit_depth != 16 || (rate != 44100 && rate != 48000 && rate != 32000 && rate != 16000))
         return LUME_AUDIO_ERR_ARG;
+    if (lume_audio_record_stream_active() && rate != 16000) return LUME_AUDIO_ERR_STATE;
     int r = lume_audio_init();
     if (r < 0) return r;
     if (!s_stream_queue) {
@@ -300,6 +381,7 @@ int lume_audio_stream_reset(void)
 int lume_audio_record(void *pcm, size_t bytes)
 {
     if (!pcm || !bytes || (bytes & 3)) return LUME_AUDIO_ERR_ARG;
+    if (lume_audio_record_stream_active()) return LUME_AUDIO_ERR_STATE;
     int r = lume_audio_init();
     if (r < 0) return r;
     if (!lume_audio_stream_finished()) return LUME_AUDIO_ERR_STATE;

@@ -20,3 +20,13 @@ int lume_audio_play_stream(const void *pcm, size_t bytes, int sample_rate, int c
 bool lume_audio_stream_finished(void);
 int lume_audio_stream_pause(bool paused);
 int lume_audio_stream_reset(void);
+
+/* 16 kHz, signed 16-bit interleaved stereo RX. The sink owns each PSRAM
+ * buffer and must free it; it runs on the audio task and must not call JS. */
+typedef void (*lume_audio_record_sink_t)(uint8_t *pcm, size_t bytes,
+                                         int samples, unsigned generation);
+void lume_audio_record_set_sink(lume_audio_record_sink_t sink);
+int lume_audio_record_stream(int chunk_samples);
+int lume_audio_record_stop_stream(void);
+unsigned lume_audio_record_generation(void);
+bool lume_audio_record_stream_active(void);
