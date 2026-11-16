@@ -725,6 +725,12 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 | **双八度触屏钢琴**（已落地 r67，见 `docs/r67-piano-compass-report.md`） | 经典乐器品类，单点触摸 + pan 滑奏天然适配；演示 play/playStream 混合音频合成与 in-place 键位高亮 | `examples/piano/app.js`：14×34 px 白键一行 + 10 黑键压缝，24 音两八度 + 三档八度移调；基频+2 泛音+指数包络的立体声 PCM，attack ≤48 ms 走 play、release 5×1152 帧走 playStream，包络函数连续避免切换爆音；Demo 曲内置小星星；纯 app 层 |
 | **惯性方位角仪表**（已落地 r67，同上战报） | 手表/仪表品类；retained paths 静态刻度环 + 每帧指针脏区 + 常正数字；演示 demo / IMU 双模式 | `examples/compass/app.js`：36 段 retainSegments + 2 条 retainPath 一次上传；demo 18°/s 平滑旋转并可拖动，IMU 模式积分陀螺 Z 得**相对**航向并加 DRIFT 徽章；**无磁力计，不承诺地理北**；浏览器无 IMU 自动降级 demo；纯 app 层 |
 | **体感挥杆迷你高尔夫**（程序化关卡） | IMU 挥杆速度触发击球——手表形态差异化王牌（手机做不了）；关卡程序化生成无素材依赖 | 挥杆检测用 QMI8658 加速度峰值阈值（gravity_ball impactSpeed 先例）；物理简化为 2D 坡度+摩擦；纯 app 层 |
+| **街机风格射击**（已落地 r68，见 `docs/r68-retro-report.md`；5×11 三档编队 + pan 炮台/tap 射击） | 复古合集首刀；编队整体脏区 ≈26% 全帧、两帧腿部动画同盒重画、UFO 加分 + 波次提速；像素造型为原创近似 | `examples/invaders/app.js`：mario 式 spans 预计算精灵；Game Boy 三档绿；KV key 由 `hiscore.invaders`（16 字符）因 NVS 15 字符上限收敛为 `hisc.invaders`（13 字符）；20ms emu tick 无掉帧日志；纯 app 层 |
+| **公路河道穿越**（已落地 r68，同上战报；13 行网格：5 车 + 4 河 + 2 安全 + 中线 + 窝） | 复古合集同批；tap 相对青蛙中心判四向、车辆撞死/浮木承载/落水死/5 窝过关提速；行带独立脏区 | `examples/frogger/app.js`：车/木/蛙全 spans 预计算；NES 灰底低饱和彩块；跳跃简化为瞬移+高亮（登记取舍）；KV `hisc.frogger`；纯 app 层 |
+
+### Retro classics（r68 起的新分组）
+
+本刀起，roadmap 在「经典 app 复刻生态」下新开**Retro classics**叙事行，收编自研、原创近似的街机风格像素游戏（不点名原商标、不逐像素复制原始精灵位图）。已落地两款：`examples/invaders/`、`examples/frogger/`，均在 playground 24-app 列表内；像素字体统一沿用 14px Montserrat，真机手感/帧率/音效待接板验收。详见 `docs/r68-retro-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`（r68）。
 
 ### P2 — 有依赖缺口或需固件刀，如实标注后缓做
 

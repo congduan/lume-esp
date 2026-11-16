@@ -83,6 +83,15 @@ the firmware never changes, a new skin ships as a hot-reload push via
 |:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | <img src="artifacts/emu/ui-refresh/games_2048.png" width="230"><br>**2048**<br><sub>swipe + merge</sub> | <img src="artifacts/emu/ui-refresh/games_snake.png" width="230"><br>**Snake**<br><sub>tilt or swipe steering</sub> | <img src="artifacts/emu/ui-refresh/games_breakout.png" width="230"><br>**Breakout**<br><sub>touch paddle, 6 levels</sub> | <img src="artifacts/emu/ui-refresh/mario.png" width="230"><br>**Mario**<br><sub>pixel-sprite platformer, coins & enemies</sub> | <img src="artifacts/emu/ui-refresh/gravity_ball.png" width="230"><br>**Gravity ball**<br><sub>IMU tilt physics, dirty-rect rendering</sub> | <img src="artifacts/emu/ui-refresh/games_tetris.png" width="230"><br>**Tetris**<br><sub>pan, rotate, drop</sub> | <img src="artifacts/emu/ui-refresh/piano.png" width="230"><br>**Piano**<br><sub>two octaves, attack play + streamed decay, glissando</sub> |
 
+**Retro classics** — this slice opens a self-authored arcade-style pixel-game
+grouping. Every sprite is an original approximation drawn from precomputed
+spans; no third-party bitmaps or trademarks are copied (see the
+[r68 report](docs/r68-retro-report.md)).
+
+| | | | | | | |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| <img src="artifacts/emu/ui-refresh/invaders.png" width="230"><br>**Invaders**<br><sub>3-tier formation, pan cannon, tap fire</sub> | <img src="artifacts/emu/ui-refresh/frogger.png" width="230"><br>**Frogger**<br><sub>road & river crossing</sub> | | | | | |
+
 The [piano](examples/piano/app.js) fits 14 white keys × 34 px = 476 px on one
 row with 10 black keys over the seams; pan gestures give a one-finger glissando.
 Each note is a JS-synthesised stereo 16 kHz envelope: a ≤48 ms attack goes out

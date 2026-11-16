@@ -1078,3 +1078,14 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **KV 取值注意**：`kv.get()` 的负值可能是存储的数字也可能是错误码，故只判断 `=== 1`，其余（含 −2/7/字符串/null）一律回退皮肤 0；不拿 `r < 0` 当错误判别。
 - **字体限制**：HUD/文案只用 ASCII 与中文，Zzz 与图标都用像素点画，未使用 ·/☂/☁/☀ 等固件缺字形的符号。
 - **仍 open（全部真机验收）**：点屏/色彩、触摸方向与手感、翻腕（IMU）惊醒的真机手感与轴向/阈值、睡眠电流、bundle 推送与持久化跨断电、20–30 fps 真机帧率、KV 真机跨电源周期保存一律未验。`lume check` 绿 + host harness 绿 + esp32sim 截图 ≠ 真机验收。
+
+## r68 / Retro classics 双刀（host + browser + esp32sim 证据，无真机验收）
+
+- **范围**：新增 `examples/invaders/app.js`、`examples/frogger/app.js` 与 `tests/invaders.js`、`tests/frogger.js`；playground 四处同步（build.mjs apps、page.js picker、index.html script、verify.mjs 22→24）并重新生成 `website/playground/{apps,sources}` 产物。固件 C、prelude C 字符串、bridge ABI、帧协议、`runtime/types/lume.d.ts`、vendored 组件全部未改。未推送。
+- **像素风口径**：两 app 都硬边（`fillRect` 整像素、无 AA），精灵一律 mario 式预计算 spans（eval 时解码一次、逐帧只回放；`spanBuilds` 恒为 8，harness 断言跨 120 tick 不增长）。Invaders 取 Game Boy 三档墨绿（`#0F380F/#306230/#8BAC0F/#9BBC0F`），Frogger 取 NES 灰底低饱和彩块（红/黄/蓝车、棕木、绿荷叶）。造型为**原创近似**的街机风格，不逐像素复制任何原始 ROM 位图，README/roadmap 只用「arcade-style」自研口径、不点名原商标。
+- **字体验收取舍**：HUD/文案沿用固件 14px Montserrat，不换像素字体（flash 收益不值当）。这是有意的简化，不是像素风缺口。
+- **KV key 实证纠正**：任务简报写 `hiscore.invaders`（16 字符），但 `firmware/components/lume-storage/lume_kv.c:42-50` 实证 NVS key 上限 15 字符，16 字符键在真机会被拒。实际用 `hisc.invaders`（13 字符）与 `hisc.frogger`（12 字符）。浏览器 runtime 的 `storage.kv` 是 `get:()=>null, set:()=>0` 的 no-op 桩（非内存 map），两 app 的 `gameHigh/gameSave` 用 try/catch + 内存分兜底，KV 失败静默降级已覆盖（verify.mjs 24-app 全绿）。
+- **Frogger 交互取舍**：青蛙跳跃简化为**瞬移 + 一帧高亮**，不做逐格补间动画。tap 方向按落点相对青蛙中心判定（|dx|>|dy| 走横轴，否则纵轴），是单点触摸无方向键下的最优解。
+- **脏区口径**：Invaders 编队整体移动脏区 = 编队包围盒 ∪ 炮台 ∪ 子弹，稳态实测 308×196 + 36×28 = 61,376 px ≈ 全帧 26.6%（首帧一次性全屏初始化，不计入稳态预算）；下降帧因新旧包围盒并集升到约 88k px。Frogger 每条横列独立脏区，但 bridge 单帧最多 8 个 dirty rect（`lume_prelude.js`），故相邻行合并成 2–4 个带区间；这是 bridge 约束下的合并，不是整帧重绘。
+- **emu 性能证据口径**：10 s emu 的 PERF 打点（`INVADER/FROGGER PERF js_avg_ms=...`）测的是模拟器内 JS+桥接耗时，不等于真机帧率；`[emu] stop` 的 INSNs 是 esp32sim 确定性指令计数，core1 高于 counter 是编队/横列 spans 回放量更大所致，非掉帧。两 app 串口均无 `eval failed|RELOAD ERR`、无 dropped-frame 日志；唯一的 `phy: error: pll_cal exceeds 2ms!!!` 是模拟器 PHY 校准噪声，与 app 无关。
+- **仍 open（全部真机验收）**：点屏/色彩、触摸 pan/tap 手感与阈值、20 ms tick 真机帧率与编队重绘掉帧、音效（两 app 未加音效，pending）、KV 真机跨电源周期持久化、bundle 推送一律未验。`lume check` 绿 + 双 harness 绿 + 24-app 浏览器 verify 绿 + esp32sim 截图 ≠ 真机验收。
