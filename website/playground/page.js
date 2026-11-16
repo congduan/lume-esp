@@ -21,6 +21,8 @@
     ['game_of_life','◦','Game of Life','生命游戏','Cellular automata','细胞自动机'],
     ['pet','ᵔ','Desktop pet','桌面宠物','Feed and pet it','喂养与抚摸'],
     ['async_demo','↻','Async demo','异步演示','async / await','异步Await'],
+    ['piano','♬','Piano','钢琴','Two-octave touch piano','双八度触屏钢琴'],
+    ['compass','⊙','Heading dial','方位仪表','Inertial heading, no magnetometer','惯性方位，无磁力计'],
   ];
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');

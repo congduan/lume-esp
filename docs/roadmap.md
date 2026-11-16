@@ -722,6 +722,8 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 | **康威生命游戏**（已落地 r66，见 `docs/r66-conway-report.md`） | 触摸播种种细胞 + 观察演化，「圆屏上的涌现」演示价值高、实现极小；演示 retained paths（静态网格线）+ canvas（活细胞）分层 | `examples/game_of_life/app.js`：33×33 环面网格 / 9px 格落在 300×300 单 canvas 内（60×60×9px=540px 超出屏幕与 300px 预算，故按预算收敛为 33×33）；静态 72 段 retainSegments 上传一次，活细胞按代脏区重画；实测每代脏区 648–729px = 全帧 0.72–0.81%；代际 200/350/500ms 三档，纯 app 层 |
 | **记忆翻牌 / 扫雷** | 单点触摸网格游戏最低成本品类；翻牌动画走 signal transition + lv_anim；扫雷旗帜=长按手势（gesture 层已有） | 与 games_* 不重复（都是新玩法）；hiscore 走 KV；纯 app 层，半天级工作量 |
 | **流体粒子沙盒**（IMU 晃动 + 触摸扰动） | 宣传效果天花板：圆屏 AMOLED 上粒子随重力流转 | ⚠️ 参考社区同款实证需降级到 200-300 粒子（JS 单线程无 SIMD）；粒子间作用用简化近似（网格邻域）；IMU 单位是 m/s² 非 g |
+| **双八度触屏钢琴**（已落地 r67，见 `docs/r67-piano-compass-report.md`） | 经典乐器品类，单点触摸 + pan 滑奏天然适配；演示 play/playStream 混合音频合成与 in-place 键位高亮 | `examples/piano/app.js`：14×34 px 白键一行 + 10 黑键压缝，24 音两八度 + 三档八度移调；基频+2 泛音+指数包络的立体声 PCM，attack ≤48 ms 走 play、release 5×1152 帧走 playStream，包络函数连续避免切换爆音；Demo 曲内置小星星；纯 app 层 |
+| **惯性方位角仪表**（已落地 r67，同上战报） | 手表/仪表品类；retained paths 静态刻度环 + 每帧指针脏区 + 常正数字；演示 demo / IMU 双模式 | `examples/compass/app.js`：36 段 retainSegments + 2 条 retainPath 一次上传；demo 18°/s 平滑旋转并可拖动，IMU 模式积分陀螺 Z 得**相对**航向并加 DRIFT 徽章；**无磁力计，不承诺地理北**；浏览器无 IMU 自动降级 demo；纯 app 层 |
 | **体感挥杆迷你高尔夫**（程序化关卡） | IMU 挥杆速度触发击球——手表形态差异化王牌（手机做不了）；关卡程序化生成无素材依赖 | 挥杆检测用 QMI8658 加速度峰值阈值（gravity_ball impactSpeed 先例）；物理简化为 2D 坡度+摩擦；纯 app 层 |
 
 ### P2 — 有依赖缺口或需固件刀，如实标注后缓做
@@ -731,6 +733,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 | **猜词游戏（Wordle 类）** | 热度高、每日一题适合「每天看一眼圆屏」粘性叙事 | 🔴 blocked：无键盘硬件 + Input/键盘组件未建（M5 组件缺口已登记）。变体路线：字母环选字（tap 旋转+确认）可绕开键盘，但输入体验打折 |
 | **按住说话语音伴侣** | playStream/recordStream 的终极演示，与语音助手路线（见上节）E 刀合并 | 🔴 blocked：`audio.recordStream`（C 刀）未落地；实时对话链路时延是真机硬仗 |
 | **全屏精灵卷轴游戏**（横向卷轴平台跳跃完整版） | mario 单屏已证明玩法链路 | 🔴 blocked：真精灵图与卷轴的钥匙 = 固件 canvas drawImage blit（deferred 登记）；先 app 层单屏 demo 攒数据，再评估 B 刀 |
+| **真·指南针（磁北 / 地理方位）** | 要的是绝对地理方位，而非 r67 惯性方位仪表给的相对航向 | 🔴 blocked：QMI8658 是加速度计+陀螺仪六轴 IMU，**板子没有磁力计**，物理上无法测磁北；需外接磁力计硬件 + 固件刀（新 I2C 传感器绑定、校准/倾斜补偿），非 app 层可解。r67 仪表只登记为「惯性方位/相对航向」，README/UI 均不承诺指北 |
 
 ### 与现有 examples 的去重边界
 

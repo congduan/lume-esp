@@ -113,7 +113,7 @@ try {
   });
   await check('all examples load without runtime errors', async () => {
     const names = await page.locator('.app-item').evaluateAll(items => items.map(item => item.dataset.app));
-    if (names.length !== 20) throw Error(`expected 21 examples, got ${names.length}`);
+    if (names.length !== 22) throw Error(`expected 22 examples, got ${names.length}`);
     for (const name of names) {
       await page.locator(`[data-app="${name}"]`).click();
       const count = await page.locator('#device .lume-node').count();

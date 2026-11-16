@@ -51,11 +51,18 @@ unit was not synced.
 | <img src="artifacts/emu/ui-refresh/imu_poll.png" width="230"><br>**IMU**<br><sub>sensor cards, 20 Hz polling</sub> | <img src="artifacts/emu/ui-refresh/heart_curve.png" width="230"><br>**Heart curve**<br><sub>Canvas polyline plotting</sub> | <img src="artifacts/emu/ui-refresh/clock.png" width="230"><br>**Clock**<br><sub>frames, timers, lifecycle</sub> |
 | <img src="artifacts/emu/ui-refresh/typewriter.png" width="230"><br>**Typewriter**<br><sub>per-character reveal + blinking cursor</sub> | <img src="artifacts/emu/ui-refresh/ble_uart.png" width="230"><br>**BLE UART**<br><sub>scan, connect, echo terminal</sub> | <img src="artifacts/emu/ui-refresh/mochi.png" width="230"><br>**Mochi**<br><sub>gesture toy</sub> |
 | <img src="artifacts/emu/ui-refresh/pet.png" width="230"><br>**Desktop pet**<br><sub>pixel sprite, state machine, swappable skins</sub> | <img src="artifacts/emu/ui-refresh/gestures.png" width="230"><br>**Gestures**<br><sub>tap / longpress / pan / swipe</sub> | <img src="artifacts/emu/ui-refresh/power_demo.png" width="230"><br>**Power**<br><sub>sleep / wake demo</sub> |
-| <img src="artifacts/emu/ui-refresh/game_of_life.png" width="230"><br>**Game of Life**<br><sub>torus grid, retained grid lines + live cells</sub> | | |
+| <img src="artifacts/emu/ui-refresh/game_of_life.png" width="230"><br>**Game of Life**<br><sub>torus grid, retained grid lines + live cells</sub> | <img src="artifacts/emu/ui-refresh/compass.png" width="230"><br>**Heading dial**<br><sub>inertial heading dial, no magnetometer</sub> | |
 
 The [Game of Life](examples/game_of_life/app.js) is the non-scoring "emergence"
 demo: a torus grid whose static grid lines are uploaded once as a retained
 path while each generation only repaints a tight dirty rect of live cells.
+
+The [heading dial](examples/compass/app.js) is an **inertial / relative** heading
+instrument, not a compass: the QMI8658 on this board is a six-axis IMU with no
+magnetometer, so geographic north is **not** claimed. Demo mode animates a
+synthetic heading (the browser playground and emulator use it); IMU mode
+integrates gyroscope Z and flags the uncorrected estimate with a `DRIFT` badge.
+A true magnetic-north compass needs external magnetometer hardware (roadmap P2).
 
 The [desktop pet](examples/pet/app.js) is a skin-store demo for app authors: the
 creature is a 2-D pixel grid rasterised into `fillRect` spans, its
@@ -72,9 +79,17 @@ the firmware never changes, a new skin ships as a hot-reload push via
 
 **Games** (ESP32-S3 + single-point touch + IMU)
 
-| | | | | | |
-|:--:|:--:|:--:|:--:|:--:|:--:|
-| <img src="artifacts/emu/ui-refresh/games_2048.png" width="230"><br>**2048**<br><sub>swipe + merge</sub> | <img src="artifacts/emu/ui-refresh/games_snake.png" width="230"><br>**Snake**<br><sub>tilt or swipe steering</sub> | <img src="artifacts/emu/ui-refresh/games_breakout.png" width="230"><br>**Breakout**<br><sub>touch paddle, 6 levels</sub> | <img src="artifacts/emu/ui-refresh/mario.png" width="230"><br>**Mario**<br><sub>pixel-sprite platformer, coins & enemies</sub> | <img src="artifacts/emu/ui-refresh/gravity_ball.png" width="230"><br>**Gravity ball**<br><sub>IMU tilt physics, dirty-rect rendering</sub> | <img src="artifacts/emu/ui-refresh/games_tetris.png" width="230"><br>**Tetris**<br><sub>pan, rotate, drop</sub> |
+| | | | | | | |
+|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
+| <img src="artifacts/emu/ui-refresh/games_2048.png" width="230"><br>**2048**<br><sub>swipe + merge</sub> | <img src="artifacts/emu/ui-refresh/games_snake.png" width="230"><br>**Snake**<br><sub>tilt or swipe steering</sub> | <img src="artifacts/emu/ui-refresh/games_breakout.png" width="230"><br>**Breakout**<br><sub>touch paddle, 6 levels</sub> | <img src="artifacts/emu/ui-refresh/mario.png" width="230"><br>**Mario**<br><sub>pixel-sprite platformer, coins & enemies</sub> | <img src="artifacts/emu/ui-refresh/gravity_ball.png" width="230"><br>**Gravity ball**<br><sub>IMU tilt physics, dirty-rect rendering</sub> | <img src="artifacts/emu/ui-refresh/games_tetris.png" width="230"><br>**Tetris**<br><sub>pan, rotate, drop</sub> | <img src="artifacts/emu/ui-refresh/piano.png" width="230"><br>**Piano**<br><sub>two octaves, attack play + streamed decay, glissando</sub> |
+
+The [piano](examples/piano/app.js) fits 14 white keys × 34 px = 476 px on one
+row with 10 black keys over the seams; pan gestures give a one-finger glissando.
+Each note is a JS-synthesised stereo 16 kHz envelope: a ≤48 ms attack goes out
+through synchronous `lume.audio.play()` and the exponentially decaying tail is
+fed in 1152-frame chunks through `lume.audio.playStream()`, so the engine never
+blocks for a full note. Key highlights switch `ATTR_BG_COLOR` on persistent
+nodes — no per-frame redraw.
 
 **Shell components** ([runtime/shell.js](runtime/shell.js) — status bar, launcher, dialogs, toasts)
 
