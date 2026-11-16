@@ -12,14 +12,30 @@ if (!process.argv[2] || !fs.existsSync(appPath)) {
 }
 const port = Number(process.env.LUME_SIM_PORT || 8765);
 let generation = 0, messages = [], session, error = null;
+let micActive = false, micSamples = 1024, micPhase = 0, micDropped = 0;
+function syntheticPcm(samples) {
+  const pcm = new ArrayBuffer(samples * 4), v = new DataView(pcm);
+  for (let i = 0; i < samples; i++) {
+    const s = Math.round(15000 * Math.sin(micPhase));
+    micPhase += 2 * Math.PI * 440 / 16000;
+    v.setInt16(i * 4, s, true); v.setInt16(i * 4 + 2, s, true);
+  }
+  return pcm;
+}
 function reload() {
   generation++;
+  micActive = false; micDropped = 0;
   messages = []; error = null; session = undefined;
   try {
     const bundled = buildSync({ entryPoints: [appPath], bundle: true, format: 'iife',
       platform: 'neutral', target: 'es2020', write: false, charset: 'utf8' }).outputFiles[0].text;
     session = runApp(bundled, {
       filename: appPath,
+      audio: {
+        _recordStream: n => { micSamples = n; micActive = true; return 0; },
+        _stopStream: () => { micActive = false; return 0; },
+        recordStreamDropped: () => micDropped,
+      },
       onMessage: m => {
         messages.push(m);
         if (m[0] === 'remove') queueMicrotask(() => session?.removed(m[1]));
@@ -71,4 +87,9 @@ server.on('error', e => {
 });
 server.listen(port, '::', () => console.log(`Lume Host Simulator http://localhost:${port} (${appPath})`));
 const ticker = setInterval(() => { if (session) try { vm.runInContext('__lume_tick()', session.ctx); } catch (e) { console.error(e); } }, 50);
-process.on('SIGTERM', () => { clearInterval(ticker); fs.unwatchFile(appPath); server.close(); });
+const micTicker = setInterval(() => {
+  if (micActive && session) try {
+    session.ctx.__lume_dispatchAudioChunk(syntheticPcm(micSamples), micSamples);
+  } catch (e) { console.error(e); micActive = false; }
+}, 64);
+process.on('SIGTERM', () => { clearInterval(ticker); clearInterval(micTicker); fs.unwatchFile(appPath); server.close(); });
