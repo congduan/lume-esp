@@ -2701,6 +2701,13 @@ CONFIG_LUME_APP_TRANSITION_MS=200
 # end of Lume app-switch transition (r46)
 
 #
+# ESP WebSocket client
+#
+# CONFIG_ESP_WS_CLIENT_ENABLE_DYNAMIC_BUFFER is not set
+# CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK is not set
+# end of ESP WebSocket client
+
+#
 # LittleFS
 #
 # CONFIG_LITTLEFS_SDMMC_SUPPORT is not set
