@@ -49,12 +49,13 @@ unit was not synced.
 | <img src="artifacts/emu/ui-refresh/watchface.png" width="230"><br>**Watch faces**<br><sub>three switchable styles</sub> | <img src="artifacts/emu/ui-refresh/music_player.png" width="230"><br>**Music player**<br><sub>MP3 from TF card + synced LRC</sub> | <img src="artifacts/emu/ui-refresh/ai_chat.png" width="230"><br>**AI chat**<br><sub>LLM over WiFi, chat bubbles</sub> |
 | <img src="artifacts/emu/ui-refresh/files.png" width="230"><br>**File manager**<br><sub>virtualized list, dialogs</sub> | <img src="artifacts/emu/ui-refresh/settings.png" width="230"><br>**Settings**<br><sub>grouped list, WiFi/BT/audio</sub> | <img src="artifacts/emu/ui-refresh/calculator.png" width="230"><br>**Calculator**<br><sub>seven-segment display</sub> |
 | <img src="artifacts/emu/ui-refresh/imu_poll.png" width="230"><br>**IMU**<br><sub>sensor cards, 20 Hz polling</sub> | <img src="artifacts/emu/ui-refresh/heart_curve.png" width="230"><br>**Heart curve**<br><sub>Canvas polyline plotting</sub> | <img src="artifacts/emu/ui-refresh/clock.png" width="230"><br>**Clock**<br><sub>frames, timers, lifecycle</sub> |
+| <img src="artifacts/emu/ui-refresh/typewriter.png" width="230"><br>**Typewriter**<br><sub>per-character reveal + blinking cursor</sub> | <img src="artifacts/emu/ui-refresh/ble_uart.png" width="230"><br>**BLE UART**<br><sub>scan, connect, echo terminal</sub> | <img src="artifacts/emu/ui-refresh/mochi.png" width="230"><br>**Mochi**<br><sub>gesture toy</sub> |
 
 **Games** (ESP32-S3 + single-point touch + IMU)
 
 | | | |
 |:--:|:--:|:--:|
-| <img src="artifacts/emu/ui-refresh/games_2048.png" width="230"><br>**2048**<br><sub>swipe + merge</sub> | <img src="artifacts/emu/ui-refresh/games_snake.png" width="230"><br>**Snake**<br><sub>tilt or swipe steering</sub> | <img src="artifacts/emu/ui-refresh/games_breakout.png" width="230"><br>**Breakout**<br><sub>touch paddle, 6 levels</sub> |
+| <img src="artifacts/emu/ui-refresh/games_2048.png" width="230"><br>**2048**<br><sub>swipe + merge</sub> | <img src="artifacts/emu/ui-refresh/games_snake.png" width="230"><br>**Snake**<br><sub>tilt or swipe steering</sub> | <img src="artifacts/emu/ui-refresh/games_breakout.png" width="230"><br>**Breakout**<br><sub>touch paddle, 6 levels</sub> | <img src="artifacts/emu/ui-refresh/mario.png" width="230"><br>**Mario**<br><sub>pixel-sprite platformer, coins & enemies</sub> | <img src="artifacts/emu/ui-refresh/gravity_ball.png" width="230"><br>**Gravity ball**<br><sub>IMU tilt physics, dirty-rect rendering</sub> |
 
 **Shell components** ([runtime/shell.js](runtime/shell.js) — status bar, launcher, dialogs, toasts)
 
