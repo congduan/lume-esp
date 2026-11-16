@@ -618,3 +618,31 @@ LLM 首 token ~500ms（网关按句切分，首句完成即送 TTS）｜TTS 首�
 - WS + 新固件代码的 IRAM/flash 余量：分区 56% 有余量，盯 IRAM 16384 硬线。
 - 真机验收项照例 pending board：时延预算、双 DMA 并发、触摸打断手感、esp_websocket
   在真机 WiFi 下的稳定性。
+
+### Vendored 魔改候选（2026-11-16 评估，按 VENDOR.md 纪律排期）
+
+背景：用户问「能否在 LVGL 和 QuickJS 本身上魔改优化」。两个 vendored 组件已有魔改先例与
+记录纪律（lvgl/VENDOR.md 29 行、quickjs-ng/VENDOR.md 49 行：PSRAM 分配器、CJK fallback
+字体、-O2 等）。对照既有实测数据逐项评估后，剩余油水按价值序：
+
+1. **lvgl task 事件驱动化（优先，改动小收益直接）**——现状 `lume_board.c lvgl_task`
+   循环 33ms LVGL timer + 10ms 轮询（r35b 实测空载 30fps 上限来源）。改为
+   `lv_timer_handler()` 返回 wait_ms 驱动的到期睡眠/通知（r36b 引擎侧已做同款改造，
+   模式现成）。收益：空载功耗↓（voice assistant 常驻待命场景直接受益）+ 动画帧率
+   上限解锁。风险低；真机功耗数字 pending board。
+2. **LV_USE_SNAPSHOT 翻案刀（体验上限项）**——r46 真快照方案当时因「vendored 禁改 +
+   PSRAM 预算 + 禁开 LV_USE_SNAPSHOT」放弃（KNOWN-SIMPLIFICATIONS 有登记）。重开条件：
+   先过 r33 PSRAM 峰值叠加细账（快照缓冲 = 480×480×2B ≈ 461KB，与满屏解码/Canvas/录音
+   并存的瞬时峰值核算），账过得去才动 lv_conf.h。收益：app 切换免 UI 重建（比 r46
+   crossfade-through-black 更进一步的丝滑）。
+3. **全屏 draw buffer 双缓冲**——即上文 backlog 第 4 条（blocked：内部 RAM 21.5KB 余量
+   vs 48 行需 46KB），不重复立项；等内存释放路径出现再动。
+4. **QuickJS GC size-class 分流：数据否决，不做**——r43b 实测 30s 仅 3 次 GC 且全在
+   启动 eval 段、稳态为 0，占比 4.5%/3.2% < 5% 门槛（docs/r43b-gc-report.md）。
+   除非未来负载画像变化（如语音助手长跑产生稳态 GC 压力），否则不重开。
+5. **JIT / QuickJS 升级 / LVGL 9.4：不做**——quickjs-ng 无 JIT 可移植且 IRAM 16384
+   满线；vendored 版本升级 rebase 成本 > 收益，等上游有硬需求特性再评估。
+
+评估口径：魔改必须有可对拍的前后数据（收益量化），否则不动；改 lv_conf.h /
+vendored 源码前先核对该项是否踩 KNOWN-SIMPLIFICATIONS 既有登记，翻案要在登记处注明
+翻案依据与数据。
