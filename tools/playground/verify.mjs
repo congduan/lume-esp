@@ -24,7 +24,7 @@ try {
     if (await page.locator('#error').isVisible()) throw Error(await page.locator('#error').textContent());
   });
   for (const [name, label] of [['counter','Counter'],['games_snake','Snake'],['games_2048','2048']]) {
-    await check(`${name} has nonempty round-screen DOM`, async () => {
+    await check(`${name} has nonempty screen DOM`, async () => {
       await page.locator(`[data-app="${name}"]`).click();
       const count = await page.locator('#device .lume-node').count();
       if (count <= 0) throw Error(`DOM nodes=${count}`);
