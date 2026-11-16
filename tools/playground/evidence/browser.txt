@@ -1,10 +1,16 @@
 PASS page loads without JavaScript errors
   Counter: 15 nodes
-PASS counter has nonempty round-screen DOM
+PASS counter has nonempty screen DOM
   Snake: 5 nodes
-PASS games_snake has nonempty round-screen DOM
+PASS games_snake has nonempty screen DOM
   2048: 37 nodes
-PASS games_2048 has nonempty round-screen DOM
+PASS games_2048 has nonempty screen DOM
+  border-radius: 36px
+PASS rounded square device frame
+PASS editor compiles default and changed source, then reports syntax errors
+  share hash: 116 chars
+PASS hash restores editor source and share copies reloadable URL
+PASS oversized source keeps existing share hash
 PASS counter button updates count without errors
 PASS snake screen tap and swipe do not throw
   counter: 15 nodes

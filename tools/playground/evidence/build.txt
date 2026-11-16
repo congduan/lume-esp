@@ -14,4 +14,5 @@ PASS bundle heart_curve 1795 bytes
 PASS bundle speedometer 3705 bytes
 PASS bundle power_demo 1857 bytes
 PASS bundle watchface 4349 bytes
+PASS esbuild-wasm assets and 16 editable sources
 PASS prelude 60352 bytes; 16 apps
