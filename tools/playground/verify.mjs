@@ -1,12 +1,27 @@
 #!/usr/bin/env node
 import { createRequire } from 'node:module';
 import { resolve, dirname, join } from 'node:path';
-import { pathToFileURL, fileURLToPath } from 'node:url';
+import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { extname } from 'node:path';
 
 const require = createRequire(import.meta.url);
 const playwright = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const pageUrl = pathToFileURL(join(root, 'website/playground/index.html')).href;
+const siteRoot = join(root, 'website');
+const server = createServer(async (req, res) => {
+  try {
+    const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    const file = join(siteRoot, pathname);
+    if (!file.startsWith(siteRoot + '/')) throw Error('invalid path');
+    const body = await readFile(file);
+    res.setHeader('Content-Type', ({'.html':'text/html','.js':'text/javascript','.css':'text/css','.wasm':'application/wasm'})[extname(file)] || 'application/octet-stream');
+    res.end(body);
+  } catch { res.statusCode = 404; res.end('Not found'); }
+});
+await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+const pageUrl = `http://127.0.0.1:${server.address().port}/playground/index.html`;
 const browser = await playwright.chromium.launch({ headless: true });
 let failures = 0;
 try {
@@ -33,6 +48,26 @@ try {
       console.log(`  ${label}: ${count} nodes`);
     });
   }
+  await check('rounded square device frame', async () => {
+    const radius = await page.locator('.device-wrap').evaluate(el => getComputedStyle(el).borderRadius);
+    console.log(`  border-radius: ${radius}`);
+    if (radius === '50%' || radius === '0px') throw Error(`unexpected border radius: ${radius}`);
+  });
+  await check('editor compiles default and changed source, then reports syntax errors', async () => {
+    await page.locator('#editor-tab').click();
+    await page.locator('#run').click();
+    await page.locator('#device').getByText('TOTAL TAPS').waitFor();
+    const source = await page.locator('#source-code').inputValue();
+    await page.locator('#source-code').fill(source.replace('TOTAL TAPS', 'EDITED TAPS'));
+    await page.locator('#run').click();
+    await page.locator('#device').getByText('EDITED TAPS').waitFor();
+    await page.locator('#source-code').fill('function {');
+    await page.locator('#run').click();
+    await page.locator('#error').waitFor({ state: 'visible' });
+    if (!/error|unexpected/i.test(await page.locator('#error').textContent())) throw Error('no compile error');
+    if (errors.length) throw Error(errors.join('\n'));
+  });
+  await page.locator('#examples-tab').click();
   await check('counter button updates count without errors', async () => {
     await page.locator('[data-app="counter"]').click();
     await page.getByText('Add one', { exact: true }).click();
@@ -60,5 +95,5 @@ try {
     }
     if (errors.length) throw Error(errors.join('\n'));
   });
-} finally { await browser.close(); }
+} finally { await browser.close(); server.close(); }
 if (failures) process.exitCode = 1;

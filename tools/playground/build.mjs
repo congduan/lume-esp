@@ -1,4 +1,4 @@
-import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, copyFile } from 'node:fs/promises';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -18,8 +18,17 @@ const block = part.split('\n\nconst char lume_demo_js')[0];
 const prelude = [...block.matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(m => JSON.parse(m[0])).join('');
 if (!prelude.includes('function __lume_dispatchPress(')) throw new Error('incomplete prelude');
 await mkdir(join(out, 'apps'), { recursive: true });
+await mkdir(join(out, 'sources'), { recursive: true });
+await mkdir(join(out, 'vendor'), { recursive: true });
+const wasmRoot = join(root, 'tools/lume/node_modules/esbuild-wasm');
+await copyFile(join(wasmRoot, 'esbuild.wasm'), join(out, 'vendor/esbuild.wasm'));
+await copyFile(join(wasmRoot, 'lib/browser.min.js'), join(out, 'vendor/esbuild.js'));
+const sources = {};
 await writeFile(join(out, 'prelude.js'), `/* Generated from firmware/components/lume-engine/lume_scripts.c by tools/playground/build.mjs. */\nwindow.LUME_PRELUDE = ${JSON.stringify(prelude)};\n`);
 for (const name of apps) {
+  const raw = await readFile(join(root, 'examples', name, 'app.js'), 'utf8');
+  sources[name] = raw;
+  await writeFile(join(out, 'sources', `${name}.js`), raw);
   const result = await build({ entryPoints: [join(root, 'examples', name, 'app.js')],
     bundle: true, format: 'iife', platform: 'neutral', target: 'es2020',
     minify: true, write: false, logLevel: 'silent', charset: 'utf8' });
@@ -27,4 +36,6 @@ for (const name of apps) {
   await writeFile(join(out, 'apps', `${name}.js`), `window.LUME_APPS[${JSON.stringify(name)}] = ${JSON.stringify(code)};\n`);
   console.log(`PASS bundle ${name} ${Buffer.byteLength(code)} bytes`);
 }
+await writeFile(join(out, 'sources.js'), `window.LUME_SOURCES = ${JSON.stringify(sources)};\n`);
+console.log('PASS esbuild-wasm assets and 16 editable sources');
 console.log(`PASS prelude ${Buffer.byteLength(prelude)} bytes; ${apps.length} apps`);

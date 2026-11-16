@@ -29,24 +29,31 @@
       if (event.type === 'scroll') session?.scroll(event.id, event.y);
     } catch (error) { showError(error); }
   });
-  let session = null, current = 'counter', generation = 0;
+  let session = null, current = 'counter', generation = 0, mode = 'examples';
+  const sourceCode = document.querySelector('#source-code');
+  const sourcePicker = document.querySelector('#source-picker');
+  const editorPanel = document.querySelector('#editor-panel');
+  const examplesPanel = document.querySelector('#examples-panel');
+  let esbuildReady;
+  function setMode(next) {
+    mode = next;
+    editorPanel.hidden = next !== 'editor'; examplesPanel.hidden = next !== 'examples';
+    document.querySelector('#editor-tab').setAttribute('aria-selected', String(next === 'editor'));
+    document.querySelector('#examples-tab').setAttribute('aria-selected', String(next === 'examples'));
+    title.textContent = next === 'editor' ? (document.documentElement.lang === 'zh' ? '编辑器预览' : 'Editor preview') : (examples.find(entry => entry[0] === current)?.[document.documentElement.lang === 'zh' ? 3 : 2] || current);
+  }
   const gestures = new Set();
   function showError(error) { errorBox.hidden = false; errorBox.textContent = error?.stack || String(error); }
   function resize() { device.style.transform = `scale(${wrap.clientWidth / 480})`; }
   new ResizeObserver(resize).observe(wrap); resize();
-  function select(name) {
-    if (!Object.hasOwn(LUME_APPS, name)) { showError(new Error(`Missing bundle: ${name}`)); return; }
+  function startScript(script) {
     generation++;
     session?.destroy(); session = null;
     renderer.reset(); gestures.clear();
     errorBox.hidden = true; errorBox.textContent = '';
-    current = name;
-    const item = examples.find(entry => entry[0] === name);
-    title.textContent = item?.[document.documentElement.lang === 'zh' ? 3 : 2] || name;
-    list.querySelectorAll('button').forEach(button => button.setAttribute('aria-current', String(button.dataset.app === name)));
     const mine = generation;
     try {
-      session = LumePlaygroundSession(LUME_APPS[name], {
+      session = LumePlaygroundSession(script, {
         onMessage: message => {
           if (mine !== generation) return;
           if (message[0] === 'gesture') gestures.add(message[1]);
@@ -55,6 +62,22 @@
         },
         onError: showError,
       });
+    } catch (error) { showError(error); }
+  }
+  function select(name) {
+    if (!Object.hasOwn(LUME_APPS, name)) { showError(new Error(`Missing bundle: ${name}`)); return; }
+    current = name; setMode('examples');
+    list.querySelectorAll('button').forEach(button => button.setAttribute('aria-current', String(button.dataset.app === name)));
+    startScript(LUME_APPS[name]);
+  }
+  async function runEditor() {
+    setMode('editor');
+    const source = sourceCode.value;
+    try {
+      if (!esbuildReady) esbuildReady = fetch('vendor/esbuild.wasm').then(r => { if (!r.ok) throw Error(`Wasm HTTP ${r.status}`); return r.arrayBuffer(); }).then(bytes => WebAssembly.compile(bytes)).then(wasmModule => esbuild.initialize({ wasmModule, worker: true }));
+      await esbuildReady;
+      const result = await esbuild.build({ stdin: { contents: source, sourcefile: 'app.js', loader: 'js' }, bundle: true, write: false, format: 'iife', platform: 'neutral', target: 'es2020', logLevel: 'silent' });
+      startScript(result.outputFiles[0].text);
     } catch (error) { showError(error); }
   }
   function renderList() {
@@ -71,7 +94,7 @@
       copy.append(strong, small); button.append(symbol, copy);
       button.addEventListener('click', () => select(name)); list.append(button);
     }
-    title.textContent = examples.find(entry => entry[0] === current)?.[zh ? 3 : 2] || current;
+    setMode(mode);
   }
   new MutationObserver(renderList).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
   function gestureId(target) {
@@ -101,6 +124,15 @@
   device.addEventListener('pointermove', e => { if (pointer?.pointerId === e.pointerId) dispatch(1, e); });
   device.addEventListener('pointerup', e => { if (pointer?.pointerId === e.pointerId) { dispatch(2, e); pointer = null; } });
   device.addEventListener('pointercancel', e => { if (pointer?.pointerId === e.pointerId) pointer = null; });
-  document.querySelector('#restart').addEventListener('click', () => select(current));
+  for (const [name, , en, zh] of examples) {
+    const option = document.createElement('option'); option.value = name; option.textContent = document.documentElement.lang === 'zh' ? zh : en; sourcePicker.append(option);
+  }
+  sourceCode.value = LUME_SOURCES.counter;
+  sourcePicker.addEventListener('change', () => { sourceCode.value = LUME_SOURCES[sourcePicker.value]; });
+  document.querySelector('#examples-tab').addEventListener('click', () => select(current));
+  document.querySelector('#editor-tab').addEventListener('click', () => setMode('editor'));
+  document.querySelector('#run').addEventListener('click', runEditor);
+  sourceCode.addEventListener('keydown', event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); runEditor(); } });
+  document.querySelector('#restart').addEventListener('click', () => mode === 'editor' ? runEditor() : select(current));
   renderList(); select(current);
 })();
