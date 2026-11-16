@@ -887,6 +887,23 @@ declare namespace lume.audio {
   function streamFinished(): boolean;
   function streamPause(paused: boolean): number;
   function streamReset(): number;
+  interface RecordStreamOptions {
+    /** 512, 1024 (default), or 2048 stereo frames at 16 kHz. */
+    chunkSamples?: 512 | 1024 | 2048;
+    /** PCM is signed 16-bit little-endian interleaved stereo. Return within a
+     * few milliseconds: only do small FFT work or set a signal. Do not build
+     * strings, decode, or redraw in this callback. Buffer is valid afterward. */
+    onChunk(pcm: ArrayBuffer, samples: number): void;
+    onError?(code: number): void;
+  }
+  /** Starts one microphone stream. 0 success; -1 arguments, -2 I2S/codec,
+   * -3 board/busy (including another recording or incompatible playback rate),
+   * -4 PSRAM allocation. An eight-chunk engine queue drops its oldest audio
+   * chunk when full to bound live latency; use recordStreamDropped() for HUD. */
+  function recordStream(opts: RecordStreamOptions): number;
+  /** Stops capture and releases queued chunks; -3 if no stream is active. */
+  function stopStream(): number;
+  function recordStreamDropped(): number;
   namespace mp3 {
     interface Frame {
       pcm: ArrayBuffer;
