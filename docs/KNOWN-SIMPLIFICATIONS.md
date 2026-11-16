@@ -11,6 +11,11 @@
 - **并发/超时**：`listen` backlog 与已接受 socket 均封顶 2；第 3 个连接直接关闭。每个连接 5 s I/O 截止（含「连上但从不发字节」），超时 408；头超 1 KiB 431；畸形请求 400。handler 运行时间无法被 C 强制抢占（QuickJS 同步调用），与 `lume.ai.chat()`/`httpGet()` 的阻塞取舍同类，靠回调纪律而非硬超时约束。
 - **验证口径（host + 编译，非真机）**：`tests/webserver.js` 8 例全绿（精确路由 / 404 / query 解析 / token 403 / 8 KiB body / start-stop 生命周期 / 全链 + handler 异常 500）；`tests/webserv_parse.c` gcc `-Wall -Wextra -Werror` 51 checks PASS（请求行 / header / body 截取 / 畸形输入 / 边界 / token 常数比较）；固件 `idf.py build` + `idf.py size` 与 IRAM 16384 硬线见 `docs/r71-webserv-report.md` 原始输出。esp32sim 无 host 网络回环时，以「C 解析单测 + JS 路由 host 测试」双证据替代，不做假的网络回环断言。
 - **仍 open（真机验收）**：手机/浏览器经真实 WiFi 打开 `http://<ip>:8080/?key=...`、屏幕大字可读性、握手/DHCP 后自动监听与掉线停服、表单 POST 写 KV 后 abc123 侧轮询消费、并发 2 连接与 8 KiB body 的真机内存峰值、与 OTA(8765) 同时监听的射频共存，一律未验。`examples/web_config/` 只做服务端通路 + 演示页，不改 abc123 本体（主控后续排线）。
+## r73 / abc123 SVG 字形（host + esp32sim，真机待验）
+
+- `tools/font2svg/generate.py` 用 fontTools 从 DejaVu Sans Bold TTF 一次性生成 62 个静态 SVG 和 26 个竖排 Aa 组合，路径指令均在 r58 的 M/L/H/V/C/S/Q/T/A/Z 子集内。生成物采用 100×100 viewBox、固定白色 fill；mini-SVG 不支持运行时改色或 `transform`，换色须再生成 SVG。静态轮廓没有笔顺/描红动画；弹跳仅作用于整个 Image 节点。
+- 数字字形也改为字体轮廓；数字下方的实心圆点和 A-E 涂鸦是独立教学元素，继续用一个 Canvas。四模式为顺序、随机、小写、竖排 Aa；数字在小写和 Aa 模式仍显示同一个数字。
+- 字形 Image 声明 320×320 像素，r58 会按此尺寸光栅化。esp32sim 首卡约在注入后 5.2 秒模拟时间完成 app eval，翻页可能显著卡顿；340² 试跑更慢（约 5.8 秒）。主机模拟器和 playground 仍以 Image 占位符显示，不能拿其截图验 SVG 画质。真机 SVG 解码耗时、翻页触感、PSRAM 峰值和 AMOLED 外观待接板验收。
 
 ## r70 / abc123 幼儿字母数字卡（host + browser + esp32sim 证据，无真机验收）
 
