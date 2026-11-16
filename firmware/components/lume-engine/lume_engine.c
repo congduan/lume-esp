@@ -55,6 +55,13 @@ static const char *TAG = "lume-engine";
 static QueueHandle_t s_evt_queue;   /* Queue B: LVGL -> engine */
 static JSRuntime *s_rt;
 static JSContext *s_ctx;
+static void ws_post(uint32_t id, int event, uint8_t *data, size_t len, int binary)
+{
+    lume_engine_evt_t evt = { .type = LUME_EVT_WS, .ws_id = id,
+        .ws_event = event, .ws_data = data, .ws_len = len, .ws_binary = binary };
+    TickType_t wait = event == LUME_WS_MESSAGE ? 0 : pdMS_TO_TICKS(20);
+    if (!s_evt_queue || xQueueSend(s_evt_queue, &evt, wait) != pdTRUE) free(data);
+}
 static bool s_node_live[LUME_MAX_NODES]; /* cleared only after LVGL remove acknowledgement */
 static bool s_node_dead[LUME_MAX_NODES]; /* failed ids stay reserved until runtime reset */
 static uint32_t s_evt_dropped;      /* LVGL-task-only reverse-drop counter */
@@ -1836,6 +1843,55 @@ static JSValue js_net_init(JSContext *ctx, JSValueConst this_val,
     return JS_NewInt32(ctx, lume_net_init());
 }
 
+static JSValue js_ws_connect(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_NewInt32(ctx, -1);
+    size_t n;
+    const char *url = JS_ToCStringLen(ctx, &n, argv[0]);
+    if (!url) return JS_EXCEPTION;
+    if (n != strlen(url)) { JS_FreeCString(ctx, url); return JS_NewInt32(ctx, -1); }
+    const char *headers = NULL;
+    if (argc > 1 && JS_IsString(argv[1])) headers = JS_ToCString(ctx, argv[1]);
+    if (argc > 1 && JS_IsString(argv[1]) && !headers) {
+        JS_FreeCString(ctx, url);
+        return JS_EXCEPTION;
+    }
+    uint32_t id = 0;
+    int result = lume_net_ws_connect(url, headers, &id);
+    if (headers) JS_FreeCString(ctx, headers);
+    JS_FreeCString(ctx, url);
+    return JS_NewInt32(ctx, result < 0 ? result : (int)id);
+}
+
+static JSValue js_ws_send(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    uint32_t id;
+    if (argc < 2 || JS_ToUint32(ctx, &id, argv[0]) < 0) return JS_NewInt32(ctx, -1);
+    size_t len = 0;
+    uint8_t *bytes = JS_GetArrayBuffer(ctx, &len, argv[1]);
+    bool binary = bytes != NULL;
+    const char *str = NULL;
+    if (!binary) {
+        if (!JS_IsString(argv[1])) return JS_NewInt32(ctx, -1);
+        str = JS_ToCStringLen(ctx, &len, argv[1]);
+        if (!str) return JS_EXCEPTION;
+        bytes = (uint8_t *)str;
+    }
+    int result = lume_net_ws_send(id, bytes, len, binary);
+    if (str) JS_FreeCString(ctx, str);
+    return JS_NewInt32(ctx, result);
+}
+
+static JSValue js_ws_close(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    uint32_t id;
+    if (argc < 1 || JS_ToUint32(ctx, &id, argv[0]) < 0) return JS_NewInt32(ctx, -1);
+    return JS_NewInt32(ctx, lume_net_ws_close(id));
+}
+
 static JSValue js_net_deinit(JSContext *ctx, JSValueConst this_val,
                              int argc, JSValueConst *argv)
 {
@@ -2598,6 +2654,7 @@ static void register_bindings(JSContext *ctx)
      * the reserved `http` sub-namespace (brief task 3). JS_SetPropertyStr
      * consumes `net` and `http`. */
     lume_net_init();
+    lume_net_ws_set_sink(ws_post);
     JSValue net = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, net, "init",
                       JS_NewCFunction(ctx, js_net_init, "init", 0));
@@ -2631,6 +2688,11 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, http, "get",
                       JS_NewCFunction(ctx, js_net_http_get, "get", 1));
     JS_SetPropertyStr(ctx, net, "http", http);
+    JSValue ws = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, ws, "_connect", JS_NewCFunction(ctx, js_ws_connect, "_connect", 2));
+    JS_SetPropertyStr(ctx, ws, "_send", JS_NewCFunction(ctx, js_ws_send, "_send", 2));
+    JS_SetPropertyStr(ctx, ws, "_close", JS_NewCFunction(ctx, js_ws_close, "_close", 1));
+    JS_SetPropertyStr(ctx, net, "ws", ws);
     JS_SetPropertyStr(ctx, lume, "net", net);
     JSValue audio = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, audio, "play", JS_NewCFunction(ctx, js_audio_play, "play", 2));
@@ -2797,6 +2859,25 @@ static void dispatch_gesture(const lume_engine_evt_t *e)
         }
         JS_FreeValue(s_ctx, ret);
         for (int i = 0; i < 7; i++) JS_FreeValue(s_ctx, args[i]);
+    }
+    JS_FreeValue(s_ctx, fn);
+    JS_FreeValue(s_ctx, global);
+}
+
+static void dispatch_ws(const lume_engine_evt_t *e)
+{
+    JSValue global = JS_GetGlobalObject(s_ctx);
+    JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_dispatchWS");
+    if (JS_IsFunction(s_ctx, fn)) {
+        JSValue args[3] = { JS_NewUint32(s_ctx, e->ws_id),
+            JS_NewInt32(s_ctx, e->ws_event),
+            e->ws_event == LUME_WS_MESSAGE ?
+                (e->ws_binary ? JS_NewArrayBufferCopy(s_ctx, e->ws_data, e->ws_len) :
+                 JS_NewStringLen(s_ctx, (const char *)e->ws_data, e->ws_len)) : JS_NULL };
+        JSValue ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 3, args);
+        if (JS_IsException(ret)) dump_js_exception(s_ctx, "__lume_dispatchWS");
+        JS_FreeValue(s_ctx, ret);
+        for (int i = 0; i < 3; i++) JS_FreeValue(s_ctx, args[i]);
     }
     JS_FreeValue(s_ctx, fn);
     JS_FreeValue(s_ctx, global);
@@ -3460,6 +3541,10 @@ static void engine_task(void *arg)
                     dispatch_scroll(evt.node_id, evt.scroll_y);
                 } else if (evt.type == LUME_EVT_GESTURE) {
                     dispatch_gesture(&evt);
+                } else if (evt.type == LUME_EVT_WS) {
+                    if (evt.ws_event == LUME_WS_CLOSE) (void)lume_net_ws_close(evt.ws_id);
+                    dispatch_ws(&evt);
+                    free(evt.ws_data);
                 }
             }
             drain_removals();
@@ -3514,6 +3599,7 @@ static void engine_task(void *arg)
                     covered = true;
                     break;
                 }
+                if (tev.type == LUME_EVT_WS) free(tev.ws_data);
                 /* Swallow everything else: no press dispatch into UI we are
                  * about to destroy; redundant reload/launch events coalesce. */
             }
@@ -3529,6 +3615,7 @@ static void engine_task(void *arg)
          * post to FreeRTOS queues and never touch s_ctx, so no other task can
          * be using this context here. Free context first, then runtime. */
         call_app_hook("__lume_shutdown");
+        lume_net_ws_close_all();
         mp3_decoder_close(s_mp3); s_mp3 = NULL;
         if (!lume_audio_stream_finished()) (void)lume_audio_stream_reset();
         lume_ui_msg_t reset_msg;

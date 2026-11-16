@@ -29,6 +29,7 @@ void lume_engine_alloc_stats(size_t *net_bytes, size_t *live);
 /* r46 Task C: LVGL task -> engine task, the black overlay has finished fading
  * in (screen is covered); the engine may now RESET/teardown. node_id unused. */
 #define LUME_EVT_TRANSITION_COVERED 10
+#define LUME_EVT_WS 11
 typedef struct {
     uint8_t  type;        /* LUME_EVT_* */
     uint16_t node_id;
@@ -40,6 +41,10 @@ typedef struct {
     uint8_t  g_cancelled; /* 1 when a List scroll stole the press */
     int16_t  g_x, g_y;    /* absolute point, lv_indev_get_point */
     uint32_t g_t;         /* lv_tick_get ms */
+    uint32_t ws_id;
+    uint8_t ws_event, ws_binary;
+    uint8_t *ws_data;     /* owned by queued record; engine frees after dispatch */
+    size_t ws_len;
 } lume_engine_evt_t;
 
 /* Reverse-channel sink: called by the ui-bridge press callback (LVGL task)
