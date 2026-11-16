@@ -554,3 +554,67 @@ js_usable_size_psram 已实现）；Result typed errors（0/负值码契约已�
    传输层，无配置回滚）时实现。
 4. **设备 REPL（P4）**——串口逐行 eval 复用现有 runtime，开发体验加分项，hotreload 通道加
    REPL 模式即可。
+
+## 语音助手基础设施路线（小智类产品，2026-11-16 立项，结论已定案）
+
+目标：在 Lume 圆屏设备上复刻小智 AI 语音助手体验——**流式输出、不卡 UI、不阻塞**。
+产品形态差异化：点屏/按键唤醒（不做离线唤醒词，esp-sr vs IRAM 16384 满线风险 spike 不值当），
+文本 delta 逐字上屏 + 语音流式播放，状态机全在 app 层热更新迭代（固件只卖原语）。
+
+### 已核实的引擎事实（2026-11-16 读码，勿重新勘察）
+
+- engine task 单任务单线程，20ms `s_evt_queue` 等待即 timer tick 源；事件→JS 回调派发
+  helper 已齐（lume_engine.c ~2648-2718，含背压保护 `uxQueueSpacesAvailable<=4`），
+  `streamFinished` 已走「C 任务→队列→JS 回调」事件回流——异步基建管线**已存在**，缺的是：
+- **全仓无 `JS_ExecutePendingJob` 调用** → Promise 微任务队列从不 drain，
+  async/await 现状写了不执行（语言支持在，事件循环缺失）。
+- 阻塞点三处：`ai.chat`（同步最长 120s）、`httpRequest`（同步等响应）、
+  `audio.record`（整段录音阻塞，最长 10s，一次性返回）。
+- `playStream`（r37b）是分块非阻塞的正确范式，录音侧需镜像对称化。
+
+### 设计决策（已定案）
+
+1. **并发模型 = 补事件循环，不做多线程**。engine 主循环每轮加
+   `while (JS_ExecutePendingJob(rt, &ctx) > 0)`，Promise/async-await 即全面可用；
+   不动 ABI、不动内存模型。明确不做：Worker/双线程 JS（框架红线）、一次性大改 async I/O。
+2. **协议 = 设备薄 WS 客户端 + 网关重活**。设备只用 `lume.net.ws`（ESP-IDF 官方
+   esp_websocket 组件，mbedTLS 已在固件），绑定为 Promise 造型
+   `connect(url)→Promise<WsConn>`，`onmessage/onclose` 走既有事件队列派发（owned payload
+   沿用 TEXT 消息所有权模式）。**Opus 编码不做在设备端**（CPU 最重刀，IRAM 压力）——
+   小智官方协议（WS+Opus 60ms 帧）由网关翻译，对设备说「PCM/MP3 简单双流协议」：
+   下行 JSON text delta（逐字上屏）+ binary 音频帧（喂 playStream 边收边播）；
+   上行 60ms PCM binary 帧（流式喂 ASR）。
+3. **音频对称化 = recordStream + stop**。ES7210 I2S DMA 在独立 audio 任务持续跑，
+   60ms 帧入 PSRAM 环形缓冲（~2 秒/64KB 级，远小于 record 整段 1.28MB），事件送 JS；
+   `audio.stop()` C 侧立即生效（barge-in 打断 <100ms，不等 JS）。回调纪律写进 API 文档：
+   **JS 回调必须几 ms 内返回——只做转发/置 signal，拼接解码全留 C 任务**（typewriter
+   OOM 教训的推广）。
+4. **并发正确性**：录音、播放、HTTP 各在独立 C 任务，JS 只是事件汇合点；引擎 task
+   事件间隙照常处理触摸/timer——UI 永远活着。全双工对话 = 两个独立 DMA 通道。
+5. **状态机在 app 层**：IDLE→LISTEN→THINK→SPEAK 全 JS（signal 驱动），热更新迭代不刷固件。
+
+### 流式全链路时延预算（目标开口 < 2s）
+
+触摸打断 <100ms（C 侧 stop）｜说话→ASR 中间结果 ~300-500ms（流式 ASR）｜
+LLM 首 token ~500ms（网关按句切分，首句完成即送 TTS）｜TTS 首音频 ~500ms-1s（流式合成）。
+文本 delta 上屏走 signal 毫秒级，可加逐字效果（typewriter 30cps 已验证）。
+
+### 刀序（A/B/C 三固件刀可并行 worktree 隔离；D 不碰固件可同时开工；E 收口）
+
+- **A：job drain + Promise**——一切 async API 的前置，改动最小；prelude/timer 回调路径
+  回归（回调产生 Promise 现状静默丢失，补后行为变化）。
+- **B：`lume.net.ws`**——esp_websocket 组件 + 事件派发 + owned payload。
+- **C：`audio.recordStream` + `audio.stop`**——镜像 playStream 架构，环缓冲 64KB 级。
+- **D：网关服务**（Node，独立仓库/目录）——协议先行可定：上游二选一待拍板
+  （①小智官方协议：复用小智生态角色/记忆/配置；②直连 ASR/LLM/TTS 三件：自由度大不受
+  小智服务端约束）。
+- **E：voice_assistant example**——状态机 + UI 卡片（THINK 卡片/逐字文本/波形动画），
+  A/B/C 就绪前可先用 legacy 同步模式出对讲机 demo 验证产品手感。
+
+### 风险登记
+
+- PSRAM 峰值叠加：录音环 + 播放流 + UI 并存，按 r33 叠加预算核（环缓冲 64KB 级，估计无虞）。
+- 同步 chat 冻结期间录音流不能跑（单线程）→ v1 时序天然错开不冲突；流式版无此问题。
+- WS + 新固件代码的 IRAM/flash 余量：分区 56% 有余量，盯 IRAM 16384 硬线。
+- 真机验收项照例 pending board：时延预算、双 DMA 并发、触摸打断手感、esp_websocket
+  在真机 WiFi 下的稳定性。
