@@ -3376,6 +3376,7 @@ static void engine_task(void *arg)
         /* ---- inner event loop (one runtime lifetime) ---- */
         bool reload = false;
         bool go_home = false;
+        bool job_limit_warned = false;
 #if CONFIG_LUME_PERF_PROFILE
         int64_t last_heap_sample = 0;
 #endif
@@ -3463,6 +3464,24 @@ static void engine_task(void *arg)
             }
             drain_removals();
             call_app_hook("__lume_tick");
+            /* JS callbacks and timers can enqueue Promise reactions. Run them
+             * before waiting again so await continuations can update the UI.
+             * Bound each turn: a self-feeding chain must not starve input or
+             * the next timer deadline check in __lume_tick. */
+            for (unsigned jobs = 0; jobs < 64; jobs++) {
+                JSContext *job_ctx = NULL;
+                int result = JS_ExecutePendingJob(rt, &job_ctx);
+                if (result == 0) break;
+                if (result < 0) {
+                    if (job_ctx != NULL)
+                        dump_js_exception(job_ctx, "<promise-job>");
+                    break;
+                }
+                if (jobs == 63 && JS_IsJobPending(rt) && !job_limit_warned) {
+                    ESP_LOGW(TAG, "Promise job limit (64) reached; deferring remaining jobs");
+                    job_limit_warned = true;
+                }
+            }
         }
 
         /* r46 Task A: an app switch is starting (teardown now + rebuild on

@@ -892,7 +892,7 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 
 ## r34 AI infrastructure: deferred board acceptance
 
-- `lume.ai.chat()` is synchronous. The JS engine task blocks through network completion, so the loading state may not paint and touch stops responding for up to the 120-second configured cap. An async/SSE client needs an engine event-loop design and is deferred.
+- `lume.ai.chat()` is synchronous. The JS engine task blocks through network completion, so the loading state may not paint and touch stops responding for up to the 120-second configured cap. Promise job draining landed in r56, but an async/SSE native transport is still deferred.
 - Nonstreaming responses are capped at 32 KiB. Larger JSON is marked truncated and `chat()` returns `-4`; no partial answer is shown. Request bodies are capped at 16 KiB to bound copies and memory use. The cap accommodates ordinary short message histories but excludes very long system prompts.
 - `examples/ai_chat` cycles preset questions because the UI has no keyboard. It pages answers to respect the existing 256-byte UI text payload cap. Non-ASCII text can hit the byte cap before its 80-character page size.
 - The API key and WiFi credentials are plaintext in NVS. Physical flash readers can recover them. Provision through a private local app; never commit keys. No secure element or encrypted NVS has been added.
@@ -1047,3 +1047,9 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - `alloc.net` and `alloc.live` count only blocks passing through Lume's `JSMallocFunctions` PSRAM hooks. Bytes use `heap_caps_get_allocated_size`, the same real-block-size measure as QuickJS's `js_malloc_usable_size`. The counters do not include canvas PSRAM allocated directly by C, LVGL buffers, other native allocations, or task stacks. Growth is evidence of retained JS allocator memory, not by itself proof of an unreachable-object leak or physical PSRAM fragmentation.
 - Counters and the once-per-second `lume-perf: alloc.net=... alloc.live=...` line compile only with `CONFIG_LUME_PERF_PROFILE=y`; the default configuration remains off. All QuickJS runtime operations and allocator callbacks run on the engine task, so the counters need no atomic operations or lock. The read API is engine-task-only.
 - The esp32sim assertion uses a fixed post-reload warmup and compares net bytes across the steady interval. Its threshold is calibrated to the current firmware, app and simulator clock; a future runtime/app change may require recalibration from fresh raw samples. Board-level memory pressure, display/touch behavior, sleep current, radio and persistence remain unverified.
+
+## r56 / Promise job drain
+
+- The engine drains at most 64 QuickJS jobs after each event dispatch and `__lume_tick`, before the next queue wait. A self-feeding Promise chain continues over later turns, leaving event dispatch and timer checks reachable. A job exception is logged and stops that turn's drain; the remaining jobs can run on the next turn.
+- `async`/`await` continuations can now update signals and UI. This does not make synchronous native calls asynchronous: `lume.ai.chat()` still blocks the engine task as described under r34.
+- The Node prelude harness checks the async button callback and reactive Text update. Firmware execution and Promise job scheduling require esp32sim or board verification; Node vm microtasks alone do not validate QuickJS's queue. Physical board acceptance remains open.
