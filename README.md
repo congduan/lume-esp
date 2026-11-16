@@ -90,7 +90,7 @@ spans; no third-party bitmaps or trademarks are copied (see the
 
 | | | | | | | |
 |:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| <img src="artifacts/emu/ui-refresh/invaders.png" width="230"><br>**Invaders**<br><sub>3-tier formation, pan cannon, tap fire</sub> | <img src="artifacts/emu/ui-refresh/frogger.png" width="230"><br>**Frogger**<br><sub>road & river crossing</sub> | | | | | |
+| <img src="artifacts/emu/ui-refresh/invaders.png" width="230"><br>**Invaders**<br><sub>3-tier formation, pan cannon, tap fire</sub> | <img src="artifacts/emu/ui-refresh/frogger.png" width="230"><br>**Frogger**<br><sub>road & river crossing</sub> | <img src="artifacts/emu/ui-refresh/sokoban.png" width="230"><br>**Sokoban**<br><sub>10 BFS-solvable puzzles, swipe to push</sub> | <img src="artifacts/emu/ui-refresh/lcd_dual.png" width="230"><br>**LCD dual**<br><sub>ghost-segment catch & dodge</sub> | | | |
 
 The [piano](examples/piano/app.js) fits 14 white keys × 34 px = 476 px on one
 row with 10 black keys over the seams; pan gestures give a one-finger glissando.

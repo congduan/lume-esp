@@ -26,6 +26,8 @@
     ['invaders','▴','Invaders','太空侵略者','Arcade-style shooter','街机风格射击'],
     ['frogger','✦','Frogger','过河青蛙','Road and river crossing','公路河道穿越'],
     ['abc123','A','ABC 123','字母数字卡','Tap-to-learn alphabet cards','点击学习字母数字'],
+    ['sokoban','▣','Sokoban','推箱子','10 puzzles, swipe to push','十关推箱子'],
+    ['lcd_dual','◫','LCD dual','双屏 LCD','Segment-LCD catch & dodge','幽灵段接面包与闪避'],
   ];
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');

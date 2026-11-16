@@ -732,10 +732,12 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 | **体感挥杆迷你高尔夫**（程序化关卡） | IMU 挥杆速度触发击球——手表形态差异化王牌（手机做不了）；关卡程序化生成无素材依赖 | 挥杆检测用 QMI8658 加速度峰值阈值（gravity_ball impactSpeed 先例）；物理简化为 2D 坡度+摩擦；纯 app 层 |
 | **街机风格射击**（已落地 r68，见 `docs/r68-retro-report.md`；5×11 三档编队 + pan 炮台/tap 射击） | 复古合集首刀；编队整体脏区 ≈26% 全帧、两帧腿部动画同盒重画、UFO 加分 + 波次提速；像素造型为原创近似 | `examples/invaders/app.js`：mario 式 spans 预计算精灵；Game Boy 三档绿；KV key 由 `hiscore.invaders`（16 字符）因 NVS 15 字符上限收敛为 `hisc.invaders`（13 字符）；20ms emu tick 无掉帧日志；纯 app 层 |
 | **公路河道穿越**（已落地 r68，同上战报；13 行网格：5 车 + 4 河 + 2 安全 + 中线 + 窝） | 复古合集同批；tap 相对青蛙中心判四向、车辆撞死/浮木承载/落水死/5 窝过关提速；行带独立脏区 | `examples/frogger/app.js`：车/木/蛙全 spans 预计算；NES 灰底低饱和彩块；跳跃简化为瞬移+高亮（登记取舍）；KV `hisc.frogger`；纯 app 层 |
+| **推箱子**（已落地 r69，见 `docs/r69-retro2-report.md`） | 益智品类补齐复古合集；标准推箱规则 + 10 关内嵌 + par 最少步 + 过关解锁；swipe 四向推箱为主、tap 相邻格为辅；角位死锁 QoL | `examples/sokoban/app.js`：10 关 11×7 ASCII 表（≤13×10），BFS 解算器在 harness 证明每关可解且 par = 最优步数；墙/地板/目标/双态箱/玩家全 spans 硬边；瞬移+高亮（r68 同款简化）；KV `hisc.soko_pg`（`hisc.soko_progress` 18 字符超 NVS 15 字符上限，已收敛）；纯 app 层 |
+| **Game & Watch 风格双游戏 LCD**（已落地 r69，同上战报） | 「segment LCD style」原创形态：所有可能段位以极低对比度常显、激活段高亮，仿非背光透传 LCD 物理特性；MODE 切两小游戏，辨识度高 | `examples/lcd_dual/app.js`：幽灵段 `ctx.retainSegments` 一次上传 2 条（124/99 段）、逐帧 `drawPath` 回放、零 JS 几何；GAME A 接面包（3 段式掉落、3 漏结束）/ GAME B 三车道闪避（一撞结束）；MODE 走单一手势目标避免按钮/画布双触发；KV `hisc.lcd`；**不复刻任何原机造型**；纯 app 层 |
 
 ### Retro classics（r68 起的新分组）
 
-本刀起，roadmap 在「经典 app 复刻生态」下新开**Retro classics**叙事行，收编自研、原创近似的街机风格像素游戏（不点名原商标、不逐像素复制原始精灵位图）。已落地两款：`examples/invaders/`、`examples/frogger/`，均在 playground 24-app 列表内；像素字体统一沿用 14px Montserrat，真机手感/帧率/音效待接板验收。详见 `docs/r68-retro-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`（r68）。
+本刀起，roadmap 在「经典 app 复刻生态」下新开**Retro classics**叙事行，收编自研、原创近似的街机/益智/段码 LCD 风格像素游戏（不点名原商标、不逐像素复制原始精灵位图）。已落地四款：`examples/invaders/`、`examples/frogger/`（r68）、`examples/sokoban/`、`examples/lcd_dual/`（r69），均在 playground 26-app 列表内；像素字体统一沿用 14px Montserrat，真机手感/帧率/音效待接板验收。详见 `docs/r68-retro-report.md`、`docs/r69-retro2-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`（r68/r69）。
 
 ### 幼儿教育（r70 起的新分组，非复刻线）
 
