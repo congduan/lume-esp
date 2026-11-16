@@ -1,0 +1,112 @@
+[
+ {
+  "fw": "linux",
+  "title": "Linux 6.11 on the ESP32-S3",
+  "note": "Linux-on-esp32-S3 by svermigo (GPL-3.0): the esp-hosted network adapter on core 0, Linux executing in place from flash on core 1, cramfs root, jffs2 /etc and /home. Log in as root, password changeme123 — click the console and type; bash, MicroPython and fork are all there"
+ },
+ {
+  "fw": "linux-login",
+  "title": "…logged in for you",
+  "note": "same image, a script types the login at 24 s and runs uname -a"
+ },
+ {
+  "fw": "linux-term",
+  "title": "…in a full terminal (xterm.js)",
+  "note": "same image, logged in by the script, on a VT100 terminal: colours, cursor movement, line editing and full-screen programs render properly — try `ls --color`, `top`, `vi`, or `micropython`"
+ },
+ {
+  "fw": "hello",
+  "title": "IDF hello_world",
+  "note": "boots the ROM, prints, reboots through the watchdog"
+ },
+ {
+  "fw": "panel",
+  "title": "Touch-LCD-4B energy panel",
+  "note": "LVGL 480x480 over the RGB bus, GT911 touch — swipe between pages; demo data from energydata.json, tiles toggle; the SID player is on the last page (enable audio)"
+ },
+ {
+  "fw": "panel-sid",
+  "title": "…with the SID player playing",
+  "note": "same firmware, a script swipes to the SID page and presses play at 5.5 s"
+ },
+ {
+  "fw": "pocket-tank",
+  "title": "Pocket Tank · an LLM aquarium",
+  "note": "mediacutlet/pocket-tank (MIT) on the Waveshare ESP32-S3-Touch-AMOLED-1.8: a 14.3M-parameter 4-bit transformer decides what each fish does, running from flash on PIE (the S3's SIMD) while the other core renders the tank. Tap or drag to touch; type director commands such as feed 6 or shadow in the line box (help lists them). Slower than real time in the browser"
+ },
+ {
+  "fw": "c3-hello",
+  "title": "ESP32-C3 · hello_world (RISC-V)",
+  "note": "one RV32IMC core, console only — real mask ROM through the bootloader into FreeRTOS. Compared with a physical C3 module: 205 of 208 console lines identical over three boots, the difference being the ROM's Saved PC line"
+ },
+ {
+  "fw": "c6-hello",
+  "title": "ESP32-C6 · hello_world (RISC-V)",
+  "note": "one RV32IMAC core, console only — real mask ROM through the bootloader into FreeRTOS. Compared with a Waveshare ESP32-C6-LCD-1.47: 203 of 204 console lines identical over three boots, the difference being the ROM's Saved PC line on the first boot"
+ },
+ {
+  "fw": "c6-energy-scan",
+  "title": "ESP32-C6 · 802.15.4 energy scanner",
+  "note": "the Waveshare ESP32-C6-LCD-1.47: LVGL spectrum of channels 11–26 on the ST7789 over SPI2 and DMA, the WS2812 blinking per scan, energy detect from the emulated 802.15.4 MAC with a moving 2.4 GHz picture — press BOOT for single-channel mode"
+ },
+ {
+  "fw": "c6-contiki",
+  "title": "ESP32-C6 · Contiki-NG",
+  "note": "Contiki-NG on the ESP32-C6 as an unmodified IDF app: its own scheduler, CSMA and 802.15.4 stack over the emulated MAC, broadcasting every 5 s and blinking the WS2812 through the RMT"
+ },
+ {
+  "fw": "c6-contiki-net",
+  "title": "…two of them on one radio medium",
+  "note": "two emulated C6 motes on one 802.15.4 medium, in this tab, with no simulator behind them: each hears the other's broadcasts. The second powers on 1.3 s later — two identical images booted together stay deterministic to the cycle and every frame collides"
+ },
+ {
+  "fw": "c6-rpl-net",
+  "title": "…an RPL/IPv6 network: root and client",
+  "note": "two emulated C6 motes in this tab: node 1 is Contiki-NG's rpl-udp server and the DAG root, node 2 the client — it joins the DAG, then sends a UDP request every 10 s and gets a reply. 6LoWPAN, RPL Lite and CSMA end to end over the emulated 802.15.4 MAC, hardware ACKs included"
+ },
+ {
+  "fw": "c6-wifi",
+  "title": "ESP32-C6 · WiFi station and the Network panel",
+  "note": "our station firmware (examples/c6-wifi-station) on a bare C6: it scans and finds two joinable virtual access points and three networks around them, joins one with WPA2, takes a DHCP lease and pings the gateway. The Network panel shows every Ethernet frame the station sends and receives, dissected; click one for its fields, or download them all as a pcap. The browser has no sockets, so the gateway is as far as it goes"
+ },
+ {
+  "fw": "p4-c6-hosted",
+  "title": "ESP32-P4 + ESP32-C6 · WiFi through a co-processor",
+  "note": "two chips in this tab, as on the Waveshare ESP32-P4-WIFI6: the P4 (rev ≥ 3, two RISC-V cores) runs IDF's wifi_station with ESP-Hosted, the C6 the ESP-Hosted slave, both from their mask ROMs and in lock-step over SDIO. The C6 joins the virtual access point and the P4 gets its address through it; the Network panel shows the C6 station's frames. A real board with a v3.2 P4 and its own C6 goes through the same steps to its address"
+ },
+ {
+  "fw": "p4-lcd35-synth",
+  "title": "ESP32-P4 · Scintilla synth (Touch-LCD-3.5)",
+  "note": "the Elka Synthex in integer C on the Waveshare ESP32-P4-WIFI6-Touch-LCD-3.5: LVGL on the ST7796 over SPI and DMA, FT5x06 touch, the ES8311's audio — enable audio and play the keys; tap the red display for the 80 presets, INSTRUMENT edits the sound live. Slower than real time in the browser"
+ },
+ {
+  "fw": "s31-mosaico",
+  "title": "ESP32-S31 · ESP-Mosaico compass (LVGL)",
+  "note": "the newest chip, two RISC-V cores at 320 MHz, on Espressif's ESP-Mosaico: our demo (examples/mosaico-demo) through Espressif's esp-mosaico-bsp, LVGL 9 on the round 480×480 CO5300 AMOLED over QSPI, the CST9220's touch, the BMM150 magnetometer as a compass needle and the BMI270 accelerometer as a rolling ball while the board's scripted handling turns it. Click or drag on the panel; the AI button changes the colour and pulses the vibration motor, the Boot key shows the sensor readings"
+ },
+ {
+  "fw": "tdisplay-schematik",
+  "title": "Schematik T-Display · classic ESP32 (Arduino)",
+  "note": "a restyled Schematik Arduino sketch on the classic ESP32: a lowercase wordmark, four fun lines and verified emulator specs on the ST7789. GPIO35 advances; GPIO0 powers off into deep sleep and wakes back to the wordmark. No physical-board verification"
+ },
+ {
+  "fw": "c6-xiao",
+  "title": "ESP32-C6 · Seeed Studio XIAO (the user LED and the BOOT button)",
+  "note": "the Seeed Studio XIAO ESP32-C6: our blink firmware (examples/xiao-esp32c6) built with ESP-IDF 5.5.4 for the C6 — the low-active user LED on GPIO 15 blinks (the pin sinks the current, as on the board) and the script presses the BOOT button on GPIO 9, which the firmware reads back"
+ },
+ {
+  "fw": "tdisplay-prices",
+  "title": "LilyGO TTGO T-Display · spot prices (MicroPython)",
+  "note": "the classic ESP32: stock MicroPython v1.29.0 (ESP32_GENERIC) from micropython.org, booted by the mask ROM, running a pure-Python spot-price app on its ST7789 135×240 over VSPI from a LittleFS filesystem — day prices as a bar chart with the current hour. Demo data from its own filesystem: the browser has no sockets, so there is no Wi-Fi and no fetch; the two buttons are below the panel"
+ },
+ {
+  "fw": "atech",
+  "title": "Atech 14-port Pocket Synth",
+  "note": "Arduino firmware on the 14-port board: ST7735 display, WS2812 ring, encoder and buttons, SID-chip synth — the script plays it (enable audio)"
+ },
+ {
+  "fw": "atech-sid",
+  "title": "…as a C64 SID jukebox",
+  "note": "same firmware: cRSID emulates a whole C64 — 6502, SID, CIA, VIC — so it plays real .sid tunes. Commando by Rob Hubbard, then Wizball (enable audio)"
+ }
+]

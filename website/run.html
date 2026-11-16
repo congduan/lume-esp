@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="icon" href="assets/esp32sim-logo-icon.png"><meta property="og:title" content="esp32sim — run real ESP32 firmware in your browser"><meta property="og:description" content="Unmodified ESP32, S3, C3, C6, P4 and S31 firmware booting through the real mask ROM and bootloader, in this tab."><meta property="og:type" content="website"><meta property="og:url" content="https://mikroverk.github.io/esp32sim/run.html"><meta property="og:image" content="https://mikroverk.github.io/esp32sim/assets/social-card.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="esp32sim: real ESP32 firmware in your browser, an emulated touch panel and Linux booting on an ESP32-S3"><meta name="twitter:card" content="summary_large_image"><script>try{const t=localStorage.getItem('esp32sim-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t}catch(e){}</script><script>if(!new URLSearchParams(location.search).has('plain')){const r=document.documentElement;r.classList.add('workbench-pending');setTimeout(()=>r.classList.remove('workbench-pending'),4000)}</script><title>esp32sim — ESP32 emulator</title>
+<style>
+  :root { --bg:#f4f4f5; --pcb:#efe9d8; --mod:#1d1f22; --mod2:#2b2e33; --fg:#1b1d20; --dim:#6b7280; --acc:#0ea5e9; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif; }
+  header { display:flex; gap:14px; align-items:center; padding:10px 18px; background:#fff; border-bottom:1px solid #e5e7eb; }
+  header h1 { font-size:15px; margin:0; font-weight:650; } .st { color:var(--dim); font-size:13px; }
+  main { display:grid; grid-template-columns: 620px 1fr; gap:18px; padding:18px; }
+  /* ---------- Atech 14: modules seated on the board ----------
+     The board is a 3 x 6 grid of port cells (one cell = 1/3 of the width, 1/6 of the height).
+     Modules sit on their ports at true relative size: a button is one cell, the Rotator and
+     Speaker are two cells square and overhang the board edge as they do on the hardware, and
+     the screen is one cell wide by two tall. Free ports keep showing the board. */
+  .boardwrap { display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .stage { position:relative; width:min(520px, 92vw); aspect-ratio:13 / 18; display:grid; place-items:center; }
+  .board {
+    position:absolute; left:25.6%; top:0; width:74.4%; height:100%;
+    background:url(assets/atech/board.webp) center/100% 100% no-repeat; border-radius:3.5%/1.9%;
+  }
+  html[data-theme="light"] .board { background-image:url(assets/atech/board_white.webp); }
+  @media (prefers-color-scheme: light) { html:not([data-theme="dark"]) .board { background-image:url(assets/atech/board_white.webp); } }
+  /* positions are percentages of the stage: the board occupies its right 74.4% */
+  .mod { position:absolute; background-size:100% 100%; background-repeat:no-repeat;
+         filter:drop-shadow(0 6px 10px rgba(0,0,0,.45)); }
+  .mod.knob   { left:0.9%;  top:0.6%;  width:49.6%; height:32.1%; background-image:url(assets/atech/knob.webp); cursor:grab; touch-action:none; }
+  .mod.spk    { left:0.9%;  top:67.3%; width:49.6%; height:32.1%; background-image:url(assets/atech/speaker.webp); }
+  .mod.btn    { left:25.6%; width:24.8%; height:16.1%; background-image:url(assets/atech/button.webp); }
+  .mod.btn1   { top:33.6%; }
+  .mod.btn2   { top:50.3%; }
+  .mod.grid7  { left:50.4%; top:0.6%;  width:24.8%; height:16.1%; background-image:url(assets/atech/neopixel_grid.webp); }
+  .mod.usbc   { left:50.4%; top:83.4%; width:24.8%; height:16.1%; background-image:url(assets/atech/usbc.webp); }
+  .mod.disp   { left:75.1%; top:0.6%;  width:24.8%; height:32.1%; background-image:url(assets/atech/screen.webp); }
+  .mod.grid11 { left:75.1%; top:33.6%; width:24.8%; height:16.1%; background-image:url(assets/atech/neopixel_grid.webp); }
+  /* the screen window inside the bezel, where the 160 x 80 TFT is shown upright */
+  .disp .scr { position:absolute; left:16.3%; top:20.8%; width:63.9%; height:62.5%; }
+  .disp canvas { width:100%; height:100%; display:block; image-rendering:pixelated; background:#05070a; }
+  /* the diffuser: nine pixels lighting it from behind */
+  .lgrid .cells {
+    position:absolute; left:6%; top:6%; width:88%; height:88%;
+    display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); gap:3%;
+    mix-blend-mode:screen;
+  }
+  .lgrid i { display:block; border-radius:16%; background:#000; filter:blur(0.6px); transition:background .06s linear; }
+  /* the ring sits on the rotator's light guide; the pointer is machined into the cap */
+  .knob .ring { position:absolute; left:15.2%; top:15.2%; width:69.6%; height:69.6%; mix-blend-mode:screen; pointer-events:none; }
+  .knob .cap { position:absolute; left:36%; top:36%; width:28%; height:28%; border-radius:50%; }
+  .knob .mark {
+    position:absolute; left:50%; top:9%; width:4.5%; height:33%; margin-left:-2.25%;
+    border-radius:3px; background:linear-gradient(#ffffff,#b9c2cc);
+    box-shadow:0 0 7px rgba(255,255,255,.55); transform-origin:50% 124%;
+  }
+  .btn .cell { position:absolute; inset:0; border-radius:12%; cursor:pointer; user-select:none; -webkit-tap-highlight-color:transparent; }
+  .btn .cell:active, .btn .cell.down { transform:translateY(1.5%) scale(.985); background:rgba(0,0,0,.22); }
+  .boardwrap meter { width:min(520px, 92vw); height:6px; }
+  /* ---------- right pane ---------- */
+  .right { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
+  .row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .tabs button { background:#f3f4f6; border:1px solid #e5e7eb; border-radius:8px; padding:6px 12px; cursor:pointer; }
+  .tabs button.on { background:#111; color:#fff; border-color:#111; }
+  #console { background:#0b0d10; color:#e6e6e6; border-radius:8px; height:420px; overflow:auto; padding:10px; font:12px/1.35 ui-monospace,Menlo,monospace; white-space:pre-wrap; word-break:break-all; }
+  #console .evt { color:#34d399; } #console .sim { color:#f59e0b; } #console .in { color:var(--acc); }
+  #console:focus { outline:2px solid var(--acc); outline-offset:1px; }
+  #console .cur { background:#e6e6e6; color:#0b0d10; }
+  input[type=text] { flex:1; min-width:260px; border:1px solid #e5e7eb; border-radius:8px; padding:7px 10px; font-family:ui-monospace,Menlo,monospace; }
+  button.act { background:#fff; border:1px solid #d1d5db; border-radius:8px; padding:6px 12px; cursor:pointer; }
+  button.act:hover { border-color:var(--acc); }
+  #tftbig { width:480px; height:240px; image-rendering:pixelated; background:#000; border-radius:6px; border:3px solid #222; }
+  .boardbtn { display:inline-block; padding:6px 14px; border-radius:8px; background:#d9d9dc; box-shadow: inset 0 -4px 0 rgba(0,0,0,.25); cursor:pointer; user-select:none; font-weight:600; }
+  .boardbtn.down { box-shadow: inset 0 2px 0 rgba(0,0,0,.35); transform: translateY(2px); }
+  #lcd.round { border-radius: 50% !important; }
+  .motecard { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border:1px solid #e5e7eb; border-radius:10px; margin-right:12px; }
+  .led { display:inline-block; width:18px; height:18px; border-radius:50%; background:#222; border:2px solid #555; margin-left:12px; }
+  .chips button { font-size:12px; padding:4px 10px; }
+.bare .boardwrap, .bare #tftcard, .bare #presets, .bare #presets + *, .bare .actions { display: none; }
+.bare main { grid-template-columns: 1fr; }
+.bare .right { max-width: 1100px; }
+#term { display:none; background:#0b0d10; border-radius:8px; padding:8px; height:436px; overflow:auto; }
+</style><link rel="stylesheet" href="vendor/xterm/xterm.css"><link rel="stylesheet" href="workbench.css?v=7b57ba09"></head>
+<body>
+<script src="emu.js?v=7b57ba09"></script>
+<script src="vendor/xterm/xterm.js"></script>
+<header><h1>ESP32 emulator</h1><span class="st" id="status">connecting…</span><span style="flex:1"></span>
+  <span class="st" id="stat"></span><button class="act" id="audioBtn">🔇 enable audio</button></header>
+<main>
+  <section class="boardwrap">
+    <div class="stage"><div class="board" id="board"></div>
+      <div class="mod knob" id="knob" title="Knob V1.1 - ports 1+2">
+        <canvas class="ring" id="ring" width="240" height="240"></canvas>
+        <div class="cap"><div class="mark" id="mark"></div></div>
+      </div>
+      <div class="mod btn btn1" id="btn1" title="Button V1.1 - port 3"><div class="cell" data-pin="17"></div></div>
+      <div class="mod btn btn2" id="btn2" title="Button V1.1 - port 4"><div class="cell" data-pin="16"></div></div>
+      <div class="mod spk" title="Speaker V1.1 - ports 5+6"></div>
+
+      <div class="mod lgrid grid7" id="grid7" title="Light V1.1 - port 7"><div class="cells"></div></div>
+      <div class="mod usbc" title="USBC V1.1 - port 8"></div>
+
+      <div class="mod disp" title="Screen V1.1 - ports 9+10"><div class="scr"><canvas id="tft" width="80" height="160"></canvas></div></div>
+      <div class="mod lgrid grid11" id="grid11" title="Light V1.1 - port 11"><div class="cells"></div></div>
+    </div>
+    <meter id="vu" min="0" max="1" value="0" title="speaker output"></meter>
+    <div class="st">wheel / drag on the knob to turn &middot; click the cap or press Space to push it &middot; &larr;/&rarr; keys turn</div>
+  </section>
+
+  <section class="right">
+    <div class="card" id="lcdpanel" style="display:none">
+      <div class="row"><strong>Panel</strong><span class="st" id="lcdstat">ST7701S 480×480 over the RGB bus — click/drag to touch</span><span style="flex:1"></span><label class="st">rotate <select id="lcdrot"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label></div>
+      <canvas id="lcd" width="480" height="480" style="margin-top:8px;width:480px;height:480px;border-radius:12px;background:#000;cursor:crosshair;touch-action:none"></canvas>
+      <div class="row" id="lcdextras" style="display:none;margin-top:8px"><span class="boardbtn" id="lcdboot" data-pin="9">BOOT</span><span class="st">press to switch all-channel / single-channel scan</span><span class="led" id="lcdled" title="WS2812"></span><span class="st">WS2812</span></div>
+      <div class="row" id="mosaicobuttons" style="display:none;margin-top:8px"><span class="boardbtn" data-pin="7">AI button (GPIO 7)</span><span class="boardbtn" data-pin="61">Boot key (GPIO 61)</span><span class="st">click = single press, hold = long press</span><span class="led" id="mosaicomotor" title="vibration motor (GPIO 8)"></span><span class="st">vibration motor</span></div>
+      <div class="row" id="tdbuttons" style="display:none;margin-top:8px"><span class="boardbtn" data-pin="0">left (GPIO 0)</span><span class="boardbtn" data-pin="35">right (GPIO 35)</span><span class="st">the board's two buttons</span></div>
+      <div class="row" id="tc001buttons" style="display:none;margin-top:8px"><span class="boardbtn" data-pin="26">left (GPIO 26)</span><span class="boardbtn" data-pin="27">select (GPIO 27)</span><span class="boardbtn" data-pin="14">right (GPIO 14)</span><span class="st">the clock's three buttons</span></div>
+      <div class="row" id="stopwatchbuttons" style="display:none;margin-top:8px"><span class="boardbtn" data-pin="2">A (GPIO 2)</span><span class="boardbtn" data-pin="1">B (GPIO 1)</span></div>
+    </div>
+    <div class="card" id="xiaocard" style="display:none">
+      <div class="row"><strong>Seeed XIAO ESP32‑C6</strong><span class="st">the user LED on GPIO 15 (low active: the pin sinks the current) and the BOOT button on GPIO 9</span></div>
+      <div class="row" id="xiaoextras" style="margin-top:8px"><span class="led" id="xiaoled" title="user LED (GPIO 15)"></span><span class="st">user LED</span><span class="boardbtn" data-pin="9">BOOT</span><span class="st">press to hold the boot button (GPIO 9, active low)</span></div>
+    </div>
+    <div class="card" id="netpanel" style="display:none">
+      <div class="row"><strong>Network</strong><span class="st" id="netstat">two emulated ESP32-C6 motes on one 802.15.4 medium</span></div>
+      <div class="row" id="netnodes" style="margin-top:8px"></div>
+    </div>
+    <div class="card" id="campanel" style="display:none">
+      <div class="row"><strong>Camera</strong><span class="st" id="camwhat">what the OV5640 sees — a picture file or your webcam (frames go to the DVP port at 10 fps)</span></div>
+      <div class="row" style="gap:8px;align-items:center;margin-top:6px">
+        <input type="file" id="camfile" accept="image/*"><button class="act" id="camwebcam">📷 use webcam</button><button class="act" id="camstop" style="display:none">stop webcam</button>
+        <span class="st" id="camstat"></span><meter id="vu2" min="0" max="1" value="0" style="width:120px" title="speaker"></meter><span class="st">speaker</span>
+      </div>
+      <canvas id="camcanvas" width="320" height="240" style="margin-top:8px;border-radius:6px;background:#111;max-width:100%"></canvas>
+      <video id="camvideo" autoplay playsinline muted style="display:none"></video>
+    </div>
+    <div class="card" id="tftcard"><div class="row"><strong>Display (readable)</strong><span class="st">ST7735 160×80, decoded from the bit‑banged SPI</span></div><canvas id="tftbig" width="160" height="80"></canvas></div>
+    <div class="card">
+      <div class="row tabs"><strong>Console</strong>
+        <button class="on chiptab" data-src="usb">USB‑CDC (Serial)</button><button class="chiptab" data-src="uart0">UART0 (ROM/bootloader)</button><button class="chiptab" data-src="term">Terminal (UART0, xterm.js)</button><button class="chiptab" data-src="all">both</button><button data-src="node0" class="nodetab" style="display:none">node 1</button><button data-src="node1" class="nodetab" style="display:none">node 2</button><button data-src="all" class="nodetab" style="display:none">both consoles</button><button data-src="uart0+c6" class="c6tab" style="display:none">both chips</button><button data-src="c6" class="c6tab" style="display:none">ESP32‑C6 (co‑processor)</button>
+        <span style="flex:1"></span><button class="act" id="clear">clear</button></div>
+      <div id="console" tabindex="0" title="click, then type: keys go to the console shown"></div>
+      <div id="term"></div>
+      <div class="row" style="margin-top:4px"><span class="st" id="keyhint">click the console and type — keys go straight to the UART (Enter, Backspace, arrows, Ctrl‑C…); paste works too</span></div>
+      <div class="row" style="margin-top:8px"><input type="text" id="line" placeholder='a line for the console; Enter sends it'/><button class="act" id="send">send to USB‑CDC</button></div>
+      <div class="row chips" id="presets" style="margin-top:6px"><span class="st">actions:</span></div>
+    </div>
+  </section>
+</main>
+<script src="touch-input.js"></script>
+<script src="terminal.js"></script>
+<script src="workbench.js?v=7b57ba09"></script>
+<script src="netmon.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const con = $('#console'); let ws, view = 'usb', netInit = false, boardName = null; const lines = [];   // {src, text}
+let audioCtx = null, playHead = 0, audioLead = 0.06, underruns = 0, ctxRate = 44100, knobAngle = 0, ringLeds = new Array(12).fill([0,0,0]);
+const tft = $('#tft').getContext('2d'), tftbig = $('#tftbig').getContext('2d'), ringC = $('#ring').getContext('2d');
+// Light Grid V1.1 modules, one 3x3 of cells each, keyed by the port they sit in.
+const lgrids = {};
+for (const id of ['7', '11']) {
+  const cells = $('#grid' + id)?.querySelector('.cells'); if (!cells) continue;
+  lgrids[id] = Array.from({length: 9}, () => cells.appendChild(document.createElement('i')));
+}
+function drawGrid(id, leds) {
+  const cells = lgrids[id]; if (!cells) return;
+  leds.forEach((c, i) => {
+    if (!cells[i]) return;
+    // the module's driver caps brightness at 20% (51/255): on the board that reads as full
+    // saturation through the diffuser, so scale by 5 — a colour's ratios stay what the firmware set
+    const [r, g, b] = c.map(v => Math.min(255, v * 5)), on = r + g + b > 0;
+    cells[i].style.background = on ? `rgb(${r},${g},${b})` : '#15171a';
+    cells[i].style.boxShadow = on ? `0 0 14px 4px rgba(${r},${g},${b},.55)` : 'inset 0 0 0 1px #000';
+  });
+  // the grid sits behind one diffuser: what is lit tints the whole module
+  const sum = leds.reduce((a, c) => [a[0] + c[0], a[1] + c[1], a[2] + c[2]], [0, 0, 0]), n = leds.filter(c => c[0] + c[1] + c[2] > 0).length;
+  const mod = $('#grid' + id); if (mod) mod.style.background = n ? `rgba(${Math.min(255, sum[0] / n * 5)},${Math.min(255, sum[1] / n * 5)},${Math.min(255, sum[2] / n * 5)},${0.12 + 0.03 * n})` : '';
+}
+
+// ---- a real terminal on UART0 (terminal.js); the plain console tabs stay a line log
+const terminal = window.installTerminal($('#term'), send);
+function showTerm(on) { $('#term').style.display = on ? 'block' : 'none'; con.style.display = on ? 'none' : ''; $('#line').parentElement.style.display = on ? 'none' : ''; $('#keyhint').textContent = on ? 'a VT100 terminal on UART0 — click it and type; the guest can run `stty cols 100 rows 30` to match' : 'click the console and type — keys go straight to the UART (Enter, Backspace, arrows, Ctrl‑C…); paste works too';
+  if (on) terminal.show(lines.filter(l => l.src === terminal.src).map(l => l.text), ((addSerial.buf || {})[terminal.src] || '').replace(/\r$/, '')); }
+function render() {
+  if (view === 'term') return;
+  con.textContent = '';
+  for (const l of lines) {
+    // `uart0+c6`: several sources, each line tagged with its own
+    const many = view === 'all' || view.includes('+');
+    if (!many ? l.src !== view : view !== 'all' && !view.split('+').includes(l.src)) continue;
+    const d = document.createElement('span');
+    d.className = l.text.startsWith('SIM:') ? 'sim' : l.text.startsWith('{"type":"event"') ? 'evt' : l.text.startsWith('> ') ? 'in' : '';
+    d.textContent = (many ? `[${l.src === 'uart0' && view.includes('+') ? 'p4' : l.src}] ` : '') + l.text + '\n'; con.appendChild(d);
+  }
+  const src = keySrc(), partial = ((addSerial.buf || {})[src] || '').replace(/\r$/, '');   // the prompt is a line without its newline
+  if (partial || document.activeElement === con) { const d = document.createElement('span'); d.textContent = partial; con.appendChild(d); const c = document.createElement('span'); c.className = 'cur'; c.textContent = ' '; con.appendChild(c); }
+  con.scrollTop = con.scrollHeight;
+}
+// A terminal's line editing on the unterminated line: backspace rubs out a character, a
+// carriage return with more text after it restarts the line; a trailing one is kept, it may be
+// the first half of a CR LF still in flight.
+function editLine(s) {
+  let out = '';
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '\x08') out = out.slice(0, -1);
+    else if (ch === '\r') { if (i === s.length - 1) return out + '\r'; out = ''; }
+    else out += ch;
+  }
+  return out;
+}
+function addSerial(src, data) {
+  // split into lines, keep partial line per source. Escape sequences are dropped after the join: one split
+  // across two chunks (`ESC[?20` + `04l`) matches in neither half, and an unfinished one waits in the buffer.
+  addSerial.buf = addSerial.buf || {}; let b = ((addSerial.buf[src] || '') + data).replace(/\x1b\[[0-9;?]*[A-Za-z]|\x1b[()][A-Z0-9]|\x1b[=>]/g, '');
+  const parts = b.split('\n');
+  addSerial.buf[src] = editLine(parts.pop());
+  for (const p of parts) { lines.push({src, text: p.replace(/\r$/, '')}); }
+  while (lines.length > 2000) lines.shift();
+  render();
+}
+let link = null;   // the transport: a WebSocket to a native emulator, or the wasm worker (emu.js)
+function linkSend(d, timing) { if (link) link.send(d, timing); }
+function send(o) { linkSend(JSON.stringify(o)); }
+
+// Panel frames decode into lcdRaw at the controller's size and are painted onto #lcd rotated
+// clockwise by lcdRotation: a firmware that draws landscape into a portrait panel (pocket-tank)
+// reads upright. Touch maps back through panelPoint (touch-input.js), so the guest never sees it.
+// The rotation comes from ?rotate=, else the demo manifest's display_rotate, else 0, and the
+// selector in the panel's header changes it live.
+const lcdRaw = document.createElement('canvas');
+let lcdRotation = 0;
+// what the panel header says once a frame has arrived, and the rotation that reads upright for a
+// board's usual firmware (the T-Display is used landscape, MADCTL MV|MX: its top is the glass's right edge)
+const PANEL_TEXT = { cyd: 'ILI9341 320×240 over SPI, XPT2046 touch — click the screen to tap', 'waveshare-c6-lcd147': 'ST7789 172×320 over SPI2 + GDMA', 'ttgo-tdisplay': 'ST7789 135×240 over VSPI', 'ulanzi-tc001': '256 WS2812, 32×8, on GPIO 32 via RMT', stopwatch: 'CO5300 468×466 QSPI · CST820 touch' };
+const PANEL_ROTATE = { 'ttgo-tdisplay': 270 };
+// One LED is one pixel of the 32×8 matrix: the canvas itself is drawn 16× (512×128), since the
+// workbench shows a canvas at its own size and CSS scaling alone would leave the clock 32×8
+const PANEL_SCALE = { 'ulanzi-tc001': 16 };
+function paintLcd() {
+  const c = $('#lcd'), w = lcdRaw.width, h = lcdRaw.height; if (!w || !h) return;
+  const k = PANEL_SCALE[boardName] || 1, quarter = lcdRotation === 90 || lcdRotation === 270, cw = (quarter ? h : w) * k, ch = (quarter ? w : h) * k;
+  if (c.width !== cw || c.height !== ch) { c.width = cw; c.height = ch; const s = k === 1 && Math.min(w, h) <= 240 ? 2 : 1; c.style.width = (cw * s) + 'px'; c.style.height = (ch * s) + 'px'; }
+  const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.save();
+  if (lcdRotation === 90) { ctx.translate(cw, 0); ctx.rotate(Math.PI / 2); }
+  else if (lcdRotation === 180) { ctx.translate(cw, ch); ctx.rotate(Math.PI); }
+  else if (lcdRotation === 270) { ctx.translate(0, ch); ctx.rotate(-Math.PI / 2); }
+  ctx.drawImage(lcdRaw, 0, 0, w * k, h * k); ctx.restore();
+}
+function setLcdRotation(deg) {
+  deg = [0, 90, 180, 270].includes(+deg) ? +deg : 0;
+  lcdRotation = deg; $('#lcdrot').value = String(deg); paintLcd();
+}
+function drawFrame(buf) {
+  const dv = new DataView(buf); const w = dv.getUint16(1, true), h = dv.getUint16(3, true);
+  if (w > 160 || (boardName && boardName !== 'atech14')) {   // a panel, not the Atech TFT
+    const c = $('#lcd'); if (c.style.display === 'none') { c.style.display = ''; $('#lcdstat').textContent = PANEL_TEXT[boardName] || $('#lcdstat').textContent; }   // the first frame: the firmware drives it after all
+    if (lcdRaw.width !== w || lcdRaw.height !== h) { lcdRaw.width = w; lcdRaw.height = h; }
+    const rctx = lcdRaw.getContext('2d'); const im = rctx.createImageData(w, h); const d = im.data;
+    for (let i = 0; i < w * h; i++) { const p = dv.getUint16(5 + i * 2, true); d[i*4] = (p >> 11) * 255 / 31; d[i*4+1] = ((p >> 5) & 63) * 255 / 63; d[i*4+2] = (p & 31) * 255 / 31; d[i*4+3] = 255; }
+    rctx.putImageData(im, 0, 0); paintLcd(); return;
+  }
+  const img = tftbig.createImageData(w, h); const px = img.data;
+  for (let i = 0; i < w * h; i++) { const p = dv.getUint16(5 + i * 2, true);
+    px[i*4] = (p >> 11) * 255 / 31; px[i*4+1] = ((p >> 5) & 63) * 255 / 63; px[i*4+2] = (p & 31) * 255 / 31; px[i*4+3] = 255; }
+  tftbig.putImageData(img, 0, 0);
+  // physical panel: portrait, content rotated 90° (as on the real module)
+  tft.save(); tft.clearRect(0, 0, 80, 160); tft.translate(0, 160); tft.rotate(-Math.PI / 2); tft.drawImage($('#tftbig'), 0, 0); tft.restore();
+}
+// The ring arrives in physical order, position 0 at 12 o'clock counting counter-clockwise: the
+// board model undoes the Knob V1.1's chain interleave (esp32s3 board, KNOB_RING_PHYSICAL).
+// A single WS2812 as a dot: the hue at full strength, the brightness as the glow. Firmware often
+// runs these at a few percent (the IDF blink example's 16/255 is plainly visible on a board),
+// and painting that value literally is a dot nobody can see.
+function paintLed(el, r, g, b) {
+  const m = Math.max(r, g, b);
+  if (m === 0) { el.style.background = '#222'; el.style.boxShadow = 'none'; return; }
+  const k = 255 / m, glow = Math.min(1, 0.35 + m / 255);
+  el.style.background = `rgb(${r * k | 0},${g * k | 0},${b * k | 0})`;
+  el.style.boxShadow = `0 0 ${6 + 10 * glow}px ${2 * glow}px rgba(${r * k | 0},${g * k | 0},${b * k | 0},${glow.toFixed(2)})`;
+}
+function drawRing() {
+  const c = ringC, cx = 120, cy = 120, R = 100; c.clearRect(0, 0, 240, 240);
+  // The firmware runs the ring at 20% brightness (50/255); through the light guide that is a
+  // saturated colour with a near-white core at the pointer, and everything lit bleeds faintly
+  // around the whole ring. Scale by 5 so the ratios stay what the firmware set.
+  const scaled = ringLeds.map(l => (l || [0, 0, 0]).map(v => Math.min(255, v * 5)));
+  let bleed = [0, 0, 0], peak = 0;
+  for (const l of scaled) { const s = l[0] + l[1] + l[2]; if (s > peak) { peak = s; bleed = l; } }
+  const lit = peak > 0;
+  c.beginPath(); c.arc(cx, cy, R, 0, 2 * Math.PI); c.strokeStyle = lit ? `rgba(${bleed[0]},${bleed[1]},${bleed[2]},.30)` : '#111'; c.lineWidth = 16; c.stroke();
+  for (let p = 0; p < 12; p++) {
+    const a = -Math.PI / 2 - p * Math.PI / 6, x = cx + R * Math.cos(a), y = cy + R * Math.sin(a);
+    const [r, g, b] = scaled[p] || [0, 0, 0]; const s = r + g + b, on = s > 0;
+    if (on) { c.shadowColor = `rgb(${r},${g},${b})`; c.shadowBlur = 18; }
+    c.beginPath(); c.arc(x, y, 7, 0, 2 * Math.PI);
+    c.fillStyle = on ? `rgb(${r},${g},${b})` : (lit ? `rgba(${bleed[0]},${bleed[1]},${bleed[2]},.35)` : '#2a2d31'); c.fill();
+    c.shadowBlur = 0;
+    // the brightest LED overexposes at its centre, as on the board
+    if (on && s === peak) { c.beginPath(); c.arc(x, y, 3.5, 0, 2 * Math.PI); c.fillStyle = `rgba(255,255,255,.75)`; c.fill(); }
+  }
+}
+function drawCamPreview(buf) {
+  const b = new Uint8Array(buf); const w = b[1] | (b[2] << 8), h = b[3] | (b[4] << 8); const c = $('#camcanvas'); if (!c) return;
+  const ctx = c.getContext('2d'); const img = ctx.createImageData(w, h); const d = img.data;
+  for (let i = 0, j = 5; i < w * h * 4; i += 4, j += 3) { d[i] = b[j]; d[i + 1] = b[j + 1]; d[i + 2] = b[j + 2]; d[i + 3] = 255; }
+  c.width = w; c.height = h; ctx.putImageData(img, 0, 0); const st = $('#camstat'); if (st && !st.textContent) st.textContent = 'picture from --cam-image';
+}
+function playAudio(buf) {
+  // [2][rate u32 le][int16le samples]: the rate is whatever the firmware programmed the I2S clock to
+  const rate = new DataView(buf).getUint32(1, true);
+  const n = (buf.byteLength - 5) / 2; if (n <= 0 || rate < 3000) return;
+  const i16 = new Int16Array(buf.slice(5)); let peak = 0; for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(i16[i]));
+  $('#vu').value = Math.min(1, peak / 4000); const vu2 = $('#vu2'); if (vu2) vu2.value = Math.min(1, peak / 4000);
+  if (!audioCtx) return;
+  const ab = audioCtx.createBuffer(1, n, rate); const ch = ab.getChannelData(0);
+  for (let i = 0; i < n; i++) ch[i] = i16[i] / 32768 * 8;   // firmware output is quiet (double volume scaling): boost 8x for monitoring
+  const src = audioCtx.createBufferSource(); src.buffer = ab; src.connect(audioCtx.destination);
+  const now = audioCtx.currentTime;
+  if (playHead < now + 0.01) {              // underrun: the emulator fell behind (busy firmware) — grow the buffer, up to 400 ms
+    underruns++; audioLead = Math.min(0.4, audioLead * 1.5); playHead = now + audioLead;
+  } else if (playHead > now + audioLead + 0.5) { playHead = now + audioLead; }   // runaway after a catch-up burst: drop the excess
+  src.start(playHead); playHead += n / rate;
+}
+// The line box's example and the tab title follow what is running: a demo manifest's line_hint
+// or the board's own protocol (the Atech synth takes JSON actions), and the demo's name from the
+// page's demo list (emu.js) or else the header the board sets.
+function lineHint(board) {
+  const demo = window.EmuLink && window.EmuLink.lineHint;
+  return demo || (board === 'atech14' ? '{"action":"set_note","value":"5"}' : 'a line for the console; Enter sends it');
+}
+function syncTitle() {
+  const demo = window.EmuLink && window.EmuLink.demoTitle;
+  document.title = demo ? demo + ' · esp32sim' : document.querySelector('h1').textContent;
+}
+function handleMessage(data) {
+    if (data instanceof ArrayBuffer) { const t = new Uint8Array(data)[0]; if (t === 1) drawFrame(data); else if (t === 2) playAudio(data); else if (t === 4) drawCamPreview(data); else if (t === 5 && window.NetMon) window.NetMon.frame(data); return; }
+    const m = JSON.parse(data);
+    if (m.t === 'board') window.dispatchEvent(new CustomEvent('esp32sim-board', { detail: m.name }));
+    if (m.t === 'serial') { if (m.src === terminal.src) terminal.write(m.data); addSerial(m.src, m.data); }
+    else if (m.t === 'emu') addSerial('usb', m.msg + '\n');
+    else if (m.t === 'board') { boardName = m.name; setLcdRotation(new URLSearchParams(location.search).get('rotate') ?? (window.EmuLink && window.EmuLink.displayRotate) ?? PANEL_ROTATE[m.name] ?? 0); document.body.classList.toggle('bare', m.name !== 'atech14'); $('#line').placeholder = lineHint(m.name); if (m.name === 'atech14') { document.querySelector('h1').textContent = 'ESP32‑S3 emulator — Atech 14‑port board'; } else if (m.name === 'esp32c3') { document.querySelector('h1').textContent = 'ESP32‑C3 emulator — RISC-V, console only'; } else if (m.name === 'esp32c6') { document.querySelector('h1').textContent = 'ESP32‑C6 emulator — RISC-V, console only'; } else if (m.name === 'waveshare-c6-lcd147') { document.querySelector('h1').textContent = 'ESP32‑C6 emulator — Waveshare ESP32‑C6‑LCD‑1.47'; $('#lcdpanel').style.display = ''; $('#lcdstat').textContent = 'ST7789 172×320 over SPI2 + GDMA — nothing drawn yet: this firmware has not written the display'; $('#lcd').style.display = 'none'; $('#lcdextras').style.display = ''; } else if (m.name === 'xiao-esp32c6') { document.querySelector('h1').textContent = 'ESP32‑C6 emulator — Seeed Studio XIAO ESP32‑C6'; $('#xiaocard').style.display = ''; } else if (m.name === 'ttgo-tdisplay') { document.querySelector('h1').textContent = 'ESP32 emulator — LilyGO TTGO T-Display'; $('#lcdpanel').style.display = ''; $('#lcdstat').textContent = 'ST7789 135×240 over VSPI — nothing drawn yet: this firmware has not written the display'; $('#lcd').style.display = 'none'; $('#tdbuttons').style.display = ''; document.querySelector(`.tabs button[data-src="${window.EmuLink && window.EmuLink.terminal ? 'term' : 'uart0'}"]`).click(); } else if (m.name === 'cyd') { document.querySelector('h1').textContent = 'ESP32 emulator — ESP32-2432S028 Cheap Yellow Display'; $('#lcdpanel').style.display = ''; $('#lcdstat').textContent = 'ILI9341 320×240 over SPI, XPT2046 touch — click the screen to tap'; document.querySelector(`.tabs button[data-src="${window.EmuLink && window.EmuLink.terminal ? 'term' : 'uart0'}"]`).click(); } else if (m.name === 'ulanzi-tc001') { document.querySelector('h1').textContent = 'ESP32 emulator — Ulanzi TC001 pixel clock'; $('#lcdpanel').style.display = ''; $('#lcdstat').textContent = '256 WS2812, 32×8, on GPIO 32 via RMT — nothing drawn yet: this firmware has not sent a frame'; $('#lcd').style.display = 'none'; $('#tc001buttons').style.display = ''; document.querySelector(`.tabs button[data-src="${window.EmuLink && window.EmuLink.terminal ? 'term' : 'uart0'}"]`).click(); } else if (/^esp32p4(-rev3)?-c6$/.test(m.name)) { document.querySelector('h1').textContent = 'ESP32‑P4 + ESP32‑C6 — WiFi through ESP‑Hosted over SDIO, two chips in lock‑step'; document.querySelectorAll('.c6tab').forEach(b => b.style.display = ''); document.querySelector('.chiptab[data-src="usb"]').style.display = 'none'; document.querySelector('.chiptab[data-src="all"]').style.display = 'none'; document.querySelector('.chiptab[data-src="uart0"]').textContent = 'ESP32‑P4 (UART0)'; document.querySelector('.c6tab[data-src="uart0+c6"]').click(); } else if (m.name === 'none') { document.querySelector('h1').textContent = ({ esp32: 'ESP32', esp32c3: 'ESP32‑C3', esp32c6: 'ESP32‑C6', esp32p4: 'ESP32‑P4', esp32s31: 'ESP32‑S31' }[m.chip] || 'ESP32‑S3') + ' emulator — bare module'; document.querySelector(`.tabs button[data-src="${window.EmuLink && window.EmuLink.terminal ? 'term' : 'uart0'}"]`).click(); } if (m.name === 'waveshare-cam') { document.querySelector('h1').textContent = 'ESP32‑S3 emulator — Waveshare ESP32‑S3‑CAM‑OV5640'; $('#campanel').style.display = ''; } if (m.name === 'ai-thinker-cam') { document.querySelector('h1').textContent = 'ESP32 emulator — AI‑Thinker ESP32‑CAM'; $('#camwhat').textContent = 'what the OV2640 sees — a picture file or your webcam (raw RGB565/YUV422 frames over I2S0 at about 10 fps)'; $('#campanel').style.display = ''; document.querySelector(`.tabs button[data-src="${window.EmuLink && window.EmuLink.terminal ? 'term' : 'uart0'}"]`).click(); } if (m.name === 'waveshare-lcd4b') { document.querySelector('h1').textContent = 'ESP32‑S3 emulator — Waveshare ESP32‑S3‑Touch‑LCD‑4B'; $('#lcdpanel').style.display = ''; }  syncTitle(); }
+    // a manifest's `console` names the tab its firmware talks on (a bare C6 app on USB-Serial/JTAG)
+    if (m.t === 'board' && window.EmuLink && window.EmuLink.console) document.querySelector(`.tabs button[data-src="${window.EmuLink.console}"]`)?.click();
+    if (m.t === 'board' && m.name === 'waveshare-p4-lcd35') { document.querySelector('h1').textContent = 'ESP32‑P4 emulator, Waveshare ESP32‑P4‑WIFI6‑Touch‑LCD‑3.5'; $('#lcdstat').textContent = 'ST7796 320×480 over SPI2 + AXI‑GDMA, FT5x06 touch: click or drag to touch'; const lcd = $('#lcd'); const quarter = lcdRotation === 90 || lcdRotation === 270; lcd.style.width = (quarter ? 480 : 320) + 'px'; lcd.style.height = (quarter ? 320 : 480) + 'px'; $('#lcdpanel').style.display = ''; syncTitle(); }
+    if (m.t === 'board' && m.name === 'mosaico') { document.querySelector('h1').textContent = 'ESP32‑S31 emulator, Espressif ESP‑Mosaico'; $('#lcdstat').textContent = 'CO5300 480×480 over QSPI (GP‑SPI2), CST9220 touch: click or drag to touch'; const lcd = $('#lcd'); lcd.style.width = '480px'; lcd.style.height = '480px'; $('#lcdpanel').style.display = ''; $('#mosaicobuttons').style.display = ''; document.querySelector(`.tabs button[data-src="${window.EmuLink && window.EmuLink.terminal ? 'term' : 'uart0'}"]`).click(); syncTitle(); }
+    if (m.t === 'board' && m.name === 'waveshare-amoled18-v2') { document.querySelector('h1').textContent = 'ESP32‑S3 emulator, Waveshare ESP32‑S3‑Touch‑AMOLED‑1.8 V2'; $('#lcdstat').textContent = 'CO5300 368×448 over QSPI, click or drag to touch'; const lcd = $('#lcd'); const quarter = lcdRotation === 90 || lcdRotation === 270; lcd.style.width = (quarter ? 448 : 368) + 'px'; lcd.style.height = (quarter ? 368 : 448) + 'px'; $('#lcdpanel').style.display = ''; syncTitle(); }
+    if (m.t === 'board') {
+      $('#stopwatchbuttons').style.display = m.name === 'stopwatch' ? '' : 'none';
+      $('#lcd').classList.toggle('round', m.name === 'mosaico');   // the Mosaico's AMOLED is round
+      if (m.name === 'stopwatch') {
+        document.querySelector('h1').textContent = 'ESP32‑S3 emulator — M5Stack StopWatch';
+        $('#lcdstat').textContent = PANEL_TEXT.stopwatch;
+        const lcd = $('#lcd'), quarter = lcdRotation === 90 || lcdRotation === 270;
+        lcd.width = quarter ? 466 : 468; lcd.height = quarter ? 468 : 466;
+        lcd.style.width = lcd.width + 'px'; lcd.style.height = lcd.height + 'px';
+        $('#lcdpanel').style.display = ''; syncTitle();
+      }
+    }
+    else if (m.t === 'grid') { drawGrid(m.id, m.leds); }
+    else if (m.t === 'netmon') { if (window.NetMon) { window.NetMon.show(); if (window.EmuLink && window.EmuLink.netmonOpen) { const d = $('#netmondetails'); if (d) d.open = true; } } }
+    else if (m.t === 'net') {
+      $('#netpanel').style.display = ''; document.body.classList.add('bare');
+      document.querySelectorAll('.nodetab').forEach(b => b.style.display = ''); document.querySelectorAll('.chiptab').forEach(b => b.style.display = 'none');
+      document.querySelector('h1').textContent = 'ESP32‑C6 network — ' + m.nodes.length + ' motes on one 802.15.4 medium'; syncTitle();
+      if (!netInit) { netInit = true; document.querySelector('.tabs button[data-src="node0"]').click(); }
+      $('#netstat').textContent = `t = ${m.sec.toFixed(1)} s` + (m.behind > 0.05 ? ` · ⚠ ${m.behind.toFixed(2)} s behind` : ' · real time');
+      const row = $('#netnodes');
+      if (row.children.length !== m.nodes.length) { row.innerHTML = m.nodes.map((_, i) => `<span class="motecard"><span class="led" id="netled${i}"></span><b>node ${i + 1}</b> <span class="st" id="netinfo${i}"></span></span>`).join(''); }
+      m.nodes.forEach((n, i) => {
+        const [r, g, b] = [(n.led >> 16) & 255, (n.led >> 8) & 255, n.led & 255];
+        paintLed($('#netled' + i), r, g, b);
+        $('#netinfo' + i).textContent = `sent ${n.tx} · heard ${n.rx}` + (n.dropped ? ` · ${n.dropped} lost` : '') + (n.halted ? ' · halted' : '');
+      });
+    }
+    else if (m.t === 'ring') { ringLeds = m.leds; drawRing(); if (m.leds.length === 1) { const [r, g, b] = m.leds[0]; paintLed(boardName === 'xiao-esp32c6' ? $('#xiaoled') : boardName === 'mosaico' ? $('#mosaicomotor') : $('#lcdled'), r, g, b); } }
+    else if (m.t === 'camera-error') { stopWebcam(); $('#campanel').style.display = ''; $('#camstat').textContent = m.message; }
+    else if (m.t === 'stat') { $('#stat').textContent = `t = ${m.time.toFixed(2)} s · ${(m.insns/1e6).toFixed(1)} M insns · ${m.frames} frames` + (m.speed == null ? '' : m.speed < 0.95 ? ` · ⚠ ${Math.floor(m.speed * 100)}% of real time` : ' · real time') + (m.resyncs ? ` · ${m.resyncs} resync` : '') + (m.cam ? ` · ${m.cam} camera frames` : ''); $('#stat').style.color = m.speed != null && m.speed < 0.95 ? '#f66' : ''; }
+}
+function setEmulatorStatus(status) {
+  $('#status').textContent = status;
+  if (/^(stopped|boot failed|disconnected|error)/i.test(status)) stopWebcam();
+}
+function connect() {
+  if (window.EmuLink) { link = window.EmuLink.connect(handleMessage, setEmulatorStatus); return; }
+  ws = new WebSocket(`ws://${location.host}/ws`); ws.binaryType = 'arraybuffer';
+  ws.onopen = () => $('#status').textContent = 'connected';
+  ws.onclose = () => { setEmulatorStatus('disconnected — retrying'); link = null; setTimeout(connect, 1000); };
+  ws.onmessage = ev => handleMessage(ev.data);
+  link = { send: (d) => { if (ws.readyState === 1) ws.send(d); } };
+}
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => { document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('on')); b.classList.add('on'); view = b.dataset.src; $('#send').textContent = keySrc() === 'uart0' ? 'send to UART0' : 'send to USB‑CDC'; showTerm(view === 'term'); render(); });
+document.querySelectorAll('.btn .cell, .boardbtn').forEach(el => {
+  const pin = +el.dataset.pin; let downAt = 0;
+  const down = v => { el.classList.toggle('down', v); if (v) { downAt = performance.now(); send({t:'btn', pin, v:1}); } else { setTimeout(() => send({t:'btn', pin, v:0}), Math.max(0, 60 - (performance.now() - downAt))); } };
+  el.onmousedown = () => down(true); el.onmouseup = el.onmouseleave = () => { if (el.classList.contains('down')) down(false); };
+});
+function turn(d) { knobAngle += d * 20; $('#mark').style.transform = `rotate(${knobAngle}deg)`; send({t:'knob', d}); }
+$('#knob').addEventListener('wheel', e => { e.preventDefault(); turn(e.deltaY > 0 ? 1 : -1); }, {passive:false});
+let dragX = null; $('#knob').onmousedown = e => { if (e.target.closest('.cap')) { send({t:'knobpress', v:1}); return; } dragX = e.clientX; };
+window.onmousemove = e => { if (dragX === null) return; const dx = e.clientX - dragX; if (Math.abs(dx) >= 14) { turn(dx > 0 ? 1 : -1); dragX = e.clientX; } };
+window.onmouseup = e => { dragX = null; if (e.target.closest('.cap')) send({t:'knobpress', v:0}); };
+// Space and the arrow keys drive the Atech knob: only on that board, and not when the key was
+// typed into something — a text box, the console, or the terminal — whose own handler took it.
+const knobKeys = e => boardName === 'atech14' && !e.defaultPrevented && !(e.target.closest && e.target.closest('input, textarea, #console, #term'));
+window.onkeydown = e => { if (!knobKeys(e)) return; if (e.key === 'ArrowRight') turn(1); if (e.key === 'ArrowLeft') turn(-1); if (e.key === ' ') { e.preventDefault(); send({t:'knobpress', v:1}); } };
+window.onkeyup = e => { if (e.key === ' ' && knobKeys(e)) send({t:'knobpress', v:0}); };
+// ---- keyboard on the console: which console the keys (and the line box) go to
+function keySrc() { return view === 'usb' ? 'usb' : view.startsWith('node') ? null : 'uart0'; }   // 'term' and 'all' type into UART0
+con.onkeydown = e => { const src = keySrc(), data = terminalKeyBytes(e); if (!src || data === null) return; e.preventDefault(); send({t:'key', src, data}); };
+con.onpaste = e => { const src = keySrc(); if (!src) return; e.preventDefault(); const text = (e.clipboardData || window.clipboardData).getData('text'); if (text) send({t:'key', src, data:text}); };
+con.onfocus = con.onblur = () => render();
+$('#send').onclick = () => { const l = $('#line').value.trim(); if (!l) return; const src = keySrc() || 'usb'; lines.push({src, text:'> ' + l}); render(); send({t:'serial', src, line:l}); };
+$('#line').onkeydown = e => { if (e.key === 'Enter') $('#send').click(); };
+$('#clear').onclick = () => { lines.length = 0; render(); };
+$('#audioBtn').onclick = async () => { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)({sampleRate: ctxRate}); await audioCtx.resume(); $('#audioBtn').textContent = '🔊 audio on'; };
+const presets = [['set_note C','{"action":"set_note","value":"0"}'],['set_note A','{"action":"set_note","value":"5"}'],['octave 5','{"action":"set_octave","value":"5"}'],['trigger_note','{"action":"trigger_note","value":""}'],['chord','{"action":"play_chord_voices","value":""}'],['play_note 880','{"action":"play_note","value":"{\\"frequency\\":880,\\"duration\\":300}"}'],['volume 1.0','{"action":"set_volume","value":"1.0"}'],['ring red','{"action":"set_ring_color","value":"{\\"r\\":255,\\"g\\":0,\\"b\\":40}"}']];
+presets.forEach(([n, l]) => { const b = document.createElement('button'); b.className = 'act'; b.textContent = n; b.onclick = () => { $('#line').value = l; $('#send').click(); }; $('#presets').appendChild(b); });
+drawRing(); connect();
+// ---- touch panel: pointer -> sampled controller contact
+const touchTrace = new URLSearchParams(location.search).has('touchTrace')
+  ? (window.__esp32simTouchTrace = []) : null;
+window.recordTouchTrace = (entry) => {
+  if (!touchTrace) return;
+  if (touchTrace.length >= 2048) touchTrace.shift();
+  touchTrace.push(entry);
+};
+installTouchInput($('#lcd'), linkSend, { intervalMs: +(new URLSearchParams(location.search).get('touchms') ?? 8), trace: touchTrace ? window.recordTouchTrace : null, rotation: () => lcdRotation });
+$('#lcdrot').onchange = (e) => setLcdRotation(e.target.value);
+// ---- camera source (waveshare-cam): send RGBA frames as binary type 3
+const camCanvas = $('#camcanvas'), camCtx = camCanvas.getContext('2d'); let camStream = null, camTimer = null, camGeneration = 0;
+function sendCamFrame() {
+  if (!link) return;
+  const w = camCanvas.width, h = camCanvas.height; const img = camCtx.getImageData(0, 0, w, h);
+  const buf = new Uint8Array(5 + w * h * 4); buf[0] = 3; buf[1] = w & 255; buf[2] = w >> 8; buf[3] = h & 255; buf[4] = h >> 8; buf.set(img.data, 5); linkSend(buf);
+}
+$('#camfile').onchange = (e) => { const f = e.target.files[0]; if (!f) return; const im = new Image(); im.onload = () => { camCtx.drawImage(im, 0, 0, camCanvas.width, camCanvas.height); sendCamFrame(); $('#camstat').textContent = `picture ${im.width}×${im.height} sent`; URL.revokeObjectURL(im.src); }; im.src = URL.createObjectURL(f); };
+$('#camwebcam').onclick = async () => {
+  if (camStream || $('#camwebcam').disabled) return;
+  if (!navigator.mediaDevices?.getUserMedia) { $('#camstat').textContent = 'Webcam requires HTTPS or localhost and a browser with camera support.'; return; }
+  const generation = camGeneration;
+  $('#camwebcam').disabled = true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    if (generation !== camGeneration) { stream.getTracks().forEach(t => t.stop()); return; }
+    camStream = stream;
+  } catch (e) { $('#camstat').textContent = 'webcam: ' + e.message; return; }
+  finally { $('#camwebcam').disabled = false; }
+  const v = $('#camvideo'); v.srcObject = camStream; $('#camwebcam').style.display = 'none'; $('#camstop').style.display = '';
+  camTimer = setInterval(() => { if (v.videoWidth) { camCtx.drawImage(v, 0, 0, camCanvas.width, camCanvas.height); sendCamFrame(); $('#camstat').textContent = 'webcam live'; } }, 250);
+};
+function stopWebcam() { camGeneration++; clearInterval(camTimer); if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; $('#camwebcam').style.display = ''; $('#camstop').style.display = 'none'; $('#camvideo').srcObject = null; $('#camstat').textContent = 'webcam stopped (last frame stays)'; }
+$('#camstop').onclick = stopWebcam;
+window.addEventListener('pagehide', stopWebcam);
+</script>
+</body></html>
