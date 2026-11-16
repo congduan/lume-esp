@@ -179,7 +179,19 @@ Next, in the order I would take it:
 6. **Move whole-frame examples onto retained paths** — `dashboard`, `watchface`
    and `imu_ball` still rebuild geometry in JS every frame; the 36 fps probe shows
    what the move buys. Mechanical, low risk.
-7. **Productise the half-frame check** — the statistical harness used here (take
+7. **Opt-in single-buffer canvas (`singleBuffer`) — P2, data-driven trigger**. r48's
+   frame atomicity doubles every canvas buffer (front + work); the shared
+   230,400 px pool therefore fills at half the nominal size (watchface's four
+   faces already sit at 228,544 px). A `singleBuffer` opt-in (or automatic
+   size-based grading) would halve full-redraw canvases — game-style surfaces
+   repaint entirely every tick, so a torn window is overwritten within one
+   20 ms tick and the atomicity guarantee matters least there, while dirty-rect
+   faces (dial, rings) keep double buffering. Alternatives rejected: raw single
+   buffer reopens the mid-frame blit bug r48 closed; a lock trades frame-rate
+   determinism; a ready-handshake window (r46 crossfade pattern) downgrades the
+   hard guarantee to statistical. Not scheduled: the pool is only exhausted by
+   watchface; implement when a real app hits the wall and needs the extra half.
+8. **Productise the half-frame check** — the statistical harness used here (take
    N screenshots, assert every frame has all expected layers and that each dirty
    rect stays inside its static region) is what caught the mid-frame blit and the
    needle-union bug. It should live in `tools/lume` as a `screenshot --scan N`
