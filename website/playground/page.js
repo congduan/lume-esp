@@ -123,6 +123,10 @@
       copy.append(strong, small); button.append(symbol, copy);
       button.addEventListener('click', () => select(name)); list.append(button);
     }
+    for (const option of sourcePicker.options) {
+      const entry = examples.find(item => item[0] === option.value);
+      if (entry) option.textContent = entry[zh ? 3 : 2];
+    }
     setMode(mode);
   }
   new MutationObserver(renderList).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
