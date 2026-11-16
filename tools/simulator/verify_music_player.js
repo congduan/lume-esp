@@ -22,7 +22,7 @@ child.stderr.on('data', b => output += b);
     const page = await browser.newPage({viewport:{width:600,height:640}});
     await page.goto(`http://localhost:${port}/`);
     await page.getByText('Library',{exact:true}).click();
-    await page.getByText('MUSIC LIBRARY',{exact:true}).waitFor();
+    await page.getByText('Music library',{exact:true}).waitFor();
     fs.mkdirSync(path.join(root,'artifacts/simulator'),{recursive:true});
     await page.locator('#device').screenshot({path:path.join(root,'artifacts/simulator/MusicLibrary.png')});
     console.log('PASS library screenshot=artifacts/simulator/MusicLibrary.png');
