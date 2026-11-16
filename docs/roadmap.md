@@ -481,3 +481,28 @@ the r49 baseline (no firmware C change, +0 B). On-device acceptance (display /
 touch / audio / sleep current / radio / persistence / bundle push) is still
 **not** performed. CI coverage gaps are recorded in
 `docs/KNOWN-SIMPLIFICATIONS.md` (r50 entry).
+
+
+## Mikro.js 借鉴评估（2026-11-16，结论固化防重复评估）
+
+调研对象：mikrojs/mikro（17★，MIT，活跃）——TypeScript-first 单板运行时，引擎同为 QuickJS-NG。
+选型判定：**不移植整体架构**（standalone C++ 平台抽象层对 Lume 的 ESP-IDF+板级 profile 绑定是负价值；
+TS-first 与「朴素全局脚本、AI 友好免编译」的定位冲突；Observable 与既有 signals 重复）。
+**已具备、无需借鉴**：malloc_usable_size/heap_caps_get_allocated_size 记账 hook（Lume 的
+js_usable_size_psram 已实现）；Result typed errors（0/负值码契约已固化 lume.d.ts，翻盘代价大于收益）。
+
+**借鉴路线（按价值序，摘思想不引依赖）：**
+
+1. **分配器泄漏检测（P1，调试基建，每轮受益）**——Mikro 在 QuickJS 分配器挂 live-allocs 净计数器
+   + host OOM 故障注入（倒计时后分配器按计划失败）。落地：`lume_engine.c` 的 `s_psram_mf`
+   加净分配计数 + r36b profile 点暴露 `alloc.net/alloc.live`；esp32sim harness 断言「app 稳态运行
+   N 秒 alloc.net 增长 < 阈值」。对症案例：typewriter 的 interval 回调每拍 slice/join 触发
+   `InternalError: out of memory`（8MB 堆碎片化），当时只能靠二分试错定位——有此计数一眼可见。
+2. **deploy manifest 绑定固件 hash（P2，app store 产品化前安全网）**——Mikro 的 deploy manifest
+   每行带 firmware hash，不匹配即整份丢弃。Lume 的字节码路径有双端版本校验（r43b），但源码模式
+   app 与 apps/*/meta.json 无此层：固件升级后旧 app 的 API 假设可能失效。落点：lume_apps_store
+   meta 加固件 hash + boot 时校验拒绝明显不匹配组合。
+3. **OTA A/B 配置槽（P3，接板后评估）**——CBOR registry 双槽 + 切换/回滚，OTA 产品化（r26 是
+   传输层，无配置回滚）时抄。
+4. **设备 REPL（P4）**——串口逐行 eval 复用现有 runtime，开发体验加分项，hotreload 通道加
+   REPL 模式即可。
