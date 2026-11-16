@@ -45,6 +45,7 @@
   const sourcePicker = document.querySelector('#source-picker');
   const editorPanel = document.querySelector('#editor-panel');
   const examplesPanel = document.querySelector('#examples-panel');
+  const firmwarePanel = document.querySelector('#firmware-panel');
   let esbuildReady;
   const shareStatus = document.querySelector('#share-status');
   const maxHashLength = 8192;
@@ -77,8 +78,11 @@
   function setMode(next) {
     mode = next;
     editorPanel.hidden = next !== 'editor'; examplesPanel.hidden = next !== 'examples';
+    firmwarePanel.hidden = next !== 'firmware';
     document.querySelector('#editor-tab').setAttribute('aria-selected', String(next === 'editor'));
+    document.querySelector('#firmware-tab').setAttribute('aria-selected', String(next === 'firmware'));
     document.querySelector('#examples-tab').setAttribute('aria-selected', String(next === 'examples'));
+    if (next === 'firmware') { title.textContent = document.documentElement.lang === 'zh' ? '真机固件' : 'Real firmware'; return; }
     title.textContent = next === 'editor' ? (document.documentElement.lang === 'zh' ? '编辑器预览' : 'Editor preview') : (examples.find(entry => entry[0] === current)?.[document.documentElement.lang === 'zh' ? 3 : 2] || current);
   }
   const gestures = new Set();
@@ -175,6 +179,13 @@
   sourcePicker.addEventListener('change', () => { sourceCode.value = LUME_SOURCES[sourcePicker.value]; });
   document.querySelector('#examples-tab').addEventListener('click', () => select(current));
   document.querySelector('#editor-tab').addEventListener('click', () => setMode('editor'));
+  document.querySelector('#firmware-tab').addEventListener('click', () => setMode('firmware'));
+  fetch('../wasm/fw/lume.json', { headers: { accept: 'application/json' } }).then(r => (r.ok ? r.json() : null)).then(manifest => {
+    const note = document.querySelector('#firmware-version');
+    const launch = document.querySelector('#firmware-launch');
+    if (!manifest) { if (note) note.textContent = document.documentElement.lang === 'zh' ? '固件尚未构建，稍后再来。' : 'Firmware not built yet — check back soon.'; if (launch) launch.setAttribute('aria-disabled', 'true'); return; }
+    if (note) note.textContent = (document.documentElement.lang === 'zh' ? '当前固件：' : 'Current firmware: ') + (manifest._note || 'lume');
+  }).catch(() => {});
   document.querySelector('#run').addEventListener('click', runEditor);
   document.querySelector('#share').addEventListener('click', async () => {
     try {
