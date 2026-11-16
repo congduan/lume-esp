@@ -722,4 +722,4 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 ### 与现有 examples 的去重边界
 
-2048/贪吃蛇（体感）/打砖块/单屏马里奥/重力滚球（游戏）、watchface 三面（表盘）、dashboard/speedometer/device_monitor（仪表）、music_player/ai_chat/typewriter（多媒体与 AI）已覆盖的玩法与形态不再重复立项；上表候选均按「新玩法或新形态」筛选。社区生态复刻的完整溯源（逐项 star、适配要点、排除名单及理由）见内部调研文档（`references/community-replication-candidates.md`），对外文档一律不点名外部项目。
+2048/贪吃蛇（体感）/打砖块/单屏马里奥/重力滚球（游戏）、watchface 三面（表盘）、dashboard/speedometer/device_monitor（仪表）、music_player/ai_chat/typewriter（多媒体与 AI）已覆盖的玩法与形态不再重复立项；上表候选均按「新玩法或新形态」筛选。社区生态复刻的完整溯源（逐项 star、适配要点、排除名单及理由）溯源与排除名单留在项目内部调研档案（不入公开仓库），对外文档一律不点名外部项目。
