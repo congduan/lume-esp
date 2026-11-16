@@ -183,12 +183,19 @@ gcc -std=c11 -Wall -Wextra -Werror \
 
 gcc -std=c11 -Wall -Wextra -Werror \
   -I firmware/components/lume-engine/include \
+  -I firmware/components/lume-svg/include \
   -I firmware/components/lume-board/include \
   -I firmware/boards/waveshare_esp32_s3_touch_amoled_2_16 \
   tests/image_header.c \
   firmware/components/lume-engine/lume_image_header.c \
   firmware/components/lume-engine/lume_image_pixels.c \
+  firmware/components/lume-svg/lume_svg.c -lm \
   -o /tmp/lume_image_header && /tmp/lume_image_header
+
+gcc -std=c11 -Wall -Wextra -Werror \
+  -I firmware/components/lume-svg/include \
+  tests/lume_svg_test.c firmware/components/lume-svg/lume_svg.c -lm \
+  -o /tmp/lume_svg_test && /tmp/lume_svg_test
 ```
 
 The JS harnesses are standalone CommonJS scripts (`node tests/<harness>.js`),

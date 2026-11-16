@@ -1060,3 +1060,9 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - The engine event queue is bounded. A saturated queue can drop WS events; message payloads are freed on post failure and after dispatch. Sustained streaming throughput and backpressure still need board measurement.
 - `send()` can block the engine for up to one second while the ESP WebSocket transport writes. Keep UI callbacks short and avoid sending large frames from a touch handler. Connection setup remains asynchronous on the component task.
 - The host C test covers message ownership and continuation frames; the Node test covers callback routing and text/binary types. esp32sim has no connected WS echo endpoint in this worktree. Physical WiFi association, TLS trust, reconnect behavior, frame throughput, memory peaks, and touch responsiveness during audio streaming remain pending board acceptance.
+
+## r58b mini-SVG host implementation; board acceptance pending
+
+- SVG intrinsic dimensions use positive pixel `width`/`height`, falling back per missing dimension to `viewBox` width/height. Percentages and other units are unsupported; an SVG without both intrinsic dimensions is rejected with `-2`. SVG may report intrinsic dimensions above 480 because its raster is separately limited to 480×480; bitmap PNG/JPEG size rejection remains unchanged.
+- SVG rasterization supports solid fill/stroke/opacity and the documented geometry/path subset. `transform` is unsupported. Gradients, filters and text are unsupported. The bitmap target is at most 480×480 with a centered `viewBox` meet mapping.
+- Host harness, firmware build and emulator checks do not constitute board acceptance. Display appearance, touch feel, memory pressure under real workload and transfer behavior remain for on-device verification.

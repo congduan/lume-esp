@@ -94,6 +94,9 @@ declare namespace lume.ui {
   interface ListProps<T> { style: Style & { height: number }; parent?: Node; items: T[] | (() => T[]); itemHeight: number; overscan?: number; renderItem(item: T, index: number): Node }
   interface TextProps extends ViewProps { text?: string | (() => string) }
   interface ButtonProps extends ViewProps { title?: string | (() => string); onPress?: () => void }
+  /** PNG/JPEG or mini-SVG. SVG supports rect/circle/ellipse/line/polyline/polygon/path,
+   * solid fill/stroke/opacity and viewBox; transform, gradients, filters and text are unsupported.
+   * SVG intrinsic size comes from pixel width/height or viewBox. Raster targets are at most 480×480. */
   interface ImageProps { src: ArrayBuffer; style?: Style; parent?: Node }
   /** RGB565 canvas, fixed size. All coordinates use canvas-local integer pixels. */
   interface CanvasContext {
