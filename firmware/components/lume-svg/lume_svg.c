@@ -110,17 +110,18 @@ static void copy(char *dst, size_t cap, const char *src, size_t n) {
 }
 static int next(scan *s, token *t) {
   memset(t, 0, sizeof(*t));
-  while (s->p < s->n && s->s[s->p] != '<')
+  for (;;) {
+    while (s->p < s->n && s->s[s->p] != '<')
+      s->p++;
+    if (s->p >= s->n)
+      return 0;
     s->p++;
-  if (s->p >= s->n)
-    return 0;
-  s->p++;
-  if (s->p < s->n && (s->s[s->p] == '!' || s->s[s->p] == '?')) {
+    if (s->p >= s->n || (s->s[s->p] != '!' && s->s[s->p] != '?'))
+      break;
     while (s->p < s->n && s->s[s->p] != '>')
       s->p++;
     if (s->p < s->n)
       s->p++;
-    return next(s, t);
   }
   if (s->p < s->n && s->s[s->p] == '/') {
     t->closing = 1;
