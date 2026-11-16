@@ -610,6 +610,12 @@ CONFIG_LUME_OTA_PORT=8765
 # end of Lume WiFi OTA (r26)
 
 #
+# Lume local web server (r71)
+#
+CONFIG_LUME_WEB_PORT=8080
+# end of Lume local web server (r71)
+
+#
 # Compiler options
 #
 # CONFIG_COMPILER_OPTIMIZATION_DEBUG is not set

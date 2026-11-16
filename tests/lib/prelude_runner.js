@@ -67,6 +67,9 @@ function runApp(script, options = {}) {
       otaStatus: () => ({ running: false, wifiReady: false, tokenReady: false, port: 8765, token: '' }),
       httpGet: () => -3,
       ws: { _connect: () => -3, _send: () => -1, _close: () => -1 },
+      // r71 local web server natives (mock C layer); harnesses override via
+      // options.net.web. The prelude adds public start/stop/on/url on top.
+      web: { _start: () => 0, _stop: () => 0, _url: () => null },
       // Host-side scan stand-in (no radio): two fake APs, RSSI-sorted.
       scan: () => [
         { ssid: 'Demo-AP', rssi: -42, auth: 3 },

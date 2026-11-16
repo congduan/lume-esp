@@ -1,0 +1,12 @@
+menu "Lume local web server (r71)"
+    config LUME_WEB_PORT
+        int "Local web server default listen port"
+        default 8080
+        range 1024 65535
+        help
+            Default TCP port for the JS-defined LAN web server. The server is
+            OFF by default and only binds while the WiFi station has an IPv4
+            address and an app explicitly called lume.net.web.start({token}).
+            The app may override the port in start() (1024-65535). Independent
+            of the WiFi OTA port (CONFIG_LUME_OTA_PORT, 8765).
+endmenu

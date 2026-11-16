@@ -10,7 +10,7 @@
 # nvs_flash_init(). WiFi IRAM options are forced off in sdkconfig (see r11 docs)
 # so the WiFi hot-path code stays in flash, not the 100%-full 16 KB IRAM.
 idf_component_register(
-    SRCS "lume_net.c" "lume_ws.c" "lume_ws_frame.c"
+    SRCS "lume_net.c" "lume_ws.c" "lume_ws_frame.c" "lume_webserv.c" "lume_webserv_parse.c"
     INCLUDE_DIRS "include"
     REQUIRES esp_wifi esp_event esp_netif nvs_flash esp_http_client esp_websocket_client mbedtls heap
 )

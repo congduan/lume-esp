@@ -36,6 +36,7 @@
 #include "lume_fs.h"
 #include "lume_apps.h"
 #include "lume_net.h"
+#include "lume_webserv.h"
 #include "lume_ble.h"
 #include "lume_audio.h"
 #include "mp3_decoder.h"
@@ -2038,6 +2039,46 @@ static JSValue js_net_ota_status(JSContext *ctx, JSValueConst this_val,
     return obj;
 }
 
+/* r71: lume.net.web._start(port?, token) / _stop() / _url(). Thin native
+ * edges only; the public JS API (start/stop/on/url + the route table, 404 and
+ * the built-in welcome page) lives in the prelude. All three run on the
+ * engine task like every other lume.* binding. The token is NEVER logged. */
+static JSValue js_web_start(JSContext *ctx, JSValueConst this_val,
+                            int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t port = CONFIG_LUME_WEB_PORT;
+    if (argc >= 1 && !JS_IsUndefined(argv[0]) && !JS_IsNull(argv[0])) {
+        if (JS_ToInt32(ctx, &port, argv[0]) < 0) return JS_EXCEPTION;
+    }
+    if (argc < 2 || !JS_IsString(argv[1])) {
+        return JS_NewInt32(ctx, LUME_WEB_ERR_ARG);
+    }
+    size_t tlen = 0;
+    const char *token = JS_ToCStringLen(ctx, &tlen, argv[1]);
+    if (token == NULL) return JS_EXCEPTION;
+    int r = memchr(token, '\0', tlen) != NULL
+        ? LUME_WEB_ERR_ARG : lume_webserv_start((int)port, token);
+    JS_FreeCString(ctx, token);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue js_web_stop(JSContext *ctx, JSValueConst this_val,
+                           int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    return JS_NewInt32(ctx, lume_webserv_stop());
+}
+
+static JSValue js_web_url(JSContext *ctx, JSValueConst this_val,
+                          int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    char url[LUME_WEB_URL_MAX];
+    if (lume_webserv_url(url, sizeof(url)) != LUME_WEB_OK) return JS_NULL;
+    return JS_NewString(ctx, url);
+}
+
 /* lume.net.httpGet(url, options?) / lume.net.http.get(url, options?).
  * options: { timeoutMs?: number, responseType?: 'text'|'arraybuffer' }.
  * Returns { status, body, contentLength, truncated } on a completed transfer,
@@ -2752,6 +2793,13 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, ws, "_send", JS_NewCFunction(ctx, js_ws_send, "_send", 2));
     JS_SetPropertyStr(ctx, ws, "_close", JS_NewCFunction(ctx, js_ws_close, "_close", 1));
     JS_SetPropertyStr(ctx, net, "ws", ws);
+    /* r71: lume.net.web natives. The prelude extends this object with the
+     * public start/stop/on/url API and the JS route table. */
+    JSValue web = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, web, "_start", JS_NewCFunction(ctx, js_web_start, "_start", 2));
+    JS_SetPropertyStr(ctx, web, "_stop", JS_NewCFunction(ctx, js_web_stop, "_stop", 0));
+    JS_SetPropertyStr(ctx, web, "_url", JS_NewCFunction(ctx, js_web_url, "_url", 0));
+    JS_SetPropertyStr(ctx, net, "web", web);
     JS_SetPropertyStr(ctx, lume, "net", net);
     JSValue audio = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, audio, "play", JS_NewCFunction(ctx, js_audio_play, "play", 2));
@@ -3314,6 +3362,115 @@ static void clear_removals(void)
 }
 
 /* ------------------------------------------------------------------ */
+/* r71 local web server bridge (engine task, single-threaded)          */
+/* ------------------------------------------------------------------ */
+/* The engine polls lume_webserv_poll() once per event-loop turn. There is
+ * deliberately NO second FreeRTOS task and NO cross-task queue/semaphore:
+ * the JS handler runs right here on the engine task, so a synchronous HTTP
+ * response needs no "wait for the JS thread" handshake that could deadlock
+ * against a single-threaded runtime. A slow client only stalls this one poll
+ * (recv is MSG_DONTWAIT); the 5 s I/O deadline lives in lume_webserv.c. */
+static void webserv_poll(void)
+{
+    lume_web_request_t req;
+    int r = lume_webserv_poll(&req);
+    if (r != 1) return;                     /* 0 = nothing ready, <0 = handled */
+
+    JSValue ret = JS_UNDEFINED;
+    JSValue jreq = JS_NewObject(s_ctx);
+    JS_SetPropertyStr(s_ctx, jreq, "method",
+        JS_NewStringLen(s_ctx, req.method, strlen(req.method)));
+    JS_SetPropertyStr(s_ctx, jreq, "path",
+        JS_NewStringLen(s_ctx, req.path, strlen(req.path)));
+    JS_SetPropertyStr(s_ctx, jreq, "queryRaw",
+        JS_NewStringLen(s_ctx, req.query, strlen(req.query)));
+    JS_SetPropertyStr(s_ctx, jreq, "body",
+        JS_NewStringLen(s_ctx, req.body != NULL ? req.body : "", req.body_len));
+
+    JSValue global = JS_GetGlobalObject(s_ctx);
+    JSValue fn = JS_GetPropertyStr(s_ctx, global, "__lume_web_dispatch");
+    if (JS_IsFunction(s_ctx, fn)) {
+        ret = JS_Call(s_ctx, fn, JS_UNDEFINED, 1, &jreq);
+        if (JS_IsException(ret)) {
+            dump_js_exception(s_ctx, "__lume_web_dispatch");
+            JS_FreeValue(s_ctx, ret);
+            ret = JS_UNDEFINED;
+        }
+    }
+    JS_FreeValue(s_ctx, fn);
+    JS_FreeValue(s_ctx, global);
+    JS_FreeValue(s_ctx, jreq);
+
+    lume_web_response_t resp;
+    memset(&resp, 0, sizeof(resp));
+    resp.status = 500;
+
+    const char *body_str = NULL;
+    uint8_t *body_bin = NULL;
+    const char *names[LUME_WEB_HEADER_MAX] = { 0 };
+    const char *values[LUME_WEB_HEADER_MAX] = { 0 };
+    lume_web_header_t headers[LUME_WEB_HEADER_MAX];
+    JSPropertyEnum *props = NULL;
+    uint32_t hcount = 0;
+    uint32_t prop_count = 0;
+
+    if (JS_IsObject(ret)) {
+        JSValue sv = JS_GetPropertyStr(s_ctx, ret, "status");
+        int32_t status = 500;
+        if (JS_ToInt32(s_ctx, &status, sv) == 0 && status >= 100 && status <= 599)
+            resp.status = (int)status;
+        JS_FreeValue(s_ctx, sv);
+
+        JSValue bv = JS_GetPropertyStr(s_ctx, ret, "body");
+        if (JS_IsString(bv)) {
+            body_str = JS_ToCStringLen(s_ctx, &resp.body_len, bv);
+            resp.body = (const uint8_t *)(body_str != NULL ? body_str : "");
+        } else if ((body_bin = JS_GetArrayBuffer(s_ctx, &resp.body_len, bv)) != NULL) {
+            resp.body = body_bin;
+        }
+        JS_FreeValue(s_ctx, bv);
+
+        JSValue hv = JS_GetPropertyStr(s_ctx, ret, "headers");
+        if (JS_IsObject(hv) &&
+            JS_GetOwnPropertyNames(s_ctx, &props, &prop_count, hv,
+                JS_GPN_STRING_MASK | JS_GPN_ENUM_ONLY) >= 0 &&
+            prop_count <= LUME_WEB_HEADER_MAX) {
+            hcount = prop_count;
+            for (uint32_t i = 0; i < hcount; i++) {
+                JSValue v = JS_GetProperty(s_ctx, hv, props[i].atom);
+                names[i] = JS_AtomToCString(s_ctx, props[i].atom);
+                if (JS_IsString(v)) values[i] = JS_ToCString(s_ctx, v);
+                JS_FreeValue(s_ctx, v);
+            }
+            for (uint32_t i = 0; i < hcount; i++) {
+                if (names[i] != NULL && values[i] != NULL)
+                    headers[i] = (lume_web_header_t){ names[i], values[i] };
+                else
+                    headers[i] = (lume_web_header_t){ NULL, NULL };
+            }
+            resp.headers = headers;
+            resp.header_count = hcount;
+        } else {
+            hcount = 0;                     /* no/invalid headers */
+        }
+        JS_FreeValue(s_ctx, hv);
+    }
+    (void)lume_webserv_respond(&resp);      /* always exactly once per request */
+
+    /* ArrayBuffer response bytes are borrowed from `ret`; keep it alive until
+     * the last send() has completed. */
+    if (!JS_IsUndefined(ret)) JS_FreeValue(s_ctx, ret);
+
+    for (uint32_t i = 0; i < hcount; i++) {
+        if (names[i]) JS_FreeCString(s_ctx, names[i]);
+        if (values[i]) JS_FreeCString(s_ctx, values[i]);
+    }
+    for (uint32_t i = 0; i < prop_count; i++) JS_FreeAtom(s_ctx, props[i].atom);
+    if (props) js_free(s_ctx, props);
+    if (body_str) JS_FreeCString(s_ctx, body_str);
+}
+
+/* ------------------------------------------------------------------ */
 /* Engine task                                                         */
 /* ------------------------------------------------------------------ */
 static void engine_task(void *arg)
@@ -3378,7 +3535,12 @@ static void engine_task(void *arg)
             app_len = strlen(lume_demo_js);
         }
 
-        /* ---- fresh runtime, bindings, sink, per-app state ---- */
+        /* ---- fresh runtime, bindings, sink, per-app state ----
+         * r71: every new runtime is a new app lifetime. Stop the web server
+         * FIRST (before bindings/prelude/eval) so an app switch, BACK-to-home,
+         * hot reload or a failed eval can never leave a zombie port or an
+         * in-flight request bound to a JS context that is about to die. */
+        lume_webserv_stop();
         JSRuntime *rt = JS_NewRuntime2(&s_psram_mf, NULL);
         if (rt == NULL) {
             ESP_LOGE(TAG, "JS_NewRuntime2 (PSRAM allocator) failed");
@@ -3554,6 +3716,9 @@ static void engine_task(void *arg)
         int64_t last_heap_sample = 0;
 #endif
         for (;;) {
+            /* r71: non-blocking LAN web request pump. Runs on this task so
+             * the JS handler executes synchronously; one request per turn. */
+            webserv_poll();
 #if CONFIG_LUME_PERF_PROFILE
             int64_t heap_now = lume_perf_now();
             if (heap_now - last_heap_sample >= 1000000) {
@@ -3707,6 +3872,7 @@ static void engine_task(void *arg)
          * The reverse channel (press sink) and the reload request path only
          * post to FreeRTOS queues and never touch s_ctx, so no other task can
          * be using this context here. Free context first, then runtime. */
+        lume_webserv_stop();
         call_app_hook("__lume_shutdown");
         (void)lume_audio_record_stop_stream();
         audio_record_drain();
