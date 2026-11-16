@@ -1,0 +1,102 @@
+name: Sync firmware to website (esp32sim browser mode)
+
+# After a successful firmware.yml build, copy the three flash binaries into
+# website/wasm/fw/ and regenerate lume.json so the playground "Real firmware"
+# mode (and the mikroverk esp32sim run.html runner) always serves the latest
+# build. The mask ROM ELF (Apache-2.0, espressif/esp-rom-elfs) is redistributed
+# by us per that license; esp32sim's run.html fetches manifest files relative to
+# wasm/fw/ on the SAME origin, so the ROM must be self-hosted.
+on:
+  workflow_run:
+    workflows: ["Build firmware"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Nightly safety net: re-sync even if workflow_run misses (GitHub drop quirk).
+    - cron: "0 21 * * *"
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: fw-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Locate latest successful firmware build artifact
+        id: fw
+        run: |
+          set -euo pipefail
+          RUN_ID=$(curl -sf -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/firmware.yml/runs?status=success&per_page=10" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['workflow_runs'][0]['id'])")
+          ART=$(curl -sf -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID/artifacts" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); a=[a for a in d['artifacts'] if a['name'].startswith('lume-firmware-')]; assert a, 'no lume-firmware artifact'; print(a[0]['id'])")
+          NUM=$(curl -sf -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs/$RUN_ID" \
+            | python3 -c "import json,sys; print(json.load(sys.stdin)['run_number'])")
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "artifact_id=$ART" >> "$GITHUB_OUTPUT"
+          echo "run_number=$NUM" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifact zip
+        run: |
+          set -euo pipefail
+          curl -sfL -H "Authorization: Bearer ${{ github.token }}" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{ steps.fw.outputs.artifact_id }}/zip" \
+            -o /tmp/fw.zip
+          mkdir -p /tmp/fw && cd /tmp/fw && unzip -o /tmp/fw.zip
+          test -s lume.bin && test -s bootloader.bin && test -s partition-table.bin
+
+      - name: Fetch mask ROM ELF (Apache-2.0, espressif/esp-rom-elfs 20241011)
+        run: |
+          set -euo pipefail
+          mkdir -p website/wasm/fw
+          curl -sfL --retry 3 \
+            "https://github.com/espressif/esp-rom-elfs/releases/download/20241011/esp-rom-elfs-20241011.tar.gz" \
+            | tar xz --strip-components=2 -C website/wasm/fw \
+              --wildcards "*/esp32s3_rev0_rom.elf"
+          test -s website/wasm/fw/esp32s3_rev0_rom.elf
+
+      - name: Install binaries + manifest
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse --short HEAD)
+          cp /tmp/fw/bootloader.bin /tmp/fw/partition-table.bin /tmp/fw/lume.bin website/wasm/fw/
+          cat > website/wasm/fw/lume.json <<EOF
+          {
+           "board": "waveshare-amoled18-v2",
+           "flash_mb": 16,
+           "psram_mb": 8,
+           "files": {
+            "rom": "esp32s3_rev0_rom.elf",
+            "bootloader": "bootloader.bin",
+            "ptable": "partition-table.bin",
+            "app": "lume.bin"
+           },
+           "expect": "app eval ok",
+           "_note": "Lume real firmware (Build firmware run ${{ steps.fw.outputs.run_number }}, base commit $SHA). Launch: run.html?wasm&fw=lume"
+          }
+          EOF
+          ls -la website/wasm/fw/
+
+      - name: Commit if changed
+        run: |
+          set -euo pipefail
+          git config user.name congduan
+          git config user.email congduan@users.noreply.github.com
+          git add website/wasm/fw/
+          if git diff --cached --quiet; then echo "no changes"; exit 0; fi
+          git commit -m "chore(fw-sync): publish latest firmware trio for browser esp32sim"
+          git push origin main
