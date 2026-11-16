@@ -82,6 +82,30 @@ numbers (`-1` argument/handle, `-2` transport, `-3` no WiFi IP, `-4` slots
 full). Events may be dropped when the engine queue is saturated. The example
 is `examples/ws_echo/app.js`; board WiFi and TLS acceptance remains pending.
 
+r71 implementation note — **local web server** (`lume.net.web`): the device is
+a tiny LAN web-app server. C (`firmware/components/lume-net/lume_webserv.c`)
+owns only the socket lifecycle and a minimal HTTP/1.0 parser; **every route and
+page body is written by the running JS app** via
+`lume.net.web.on(method, path, handler)` and hot-distributed with the bundle.
+`start({ port?, token })` is explicit and token-mandatory, binds only while
+`lume.net.status().state === GOT_IP`, and is auto-stopped on every app switch /
+close / failed eval. `url()` returns `http://<ip>:<port>/?key=<token>` (null
+when stopped / no IP) for the app to show on screen. `handler(req)` is invoked
+synchronously on the engine task with `{ method, path, query: {k:v}, body }`
+and must return `{ status, headers?, body }` in a few ms. Unmatched requests
+get 404; GET `/` with no route shows a built-in welcome page listing routes.
+A request without the matching `key` query is rejected with **403 before any
+JS dispatch**; paths are never read as files. Body is capped at 8 KiB, at most
+2 concurrent connections, one ~9 KiB shared PSRAM request buffer. There is NO
+background web task: the engine's ~20 ms event loop polls the sockets and runs
+the handler inline, avoiding a cross-task bridge into the single-threaded JS
+runtime. HTTP/1.0 short connections only — no keep-alive / chunked / TLS
+(mbedTLS server certificate is out of scope). The example is
+`examples/web_config/app.js`; host evidence is `tests/webserver.js` (full
+request→handler→response chain, mock C layer) and `tests/webserv_parse.c`
+(pure parser). Real browser-over-WiFi acceptance is deferred to the board
+round; see `docs/KNOWN-SIMPLIFICATIONS.md` (r71).
+
 r25 implementation note: the design-only `Ble` entry from the r11 note is now
 implemented as a **separate `lume.ble` namespace** (not under `lume.net`), so
 the WiFi/HTTP contract stays untouched. New component

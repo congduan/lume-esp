@@ -38,6 +38,11 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 - [ ] WiFi OTA channel (TCP push, port + auth token)
 - [ ] Host simulator (LVGL SDL backend + QuickJS on desktop)
 
+Local web service (r71): the `lume.net.web` server code is complete with
+JS-defined routes and pages, token-gated LAN access, bounded HTTP parsing, and
+host tests. Browser access over real WiFi remains a board acceptance item; see
+`docs/r71-webserv-report.md`.
+
 ## M5 — ecosystem
 - [ ] Component library
 - [ ] Docs site + example gallery

@@ -785,6 +785,56 @@ declare namespace lume.net {
   namespace http {
     function get(url: string, options?: HttpGetOptions): HttpResponse | number;
   }
+
+  /**
+   * r71: tiny LAN web server. C owns HTTP + sockets; the running JS app owns
+   * EVERY route and page body via on(), so the UI hot-updates with the app.
+   *
+   * OFF by default: start({token}) is explicit, binds only when WiFi has an
+   * IPv4, and is auto-stopped on every app switch / close / failed eval.
+   * A request without a matching `?key=<token>` is rejected with 403 before
+   * any JS handler runs. Paths are NEVER filesystem paths. Body <= 8 KiB,
+   * at most 2 concurrent connections, HTTP/1.0 short connections only.
+   *
+   * Handlers are SYNCHRONOUS on the engine task and must return in a few ms:
+   * light string building is fine, heavy work must be pushed to state/signal
+   * and fetched by a later poll. See docs/hardware-api.md and
+   * docs/KNOWN-SIMPLIFICATIONS.md (r71).
+   */
+  namespace web {
+    interface StartOptions {
+      /** TCP port 1024-65535; defaults to CONFIG_LUME_WEB_PORT (8080). */
+      port?: number;
+      /** REQUIRED URL-safe token; appended as ?key=<token> to url(). */
+      token: string;
+    }
+    interface Request {
+      method: string;
+      /** Exact raw path (no decoding, no file-system interpretation). */
+      path: string;
+      /** URL-decoded query parameters. */
+      query: Record<string, string>;
+      /** UTF-8 request body, capped at 8 KiB. */
+      body: string;
+    }
+    interface Response {
+      status: number;
+      headers?: Record<string, string>;
+      body?: string | ArrayBuffer;
+    }
+    type Handler = (req: Request) => Response;
+    /** 0 on success, or a negative error code: -1 argument, -2 no WiFi IP,
+      * -3 already running, -4 out of memory. */
+    function start(options: StartOptions): number;
+    /** Stop the listener and close all connections. Returns 0. */
+    function stop(): number;
+    /** Register an exact (method, path) route; returns 0 or -1 on bad args.
+      * Last registration for a key wins. Unmatched requests get 404; GET /
+      * with no route shows a built-in welcome page listing registered routes. */
+    function on(method: string, path: string, handler: Handler): number;
+    /** "http://<ip>:<port>/?key=<token>" or null when stopped / no WiFi IP. */
+    function url(): string | null;
+  }
 }
 
 /** Synchronous OpenAI-compatible chat completion. Blocks UI and touch. */

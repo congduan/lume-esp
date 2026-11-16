@@ -136,6 +136,7 @@ Lume replaces that loop:
 | Motion | Hand-tuned lv_anim calls | **CSS-style transitions + `lume.anim` tweens** |
 | Iteration | Rebuild + flash (minutes) | **Hot reload over USB (seconds)** + host simulator + on-device screenshots (`lume screenshot`) |
 | Hardware access | ESP-IDF APIs | **Clean JS APIs: GPIO/PWM/ADC/Power/IMU/Audio/WiFi/HTTP/KV/Files** |
+| Local web server | Hand-coded pages in firmware | **LAN devices configure the device from a browser; JS apps define routes and pages** |
 | Runtime overhead | none | QuickJS-NG on 8MB PSRAM — fine for app-layer UI |
 
 ## Architecture

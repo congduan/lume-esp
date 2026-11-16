@@ -1,5 +1,17 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
+## r71 / 本地 Web 服务（C HTTP + JS 路由，host/编译证据，无真机 WiFi 验收）
+
+- **范围**：新增 `firmware/components/lume-net/lume_webserv.c`、`lume_webserv_parse.c`、`include/lume_webserv.h`、`Kconfig.projbuild`（`CONFIG_LUME_WEB_PORT=8080`）；`lume_engine.c` 五个绑定 + 单任务 poll 桥 + app 生命周期停服；prelude `lume.net.web` JS API（`lume_scripts.c`）；`runtime/types/lume.d.ts`、`docs/hardware-api.md`；新 harness `tests/webserver.js`、`tests/webserv_parse.c`；示例 `examples/web_config/`；`README.md` 一行 + roadmap 叙事行 + 本报告。Vendored 组件未改。**playground / website / README 的 apps 计数类改动一律未做**（并行 r69/r70 收口时主控统一处理）。commits 拆分、未推送。
+- **架构决策（二选一，写明理由）**：采用**单任务 poll**，而非「独立 FreeRTOS web task + accept 后队列投引擎 + 信号量回投」。后者在引擎单线程模型下，等待 handler 的 web task 必须阻塞在一个信号量上，而引擎若正处于 app 切换 / eval / 长同步原生调用中，无法保证在 5 s 内消费该请求并回投——这正是停下条款担心的死锁面。单任务方案让引擎在自己的 ~20 ms 事件循环里直接 `lume_webserv_poll()`（非阻塞 `select` + `recv(MSG_DONTWAIT)`），同步调用 `__lume_web_dispatch(req)` 后立即 `lume_webserv_respond()`，**没有任何跨任务握手**，HTTP 同步语义天然成立；代价是 handler 与慢客户端的 I/O 都占用引擎任务，已由 8 KiB 上限 + 2 连接 + 5 s I/O 截止时间 + 回调纪律约束。
+- **HTTP 子集边界**：HTTP/1.0 短连接，`Connection: close` 每请求一连接；只解析请求行 / `Content-Length` / `Connection` 三个要素，按 `Content-Length` 截取 body。**无 keep-alive、无 chunked、无 gzip/多 part、无 TLS**（mbedTLS 服务端证书需要证书/密钥配置与 PKI，明确 out of scope， trusted-LAN 明文信任模型）。浏览器访问完全兼容（浏览器对 `Connection: close` 无特殊要求）。
+- **路由子集**：精确路径 + 精确方法匹配（`method + ' ' + path` 字符串键），**无路径参数 / 通配符 / 前缀匹配 / 文件系统映射**——C 层绝不把请求路径当文件路径打开，彻底没有任意文件读取面。未匹配 404；GET `/` 未注册时内置欢迎页（设备名 + 已注册路由列表）。多路由表由 JS 侧对象管理，运行时重建即清空，随 app 热更新分发。
+- **安全边界**：默认关闭，`lume.net.web.start({token})` 显式开启；token 必填且 URL-safe，作为 `?key=<token>` 出现在 url()/屏幕大字中；`key` 查询参数用常数时间比较，无 / 错 token 直接 403 且在 JS dispatch 之前完成（handler 不会被调用）。无 WiFi IPv4 不监听（照抄 OTA 的 `lume_net_has_ip()` 门禁）。app 切换 / 关闭 / eval 失败一律在新建运行时之前 `lume_webserv_stop()`，杜绝僵尸端口。
+- **内存纪律**：唯一共享请求缓冲 `LUME_WEB_HEAD_MAX(1024) + LUME_WEB_BODY_MAX(8192) ≈ 9 KiB` 一次性 PSRAM 分配（`MALLOC_CAP_SPIRAM`），2 个并发连接共用，不按连接翻倍；响应体不额外拷贝，从 JS 自有内存按 512 B 分块 `send()`。C 层中间面 ~9 KiB，低于 r33 叠加账 16 KiB 线；请求体转成 JS 字符串时 QuickJS 会另有分配，合并峰值须真机测量，不能把 C 缓冲值冒充整机峰值。请求体 8192 B 硬上限，超出 413。
+- **并发/超时**：`listen` backlog 与已接受 socket 均封顶 2；第 3 个连接直接关闭。每个连接 5 s I/O 截止（含「连上但从不发字节」），超时 408；头超 1 KiB 431；畸形请求 400。handler 运行时间无法被 C 强制抢占（QuickJS 同步调用），与 `lume.ai.chat()`/`httpGet()` 的阻塞取舍同类，靠回调纪律而非硬超时约束。
+- **验证口径（host + 编译，非真机）**：`tests/webserver.js` 8 例全绿（精确路由 / 404 / query 解析 / token 403 / 8 KiB body / start-stop 生命周期 / 全链 + handler 异常 500）；`tests/webserv_parse.c` gcc `-Wall -Wextra -Werror` 51 checks PASS（请求行 / header / body 截取 / 畸形输入 / 边界 / token 常数比较）；固件 `idf.py build` + `idf.py size` 与 IRAM 16384 硬线见 `docs/r71-webserv-report.md` 原始输出。esp32sim 无 host 网络回环时，以「C 解析单测 + JS 路由 host 测试」双证据替代，不做假的网络回环断言。
+- **仍 open（真机验收）**：手机/浏览器经真实 WiFi 打开 `http://<ip>:8080/?key=...`、屏幕大字可读性、握手/DHCP 后自动监听与掉线停服、表单 POST 写 KV 后 abc123 侧轮询消费、并发 2 连接与 8 KiB body 的真机内存峰值、与 OTA(8765) 同时监听的射频共存，一律未验。`examples/web_config/` 只做服务端通路 + 演示页，不改 abc123 本体（主控后续排线）。
+
 ## r70 / abc123 幼儿字母数字卡（host + browser + esp32sim 证据，无真机验收）
 
 - **范围**：新增 `examples/abc123/app.js` + `tests/abc123.js`；playground 四处同步（build.mjs apps、page.js picker、index.html script、verify.mjs 24→25）并重新生成 `website/playground/{apps,sources}` 产物；README Apps 表加格、roadmap 新开「幼儿教育」叙事行、本条与 `docs/r70-abc-report.md`。固件 C、prelude C 字符串、bridge ABI、帧协议、`runtime/types/lume.d.ts`、vendored 组件全部未改。未推送。
