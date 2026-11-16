@@ -17,6 +17,9 @@ int main(void)
     puts("PASS oversize rejected before decode");
     assert(lume_image_size_of((const unsigned char *)"junk", 4, &w, &h) == -2);
     puts("PASS bad bytes rejected");
+    const char svg[] = "\xef\xbb\xbf <svg width='1024px' height='512' viewBox='0 0 1024 512'/>";
+    assert(lume_image_size_of((const unsigned char *)svg, sizeof(svg)-1, &w, &h) == 0 && w == 1024 && h == 512);
+    puts("PASS SVG intrinsic over 480 accepted");
     assert(lume_image_size_of(NULL, 0, &w, &h) == -1);
     puts("PASS invalid argument error code");
     const uint8_t red_rgba[] = {255, 0, 0, 255};

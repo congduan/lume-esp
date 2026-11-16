@@ -15,7 +15,9 @@ function pass(name, fn) { fn(); console.log('PASS ' + name); }
 pass('Image create/source/size message order', () => {
   const h = run('var n=Image({src:new ArrayBuffer(1)});');
   assert.deepStrictEqual(h.calls[0], ['create', 4, 0]);
-  assert.deepStrictEqual(h.calls[1].slice(0,2), ['source', 1]);
+  assert.deepStrictEqual(h.calls.find(x => x[0] === 'source').slice(0,2), ['source', 1]);
+  assert.deepStrictEqual(h.calls.find(x => x[0] === 'source').slice(3), [1, 1]);
+  assert(h.calls.findIndex(x => x[0] === 'attr') < h.calls.findIndex(x => x[0] === 'source'));
   assert(h.calls.some(x => x[0] === 'attr' && x[2] === 2 && x[3] === 1));
 });
 pass('Image participates in View flex child adoption', () => {
@@ -25,6 +27,11 @@ pass('Image participates in View flex child adoption', () => {
 pass('Image preserves aspect ratio for one explicit dimension', () => {
   const h = run('Image({src:new ArrayBuffer(1),style:{width:40}});', {width:20,height:10});
   assert(h.calls.some(x => x[0] === 'attr' && x[2] === 3 && x[3] === 20));
+  assert.deepStrictEqual(h.calls.find(x => x[0] === 'source').slice(3), [40, 20]);
+});
+pass('Image forwards two explicit raster dimensions', () => {
+  const h = run('Image({src:new ArrayBuffer(1),style:{width:80,height:40}});', {width:20,height:20});
+  assert.deepStrictEqual(h.calls.find(x => x[0] === 'source').slice(3), [80, 40]);
 });
 pass('Image propagates decoder error and removes failed node', () => {
   const h = run('var n=Image({src:new ArrayBuffer(1)});', {width:1,height:1}, -3);

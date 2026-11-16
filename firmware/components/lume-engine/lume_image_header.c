@@ -1,5 +1,6 @@
 #include "lume_image.h"
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
+#include "lume_svg.h"
 #include <string.h>
 
 static uint32_t be32(const uint8_t *p)
@@ -9,6 +10,7 @@ static uint32_t be32(const uint8_t *p)
 int lume_image_size_of(const uint8_t *b, size_t n, uint16_t *w, uint16_t *h)
 {
     if (!b || !w || !h) return -1;
+    if (lume_svg_detect(b, n)) return lume_svg_size(b, n, w, h);
     uint32_t width = 0, height = 0;
     if (n >= 24 && memcmp(b, "\x89PNG\r\n\x1a\n", 8) == 0) {
         if (be32(b + 8) != 13 || memcmp(b + 12, "IHDR", 4) != 0) return -2;

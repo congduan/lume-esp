@@ -1,4 +1,5 @@
 #include "lume_image.h"
+#include "lume_svg.h"
 #include <stdlib.h>
 #include <string.h>
 #include "esp_heap_caps.h"
@@ -32,11 +33,23 @@ static int jpeg_output(JDEC *jd, void *bitmap, JRECT *rect)
     return 1;
 }
 
-int lume_image_decode(const uint8_t *b, size_t n, uint8_t **pixels,
-                      uint16_t *w, uint16_t *h, uint8_t *has_alpha)
+int lume_image_decode_ex(const uint8_t *b, size_t n, uint16_t tw, uint16_t th,
+                         uint8_t **pixels, uint16_t *w, uint16_t *h, uint8_t *has_alpha)
 {
-    if (!pixels || !has_alpha) return -1;
+    if (!pixels || !w || !h || !has_alpha) return -1;
     *pixels = NULL; *has_alpha = 0;
+    if (lume_svg_detect(b, n)) {
+        uint8_t *rgba = NULL;
+        int sr = lume_svg_render(b, n, tw, th, &rgba, w, h);
+        if (sr) return sr;
+        size_t count = (size_t)*w * *h;
+        uint8_t *out = heap_caps_malloc(count * 3, MALLOC_CAP_SPIRAM);
+        if (!out) { heap_caps_free(rgba); return -3; }
+        *has_alpha = lume_image_rgba_to_rgb565a8(rgba, count, out);
+        heap_caps_free(rgba);
+        *pixels = out;
+        return 0;
+    }
     int rc = lume_image_size_of(b, n, w, h);
     if (rc) return rc;
     size_t count = (size_t)*w * *h;
@@ -69,3 +82,7 @@ int lume_image_decode(const uint8_t *b, size_t n, uint8_t **pixels,
     *pixels = out;
     return 0;
 }
+
+int lume_image_decode(const uint8_t *b, size_t n, uint8_t **pixels,
+                      uint16_t *w, uint16_t *h, uint8_t *has_alpha)
+{ return lume_image_decode_ex(b, n, 0, 0, pixels, w, h, has_alpha); }

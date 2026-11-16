@@ -117,7 +117,7 @@ function runApp(script, options = {}) {
       setPin: () => 0, write: () => 0, read: () => 1, toggle: () => 0,
       pwmAttach: () => 0, pwmDuty: () => 0, pwmFree: () => 0,
     },
-    image: { sizeOf: () => -1, _setSource: () => -1 },
+    image: { sizeOf: bytes => -1, _setSource: (id, bytes, width, height) => -1 },
     audio: {
       play: () => 0, record: () => -3, setVolume: () => 0, stop: () => 0,
       playStream: () => 0, streamFinished: () => true,

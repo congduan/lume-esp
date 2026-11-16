@@ -41,6 +41,7 @@
 #include "mp3_decoder.h"
 #include "lume_power.h"
 #include "lume_image.h"
+#include "lume_svg.h"
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include "quickjs.h"
 #include "lume_perf.h"
@@ -676,7 +677,18 @@ static JSValue js_image_set_source(JSContext *ctx, JSValueConst self, int argc, 
     if (!bytes) return JS_NewInt32(ctx, -1);
     uint8_t *pixels = NULL, alpha = 0;
     uint16_t w = 0, h = 0;
-    int r = lume_image_decode(bytes, len, &pixels, &w, &h, &alpha);
+    int32_t tw = 0, th = 0;
+    if (argc > 2 && JS_ToInt32(ctx, &tw, argv[2]) < 0) {
+        JS_FreeValue(ctx, JS_GetException(ctx)); tw = 0;
+    }
+    if (argc > 3 && JS_ToInt32(ctx, &th, argv[3]) < 0) {
+        JS_FreeValue(ctx, JS_GetException(ctx)); th = 0;
+    }
+    if (tw > 0 && th > 0 && (tw > 480 || th > 480) && lume_svg_detect(bytes, len))
+        return JS_NewInt32(ctx, -2);
+    int r = lume_image_decode_ex(bytes, len, tw > 0 && tw <= 65535 ? tw : 0,
+                                 th > 0 && th <= 65535 ? th : 0,
+                                 &pixels, &w, &h, &alpha);
     if (r) return JS_NewInt32(ctx, r);
     lume_ui_msg_t m; msg_init(&m);
     m.op = LUME_OP_IMAGE_SOURCE;
@@ -2499,7 +2511,7 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, lume, "canvasInvalidate", JS_NewCFunction(ctx, js_canvas_invalidate, "canvasInvalidate", 1));
     JSValue image = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, image, "sizeOf", JS_NewCFunction(ctx, js_image_size_of, "sizeOf", 1));
-    JS_SetPropertyStr(ctx, image, "_setSource", JS_NewCFunction(ctx, js_image_set_source, "_setSource", 2));
+    JS_SetPropertyStr(ctx, image, "_setSource", JS_NewCFunction(ctx, js_image_set_source, "_setSource", 4));
     JS_SetPropertyStr(ctx, lume, "image", image);
     JS_SetPropertyStr(ctx, lume, "setAttr",
                       JS_NewCFunction(ctx, js_set_attr, "setAttr", 3));
