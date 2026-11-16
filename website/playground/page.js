@@ -23,6 +23,8 @@
     ['async_demo','↻','Async demo','异步演示','async / await','异步Await'],
     ['piano','♬','Piano','钢琴','Two-octave touch piano','双八度触屏钢琴'],
     ['compass','⊙','Heading dial','方位仪表','Inertial heading, no magnetometer','惯性方位，无磁力计'],
+    ['invaders','▴','Invaders','太空侵略者','Arcade-style shooter','街机风格射击'],
+    ['frogger','✦','Frogger','过河青蛙','Road and river crossing','公路河道穿越'],
   ];
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');
