@@ -1031,3 +1031,8 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   - **workflow 行为未在真实 runner 上实证**：本地只做了 `yaml.safe_load` 静态自检 + 逐命令本地预演；`actionlint` 未安装（跳过）。`espressif/esp-idf-ci-action@v1` 把固件镜像留在 host workspace、PR 门禁、`if: failure()` 产物上传、`upload-artifact` 路径拼接均由既有 `firmware.yml` / `emu.yml` 的隐式约定支撑，需首次真实 push 触发后才能确认。
 - **验证（全部 host / esp32sim，EXIT=0）**：22/22 `tests/*.js`（`JS_HARNESS_FAILURES=0`）、8/8 C 断言、`npm test --prefix tools/lume` 44 pass / 0 fail、`gen_api_docs.py --check`（110 条）+ `check_website.py`、`check --no-emu` `RESULT: PASS`、speedometer/dashboard `scan N=5` 各 5/5 PASS + `--json` 冒烟；`idf.py build && idf.py size` `BUILD_SIZE_EXIT=0`，IRAM 16384/16384（Remain 0）、Flash Code 1,954,564 B、Total 2,926,191，与 r49 基线逐字段一致。详见 `docs/roadmap.md` r50 result。
 - **仍 open（全部真机验收，无板）**：上述所有板级项一律未验；此外 CI 的 ROM/spec 耦合、白名单触发面、PR 门禁与产物上传的真实 runner 行为均待首次推送后观察。本轮为宿主 / 模拟器证据，不是真机验收。
+## r53 / Optional boot-pinned launcher
+
+- `.boot` is a separate LittleFS marker. A valid installed pin wins at power-on; otherwise boot falls back to `.current`, then the built-in home grid. `launch()` and `home()` retain their existing `.current` behavior. Devices that never call `setBoot()` have the original boot path.
+- The launcher app pins itself when started. Its edit page clears the pin and opens home. Direct TF/CLI pin editing remains future work. A pinned app that still has `app.js` but fails during evaluation remains pinned; the current boot failure path drops `.current` and opens home for that run. Repair or clear the pin through a working app.
+- Host harness, firmware compilation, and esp32sim evidence do not verify LittleFS persistence or display/touch behavior on the physical board. Board acceptance remains pending.

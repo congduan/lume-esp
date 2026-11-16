@@ -613,6 +613,11 @@ declare namespace lume.apps {
   function list(): string[] | number;
   function meta(id: string): string | number;
   function current(): string | number;
+  /** Pin an installed app for every boot; "" clears the pin. Returns 0 or a
+   * negative error. A pinned app wins over the last launched app (.current).
+   * launch() still switches runtime and records .current; home() only clears
+   * .current. Without a pin, boot uses .current or the built-in home grid. */
+  function setBoot(id: string): number;
   function launch(id: string): number;
   function home(): number;
   function remove(id: string): number;

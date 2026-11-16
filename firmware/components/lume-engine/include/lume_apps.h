@@ -6,7 +6,8 @@
  *
  *   /apps/<id>/app.js      bundled app source (JS_Eval, iife+es2020 text)
  *   /apps/<id>/meta.json   single-line JSON: {"label","icon","color",...}
- *   /apps/.current         id of the app to start on the next boot ("" = home)
+ *   /apps/.current         last successfully started app ("" = home)
+ *   /apps/.boot            optional pinned boot target
  *
  * Only the STORE side of multi-app lives here. The engine still runs EXACTLY
  * ONE app at a time: launching another app tears the whole QuickJS runtime
@@ -58,9 +59,12 @@ int lume_apps_remove(const char *id);
 int lume_apps_current(char *out, size_t cap);
 int lume_apps_set_current(const char *id);
 
-/* Boot selection: copies the persisted id into `out` only when that app is
- * still installed. Returns true when an app should be started, false when the
- * engine should fall back to the built-in home screen. */
+/* Independent boot pin. Empty id removes .boot; missing/corrupt reads as "". */
+int lume_apps_boot_pin(char *out, size_t cap);
+int lume_apps_set_boot(const char *id);
+
+/* Boot selection: valid installed .boot target, then installed .current,
+ * then the built-in home screen. */
 bool lume_apps_boot_id(char *out, size_t cap);
 
 bool lume_apps_valid_id(const char *id);

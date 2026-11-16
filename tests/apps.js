@@ -66,6 +66,38 @@ check('launch/home/remove return the native status codes', () => {
   assert.ok(s.messages.some(m => m[0] === 'home'));
 });
 
+check('setBoot pins independently of launch and home, then clears', () => {
+  const s = runApp('globalThis.pin = lume.apps.setBoot("launcher");' +
+    'globalThis.launch = lume.apps.launch("clock");' +
+    'globalThis.home = lume.apps.home();' +
+    'globalThis.boot = lume.apps.setBoot("");', { apps: { launcher: {}, clock: {} } });
+  assert.deepEqual([s.ctx.pin, s.ctx.launch, s.ctx.home, s.ctx.boot], [0, 0, 0, 0]);
+  assert.deepEqual(s.messages.filter(m => m[0] === 'setBoot'),
+    [['setBoot', 'launcher'], ['setBoot', '']]);
+  assert.equal(s.bootPin(), '');
+});
+
+check('setBoot reports invalid ids and storage errors', () => {
+  const s = runApp('globalThis.bad = lume.apps.setBoot(".boot");' +
+    'globalThis.failed = lume.apps.setBoot("launcher");', { setBootStatus: -3 });
+  assert.equal(s.ctx.bad, -5);
+  assert.equal(s.ctx.failed, -3);
+  assert.deepEqual(s.messages.filter(m => m[0] === 'setBoot'), []);
+  assert.match(fs.readFileSync('firmware/components/lume-engine/lume_engine.c', 'utf8'),
+    /JS_SetPropertyStr\(ctx, apps, "setBoot"/);
+});
+
+check('launcher pins itself and its edit exit clears the pin before home', () => {
+  const source = fs.readFileSync('examples/launcher/app.js', 'utf8');
+  const s = runApp(source, { apps: { launcher: {}, clock: {} } });
+  assert.equal(s.bootPin(), 'launcher');
+  vm.runInContext('editing.set(true); exitLauncher();', s.ctx);
+  assert.equal(s.bootPin(), '');
+  assert.deepEqual(s.messages.filter(m => m[0] === 'setBoot'),
+    [['setBoot', 'launcher'], ['setBoot', '']]);
+  assert.deepEqual(s.messages.filter(m => m[0] === 'home'), [['home']]);
+});
+
 check('Launcher defaults to the installed app set', () => {
   const s = app('globalThis.root = lume.ui.shell.Launcher({columns: 2});', {
     apps: { clock: { label: '时钟' }, calc: { label: '计算器' } },

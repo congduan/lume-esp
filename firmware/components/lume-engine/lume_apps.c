@@ -26,6 +26,7 @@ static const char *TAG = "lume-apps";
 
 #define APPS_DIR          "apps"
 #define CURRENT_PATH      "apps/.current"
+#define BOOT_PATH         "apps/.boot"
 #define LIST_MAX          64
 #define APP_BUNDLE_MAX    (256u * 1024u)   /* matches LUME_FRAME_MAX_PAYLOAD */
 
@@ -311,7 +312,7 @@ int lume_apps_remove(const char *id)
 /* ------------------------------------------------------------------ */
 /* Last-started marker                                                 */
 /* ------------------------------------------------------------------ */
-int lume_apps_current(char *out, size_t cap)
+static int marker_read(const char *path, char *out, size_t cap)
 {
     if (out == NULL || cap < 2) {
         return LUME_FS_ERR_ARG;
@@ -321,13 +322,13 @@ int lume_apps_current(char *out, size_t cap)
         return LUME_FS_ERR_STATE;
     }
     bool exists = false;
-    if (lume_fs_exists(CURRENT_PATH, &exists) < 0 || !exists) {
+    if (lume_fs_exists(path, &exists) < 0 || !exists) {
         return LUME_APPS_OK;
     }
     xSemaphoreTakeRecursive(s_lock, portMAX_DELAY);
     uint8_t *data = NULL;
     size_t len = 0;
-    int r = lume_fs_read_psram(CURRENT_PATH, LUME_APP_ID_MAX, &data, &len);
+    int r = lume_fs_read_psram(path, LUME_APP_ID_MAX, &data, &len);
     xSemaphoreGiveRecursive(s_lock);
     if (r < 0) {
         return r;
@@ -346,7 +347,7 @@ int lume_apps_current(char *out, size_t cap)
     return LUME_APPS_OK;
 }
 
-int lume_apps_set_current(const char *id)
+static int marker_write(const char *path, const char *id)
 {
     if (lume_apps_init() < 0) {
         return LUME_FS_ERR_STATE;
@@ -356,12 +357,40 @@ int lume_apps_set_current(const char *id)
     }
     xSemaphoreTakeRecursive(s_lock, portMAX_DELAY);
     int r = (id == NULL || id[0] == '\0')
-                ? lume_fs_remove(CURRENT_PATH)
-                : lume_fs_write(CURRENT_PATH, (const uint8_t *)id,
+                ? lume_fs_remove(path)
+                : lume_fs_write(path, (const uint8_t *)id,
                                 strlen(id), false);
     xSemaphoreGiveRecursive(s_lock);
     /* Removing a marker that never existed is success. */
     return (r < 0) ? LUME_FS_ERR_STATE : LUME_APPS_OK;
+}
+
+int lume_apps_current(char *out, size_t cap)
+{
+    return marker_read(CURRENT_PATH, out, cap);
+}
+
+int lume_apps_set_current(const char *id)
+{
+    return marker_write(CURRENT_PATH, id);
+}
+
+int lume_apps_boot_pin(char *out, size_t cap)
+{
+    return marker_read(BOOT_PATH, out, cap);
+}
+
+int lume_apps_set_boot(const char *id)
+{
+    return marker_write(BOOT_PATH, id);
+}
+
+static bool installed_boot_app(const char *id)
+{
+    char path[LUME_FS_PATH_MAX];
+    bool exists = false;
+    return path_for(path, sizeof(path), id, "app.js") == 0 &&
+           lume_fs_exists(path, &exists) == 0 && exists;
 }
 
 bool lume_apps_boot_id(char *out, size_t cap)
@@ -370,15 +399,19 @@ bool lume_apps_boot_id(char *out, size_t cap)
         return false;
     }
     out[0] = '\0';
+    if (lume_apps_boot_pin(out, cap) == 0 && out[0] != '\0') {
+        if (installed_boot_app(out)) {
+            return true;
+        }
+        ESP_LOGW(TAG, "boot pin '%s' missing; trying current app", out);
+    }
+    out[0] = '\0';
     if (lume_apps_current(out, cap) != 0 || out[0] == '\0') {
         return false;
     }
     /* The marker may outlive its app (removed on the host, or a partial
      * install): only boot it when app.js is really there. */
-    char path[LUME_FS_PATH_MAX];
-    bool exists = false;
-    if (path_for(path, sizeof(path), out, "app.js") < 0 ||
-        lume_fs_exists(path, &exists) < 0 || !exists) {
+    if (!installed_boot_app(out)) {
         ESP_LOGW(TAG, "boot app '%s' missing; starting home", out);
         out[0] = '\0';
         return false;

@@ -1723,6 +1723,23 @@ static JSValue js_apps_home(JSContext *ctx, JSValueConst self, int argc,
     return JS_NewInt32(ctx, lume_engine_request_launch("") < 0 ? LUME_FS_ERR_STATE : 0);
 }
 
+static JSValue js_apps_set_boot(JSContext *ctx, JSValueConst self, int argc,
+                                JSValueConst *argv)
+{
+    (void)self;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "lume.apps.setBoot: expected app id");
+    size_t n = 0;
+    const char *id = JS_ToCStringLen(ctx, &n, argv[0]);
+    if (id == NULL) return JS_EXCEPTION;
+    int r = LUME_APPS_ERR_ID;
+    if (memchr(id, '\0', n) == NULL && n < LUME_APP_ID_MAX &&
+        (n == 0 || lume_app_id_valid(id, n))) {
+        r = lume_apps_set_boot(id);
+    }
+    JS_FreeCString(ctx, id);
+    return JS_NewInt32(ctx, r);
+}
+
 static JSValue js_apps_remove(JSContext *ctx, JSValueConst self, int argc,
                               JSValueConst *argv)
 {
@@ -2521,6 +2538,8 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_apps_launch, "launch", 1));
     JS_SetPropertyStr(ctx, apps, "home",
                       JS_NewCFunction(ctx, js_apps_home, "home", 0));
+    JS_SetPropertyStr(ctx, apps, "setBoot",
+                      JS_NewCFunction(ctx, js_apps_set_boot, "setBoot", 1));
     JS_SetPropertyStr(ctx, apps, "remove",
                       JS_NewCFunction(ctx, js_apps_remove, "remove", 1));
     JS_SetPropertyStr(ctx, apps, "mounted",
@@ -3098,7 +3117,7 @@ static void engine_task(void *arg)
     bool cand_is_home = false;     /* run the built-in home screen */
     bool home_failed = false;      /* home itself broke: fall back to demo */
 
-    /* Boot: resume the last started app, otherwise show the home grid. */
+    /* Boot: prefer a valid pin, then the last started app, then home. */
     lume_apps_init();
     {
         char boot[LUME_APP_ID_MAX];

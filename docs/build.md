@@ -76,13 +76,32 @@ node tools/lume/lume.js apps remove clock
 node tools/lume/lume.js apps home                        # back to the built-in home grid
 ```
 
+To use the optional launcher app, deploy `examples/launcher` with id
+`launcher`. Its top-level `lume.apps.setBoot('launcher')` pins that app as the
+power-on target. `setBoot('')` clears the pin. Open **EDIT** in the launcher and
+tap **EXIT LAUNCHER MODE** to clear it and return to the built-in home grid.
+The launcher can open `app_manager` when that example is installed.
+
 `deploy` sends a `STORE` command frame (writes `/apps/<id>/app.js` + `meta.json`) and then a `LAUNCH` command frame. The optional `label` / `icon` / `color` shown by the launcher come from the app's `package.json`:
 
 ```json
 { "lume": { "entry": "app.js", "label": "时钟", "icon": "C", "color": "#1E88E5" } }
 ```
 
-Boot behaviour: the device starts `/apps/.current` (the last launched app) when that app is still installed, otherwise the built-in home grid (`lume_home_js`, one tile per installed app). An app that fails to evaluate drops the boot marker and falls back to home, so a broken install cannot brick the device. An unhandled `onBack` returns from the running app to the home grid; the built-in grid itself is the root and swallows BACK. `--ephemeral` keeps the M1 behaviour: no file is written, the pushed bundle only lives in RAM until the next boot or reload.
+Boot behaviour: the device first tries `/apps/.boot`, an optional pinned app id,
+when its `app.js` exists. Otherwise it tries `/apps/.current`, the last
+successfully launched app, then the built-in home grid (`lume_home_js`).
+`lume.apps.launch(id)` switches the runtime and updates `.current`; `home()`
+clears `.current` and returns to the home grid. Neither clears `.boot`, so
+`lume apps launch <app>` does **not** exit launcher mode. The launcher's edit
+page provides the exit button. Another route is to deploy and start an app
+that calls `lume.apps.setBoot('')`; a direct TF/CLI pin editor is still pending.
+Devices that never call `setBoot` follow the original `.current` behaviour.
+An app that fails to evaluate falls back to home; the existing `.current`
+failure handling remains in place. An unhandled `onBack` returns from the
+running app to the home grid; the built-in grid itself swallows BACK.
+`--ephemeral` keeps the M1 behaviour: the pushed bundle only lives in RAM
+until the next boot or reload.
 
 Both commands auto-detect a single Espressif USB port; if needed, specify `--port /dev/ttyACM0` (or the platform's serial path). The device's `RELOAD OK <length>` confirms that the JS source evaluated; `RELOAD ERR <reason>` is shown as a CLI error. `--help` and `--version` are available. Baud is set to 115200; USB CDC does not use it as a physical bit rate.
 

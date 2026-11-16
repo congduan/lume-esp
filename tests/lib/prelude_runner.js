@@ -32,6 +32,7 @@ function runApp(script, options = {}) {
   // r30 multi-app store stand-in: options.apps = { id: {label,icon,color} }.
   const installedApps = { ...(options.apps || {}) };
   let currentApp = options.currentApp || '';
+  let bootPin = options.bootPin || '';
   const lume = {
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
@@ -94,6 +95,14 @@ function runApp(script, options = {}) {
       list: () => Object.keys(installedApps),
       meta: id => (id in installedApps ? JSON.stringify(installedApps[id]) : -4),
       current: () => currentApp,
+      setBoot: id => {
+        if (typeof id !== 'string' ||
+            (id !== '' && !/^[A-Za-z0-9_-][A-Za-z0-9._-]{0,30}$/.test(id))) return -5;
+        if (options.setBootStatus != null) return options.setBootStatus;
+        bootPin = id;
+        emit('setBoot', id);
+        return 0;
+      },
       launch: id => { emit('launch', id); currentApp = id; options.onLaunch?.(id); return 0; },
       home: () => { emit('home'); currentApp = ''; return 0; },
       remove: id => {
@@ -135,6 +144,7 @@ function runApp(script, options = {}) {
   vm.runInContext(script, ctx, { filename: options.filename || 'app.js' });
   return {
     messages, ctx, lume,
+    bootPin: () => bootPin,
     press: id => vm.runInContext(`__lume_dispatchPress(${Number(id)})`, ctx),
     scroll: (id, y) => vm.runInContext(`__lume_dispatchScroll(${Number(id)},${Number(y)})`, ctx),
     gesture: (id, kind, x, y, t, dir = 0, cancelled = 0) =>

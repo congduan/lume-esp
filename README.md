@@ -59,6 +59,12 @@ unit was not synced.
 
 **Shell components** ([runtime/shell.js](runtime/shell.js) — status bar, launcher, dialogs, toasts)
 
+The optional [launcher app](examples/launcher/app.js) can pin itself as the
+power-on target with `lume.apps.setBoot('launcher')`. Its **EDIT → EXIT LAUNCHER
+MODE** action clears the pin and opens the built-in home grid. Without a pin,
+the device boots the last successfully launched app as before. Launching a
+different app does not clear the pin; a direct TF/CLI pin editor is pending.
+
 | | | |
 |:--:|:--:|:--:|
 | <img src="artifacts/emu/ui-refresh/device_monitor.png" width="230"><br>**Device monitor**<br><sub>PMIC / IMU / radio telemetry gauges</sub> | <img src="artifacts/emu/ui-refresh/shell_demo.png" width="230"><br>**Dialog + Toast**<br><sub>overlays, modal touch blocking</sub> | <img src="artifacts/emu/ui-refresh/app_manager.png" width="230"><br>**App manager**<br><sub>install / launch / remove</sub> |
