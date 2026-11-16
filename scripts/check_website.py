@@ -101,6 +101,35 @@ duplicates=sorted(n for n in set(actual) if actual.count(n)>1)
 if missing: errors.append('API missing: '+', '.join(missing))
 if extra: errors.append('API invented: '+', '.join(extra))
 if duplicates: errors.append('API duplicates: '+', '.join(duplicates))
+# SEO basics: every indexable page carries a canonical + og tags; sitemap and
+# robots.txt exist, sitemap URLs match the real pages, and the OG cover exists.
+BASE='https://congduan.github.io/lume-esp'
+for name,parser in pages.items():
+    html=(SITE/name).read_text()
+    if name=='404.html':
+        if 'noindex' not in html:
+            errors.append(f'{name}: missing noindex')
+        continue
+    if f'rel="canonical" href="{BASE}/{name}"' not in html:
+        errors.append(f'{name}: missing canonical')
+    for marker in ('og:title','og:description','og:image'):
+        if marker not in html:
+            errors.append(f'{name}: missing {marker}')
+sitemap=(SITE/'sitemap.xml').read_text()
+for url in re.findall(r'<loc>([^<]+)</loc>',sitemap):
+    path=url[len(BASE):].lstrip('/')
+    if not path:
+        path='index.html'
+    if path=='index.html':
+        if url!=BASE+'/': errors.append(f'sitemap: index url should be {BASE}/')
+    elif not (SITE/path).exists():
+        errors.append(f'sitemap: {url} has no file')
+if not (SITE/'robots.txt').exists():
+    errors.append('website: missing robots.txt')
+elif f'Sitemap: {BASE}/sitemap.xml' not in (SITE/'robots.txt').read_text():
+    errors.append('robots.txt: missing sitemap declaration')
+if not (SITE/'assets/og-cover.png').exists():
+    errors.append('website: missing assets/og-cover.png')
 print(f'HTML pages: {len(pages)}; internal href/src and anchors checked')
 print(f'API: {len(actual)} catalog entries, {len(expected)} type declarations, {len(set(n.rsplit(".",1)[0] for n in expected))} function namespaces')
 print('API missing:',missing or 'none')
