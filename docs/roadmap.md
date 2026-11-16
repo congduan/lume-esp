@@ -646,3 +646,45 @@ LLM 首 token ~500ms（网关按句切分，首句完成即送 TTS）｜TTS 首�
 评估口径：魔改必须有可对拍的前后数据（收益量化），否则不动；改 lv_conf.h /
 vendored 源码前先核对该项是否踩 KNOWN-SIMPLIFICATIONS 既有登记，翻案要在登记处注明
 翻案依据与数据。
+### r54 result — QuickJS PSRAM allocator profile (host + esp32sim; board pending)
+
+`s_psram_mf` now counts live blocks and net allocated bytes at the four Lume allocator hooks, using `heap_caps_get_allocated_size` before free and on successful allocation/reallocation. The `lume_engine_alloc_stats` read API is engine-task-only. `CONFIG_LUME_PERF_PROFILE=y` compiles in the counters and a one-second `lume-perf` allocator line; the default config compiles them out. QuickJS runtime creation, eval, callbacks, GC and teardown all run on the sole engine task; the LVGL task posts events and does not call the JS allocator. Vendored sources, prelude, bridge ABI, frame protocol, `.d.ts` and `tools/lume` were not changed.
+
+The leak gate lives in `tools/emu/check_alloc_leak.py`, separately from `lume check`: the latter's perf step is best-effort and a deliberate leak control must fail its stability assertion. Both apps run roughly 10 s after a 2.5 s frame injection. Sampling starts 2 s after app eval. The threshold is 32,768 B, calibrated between the observed counter growth of 0 B and deliberate leak growth of 319,300 B. Raw simulator stdout (the leak case was also invoked alone and exited 1):
+
+```text
+counter: I (4948) lume-perf: alloc.net=331840 alloc.live=117
+counter: I (5949) lume-perf: alloc.net=331840 alloc.live=117
+counter: I (6950) lume-perf: alloc.net=331840 alloc.live=117
+counter: I (7951) lume-perf: alloc.net=331840 alloc.live=117
+counter: I (8952) lume-perf: alloc.net=331840 alloc.live=117
+counter: I (9953) lume-perf: alloc.net=331840 alloc.live=117
+counter: I (10954) lume-perf: alloc.net=331840 alloc.live=117
+counter: I (11955) lume-perf: alloc.net=331840 alloc.live=117
+counter: I (12956) lume-perf: alloc.net=331840 alloc.live=117
+counter: steady-growth=0 threshold=32768 PASS
+leak: I (4950) lume-perf: alloc.net=402156 alloc.live=134
+leak: I (5951) lume-perf: alloc.net=443476 alloc.live=144
+leak: I (6969) lume-perf: alloc.net=480664 alloc.live=153
+leak: I (7970) lume-perf: alloc.net=521984 alloc.live=163
+leak: I (8971) lume-perf: alloc.net=563304 alloc.live=173
+leak: I (9988) lume-perf: alloc.net=601260 alloc.live=183
+leak: I (10989) lume-perf: alloc.net=642580 alloc.live=193
+leak: I (11991) lume-perf: alloc.net=683900 alloc.live=203
+leak: I (13008) lume-perf: alloc.net=721456 alloc.live=212
+leak: steady-growth=319300 threshold=32768 FAIL
+LEAK_CASE_EXIT=1
+```
+
+Default 2.16-board `idf.py build && idf.py size` passed. A same-config A/B rebuilt HEAD's original engine source and restored the r54 source in this worktree; both size outputs were identical (the r50 historical 1,954,564 B precedes later code on this HEAD):
+
+```text
+baseline: │ Flash Code        │      1954964 │
+r54:      │ Flash Code        │      1954964 │
+r54:      │ IRAM              │        16384 │    100.0 │              0 │         16384 │
+r54:      Total image size: 2926703 bytes (.bin may be padded larger)
+```
+
+Profile firmware was built in `build-r54-profile` with `CONFIG_LUME_PERF_PROFILE=1`; its `quickjs.c` object needed `-g0` after debug-symbol assembly stalled under host swap, then `idf.py build` completed and linked the image. This changed debug information only, not optimization or source. Profile-off `tools/emu/run.sh examples/counter` completed reload/eval and produced a TFT image with no allocator lines. Raw 8 s stop line: `[emu] stop: Halted — core0 149980033 + core1 54622219 insns in 13.1s wall = 15.6 Minsn/s; emulated 8.000s (1920000000 cycles); 319200 exceptions, 23689 interrupts`. The repository's earlier counter core1 value was 54,573,730; this is the same instruction-count scale, and the r54 default Flash Code is byte-identical to same-HEAD baseline.
+
+Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test --prefix tools/lume` printed `# tests 44`, `# pass 43`, `# fail 0`, `# skipped 1`. All evidence here is host or esp32sim. Physical display, touch, memory fragmentation, power, radio, storage and bundle push remain pending board acceptance; the counter does not count direct C/canvas PSRAM allocations or task stacks (see `KNOWN-SIMPLIFICATIONS.md`).

@@ -5,6 +5,9 @@
 
 void lume_engine_start(void);
 
+/* Engine-task-only QuickJS PSRAM allocator snapshot; zero with profile off. */
+void lume_engine_alloc_stats(size_t *net_bytes, size_t *live);
+
 /* Engine event queue record (LVGL task -> engine task). Fixed size, copied.
  * node_id 0 is reserved (active screen); press events carry the clicked node. */
 #define LUME_EVT_PRESS 1

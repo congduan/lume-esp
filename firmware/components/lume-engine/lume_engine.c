@@ -96,25 +96,69 @@ static lume_ota_status_provider_fn s_ota_status_provider;
 /* ------------------------------------------------------------------ */
 /* PSRAM-backed allocator for QuickJS-NG (JSMallocFunctions)            */
 /* ------------------------------------------------------------------ */
+#if CONFIG_LUME_PERF_PROFILE
+/* All JSMallocFunctions calls originate from the sole engine task: the
+ * runtime, eval, callbacks, GC and teardown never run on the LVGL task. */
+static size_t s_alloc_net_bytes;
+static size_t s_alloc_live;
+#endif
+
+void lume_engine_alloc_stats(size_t *net_bytes, size_t *live)
+{
+#if CONFIG_LUME_PERF_PROFILE
+    if (net_bytes) *net_bytes = s_alloc_net_bytes;
+    if (live) *live = s_alloc_live;
+#else
+    if (net_bytes) *net_bytes = 0;
+    if (live) *live = 0;
+#endif
+}
+
 static void *js_calloc_psram(void *opaque, size_t count, size_t size)
 {
     (void)opaque;
-    return heap_caps_calloc(count, size, MALLOC_CAP_SPIRAM);
+    void *ptr = heap_caps_calloc(count, size, MALLOC_CAP_SPIRAM);
+#if CONFIG_LUME_PERF_PROFILE
+    if (ptr) { s_alloc_live++; s_alloc_net_bytes += heap_caps_get_allocated_size(ptr); }
+#endif
+    return ptr;
 }
 static void *js_malloc_psram(void *opaque, size_t size)
 {
     (void)opaque;
-    return heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+    void *ptr = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
+#if CONFIG_LUME_PERF_PROFILE
+    if (ptr) { s_alloc_live++; s_alloc_net_bytes += heap_caps_get_allocated_size(ptr); }
+#endif
+    return ptr;
 }
 static void js_free_psram(void *opaque, void *ptr)
 {
     (void)opaque;
+#if CONFIG_LUME_PERF_PROFILE
+    if (ptr) { s_alloc_live--; s_alloc_net_bytes -= heap_caps_get_allocated_size(ptr); }
+#endif
     heap_caps_free(ptr);
 }
 static void *js_realloc_psram(void *opaque, void *ptr, size_t size)
 {
     (void)opaque;
-    return heap_caps_realloc(ptr, size, MALLOC_CAP_SPIRAM);
+#if CONFIG_LUME_PERF_PROFILE
+    size_t before = ptr ? heap_caps_get_allocated_size(ptr) : 0;
+#endif
+    void *next = heap_caps_realloc(ptr, size, MALLOC_CAP_SPIRAM);
+#if CONFIG_LUME_PERF_PROFILE
+    if (next) {
+        size_t after = heap_caps_get_allocated_size(next);
+        if (!ptr) s_alloc_live++;
+        if (after >= before) s_alloc_net_bytes += after - before;
+        else s_alloc_net_bytes -= before - after;
+    } else if (ptr && !size) {
+        s_alloc_live--;
+        s_alloc_net_bytes -= before;
+    }
+#endif
+    return next;
 }
 static size_t js_usable_size_psram(const void *ptr)
 {
@@ -3343,6 +3387,10 @@ static void engine_task(void *arg)
                 JS_ComputeMemoryUsage(rt, &usage);
                 lume_perf_js_heap((uint32_t)usage.memory_used_size);
                 lume_perf_engine_stack(uxTaskGetStackHighWaterMark(NULL));
+                size_t alloc_net, alloc_live;
+                lume_engine_alloc_stats(&alloc_net, &alloc_live);
+                ESP_LOGI("lume-perf", "alloc.net=%u alloc.live=%u",
+                         (unsigned)alloc_net, (unsigned)alloc_live);
                 last_heap_sample = heap_now;
             }
 #endif
