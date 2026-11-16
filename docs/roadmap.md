@@ -482,6 +482,54 @@ touch / audio / sleep current / radio / persistence / bundle push) is still
 **not** performed. CI coverage gaps are recorded in
 `docs/KNOWN-SIMPLIFICATIONS.md` (r50 entry).
 
+### r55 result — mario 浏览器模拟器端到端验证 (appended, milestone checkboxes untouched)
+
+Appended note only: milestone definitions, checkbox states and the rendering-
+backlog numbering above are unchanged. This round adds a Playwright browser-sim
+verification script for `examples/mario`; no firmware C, embedded prelude,
+bridge ABI, frame protocol or `runtime/types/lume.d.ts` change, and
+`examples/mario/app.js` is untouched. Pure host/browser evidence, NOT on-device
+acceptance.
+
+- **`tools/simulator/verify_mario.js` (new)** — CommonJS Playwright script in
+  the style of `verify.js` / `verify_music_player.js` (uses `PLAYWRIGHT_MODULE`
+  or `playwright`). It spawns `sim.js examples/mario/app.js` (port 8799), opens
+  the 480x480 `#device`, asserts the 6-node structure (LEFT/RIGHT/JUMP Buttons
+  + 1 Canvas with drawn pixels) and initial HUD `S 0  C 0  L 3  LV 1`. Score
+  assertions read the HUD Text node `textContent` — renderer.js does draw Canvas
+  pixels into `#device`, but live frames are non-deterministic, so no pixel
+  diff. RIGHT + short JUMP click -> `BRICK score=25`; partial RIGHT + HIGH jump
+  (JUMP `longpress` gesture injected on `/input`) + LEFT air-control ->
+  `COIN score=35` (`C 1`). Final `#device` screenshot (HUD + Canvas) ->
+  `artifacts/simulator/mario.png`. The header comment records the
+  esp32sim-vs-browser differences: input injection (DOM clicks + `/input`
+  longpress vs firmware `actions.txt`), real-time 50 ms `__lume_tick()`
+  non-determinism / frame timing, and that `STOMP 85` / `LEVEL 2 185` are not
+  reproduced here (recorded, not forced).
+- **CI not expanded** — no `.github/workflows/*` job runs Playwright browser
+  verify (r50 recorded "浏览器验证不在 CI"); Playwright install is heavy /
+  timeout-prone, so this stays a manual run. `docs/KNOWN-SIMPLIFICATIONS.md`
+  r50 entry gains the mario entry point + manual command, plus a short r55 entry
+  for the browser/esp32sim coverage difference.
+- **Docs** — `examples/mario/README.md` gains a "Browser simulator verification"
+  section (command, assertion coverage, division of labor with the esp32sim
+  `actions.txt` evidence).
+
+**Verification (all host / browser, EXIT=0; NO real device / 无真机):**
+`node tools/simulator/verify_mario.js` -> 6 PASS lines (initial HUD, BRICK 25,
+COIN 35, `canvas pixels nonzero=168960`, screenshot, BRICK+COIN coverage),
+exit 0, repeated 4/4 green. Regression `verify_music_player.js` -> 2 PASS lines
+(`PASS library`, `PASS playing lyrics`), exit 0.
+`lume check examples/mario --no-emu` -> `RESULT: PASS (4 steps, 0 failed; exit 0)`.
+`git diff examples/mario/app.js` empty (verify script is read-only on the app).
+Browser path reproduces esp32sim's `BRICK score=25` -> `COIN score=35` exactly;
+the longer esp32sim `STOMP 85` / `LEVEL 2 185` are NOT reproduced here. Firmware
+build/size not required (pure host, no firmware-touching change); start-of-round
+baseline `idf.py size` at `03fafb8`: Total 2,926,703 B (Flash Code 1,954,964 /
+Flash Data 830,016 / DIRAM 230,499 / IRAM 16384/16384 Remain 0, `lume.bin`
+0x2ca8f0). On-device acceptance (display / touch / audio / sleep current /
+radio / persistence / bundle push) remains **not** performed.
+
 
 ## 引擎调试基建与分发加固路线（2026-11-16，结论固化防重复评估）
 
