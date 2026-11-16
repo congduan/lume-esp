@@ -18,6 +18,35 @@ In a stationary 10-second esp32sim run, the app logged `MARIO PERF js_avg_ms=15.
 
 `run.sh` normally writes `artifacts/emu/mario/tft.png` and `serial.log`; this round's captures were preserved under `/tmp/lume-r51-artifacts/mario/` to keep the repository working tree clean. A separate touch script in `/tmp/lume-r51-artifacts/mario_smoke/actions.txt` produced `MARIO BRICK score=25`, `MARIO COIN score=35`, `MARIO STOMP score=85`, and `MARIO LEVEL 2 score=185` in its serial log. Its largest reported dynamic dirty area was 2,752 pixels. esp32sim confirms rendering and touch injection, not physical display orientation, touch feel, or frame rate on the board. Those remain **pending board**.
 
+## Browser simulator verification
+
+`tools/simulator/verify_mario.js` is a Playwright end-to-end check of this app
+in the browser host simulator (`sim.js`, port 8799). It runs without a board:
+
+```bash
+# PLAYWRIGHT_MODULE points at an installed Playwright (locate it with e.g.
+#   find /home/ubuntu -maxdepth 6 -name 'playwright*' -type d 2>/dev/null | head
+PLAYWRIGHT_MODULE=<path-to-playwright> node tools/simulator/verify_mario.js
+```
+
+It asserts the initial HUD `S 0  C 0  L 3  LV 1`, the six UI nodes (root, HUD
+Text, Canvas, LEFT/RIGHT/JUMP Buttons) and that Canvas pixels are painted into
+`#device`. It then drives the three Buttons: a RIGHT + JUMP click breaks the
+brown brick (`BRICK score=25`), and a partial RIGHT + HIGH jump (a `longpress`
+gesture injected on JUMP) + LEFT air-control collects a coin (`COIN score=35`,
+`C 1`). Score assertions read the HUD Text node's text rather than diffing
+canvas pixels; the final `#device` screenshot (HUD + Canvas) is written to
+`artifacts/simulator/mario.png`.
+
+Division of labor with the esp32sim evidence above: the headless chip-simulator
+`actions.txt` leg is deterministic, timed touch injection and additionally
+reached `STOMP score=85` / `LEVEL 2 score=185`. This browser leg reproduces the
+`25` / `35` brick+coin scores (values observed, not forced) but stops there;
+`sim.js` pumps `__lume_tick()` on a real 50 ms wall-clock timer, so its physics
+is not cycle-deterministic. Neither leg is on-device acceptance, and the
+browser check is a manual, non-CI step (see `docs/KNOWN-SIMPLIFICATIONS.md`,
+r50/r55).
+
 ## Limits
 
 This is one fixed 480x480 screen with a 480x352 play canvas; it has no horizontal scrolling. Sprites are `fillRect` pixels because the Canvas API has no image blit. A firmware `drawImage` blit could later support image sprites and a scrolling world. Level variety, sound, and on-device acceptance remain future work.
