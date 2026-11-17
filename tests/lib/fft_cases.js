@@ -56,6 +56,11 @@ let frequencyEnergy = spectral[0]**2 + spectral[1]**2;
 for (let k = 1; k < n/2; k++) frequencyEnergy += 2 * (spectral[2*k]**2 + spectral[2*k+1]**2);
 near(frequencyEnergy/n, timeEnergy, 0.001, 'Parseval');
 print('PASS 1kHz peak bin 64/1024 and Parseval');
+const maxInput = new Float32Array(4096); maxInput[0] = 1;
+check(lume.fft.realfft(maxInput) === 0, '4096-point upper bound');
+near(maxInput[1], 1, 0, '4096-point Nyquist');
+print('PASS 4096-point inclusive upper bound');
+
 const base = new Float32Array(20); base.fill(77);
 const view = base.subarray(2, 10); view.fill(0); view[0] = 1;
 check(lume.fft.realfft(view) === 0, 'offset realfft');
