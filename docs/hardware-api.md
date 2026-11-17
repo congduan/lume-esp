@@ -257,3 +257,24 @@ board unavailable or busy, and `-4` for allocation. Only one recording stream
 may run. The RX slave uses TX master BCLK/WS: while recording, playback at a
 rate other than 16 kHz is rejected with `-3`. The synchronous `record()` also
 returns `-3` during a stream. `stopStream()` returns `-3` if no stream runs.
+
+## RGB565 scaling (r84)
+
+`lume.imgscale.scale(src, sw, sh, dst, dw, dh, mode?)` scales a `sw` x `sh`
+RGB565 grid in a `Uint16Array` into a `dw` x `dh` region of another
+`Uint16Array`. Both views are used directly through `JS_GetTypedArrayBuffer`:
+no backing-store copy, and `subarray()` offsets are honoured. `mode` defaults
+to `'nearest'`; `'bilinear'` samples R5/G6/B5 independently with 8-bit
+fixed-point weights (components are never interpolated as a packed 16-bit
+integer) and clamps source coordinates to the border. Destinations may be fed
+straight into `ctx.retainImage(slot, dw, dh, dst)`.
+
+Return codes follow the hardware-API convention: `0` success, `-1` bad
+argument/type/mode, `-2` invalid dimensions, too-short views or buffer
+overlap, `-3` internal failure. Each dimension must be an integer in 1..16384;
+fractional dimensions return `-2` rather than being truncated. With identical
+source/destination views and identical geometry, scaling is a safe in-place
+copy; any other overlap of the same backing buffer is rejected with `-2` so a
+write cannot clobber a source pixel still needed. Scaling is pure per-pixel
+sampling: it does not interpret RGB565 `0x0000` transparency or any colour key
+— those remain the `retainImage` / `drawImage` layer's responsibility.

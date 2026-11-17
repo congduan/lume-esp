@@ -1,0 +1,253 @@
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_DumpAtoms[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:3319:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+ 3319 |             printf(" [01;35m[K%d[m[K }\n", [32m[Kp->hash_next[m[K);
+      |                      [01;35m[K~^[m[K       [32m[K~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K        [32m[K|[m[K
+      |                       [01;35m[Kint[m[K      [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                      [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_AtomGetStrRT[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:3837:35:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 4 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+ 3837 |         snprintf(buf, buf_size, "[01;35m[K%u[m[K", [32m[K__JS_AtomToUInt32(atom)[m[K);
+      |                                  [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~~~~~~[m[K
+      |                                   [01;35m[K|[m[K   [32m[K|[m[K
+      |                                   [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                                   [01;35m[Kunsigned int[m[K
+      |                                  [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:3842:44:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%x[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 4 has type '[01m[KJSAtom[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+ 3842 |         snprintf(buf, buf_size, "<invalid [01;35m[K%x[m[K>", [32m[Katom[m[K);
+      |                                           [01;35m[K~^[m[K    [32m[K~~~~[m[K
+      |                                            [01;35m[K|[m[K    [32m[K|[m[K
+      |                                            [01;35m[K|[m[K    [32m[KJSAtom {aka long unsigned int}[m[K
+      |                                            [01;35m[Kunsigned int[m[K
+      |                                           [32m[K%lx[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:3847:45:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%x[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 4 has type '[01m[KJSAtom[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+ 3847 |             snprintf(buf, buf_size, "<free [01;35m[K%x[m[K>", [32m[Katom[m[K);
+      |                                            [01;35m[K~^[m[K    [32m[K~~~~[m[K
+      |                                             [01;35m[K|[m[K    [32m[K|[m[K
+      |                                             [01;35m[K|[m[K    [32m[KJSAtom {aka long unsigned int}[m[K
+      |                                             [01;35m[Kunsigned int[m[K
+      |                                            [32m[K%lx[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[Kjs_free_value_rt[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:7195:48:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+ 7195 |         printf("js_free_value_rt: unknown tag=[01;35m[K%d[m[K\n", [32m[Ktag[m[K);
+      |                                               [01;35m[K~^[m[K     [32m[K~~~[m[K
+      |                                                [01;35m[K|[m[K     [32m[K|[m[K
+      |                                                [01;35m[Kint[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                                               [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[Kjs_bigint_dump1[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:12723:21:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%x[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kjs_limb_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+12723 |         printf(" [01;35m[K%08x[m[K", [32m[Ktab[i][m[K);
+      |                  [01;35m[K~~~^[m[K   [32m[K~~~~~~[m[K
+      |                     [01;35m[K|[m[K      [32m[K|[m[K
+      |                     [01;35m[K|[m[K      [32m[Kjs_limb_t {aka long unsigned int}[m[K
+      |                     [01;35m[Kunsigned int[m[K
+      |                  [32m[K%08lx[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_ToQuotedString[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:14762:51:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%x[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 4 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+14762 |                 snprintf(buf, sizeof(buf), "\\u[01;35m[K%04x[m[K", [32m[Kc[m[K);
+      |                                                [01;35m[K~~~^[m[K   [32m[K~[m[K
+      |                                                   [01;35m[K|[m[K   [32m[K|[m[K
+      |                                                   [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                                                   [01;35m[Kunsigned int[m[K
+      |                                                [32m[K%04lx[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_DumpValue[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:14968:40:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Klong unsigned int[m[K' [[01;35m[K-Wformat=[m[K]
+14968 |                 printf("BigInt.asIntN([01;35m[K%d[m[K,", p->len * JS_LIMB_BITS);
+      |                                       [01;35m[K~^[m[K
+      |                                        [01;35m[K|[m[K
+      |                                        [01;35m[Kint[m[K
+      |                                       [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:14973:28:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%x[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kjs_limb_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+14973 |                 printf("[01;35m[K%08x[m[K", [32m[Kp->tab[i][m[K);
+      |                         [01;35m[K~~~^[m[K   [32m[K~~~~~~~~~[m[K
+      |                            [01;35m[K|[m[K         [32m[K|[m[K
+      |                            [01;35m[K|[m[K         [32m[Kjs_limb_t {aka long unsigned int}[m[K
+      |                            [01;35m[Kunsigned int[m[K
+      |                         [32m[K%08lx[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:14990:32:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+14990 |             printf("[rope len=[01;35m[K%d[m[K depth=%d]", [32m[Kr->len[m[K, r->depth);
+      |                               [01;35m[K~^[m[K             [32m[K~~~~~~[m[K
+      |                                [01;35m[K|[m[K              [32m[K|[m[K
+      |                                [01;35m[Kint[m[K            [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                               [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:15025:31:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+15025 |         printf("[unknown tag [01;35m[K%d[m[K]", [32m[Ktag[m[K);
+      |                              [01;35m[K~^[m[K    [32m[K~~~[m[K
+      |                               [01;35m[K|[m[K    [32m[K|[m[K
+      |                               [01;35m[Kint[m[K  [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                              [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[Kdump_byte_code[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33351:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33351 |             printf(" [01;35m[K%u[m[K", [32m[Kget_u8(tab + pos)[m[K);
+      |                      [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K   [32m[K|[m[K
+      |                       [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                       [01;35m[Kunsigned int[m[K
+      |                      [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33354:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kint32_t[m[K' {aka '[01m[Klong int[m[K'} [[01;35m[K-Wformat=[m[K]
+33354 |             printf(" [01;35m[K%d[m[K", [32m[Kget_i8(tab + pos)[m[K);
+      |                      [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K   [32m[K|[m[K
+      |                       [01;35m[Kint[m[K [32m[Kint32_t {aka long int}[m[K
+      |                      [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33358:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33358 |             printf(" [01;35m[K%u[m[K", [32m[Kget_u16(tab + pos)[m[K);
+      |                      [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K   [32m[K|[m[K
+      |                       [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                       [01;35m[Kunsigned int[m[K
+      |                      [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33361:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33361 |             printf(" [01;35m[K%u[m[K,%u", [32m[Kget_u16(tab + pos)[m[K, get_u16(tab + pos + 2));
+      |                      [01;35m[K~^[m[K      [32m[K~~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K      [32m[K|[m[K
+      |                       [01;35m[K|[m[K      [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                       [01;35m[Kunsigned int[m[K
+      |                      [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33361:26:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 3 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33361 |             printf(" %u,[01;35m[K%u[m[K", get_u16(tab + pos), [32m[Kget_u16(tab + pos + 2)[m[K);
+      |                         [01;35m[K~^[m[K                       [32m[K~~~~~~~~~~~~~~~~~~~~~~[m[K
+      |                          [01;35m[K|[m[K                       [32m[K|[m[K
+      |                          [01;35m[Kunsigned int[m[K            [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                         [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33364:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kint32_t[m[K' {aka '[01m[Klong int[m[K'} [[01;35m[K-Wformat=[m[K]
+33364 |             printf(" [01;35m[K%d[m[K", [32m[Kget_i16(tab + pos)[m[K);
+      |                      [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K   [32m[K|[m[K
+      |                       [01;35m[Kint[m[K [32m[Kint32_t {aka long int}[m[K
+      |                      [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33367:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kint32_t[m[K' {aka '[01m[Klong int[m[K'} [[01;35m[K-Wformat=[m[K]
+33367 |             printf(" [01;35m[K%d[m[K", [32m[Kget_i32(tab + pos)[m[K);
+      |                      [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K   [32m[K|[m[K
+      |                       [01;35m[Kint[m[K [32m[Kint32_t {aka long int}[m[K
+      |                      [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33370:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33370 |             printf(" [01;35m[K%u[m[K", [32m[Kget_u32(tab + pos)[m[K);
+      |                      [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K   [32m[K|[m[K
+      |                       [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                       [01;35m[Kunsigned int[m[K
+      |                      [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33373:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33373 |             printf(" [01;35m[K%u[m[K:%u", [32m[Kget_u32(tab + pos)[m[K, get_u32(tab + pos + 4));
+      |                      [01;35m[K~^[m[K      [32m[K~~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K      [32m[K|[m[K
+      |                       [01;35m[K|[m[K      [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                       [01;35m[Kunsigned int[m[K
+      |                      [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33373:26:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 3 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33373 |             printf(" %u:[01;35m[K%u[m[K", get_u32(tab + pos), [32m[Kget_u32(tab + pos + 4)[m[K);
+      |                         [01;35m[K~^[m[K                       [32m[K~~~~~~~~~~~~~~~~~~~~~~[m[K
+      |                          [01;35m[K|[m[K                       [32m[K|[m[K
+      |                          [01;35m[Kunsigned int[m[K            [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                         [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33396:27:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33396 |                 printf(",[01;35m[K%u[m[K", [32m[Kget_u16(tab + pos + 4)[m[K);
+      |                          [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~~~~~[m[K
+      |                           [01;35m[K|[m[K   [32m[K|[m[K
+      |                           [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                           [01;35m[Kunsigned int[m[K
+      |                          [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33417:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33417 |             printf(",[01;35m[K%d[m[K", [32m[Kget_u8(tab + pos + 4)[m[K);
+      |                      [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K   [32m[K|[m[K
+      |                       [01;35m[Kint[m[K [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                      [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33422:23:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33422 |             printf(",[01;35m[K%d[m[K", [32m[Kget_u16(tab + pos + 4)[m[K);
+      |                      [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~~~~~[m[K
+      |                       [01;35m[K|[m[K   [32m[K|[m[K
+      |                       [01;35m[Kint[m[K [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                      [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33436:27:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33436 |                 printf(",[01;35m[K%u[m[K", [32m[Kget_u8(tab + pos + 8)[m[K);
+      |                          [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~~~~[m[K
+      |                           [01;35m[K|[m[K   [32m[K|[m[K
+      |                           [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                           [01;35m[Kunsigned int[m[K
+      |                          [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:33438:27:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 2 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+33438 |                 printf(",[01;35m[K%u[m[K", [32m[Kget_u16(tab + pos + 8)[m[K);
+      |                          [01;35m[K~^[m[K   [32m[K~~~~~~~~~~~~~~~~~~~~~~[m[K
+      |                           [01;35m[K|[m[K   [32m[K|[m[K
+      |                           [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                           [01;35m[Kunsigned int[m[K
+      |                          [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[Kss_check[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:36776:71:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 3 has type '[01m[Kint32_t[m[K' {aka '[01m[Klong int[m[K'} [[01;35m[K-Wformat=[m[K]
+36776 |             JS_ThrowInternalError(ctx, "inconsistent catch position: [01;35m[K%d[m[K %d (pc=%d)",
+      |                                                                      [01;35m[K~^[m[K
+      |                                                                       [01;35m[K|[m[K
+      |                                                                       [01;35m[Kint[m[K
+      |                                                                      [32m[K%ld[m[K
+36777 |                                   [32m[Ks->catch_pos_tab[pos][m[K, catch_pos, pos);
+      |                                   [32m[K~~~~~~~~~~~~~~~~~~~~~[m[K                
+      |                                                   [32m[K|[m[K
+      |                                                   [32m[Kint32_t {aka long int}[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_WriteObjectRec[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:39295:58:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 3 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+39295 |         JS_ThrowInternalError(s->ctx, "unsupported tag ([01;35m[K%d[m[K)", [32m[Ktag[m[K);
+      |                                                         [01;35m[K~^[m[K    [32m[K~~~[m[K
+      |                                                          [01;35m[K|[m[K    [32m[K|[m[K
+      |                                                          [01;35m[Kint[m[K  [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                                                         [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_ReadObjectRec[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:40472:32:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%d[m[K' expects argument of type '[01m[Kint[m[K', but argument 3 has type '[01m[Kint32_t[m[K' {aka '[01m[Klong int[m[K'} [[01;35m[K-Wformat=[m[K]
+40472 |             bc_read_trace(s, "[01;35m[K%d[m[K\n", [32m[Kval[m[K);
+      |                               [01;35m[K~^[m[K     [32m[K~~~[m[K
+      |                                [01;35m[K|[m[K     [32m[K|[m[K
+      |                                [01;35m[Kint[m[K   [32m[Kint32_t {aka long int}[m[K
+      |                               [32m[K%ld[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:40543:32:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 3 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+40543 |             bc_read_trace(s, "[01;35m[K%u[m[K\n", [32m[Kval[m[K);
+      |                               [01;35m[K~^[m[K     [32m[K~~~[m[K
+      |                                [01;35m[K|[m[K     [32m[K|[m[K
+      |                                [01;35m[K|[m[K     [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                                [01;35m[Kunsigned int[m[K
+      |                               [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:40545:77:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 3 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+40545 |                 return JS_ThrowSyntaxError(ctx, "invalid object reference ([01;35m[K%u[m[K >= %u)",
+      |                                                                            [01;35m[K~^[m[K
+      |                                                                             [01;35m[K|[m[K
+      |                                                                             [01;35m[Kunsigned int[m[K
+      |                                                                            [32m[K%lu[m[K
+40546 |                                            [32m[Kval[m[K, s->objects_count);
+      |                                            [32m[K~~~[m[K                               
+      |                                            [32m[K|[m[K
+      |                                            [32m[Kuint32_t {aka long unsigned int}[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_ReadObjectAtoms[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:40605:66:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 3 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+40605 |         JS_ThrowInternalError(s->ctx, "unreasonable atom count: [01;35m[K%u[m[K",
+      |                                                                 [01;35m[K~^[m[K
+      |                                                                  [01;35m[K|[m[K
+      |                                                                  [01;35m[Kunsigned int[m[K
+      |                                                                 [32m[K%lu[m[K
+40606 |                               [32m[Ks->idx_to_atom_count[m[K);
+      |                               [32m[K~~~~~~~~~~~~~~~~~~~~[m[K                
+      |                                [32m[K|[m[K
+      |                                [32m[Kuint32_t {aka long unsigned int}[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:40610:24:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 3 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+40610 |     bc_read_trace(s, "[01;35m[K%u[m[K atom indexes {\n", [32m[Ks->idx_to_atom_count[m[K);
+      |                       [01;35m[K~^[m[K                    [32m[K~~~~~~~~~~~~~~~~~~~~[m[K
+      |                        [01;35m[K|[m[K                     [32m[K|[m[K
+      |                        [01;35m[Kunsigned int[m[K          [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                       [32m[K%lu[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[Kjs_regexp_escape[m[K':
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:49788:43:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%x[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 4 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+49788 |             snprintf(s, sizeof(s), "\\x[01;35m[K%02x[m[K", [32m[Kc[m[K);
+      |                                        [01;35m[K~~~^[m[K   [32m[K~[m[K
+      |                                           [01;35m[K|[m[K   [32m[K|[m[K
+      |                                           [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                                           [01;35m[Kunsigned int[m[K
+      |                                        [32m[K%02lx[m[K
+[01m[K/tmp/lume-r84-wt/firmware/components/quickjs-ng/quickjs.c:49791:43:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%x[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 4 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]
+49791 |             snprintf(s, sizeof(s), "\\u[01;35m[K%04x[m[K", [32m[Kc[m[K);
+      |                                        [01;35m[K~~~^[m[K   [32m[K~[m[K
+      |                                           [01;35m[K|[m[K   [32m[K|[m[K
+      |                                           [01;35m[K|[m[K   [32m[Kuint32_t {aka long unsigned int}[m[K
+      |                                           [01;35m[Kunsigned int[m[K
+      |                                        [32m[K%04lx[m[K
+At top level:
+[01m[Kcc1:[m[K [01;36m[Knote: [m[Kunrecognized command-line option '[01m[K-Wno-implicit-const-int-float-conversion[m[K' may have been intended to silence earlier diagnostics

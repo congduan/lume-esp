@@ -1,0 +1,30 @@
+firmware/build/esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_imgscale.c.obj  :
+section                                  size   addr
+.literal.u16_view                          16      0
+.literal.read_dim                          40      0
+.literal.imgscale_scale                    96      0
+.literal.lume_imgscale_register            28      0
+.text                                       0      0
+.data                                       0      0
+.bss                                        0      0
+.text.u16_view                            118      0
+.text.read_dim                            136      0
+.rodata.imgscale_scale.str1.4              17      0
+.text.imgscale_scale                     1456      0
+.rodata.lume_imgscale_register.str1.4      17      0
+.text.lume_imgscale_register               78      0
+.debug_frame                              112      0
+.debug_info                              4875      0
+.debug_abbrev                             852      0
+.debug_loc                               4385      0
+.debug_aranges                             56      0
+.debug_ranges                             800      0
+.debug_line                              4767      0
+.debug_str                               2262      0
+.comment                                   48      0
+.xtensa.info                               56      0
+.xt.lit                                    32      0
+.xt.prop                                  780      0
+Total                                   21027
+
+

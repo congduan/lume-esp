@@ -1199,3 +1199,28 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   define 余量、bundle 推送、sleep current、触摸手感。`lume check` 绿 + 9 例
   harness 绿 + emu 截图人工检视 + 31-app 浏览器 verify 绿 ≠ 硬件验收。
   flappy 同构 mini demo 未做，留 P1 评估。
+
+## r84 / lume.imgscale RGB565 缩放（host + 固件构建证据，无真机验收）
+
+- **纯逐像素采样，无透明/颜色 key**：`scale()` 不识别 RGB565 `0x0000` 透明，
+  也不做颜色 key 比较；bilinear 会直接把黑色像素与邻像素混合。透明语义继续由
+  `ctx.retainImage` / `ctx.drawImage`（r81：来源像素等于 0x0000 时跳过 blit）
+  负责。理由：缩放是通用数组变换，消费方可能是缩略图、sprite 或查看器，透明
+  约定应留在渲染层，不写进数值原语。
+- **写调用方 Uint16Array，不写 Canvas work buffer**：路线清单原文建议 r79
+  模式直写 work buffer；本轮契约采用 typed-array 进 / typed-array 出，结果作为
+  `retainImage` 的输入。无需新增渲染通道，也保持 `lume.imgscale` 可在无 UI 场景
+  （如频谱数据、离屏缩略）使用。未改 ui-bridge / 渲染管线。
+- **边缘 clamp + 8-bit 定点 bilinear**：源坐标先 clamp 到 `[0, size-1]` 再取
+  整，权重量化到 1/256，分量四舍五入到最近整数。低分辨率下的双线性结果可能
+  与浮点实现差 1 个分量 LSB；这是为避开 ESP32-S3 软件浮点而做的固定取舍。
+- **整数维度 1..16384，分数维度 -2**：不静默截断（与 `JS_ToInt32` 默认行为
+  不同）；超范围或过长视图一律 -2。
+- **同 buffer 仅「同视图 + 同尺寸」可原地拷贝**：部分重叠（含同起点不同网格）
+  一律 -2；不尝试 memmove 式重排，避免正向/反向写顺序耦合。
+- **未加消费方 demo（可选项）**：`examples/image_gallery` 缩略路径未改动，留
+  待下轮接入；本轮只交付原语与 host/playground 桩。
+- **待真机验收**：缩放耗时、缩略图视觉质量、与 retainImage 串联的实际吞吐、
+  大图 PSRAM 余量与 bundle 推送均 pending board。host 单样本性能对照
+  （JS 17.8550 ms vs native 0.4000 ms，64x64->128x128，200 次均值）及
+  固件 `idf.py size` 绿 ≠ 硬件验收。

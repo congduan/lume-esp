@@ -623,6 +623,35 @@ r81 的 blit 钥匙落成第一个 app 层实战：`examples/scroller/app.js`。
 - **未做**：flappy 同构 mini demo（留 P1 评估）、真机验收、真 framebuffer
   平移（需新 C 原语）。
 
+### r84 result — `lume.imgscale` RGB565 缩放原语（appended, milestone checkboxes untouched）
+
+原生原语扩展路线清单第 2 项落地：`firmware/components/lume-engine/lume_imgscale.c`
+注册 `lume.imgscale.scale(src, sw, sh, dst, dw, dh, mode?)`。Uint16Array 零拷贝
+进出，nearest 与逐分量 8-bit 定点 bilinear 均实现，边界 clamp；返回 0/-1/-2/-3，
+同视图同尺寸可原地拷贝、部分重叠同 buffer 拒绝。d.ts、生成的 `website/api.html`
+（129 行）、host `prelude_runner.js` 与 browser playground 桩同步。
+
+- **验证**：`node tests/imgscale.js` 7 项全绿（宿主 QuickJS 链接同一份 C：
+  2x 上/下采样位模式、bilinear 手算 3x1->2x1 与中心 0x8410、5x4->9x7 参考比对、
+  subarray 偏移守卫、错误码、原地拷贝）；`for t in tests/*.js` 0 FAIL / 453 条
+  PASS/ALL；`npm test --prefix tools/lume` 43 pass / 0 fail / 1 skipped；
+  `lume check examples/counter`（`EMU_SKIP_BUILD=1` + 预置镜像）R1-R7 全 PASS；
+  `gen_api_docs.py --check` 与 `check_website.py` 全绿。
+- **固件 size**：首次标准构建在 ldgen 阶段遇到 `quickjs.c.obj` 0 字节（host
+  swap 卡死），按 r78/r82 先例仅对该目标以 `-O2` 末尾加 `-g0` 单独重编后构建
+  成功。最终 Flash Code **2,024,560 B**，DIRAM 247,267 B，**IRAM 16,384/16,384、
+  Remain 0 硬线守住**。同 worktree 临时回退 C 接线测得 fc2534d 基线
+  Flash Code **2,022,792 B**，故 imgscale 净增 **+1,768 B**；对比 r82 报告基线
+  2,021,336 B 为 +3,224 B（含 r83 的 app 层增量）。`lume_imgscale.c.obj` 自身
+  `.text` 1788 B + `.literal` 180 B + `.rodata` 34 B = 2002 B，`.data/.bss` 为 0，
+  无 IRAM 段。
+- **取舍**：写调用方 Uint16Array（结果直喂 `retainImage`），非路线清单原文建议的
+  r79 直写 Canvas work buffer；bilinear 不处理 0x0000 透明/颜色 key，透明语义留
+  渲染层。分数维度拒绝而非截断。详见 `docs/r84-imgscale-report.md`、
+  `docs/KNOWN-SIMPLIFICATIONS.md` 与 `artifacts/r84/`（原始日志）。
+- **未做/待验**：可选消费方 demo（image_gallery 缩略）未加；缩放耗时、缩略视觉、
+  与 retainImage 串联吞吐、PSRAM 余量与 bundle 推送均待接板，不声称硬件验收。
+
 
 ## 引擎调试基建与分发加固路线（2026-11-16，结论固化防重复评估）
 
