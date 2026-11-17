@@ -1,0 +1,10 @@
+PASS renderer create
+PASS renderer attr
+PASS renderer remove
+PASS renderer animate
+PASS renderer canvas
+PASS counter DOM nodes=15 expected="TOTAL TAPS" screenshot=artifacts/simulator/counter.png
+PASS files DOM nodes=34 expected="demo.txt" screenshot=artifacts/simulator/files.png
+PASS device_monitor DOM nodes=27 expected="LIVE / 2 Hz" screenshot=artifacts/simulator/device_monitor.png
+PASS shell_demo injected edge swipe advances page screenshot=artifacts/simulator/EdgeNavigation.png
+PASS shell_demo DOM nodes=14 expected="Shell demo" screenshot=artifacts/simulator/shell_demo.png

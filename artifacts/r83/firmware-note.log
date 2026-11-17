@@ -1,0 +1,3 @@
+No C files changed this round: firmware images reused from /tmp/lume-r81-wt (same baseline ac23133).
+sha256 lume.bin (r81 vs r83 worktree): 45c663cc7d0f91221ac30646a73b5ed68b01a435aec61c32a48627eb95b49029 (identical)
+Per task: idf.py build/size not required for pure app-layer changes; no fresh build run.

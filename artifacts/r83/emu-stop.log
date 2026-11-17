@@ -1,0 +1,1 @@
+[emu] stop: Halted — core0 514667513 + core1 386131266 insns in 22.8s wall = 39.6 Minsn/s; emulated 8.000s (1920000000 cycles); 617452 exceptions, 24288 interrupts

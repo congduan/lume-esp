@@ -590,6 +590,39 @@ implementation report in `docs/r81-sprite-report.md`.
   below still lists the full side-scroller as blocked on app-layer work; r81
   only delivers the firmware blit key, not a finished scrolling game.
 
+### r83 result — 全屏精灵卷轴 POC + 滚动性能口径（appended, milestone checkboxes untouched）
+
+r81 的 blit 钥匙落成第一个 app 层实战：`examples/scroller/app.js`。8 个精灵槽
+（sky/hill/ground/hero/jump/crouch/spike/coin）一次 `retainImage` 上传，之后每帧
+只发 36~41 次 `drawImage`；host harness 断言 `draw`(fillRect) 恒为 0、60 帧后
+`spriteDefine` 仍恰好 8 条（r81 重复上传坑不回归）。相机每 tick +3px、swipe down
+20-tick 冲刺下蹲、tap 跳、金币/尖刺碰撞、KV `hisc.scroller`（13 字符）；ASCII
+行 → RLE spans → Uint16Array 一次预计算（r68 先例，`TOTAL_SPANS=85`）。
+
+- **脏区纪律**：不整屏发布，只发布相机扫过的两条带（hill 480×40 + ground
+  480×62 = 48,960 px）+ 英雄与金币的 old∪new 盒；稳态 4 个矩形（bridge 上限 8）。
+  emu 实测脏区 59,441~63,991 px/帧 = 画布 480×352 的 35.2%~37.9%。
+- **验证**：`for t in tests/*.js` → 43 脚本 0 FAIL（+`tests/scroller.js` 9 例）；
+  `canvas_blit.c` 6/6、`canvas_aa.c` 19/19、`bridge_protocol.c` EXIT=0；
+  `lume check examples/counter` 与 `examples/scroller` 均 `RESULT: PASS (4 steps,
+  0 failed; exit 0)`，scroller 的 eval + R1-R7 layout 全 PASS、perf 如实
+  `[SKIP] profile disabled`；`npm test --prefix tools/lume` 43 pass / 0 fail /
+  1 skipped；playground 31-app（+scroller）与 browser simulator verify 全绿。
+- **性能口径（核心交付）**：20fps 预算 50ms，emu JS 段 `js_avg_ms≈10`（模拟
+  clock 粗粒度上界，host 实测 onDraw 0.682ms/帧）；每模拟秒指令 112.6 Minsn/s
+  vs counter 26.1（4.31×，wall `Minsn/s` 因宿主负载不可比）。按 r35b 的
+  QSPI 理论口径，约 6 万 px/帧 ×2B×20fps = 2.4 MB/s = 40MHz 理论带宽的 12%。
+  **结论：host/emu 口径下滚动类 @20fps 可行且有余量；真机帧率/触摸/PSRAM
+  仍未验，不得声称硬件验收**。P1 flappy 立项的 spike 数据由此得到「模拟侧可行」
+  这一半，接板 60s `lume-perf` p95/p99 仍是硬门槛。详见
+  `docs/r83-scroller-report.md` 与 `artifacts/r83/`（原始日志/截图）。
+- **纯 app/工具层**：未改固件 C，不重跑 `idf.py build/size`；emu 镜像复用同
+  基线 `ac23133` 的 r81 构建（lume.bin sha256 一致），Flash Code / IRAM 零增量。
+  浏览器配套补了 sprite natives 并修正 r81 renderer 在非零 (dx,dy) 的
+  ImageData 越界 bug（首次被本 app 暴露）。
+- **未做**：flappy 同构 mini demo（留 P1 评估）、真机验收、真 framebuffer
+  平移（需新 C 原语）。
+
 
 ## 引擎调试基建与分发加固路线（2026-11-16，结论固化防重复评估）
 
@@ -835,7 +868,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 | 候选 | 价值与复刻要点 | 可行性口径 |
 |---|---|---|
-| **一键飞行（Flappy 类）** | 单点触摸玩法与硬件形态天作之合；障碍柱水平推进 = 镜头动场景，脏区只救局部动 | ⚠️ 性能 spike 先行：柱体连续推进需全帧重绘（230k px@20fps 是 r35b 实测瓶颈位），需先量出柱体分段 fillRect + 局部失效的真实帧率再立项； Bird/柱体像素精灵用预计算 spans |
+| **一键飞行（Flappy 类）** | 单点触摸玩法与硬件形态天作之合；障碍柱水平推进 = 镜头动场景，脏区只救局部动 | 🟡 r83 spike 已完成一半：scroller 的 blit 卷轴证明「两带脏区 ≈6 万 px/帧、emu JS≈10ms/50ms 预算、4.31× counter 指令」模拟侧支持 20fps（详见 r83 报告）；柱体改用 drawImage 后无需逐段 fillRect。**接板 60s p95/p99 实测仍是立项硬门槛**，真机未验 |
 | **康威生命游戏**（已落地 r66，见 `docs/r66-conway-report.md`） | 触摸播种种细胞 + 观察演化，「圆屏上的涌现」演示价值高、实现极小；演示 retained paths（静态网格线）+ canvas（活细胞）分层 | `examples/game_of_life/app.js`：33×33 环面网格 / 9px 格落在 300×300 单 canvas 内（60×60×9px=540px 超出屏幕与 300px 预算，故按预算收敛为 33×33）；静态 72 段 retainSegments 上传一次，活细胞按代脏区重画；实测每代脏区 648–729px = 全帧 0.72–0.81%；代际 200/350/500ms 三档，纯 app 层 |
 | **记忆翻牌**（已落地 r75，见 `docs/r75-memory-report.md`；**扫雷已落地 r76**，见 `docs/r76-minesweeper-report.md`） | 单点触摸网格游戏最低成本品类；与 games_* 不重复（都是新玩法）；hiscore 走 KV | `examples/memory/app.js`：4x4 = 8 对原创像素面（berry/sun/cloud/leaf/heart/star/bolt/ring）spans 预计算，tap 翻牌 / 两张比对 / miss 两帧回扣；KV `hisc.memory`（11 字符）最少步纪录；单 canvas 480x480 = 230,400 px 恰满预算；12 例 harness 含负向（重复翻同一张、三张连翻保护）；纯 app 层。**`examples/minesweeper/app.js`（r76）**：10x10 + 15 雷，首击 3x3 必安全（首击后布雷），tap 翻开（显式栈 flood fill）/ 长按插旗（旗格不可翻、不被 flood 掀开、不计入胜利），踩雷全揭晓；数字 5x7 / 旗雷 7x7 像素字形 spans 预计算（spanBuilds=10）；KV `hisc.mine`（9 字符）最快时间纪录；网格 398x398 harness 锁边；15 例 harness 含 20 板可解性；纯 app 层 |
 | **流体粒子沙盒**（IMU 晃动 + 触摸扰动） | 宣传效果天花板：圆屏 AMOLED 上粒子随重力流转 | ⚠️ 参考社区同款实证需降级到 200-300 粒子（JS 单线程无 SIMD）；粒子间作用用简化近似（网格邻域）；IMU 单位是 m/s² 非 g |
@@ -861,7 +894,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 |---|---|---|
 | **猜词游戏（Wordle 类）** | 热度高、每日一题适合「每天看一眼圆屏」粘性叙事 | 🔴 blocked：无键盘硬件 + Input/键盘组件未建（M5 组件缺口已登记）。变体路线：字母环选字（tap 旋转+确认）可绕开键盘，但输入体验打折 |
 | **按住说话语音伴侣** | playStream/recordStream 的终极演示，与语音助手路线（见上节）E 刀合并 | 🔴 blocked：`audio.recordStream`（C 刀）未落地；实时对话链路时延是真机硬仗 |
-| **全屏精灵卷轴游戏**（横向卷轴平台跳跃完整版） | mario 单屏已证明玩法链路 | 🔴 blocked：真精灵图与卷轴的钥匙 = 固件 canvas drawImage blit（deferred 登记）；先 app 层单屏 demo 攒数据，再评估 B 刀 |
+| **全屏精灵卷轴游戏**（横向卷轴平台跳跃完整版） | mario 单屏已证明玩法链路；r83 已交 blit 卷轴 POC（`examples/scroller/`，含性能口径），钥匙已解除 | 🟡 r83 POC 落地（8 槽精灵全 drawImage、4 脏矩形/帧、20fps 模拟侧可行）；完整版仍需接板帧率/触摸验收与关卡/敌人系统，非纯复刻可照搬 |
 | **真·指南针（磁北 / 地理方位）** | 要的是绝对地理方位，而非 r67 惯性方位仪表给的相对航向 | 🔴 blocked：QMI8658 是加速度计+陀螺仪六轴 IMU，**板子没有磁力计**，物理上无法测磁北；需外接磁力计硬件 + 固件刀（新 I2C 传感器绑定、校准/倾斜补偿），非 app 层可解。r67 仪表只登记为「惯性方位/相对航向」，README/UI 均不承诺指北 |
 
 ### 与现有 examples 的去重边界

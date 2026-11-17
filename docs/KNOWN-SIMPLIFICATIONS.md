@@ -1166,3 +1166,36 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **8 slots per canvas, one budget in bytes**: LUME_CANVAS_SPRITE_BUDGET = 480*480*2 (one full-screen RGB565 image) across all slots of a canvas; a define that would exceed it is dropped with an error log (JS side pre-checks per-sprite size, not the cumulative budget, so the bridge log is authoritative). Re-defining a slot replaces the old bitmap (animation frame swap, no leak).
 - **flip is horizontal only**: 90/270 degree rotation and vertical mirror are not implemented (character facing covers the known use case; add on demand).
 - **Browser simulator parity**: renderer.js replays spriteDefine/spriteDraw with the same colour key and flip semantics via ImageData; invalidation/dirty-rect behaviour follows the existing canvas message replay (the browser does not model the double-buffer swap).
+
+## r83 / 全屏精灵卷轴 POC（app/工具层，无真机验收）
+
+- **卷轴实现 = 全 work-buffer 重画 + 脏区发布**：每帧把 sky/hill/ground 与动态
+  精灵全部 `drawImage` 到 work buffer，再只发布相机扫过的两条水平带
+  （hill 480×40 + ground 480×62 = 48,960 px）与英雄/金币包围盒；不是硬件
+  framebuffer 平移，也没有真正的视差层位移（hill 用 cam/2 偏移重画，但旧像素
+  靠整屏 work 重画清除）。真平移需新 C 原语，本轮不做。
+- **金币矩形合并**：bridge 每帧最多 8 个脏矩形，两带已占 2 个，故所有金币的
+  old∪new 盒合成一个大矩形（矩形内含未变化像素）；稳态 4 矩形/帧，换来的是
+  不触上限。障碍尖刺落在 ground 带内，不单列矩形。
+- **精灵来源**：角色/障碍/金币为原创 ASCII 造型 → RLE spans → Uint16Array
+  RGB565 一次预计算（`TOTAL_SPANS=85`）；三条背景带直接生成位图，不占 spans。
+  不点名、不复刻任何商业作品；文案纯 ASCII。
+- **触摸**：tap 跳、swipe down 冲刺+下蹲、两枚按钮，均按单点触摸设计。r74
+  已登记 emu 触摸 IC 与 CST9220 驱动不匹配，真机 tap/swipe 阈值手感未验；
+  手势逻辑只在 host harness 用事件序列验证，不声称 emu 触摸验收。
+- **KV**：`hisc.scroller`（13 字符）在 NVS 15 字符上限内；浏览器 playground
+  的 `storage.kv` 仍是 no-op 桩，离线 try/catch 静默降级。
+- **性能口径限制**：`js_avg_ms≈10`（emu `esp_timer` 粗粒度、最大 11ms）是
+  上界估计，不是 ESP32-S3 执行时间；host 200 帧 onDraw 实测 0.682ms/帧
+  （Node vm 真实挂钟），两者不可互换。emu wall `Minsn/s`（39.6 vs counter
+  36.6）受宿主负载影响不可比，可比的是每模拟秒指令（112.6 vs 26.1，
+  4.31×）。全部为 host/esp32sim 证据。
+- **浏览器配套修复**：r81 的 `renderer.js` spriteDraw 把 `createImageData(w,h)`
+  当整屏缓冲，在 (dx,dy)≠(0,0) 时越界写导致精灵只画在左上角；本轮被首个
+  blit app 暴露，改为离屏 canvas + drawImage；`website/playground/runtime.js`
+  同时补齐 r81 漏加的 `canvasSpriteDefine/Draw` natives。两者都属 JS 工具层，
+  不影响固件 size。
+- **仍 open（全部真机验收）**：真机帧率与 p95/p99、AMOLED 色彩、PSRAM 批量
+  define 余量、bundle 推送、sleep current、触摸手感。`lume check` 绿 + 9 例
+  harness 绿 + emu 截图人工检视 + 31-app 浏览器 verify 绿 ≠ 硬件验收。
+  flappy 同构 mini demo 未做，留 P1 评估。

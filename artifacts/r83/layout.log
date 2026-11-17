@@ -1,0 +1,27 @@
+
+scroller: artifacts/check/scroller/tft.png
+  hudBar             bbox=[4, 4, 476, 44]
+  chip               bbox=[420, 12, 460, 36]
+  title              bbox=[12, 11, 88, 21]
+  stats              bbox=[290, 11, 407, 21]
+  hint               bbox=[8, 31, 285, 48]
+  jumpBtn            bbox=[4, 416, 236, 472]
+  dashBtn            bbox=[244, 416, 476, 472]
+  PASS R1 jumpBtn.left: 4 expected 4 ±1
+  FAIL R1 jumpBtn.right: 236 expected 476 ±1
+  FAIL R1 dashBtn.left: 244 expected 4 ±1
+  PASS R1 dashBtn.right: 476 expected 476 ±1
+  PASS R1 jumpBtn.left: 4 expected 4 ±1
+  PASS R1 dashBtn.right: 476 expected 476 ±1
+  PASS R5 ['jumpBtn', 'dashBtn']: horizontal gap 8
+  PASS R2 ['jumpBtn', 'dashBtn']: widths [232, 232]
+  PASS R3 title/stats centerY: 16.0 expected 16.0 ±2
+  PASS R4 hudBar/chip: top=8 bottom=8 difference=0
+  PASS R6 jumpBtn: height 56 >= 56
+  PASS R6 jumpBtn: screen inset >= 4
+  PASS R6 dashBtn: height 56 >= 56
+  PASS R6 dashBtn: screen inset >= 4
+  FAIL R7 ['title', 'hint']: ink left edges [12, 8]
+
+app                  R1    R2    R3    R4    R5    R6    R7
+scroller             FAIL  PASS  PASS  PASS  PASS  PASS  FAIL 
