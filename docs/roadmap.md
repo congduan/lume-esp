@@ -988,3 +988,37 @@ IRAM 16384(Remain 0) / Total 3019707；r91 后 2031220 / 850164 / 247267 /
 先例仅对该 build 目标加 `-g0` 单独重编（不改源码/-O2），构建无新增警告。
 接板验收（真机 mbedTLS/AES 硬件路径、WS/OTA/配网消费方接入、时延与功耗）未做，
 仍 deferred；详见 `docs/r91-crypto-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。
+
+### r92 result — `lume.compress` 原生原语（appended, milestone checkboxes untouched）
+
+原生原语扩展路线候选 #4（P2）落地，新增独立组件 `firmware/components/lume-compress/`，
+vendored **miniz 3.1.0 `miniz_tinfl.c` 单文件**（Rich Geldreich，public domain/MIT，
+解压专用 tinfl 子集，770 行；host ESP-IDF miniz.h 是 ROM 声明头不可用，LVGL
+lodepng inflate 绑 malloc 侵入大，均排除）。只做解压不做压缩，符合简报「解压优先」
+口径；不自己实现 inflate，不改任何 IDF/vendored 引擎源码。`lume.compress.inflate(src,
+out, format?)`：写入调用方持有的 `Uint8Array`，返回字节数（空流 0），错误 `-1`
+类型/`-2` 损坏流/`-3` out 太小；typed array 经 `JS_GetTypedArrayBuffer` 零拷贝、
+subarray 偏移生效、访问期不回调 JS。zlib 模式由 tinfl 内置完整 header 校验
+（CMF/FLG、CM=8、FDICT 拒绝）与 Adler-32 校验，故不另加无消费方的 `adler32` API。
+
+host harness 取 r91 方案：用唯一最小 config 把 IDF 组件编进 host QuickJS runner
+的先例不同——本组件无 mbedTLS 依赖，直接把**固件同一份** `lume_compress.c`
+（含 `#include "miniz_tinfl.c"`）编入 runner。`node tests/compress.js` 全绿：Node
+zlib 生成 fixture（空/高重复文本/RLE/随机 stored 70KB/>64KiB 动态 Huffman
+111KB），raw+zlib 逐字节比对；截断流、坏 header、保留 BTYPE=3、坏 Adler 各负码；
+out 太小 -3 且视图外守卫不变；带偏移双视图；类型/format/缺参错误路径；host 单样本
+native 23ms vs Node zlib 40ms（后者是 native C 基准，均不代表 ESP32-S3）。
+踩坑：tinfl `*pOut_buf_size` 是「已写字节数」出参而非剩余容量，已修正返回值。
+
+`lume check examples/counter --no-emu` PASS、全量 `tests/*.js` 0 FAIL、
+`npm test` 43 pass/0 fail、`gen_api_docs.py --check` 过（135 行 +1 compress）、
+`check_website.py` 无缺失/无发明；playground 与 prelude_runner 加 `lume.compress`
+桩（无原生 inflate，返回 -3 标注 unsupported，可 `options.compress` 注入）。
+
+固件改 C 必跑：同 worktree 增量隔离基线 Flash Code 2,029,636 / Flash Data
+850,164 / DIRAM 247,267 / IRAM 16384(Remain 0) / Total 3,021,571；r92 后
+2,030,276 / 850,196 / 247,267 / 16384(Remain 0) / 3,022,243，逐项 +640 / +32 /
+0 / 0 / +672。IRAM 硬线未破，新代码全在 flash `.text/.rodata`。接板验收（真机
+DEFLATE 吞吐/时延、热更新大包与日志消费方接入、256KiB bundle 上限内实际压缩比）
+未做，仍 deferred；详见 `docs/r92-compress-report.md` 与
+`docs/KNOWN-SIMPLIFICATIONS.md`。
