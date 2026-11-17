@@ -1,5 +1,13 @@
 menu "Lume board"
 
+    config LUME_LCD_PCLK_MHZ
+        int "CO5300 QSPI pixel clock (MHz)"
+        range 20 80
+        default 80
+        help
+            QSPI clock for the CO5300 panel. Select 40 if a board shows
+            signal integrity problems at 80 MHz.
+
     choice LUME_BOARD
         prompt "Lume target board"
         default LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_16

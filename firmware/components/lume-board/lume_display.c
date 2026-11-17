@@ -50,6 +50,7 @@
 #define LCD_V_RES       LUME_LCD_V_RES
 #define LCD_BPP         LUME_LCD_BPP
 #define LCD_SPI_HOST    LUME_LCD_SPI_HOST
+/* CO5300 QSPI runs up to 80 MHz; Kconfig permits 40 MHz board fallback. */
 #define LCD_PCLK_HZ     LUME_LCD_PCLK_HZ
 /* The A/B height is selected by Kconfig; 48 falls back to 20 on allocation failure. */
 #define DRAW_BUF_LINES CONFIG_LUME_DRAW_BUF_LINES

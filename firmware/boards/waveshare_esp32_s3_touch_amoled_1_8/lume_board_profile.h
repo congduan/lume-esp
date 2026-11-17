@@ -213,7 +213,7 @@
 /*    are Lume driver-level values (not board wiring), same as 2.16.    */
 /* ------------------------------------------------------------------ */
 #define LUME_LCD_SPI_HOST            SPI2_HOST
-#define LUME_LCD_PCLK_HZ            (40 * 1000 * 1000)
+#define LUME_LCD_PCLK_HZ            (CONFIG_LUME_LCD_PCLK_MHZ * 1000 * 1000)
 #define LUME_LCD_DRAW_BUF_LINES     20
 #define LUME_LCD_TRANS_QUEUE_DEPTH  3
 #define LUME_LCD_CMD_BITS           32
