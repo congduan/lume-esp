@@ -91,26 +91,62 @@ function tankFish(ctx, f) {
   var c = FISH_COLORS[f.color], ca = Math.cos(f.angle), sa = Math.sin(f.angle);
   var length = 20 * f.size, half = 10 * f.size;
   function point(x, y) { return [f.x + x * ca - y * sa, f.y + x * sa + y * ca]; }
-  function stroke(x1, y1, x2, y2, ink, width) {
-    var a = point(x1, y1), b = point(x2, y2);
-    tankLine(ctx, a[0], a[1], b[0], b[1], ink, Math.max(1, Math.round(width * f.size)));
+  var sway = Math.sin(f.phase) * 6;
+  /* Tail: a fan of three shrinking filled ellipses from the peduncle to the
+   * tip — reads as a soft fin at any width, unlike 1px polylines. The fan
+   * bends with the beat (each station's lateral offset follows sway). */
+  function fan(t, lat, rx, ry, ink) {
+    var p = point(t * length, lat);
+    ctx.fillEllipse(Math.round(p[0]), Math.round(p[1]),
+      Math.max(1, Math.round(rx * f.size)), Math.max(1, Math.round(ry * f.size)), ink);
   }
-  var sway = Math.sin(f.phase) * 7;
-  /* A broad, swinging triangular tail; its tip follows the phase. */
-  stroke(-length * 0.75, 0, -length * 1.7, -half + sway, c.fin, 3);
-  stroke(-length * 0.75, 0, -length * 1.7, half + sway, c.fin, 3);
-  stroke(-length * 1.7, -half + sway, -length * 1.7, half + sway, c.fin, 2);
-  /* Five variable-width strokes form an oval body without pixel loops. */
-  stroke(-length * 0.63, -half * 0.48, length * 0.52, -half * 0.48, c.body, 6);
-  stroke(-length * 0.82, -half * 0.22, length * 0.72, -half * 0.22, c.body, 9);
-  stroke(-length * 0.88, 0, length * 0.82, 0, c.body, 12);
-  stroke(-length * 0.82, half * 0.22, length * 0.72, half * 0.22, c.body, 9);
-  stroke(-length * 0.63, half * 0.48, length * 0.52, half * 0.48, c.body, 6);
-  stroke(-length * 0.42, -half * 0.32, length * 0.35, -half * 0.32, c.light, 2);
-  stroke(-length * 0.2, -half * 0.74, length * 0.1, -half * 1.12, c.fin, 3);
-  stroke(-length * 0.05, half * 0.66, -length * 0.27, half * 1.05, c.fin, 3);
-  var eye = point(length * 0.57, -half * 0.23);
-  ctx.circle(Math.round(eye[0]), Math.round(eye[1]), Math.max(2, Math.round(2.4 * f.size)), c.eye);
+  var beat = sway / 6;
+  /* Three overlapping ellipses forming a connected fan; each overlaps the
+   * previous by ~60% so it reads as one fin surface, not a dot trail. */
+  fan(-0.88, beat * -1.5, 3.2, 4.6, c.fin);
+  fan(-1.24, beat * -3.2, 2.6, 3.8, c.fin);
+  fan(-1.56, beat * -4.6, 2.0, 2.9, c.fin);
+  /* Body: a chain of filled ellipses whose radii follow the fish profile
+   * (narrow nose -> broad mid -> tapered peduncle), so any heading works
+   * with the axis-aligned primitive. */
+  var stations = [
+    { t: 0.6, rx: 4.4, ry: 4.2 },
+    { t: 0.3, rx: 5.8, ry: 6.8 },
+    { t: 0.02, rx: 6.4, ry: 8.2 },
+    { t: -0.26, rx: 5.8, ry: 7.4 },
+    { t: -0.52, rx: 4.6, ry: 5.4 },
+    { t: -0.76, rx: 3.2, ry: 3.6 }
+  ];
+  for (var i = 0; i < stations.length; i++) {
+    var st = stations[i], pt = point(st.t * length, 0);
+    ctx.fillEllipse(Math.round(pt[0]), Math.round(pt[1]),
+      Math.round(st.rx * f.size), Math.round(st.ry * f.size), c.body);
+  }
+  /* Belly: light ellipse hugging the lower body silhouette. */
+  var bl = point(-0.05 * length, half * 0.5);
+  ctx.fillEllipse(Math.round(bl[0]), Math.round(bl[1]),
+    Math.round(9.4 * f.size), Math.round(3.8 * f.size), c.light);
+  /* Back: darker band along the upper silhouette. */
+  var bk = point(-0.12 * length, -half * 0.58);
+  ctx.fillEllipse(Math.round(bk[0]), Math.round(bk[1]),
+    Math.round(10.0 * f.size), Math.round(3.4 * f.size), c.fin);
+  /* Striped variant: two dark bars across the body (large fish only). */
+  if (f.size > 1.1) {
+    for (i = 0; i < 2; i++) {
+      var bar = point((0.3 - i * 0.34) * length, 0);
+      ctx.fillEllipse(Math.round(bar[0]), Math.round(bar[1]),
+        Math.round(1.4 * f.size), Math.round((i ? 6.0 : 7.2) * f.size), c.fin);
+    }
+  }
+  /* Dorsal fin: a small ellipse standing on the back, leaning with sway. */
+  var df = point(-0.1 * length, -half * 1.06 + sway * 0.3);
+  ctx.fillEllipse(Math.round(df[0]), Math.round(df[1]),
+    Math.round(3.6 * f.size), Math.round(2.4 * f.size), c.fin);
+  /* Eye: solid AA circle with a highlight pixel. */
+  var eye = point(length * 0.6, -half * 0.26);
+  ctx.fillCircle(Math.round(eye[0]), Math.round(eye[1]),
+    Math.max(2, Math.round(2.3 * f.size)), c.eye);
+  ctx.fillCircle(Math.round(eye[0] + f.size), Math.round(eye[1] - f.size), 1, c.light);
 }
 var tankCanvas = Canvas({ parent: tankRoot, width: TANK_W, height: TANK_H,
   style: { position: 'absolute', x: 0, y: 0 }, onDraw: function (ctx) {
@@ -140,7 +176,11 @@ var tankCanvas = Canvas({ parent: tankRoot, width: TANK_W, height: TANK_H,
     for (i = 0; i < tank.food.length; i++) {
       var p = tank.food[i]; ctx.circle(Math.round(p.x), Math.round(p.y), 3, '#E4C78F');
     }
-    for (i = 0; i < tank.fish.length; i++) tankFish(ctx, tank.fish[i]);
+    /* Paint big fish first, small fish last (near = large = on top). */
+    var order = [];
+    for (i = 0; i < tank.fish.length; i++) order.push(i);
+    order.sort(function (a, b) { return tank.fish[b].size - tank.fish[a].size; });
+    for (i = 0; i < order.length; i++) tankFish(ctx, tank.fish[order[i]]);
   } });
 function tankTick() { tankStep(tank); tankFrame.set(tankFrame() + 1); }
 function tankStart() { if (tankTimer === null) tankTimer = lume.system.setInterval(tankTick, 33); }
