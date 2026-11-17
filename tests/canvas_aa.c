@@ -63,7 +63,10 @@ static int feather_count(void)
 
 int main(void)
 {
-    /* isqrt sanity: 8.8 fixed-point contract (isqrt(d2<<16) == 256*d). */
+    /* canvas_aa covers the stroke rasterisers; reference the blit so the
+     * header-only static never trips -Wunused-function under -Werror. */
+    (void)lume_raster_blit;
+    /* 1. opaque copy: no key pixels, whole sprite lands */
     assert(lume_raster_isqrt(0) == 0);
     assert(lume_raster_isqrt((int64_t)1 << 16) == 256);       /* d = 1.0     */
     assert(lume_raster_isqrt((int64_t)4 << 16) == 512);       /* d = 2.0     */

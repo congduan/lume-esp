@@ -63,6 +63,10 @@ _Static_assert(LUME_FLEX_SPACE_BETWEEN == 3 && LUME_FLEX_CROSS_STRETCH == 3,
 _Static_assert(LUME_OP_CANVAS_PATH_DRAW == 13 && LUME_OP_FIRSTFRAME == 14 &&
                LUME_OP_TRANSITION_COVER == 15,
                "r46 FIRSTFRAME / TRANSITION_COVER op ids (appended at tail)");
+/* r81: canvas sprite ops are appended at the tail; existing IDs unchanged. */
+_Static_assert(LUME_OP_CANVAS_SPRITE_DEFINE == 18 && LUME_OP_CANVAS_SPRITE_DRAW == 19,
+               "r81 canvas sprite op ids (appended at tail)");
+_Static_assert(LUME_CANVAS_SPRITES == 8, "sprite slot count mirrors the JS 1..8 API");
 
 /* r43b: the "LUMB" frame variant and the 16-byte "LQBC" payload header must
  * stay in lockstep with tools/lume/protocol.js and lume_frame.c. */

@@ -10,6 +10,8 @@ function harness(script) {
     canvasBatch: (id, lines) => calls.push(['batch', id, [...lines]]),
     canvasPathDefine: (id, path, lines) => calls.push(['pathDefine', id, path, [...lines]]),
     canvasPathDraw: (id, path, dx, dy) => calls.push(['pathDraw', id, path, dx, dy]),
+    canvasSpriteDefine: (id, sprite, w, h, px) => calls.push(['spriteDefine', id, sprite, w, h, [...px]]),
+    canvasSpriteDraw: (id, sprite, dx, dy, flip) => calls.push(['spriteDraw', id, sprite, dx, dy, flip]),
     canvasInvalidate: (...args) => calls.push(['invalidate', ...args]),
     setPressEvent: id => calls.push(['press', id]),
     log: () => {}, _nowMs: () => 0, imu: {read: () => null}
@@ -151,4 +153,51 @@ pass('retainSegments uploads independent segments', () => {
                 /segment must be \[x1,y1,x2,y2\]/);
   assert.throws(() => harness('Canvas({width:8,height:8,onDraw:function(c){c.retainSegments([]);}})'),
                 /1\.\.240 segments/);
+});
+
+/* r81: retained sprites — RGB565 bitmap uploaded once via retainImage(),
+ * replayed from C via drawImage() with colour-key transparency and flip. */
+pass('retained sprite uploads pixels once and replays from C', () => {
+  const h = harness(`var px = new Uint16Array([0x0000,0x1234,0x5678,0x0000,
+    0x1234,0x0000,0x0000,0x1234,0x5678,0x0000,0x0000,0x1234,0x0000,0x1234,0x5678,0x0000]);
+    var uploaded = false;
+    Canvas({width:40,height:40,onDraw:function(c){
+      if (!uploaded) { c.retainImage(1, 4, 4, px); uploaded = true; }
+      c.drawImage(1, 2, 3);
+      c.drawImage(1, 8, 3, true);
+    }});`);
+  const defs = h.calls.filter(x => x[0] === 'spriteDefine');
+  const draws = h.calls.filter(x => x[0] === 'spriteDraw');
+  assert.strictEqual(defs.length, 1, 'pixels uploaded exactly once');
+  assert.strictEqual(defs[0][1], 1, 'canvas node id');
+  assert.strictEqual(defs[0][2], 1, 'sprite slot id');
+  assert.strictEqual(defs[0][3], 4, 'sprite width');
+  assert.strictEqual(defs[0][4], 4, 'sprite height');
+  assert.strictEqual(defs[0][5].length, 16, 'w*h pixels');
+  assert.deepStrictEqual(draws.map(d => [d[2], d[3], d[4], d[5]]), [[1,2,3,0],[1,8,3,1]], 'replays with offset and flip');
+});
+
+pass('sprite argument validation matches the native contract', () => {
+  const cases = [
+    ['c.retainImage(0, 4, 4, new Uint16Array(16));', /sprite id must be 1\.\.8/],
+    ['c.retainImage(9, 4, 4, new Uint16Array(16));', /sprite id must be 1\.\.8/],
+    ['c.retainImage(1, 0, 4, new Uint16Array(16));', /size out of range/],
+    ['c.retainImage(1, 4, 4, new Uint16Array(15));', /length w\*h/],
+    ['c.retainImage(1, 4, 4, new Uint8Array(16));', /Uint16Array/],
+    ['c.drawImage(0);', /sprite id must be 1\.\.8/],
+  ];
+  for (const [expr, pattern] of cases)
+    assert.throws(() => harness(`Canvas({width:8,height:8,onDraw:function(c){${expr}}})`), pattern, expr);
+});
+
+pass('sprite slot redefinition re-uploads (animation frame swap)', () => {
+  const h = harness(`var px = new Uint16Array(16);
+    Canvas({width:40,height:40,onDraw:function(c){
+      c.retainImage(2, 4, 4, px);
+      c.retainImage(2, 4, 4, px);
+      c.drawImage(2);
+    }});`);
+  const defs = h.calls.filter(x => x[0] === 'spriteDefine');
+  assert.strictEqual(defs.length, 2, 're-define re-uploads into the same slot');
+  assert.strictEqual(h.calls.filter(x => x[0] === 'spriteDraw').length, 1);
 });
