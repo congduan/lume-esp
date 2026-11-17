@@ -1174,5 +1174,116 @@
         "vol4"
       ]
     ]
+  },
+  "scroller": {
+    "background": "#173250",
+    "gutter": 4,
+    "blocks": {
+      "hudBar": {
+        "roi": [
+          0,
+          0,
+          480,
+          48
+        ],
+        "color": "#132435"
+      },
+      "chip": {
+        "roi": [
+          400,
+          4,
+          476,
+          48
+        ],
+        "color": "#40D8B0"
+      },
+      "title": {
+        "roi": [
+          8,
+          4,
+          280,
+          26
+        ],
+        "mode": "ink",
+        "background": "#132435"
+      },
+      "stats": {
+        "roi": [
+          285,
+          4,
+          415,
+          26
+        ],
+        "mode": "ink",
+        "background": "#132435"
+      },
+      "hint": {
+        "roi": [
+          8,
+          26,
+          285,
+          44
+        ],
+        "mode": "ink",
+        "background": "#132435"
+      },
+      "jumpBtn": {
+        "roi": [
+          0,
+          410,
+          240,
+          476
+        ],
+        "color": "#305978"
+      },
+      "dashBtn": {
+        "roi": [
+          240,
+          410,
+          480,
+          476
+        ],
+        "color": "#305978"
+      }
+    },
+    "full": [
+      "hudBar"
+    ],
+    "rows": [
+      [
+        "jumpBtn",
+        "dashBtn"
+      ]
+    ],
+    "same_width": [
+      [
+        "jumpBtn",
+        "dashBtn"
+      ]
+    ],
+    "headers": [
+      [
+        "title",
+        "stats"
+      ]
+    ],
+    "centers": [
+      [
+        "hudBar",
+        "chip"
+      ]
+    ],
+    "vertical_gaps": [],
+    "buttons": [
+      "jumpBtn",
+      "dashBtn"
+    ],
+    "text_left": [
+      [
+        "title",
+        "hint"
+      ]
+    ],
+    "text_center": []
   }
 }
