@@ -909,9 +909,29 @@ static JSValue js_canvas_invalidate(JSContext *ctx, JSValueConst this_val, int a
 /* A queue barrier keeps a zero-copy map's ArrayBuffer alive until every
  * asynchronous LVGL render using its pointer is finished. */
 static JSValue s_raycast_map = JS_UNDEFINED;
+static JSValue s_raycast_textures = JS_UNDEFINED;
 static const uint8_t *s_raycast_bytes;
+static const uint8_t *s_raycast_texture_bytes;
 static int s_raycast_w, s_raycast_h;
 static void raycast_release(JSContext *ctx);
+static JSValue js_raycast_set_textures(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    if (argc != 1 || JS_GetTypedArrayType(argv[0]) != JS_TYPED_ARRAY_UINT8)
+        return JS_ThrowTypeError(ctx, "raycast textures must be Uint8Array");
+    size_t offset, bytes, element, size;
+    JSValue buffer = JS_GetTypedArrayBuffer(ctx, argv[0], &offset, &bytes, &element);
+    if (JS_IsException(buffer)) return JS_EXCEPTION;
+    uint8_t *base = JS_GetArrayBuffer(ctx, &size, buffer);
+    if (!base || element != 1 || bytes != 768 || offset > size || bytes > size - offset) {
+        JS_FreeValue(ctx, buffer);
+        return JS_ThrowRangeError(ctx, "raycast textures require 768 palette indices");
+    }
+    if (!JS_IsUndefined(s_raycast_textures)) raycast_release(ctx);
+    s_raycast_texture_bytes = base + offset;
+    s_raycast_textures = buffer;
+    return JS_NewInt32(ctx, 0);
+}
 
 static JSValue js_raycast_set_map(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
 {
@@ -944,10 +964,12 @@ static JSValue js_raycast_render(JSContext *ctx, JSValueConst self, int argc, JS
     (void)self;
     int32_t id;
     double px, py, angle;
-    if (argc != 4 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
+    int32_t hp = 3;
+    if (argc < 4 || argc > 6 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
         JS_ToFloat64(ctx, &px, argv[1]) < 0 ||
         JS_ToFloat64(ctx, &py, argv[2]) < 0 ||
         JS_ToFloat64(ctx, &angle, argv[3]) < 0) return JS_EXCEPTION;
+    if (argc >= 5 && JS_ToInt32(ctx, &hp, argv[4]) < 0) return JS_EXCEPTION;
     if (!s_raycast_bytes) return JS_ThrowTypeError(ctx, "raycast map is not set");
     if (id < 1 || id >= LUME_MAX_NODES || !isfinite(px) || !isfinite(py) ||
         !isfinite(angle) || px < 0 || py < 0 || px >= s_raycast_w || py >= s_raycast_h)
@@ -956,7 +978,34 @@ static JSValue js_raycast_render(JSContext *ctx, JSValueConst self, int argc, JS
     lume_raycast_frame_t *f = calloc(1, sizeof(*f));
     if (!f) return JS_ThrowOutOfMemory(ctx);
     f->map = s_raycast_bytes; f->map_w = s_raycast_w; f->map_h = s_raycast_h;
+    f->textures = s_raycast_texture_bytes;
     f->px = (float)px; f->py = (float)py; f->angle = (float)angle;
+    f->hp = hp;
+    if (argc == 6) {
+        if (JS_GetTypedArrayType(argv[5]) != JS_TYPED_ARRAY_FLOAT32) {
+            free(f); return JS_ThrowTypeError(ctx, "raycast sprites must be Float32Array");
+        }
+        size_t offset, bytes, element, size;
+        JSValue buffer = JS_GetTypedArrayBuffer(ctx, argv[5], &offset, &bytes, &element);
+        if (JS_IsException(buffer)) { free(f); return JS_EXCEPTION; }
+        uint8_t *base = JS_GetArrayBuffer(ctx, &size, buffer);
+        if (!base || bytes > 8 * 3 * sizeof(float) || bytes % (3 * sizeof(float)) ||
+            offset > size || bytes > size - offset) {
+            JS_FreeValue(ctx, buffer); free(f);
+            return JS_ThrowRangeError(ctx, "raycast sprites require at most 8 triples");
+        }
+        const float *values = (const float *)(base + offset);
+        f->sprite_count = (int)(bytes / (3 * sizeof(float)));
+        for (int i = 0; i < f->sprite_count; i++) {
+            float x = values[3*i], y = values[3*i+1], type = values[3*i+2];
+            if (!isfinite(x) || !isfinite(y) || !isfinite(type) || type < 0 || type > 1) {
+                JS_FreeValue(ctx, buffer); free(f);
+                return JS_ThrowRangeError(ctx, "invalid raycast sprite");
+            }
+            f->sprites[i].x=x; f->sprites[i].y=y; f->sprites[i].type=(int)type;
+        }
+        JS_FreeValue(ctx, buffer);
+    }
     lume_ui_msg_t m; msg_init(&m);
     m.op = LUME_OP_RAYCAST_RENDER; m.node_id = id; m.image_pixels = f;
     if (lume_ui_bridge_post(&m) != 0) {
@@ -968,7 +1017,7 @@ static JSValue js_raycast_render(JSContext *ctx, JSValueConst self, int argc, JS
 
 static void raycast_release(JSContext *ctx)
 {
-    if (JS_IsUndefined(s_raycast_map)) return;
+    if (JS_IsUndefined(s_raycast_map) && JS_IsUndefined(s_raycast_textures)) return;
     SemaphoreHandle_t done = xSemaphoreCreateBinary();
     if (!done) abort();
     lume_ui_msg_t m; msg_init(&m);
@@ -977,8 +1026,11 @@ static void raycast_release(JSContext *ctx)
     xSemaphoreTake(done, portMAX_DELAY);
     vSemaphoreDelete(done);
     JS_FreeValue(ctx, s_raycast_map);
+    JS_FreeValue(ctx, s_raycast_textures);
     s_raycast_map = JS_UNDEFINED;
+    s_raycast_textures = JS_UNDEFINED;
     s_raycast_bytes = NULL;
+    s_raycast_texture_bytes = NULL;
 }
 
 static JSValue js_set_attr(JSContext *ctx, JSValueConst this_val,
@@ -2668,6 +2720,7 @@ static void register_bindings(JSContext *ctx)
     lume_math_register(ctx, lume);
     JSValue raycast = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, raycast, "setMap", JS_NewCFunction(ctx, js_raycast_set_map, "setMap", 3));
+    JS_SetPropertyStr(ctx, raycast, "setTextures", JS_NewCFunction(ctx, js_raycast_set_textures, "setTextures", 1));
     JS_SetPropertyStr(ctx, raycast, "render", JS_NewCFunction(ctx, js_raycast_render, "render", 4));
     JS_SetPropertyStr(ctx, lume, "raycast", raycast);
     /* JS_SetPropertyStr consumes the passed value (no JS_FreeValue needed). */

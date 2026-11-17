@@ -1012,15 +1012,19 @@ declare namespace lume.math {
   function integrate(acc: Float32Array, vx: Float32Array, vy: Float32Array, dt: number): void;
 }
 
-/** Native Wolfenstein-style DDA renderer for a fixed-size RGB565 Canvas. */
+/** Native DDA renderer for a fixed-size RGB565 Canvas. */
 declare namespace lume.raycast {
   /** Bind a Uint8Array map without copying its backing store.
-   * 0 is empty; 1..255 select wall palette. The view must contain exactly w*h
+   * 0 is empty; 1..3 select the brick, stone or door texture. The view must contain exactly w*h
    * cells and remain unchanged while a frame is queued. */
   function setMap(w: number, h: number, bytes: Uint8Array): 0;
+  /** Bind three 16x16 palette-index wall textures (768 bytes total).
+   * Rebind after setMap when changing levels. */
+  function setTextures(bytes: Uint8Array): 0;
   /** Queue a full-frame render into the Canvas work buffer. Angle is radians.
    * Call from Canvas.onDraw; its normal invalidate publishes the frame. */
-  function render(id: lume.ui.Node, px: number, py: number, angle: number): void;
+  /** sprites holds up to eight [x,y,type] triples; type 0 is guard, 1 hunter. */
+  function render(id: lume.ui.Node, px: number, py: number, angle: number, hp?: number, sprites?: Float32Array): void;
 }
 
 declare namespace lume {

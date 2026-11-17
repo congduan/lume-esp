@@ -1577,14 +1577,20 @@ void lume_ui_bridge_drain(void)
                     frame->width = s_canvas_w[id];
                     frame->height = s_canvas_h[id];
                     frame->stride = s_canvas_stride[id];
+                    /* r80 480x460 profile: q=4 is the first measured tier
+                     * with margin under the 20 ms core budget. */
+                    static int maze_quality = 4;
+                    frame->quality = maze_quality;
                     int64_t start = esp_timer_get_time();
                     lume_raycast_render(frame);
                     int64_t elapsed = esp_timer_get_time() - start;
-                    static unsigned raycast_count;
-                    if (++raycast_count % 30 == 0) {
+                    if (elapsed > 20000 && maze_quality < 4) maze_quality *= 2;
+                    static int64_t last_maze_log;
+                    if (esp_timer_get_time() - last_maze_log >= 1000000) {
+                        last_maze_log = esp_timer_get_time();
                         float ms = (float)elapsed / 1000.0f;
-                        ESP_LOGI(TAG, "RAYCAST %.2fms %.1ffps", (double)ms,
-                                 (double)(ms > 0 ? 1000.0f / ms : 0));
+                        ESP_LOGI(TAG, "MAZE FRAME %.2fms %.1ffps hp=%d q=%d", (double)ms,
+                                 (double)(ms > 0 ? 1000.0f / ms : 0), frame->hp, frame->quality);
                     }
                 }
                 free(frame);
