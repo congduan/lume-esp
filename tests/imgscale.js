@@ -12,6 +12,7 @@ try {
   const cc = process.env.CC || 'cc';
   const args = ['-O2', '-std=gnu11', '-D_GNU_SOURCE', '-DQUICKJS_NG_BUILD', '-funsigned-char',
     `-I${qjs}`,
+    `-I${path.join(root, 'firmware/components/lume-engine/include')}`,
     path.join(root, 'tests/imgscale_host.c'),
     path.join(root, 'firmware/components/lume-engine/lume_imgscale.c'),
     ...['quickjs.c', 'dtoa.c', 'libregexp.c', 'libunicode.c'].map(p => path.join(qjs, p)),
