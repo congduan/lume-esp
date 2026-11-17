@@ -1,6 +1,8 @@
 /** 图片画廊。TF 卡预置 /gallery/photo.jpg、/gallery/icon.png、/gallery/alpha.png
  * 三张文件均需小于 Fs.readBinary 的 64 KiB 单次读取上限。
- * 可显示三张外部图片；无卡时仍显示内嵌 1×1 红色 PNG，验证字节到 Image 链路。
+ * r85: 卡片图片先经 lume.image.decode(bytes,96,96) 解码并一步缩成缩略图，
+ * 再走 Canvas.retainImage/drawImage 展示；解码不可用时回退既有 Image 直显路径。
+ * 无卡时仍显示内嵌 1×1 红色 PNG，验证字节到 Image 链路。
  *
  * 整个构建过程包在 try/catch 里：native 层抛错（比如 image 解码失败）只会
  * 打进日志并显示一行错误文本，不会让整个 eval 失败并回退启动器。 */
@@ -11,6 +13,23 @@ lume.system.log('gallery: typeof Fs=' + (typeof Fs) +
   ' signal=' + (typeof signal));
 
 var galleryStatus = 'no images';
+
+function thumbnailTile(thumb) {
+  /* 每个 Canvas 有独立的 1..8 精灵槽，缩略像素只上传一次；onDraw 重入时
+   * 只回放 drawImage，避免每帧重复 retainImage 拷贝 PSRAM。 */
+  var uploaded = false;
+  return Canvas({
+    width: 96,
+    height: 96,
+    onDraw: function (ctx) {
+      if (!uploaded) {
+        ctx.retainImage(1, thumb.width, thumb.height, thumb.pixels);
+        uploaded = true;
+      }
+      ctx.drawImage(1, 0, 0);
+    }
+  });
+}
 
 function buildTiles() {
   var tiles = [];
@@ -23,12 +42,23 @@ function buildTiles() {
   lume.system.log('gallery: head id ' + head);
   if (head > 0) tiles.push(head);
 
+  var canDecode = typeof lume.image.decode === 'function';
+  lume.system.log('gallery: image.decode ' + (canDecode ? 'available' : 'missing'));
   var paths = ['/gallery/photo.jpg', '/gallery/icon.png', '/gallery/alpha.png'];
   for (var i = 0; i < paths.length; i++) {
     var bytes = Fs.readBinary(paths[i]);
-    if (bytes instanceof ArrayBuffer) {
-      var tile = Image({src: bytes, style: {width: 128, height: 128}});
+    if (!(bytes instanceof ArrayBuffer)) continue;
+    var thumb = canDecode ? lume.image.decode(bytes, 96, 96) : -2;
+    if (thumb && typeof thumb === 'object' &&
+        Object.prototype.toString.call(thumb.pixels) === '[object Uint16Array]' &&
+        thumb.pixels.length === thumb.width * thumb.height) {
+      lume.system.log('gallery: thumbnail ' + paths[i] + ' ' + thumb.width + 'x' + thumb.height);
+      var tile = thumbnailTile(thumb);
       if (tile > 0) tiles.push(tile);
+    } else {
+      lume.system.log('gallery: decode failed ' + paths[i] + ' rc=' + thumb + ', fall back to Image');
+      var direct = Image({src: bytes, style: {width: 128, height: 128}});
+      if (direct > 0) tiles.push(direct);
     }
   }
   return tiles;

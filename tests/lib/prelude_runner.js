@@ -131,6 +131,25 @@ const demo = extract('lume_demo_js');
     };
   }
 
+// No PNG/JPEG decoder in the host stub: deterministic RGB565 pattern with the
+// same shape/marshalling contract as the native lume.image.decode binding.
+function imageDecodeStub() {
+  const isAB = v => Object.prototype.toString.call(v) === '[object ArrayBuffer]';
+  const dim = d => Number.isInteger(d) && d >= 1 && d <= 16384;
+  return (bytes, maxW, maxH) => {
+    if (!isAB(bytes) || bytes.byteLength === 0) return -2;
+    const hasW = maxW !== undefined && maxW !== null;
+    const hasH = maxH !== undefined && maxH !== null;
+    if (hasW !== hasH) return -1;
+    if (hasW && (!dim(maxW) || !dim(maxH))) return -2;
+    const w = hasW ? maxW : 1, h = hasH ? maxH : 1;
+    const pixels = new Uint16Array(w * h);
+    for (let i = 0; i < pixels.length; i++)
+      pixels[i] = (((i * 7) & 31) << 11) | (((i * 11) & 63) << 5) | ((i * 13) & 31);
+    return {width: w, height: h, pixels};
+  };
+}
+
 function runApp(script, options = {}) {
   const messages = [];
   let nextId = 0, token = 0;
@@ -240,7 +259,7 @@ function runApp(script, options = {}) {
       setPin: () => 0, write: () => 0, read: () => 1, toggle: () => 0,
       pwmAttach: () => 0, pwmDuty: () => 0, pwmFree: () => 0,
     },
-    image: { sizeOf: bytes => -1, _setSource: (id, bytes, width, height) => -1 },
+    image: { sizeOf: bytes => -1, decode: imageDecodeStub(), _setSource: (id, bytes, width, height) => -1 },
     audio: {
       play: () => 0, record: () => -3, setVolume: () => 0, stop: () => 0,
       playStream: () => 0, streamFinished: () => true,
@@ -263,7 +282,9 @@ function runApp(script, options = {}) {
   const __lumeScreen = options.screen || { w: 480, h: 480 };
   // DataView is a QuickJS built-in on the board and the PCM beeps use it; the
   // host context must provide it or an app's tick path throws only on host.
-  const ctx = vm.createContext({ lume, Fs, console, setTimeout, clearTimeout, ArrayBuffer, DataView, Uint8Array, __lumeScreen });
+  // Uint16Array is injected so stub-produced typed arrays (lume.image.decode /
+  // imgscale results) share a constructor with the app's instanceof checks.
+  const ctx = vm.createContext({ lume, Fs, console, setTimeout, clearTimeout, ArrayBuffer, DataView, Uint8Array, Uint16Array, __lumeScreen });
   vm.runInContext(prelude, ctx, { filename: 'lume_prelude.js' });
   vm.runInContext(script, ctx, { filename: options.filename || 'app.js' });
   return {

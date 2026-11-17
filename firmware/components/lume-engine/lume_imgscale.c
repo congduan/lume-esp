@@ -12,8 +12,9 @@
 #include <stdint.h>
 #include <string.h>
 #include "quickjs.h"
+#include "lume_imgscale.h"
 
-#define IMGSCALE_MAX_DIM 16384
+#define IMGSCALE_MAX_DIM LUME_IMGSCALE_MAX_DIM
 #define IMGSCALE_FP 256
 
 typedef struct {
@@ -39,7 +40,9 @@ static int u16_view(JSContext *ctx, JSValueConst value, u16_view_t *out)
     return 0;
 }
 
-typedef enum { MODE_NEAREST = 0, MODE_BILINEAR = 1 } scale_mode_t;
+typedef lume_imgscale_mode_t scale_mode_t;
+#define MODE_NEAREST LUME_IMGSCALE_NEAREST
+#define MODE_BILINEAR LUME_IMGSCALE_BILINEAR
 
 static int parse_mode(JSContext *ctx, int argc, JSValueConst *argv, scale_mode_t *mode)
 {
@@ -111,6 +114,39 @@ static uint16_t bilinear_pixel(uint16_t p00, uint16_t p10,
     return (uint16_t)((r << 11) | (g << 5) | b);
 }
 
+/* Shared core: the JS binding validates views/overlap, then calls this. The
+ * decode binding reuses it with freshly allocated (non-overlapping) grids. */
+int lume_imgscale_pixels(const uint16_t *src, int sw, int sh,
+                         uint16_t *dst, int dw, int dh,
+                         lume_imgscale_mode_t mode)
+{
+    if (sw < 1 || sw > LUME_IMGSCALE_MAX_DIM || sh < 1 || sh > LUME_IMGSCALE_MAX_DIM ||
+        dw < 1 || dw > LUME_IMGSCALE_MAX_DIM || dh < 1 || dh > LUME_IMGSCALE_MAX_DIM)
+        return -2;
+    for (int y = 0; y < dh; y++) {
+        uint16_t *out = dst + (size_t)y * dw;
+        if (mode == LUME_IMGSCALE_NEAREST) {
+            int sy = axis_nearest(y, dh, sh);
+            const uint16_t *row = src + (size_t)sy * sw;
+            for (int x = 0; x < dw; x++) out[x] = row[axis_nearest(x, dw, sw)];
+        } else {
+            int sy = axis_bilinear(y, dh, sh);
+            int y0 = sy >> 8, fy = sy & (IMGSCALE_FP - 1);
+            int y1 = y0 + 1; if (y1 >= sh) y1 = sh - 1;
+            const uint16_t *row0 = src + (size_t)y0 * sw;
+            const uint16_t *row1 = src + (size_t)y1 * sw;
+            for (int x = 0; x < dw; x++) {
+                int sx = axis_bilinear(x, dw, sw);
+                int x0 = sx >> 8, fx = sx & (IMGSCALE_FP - 1);
+                int x1 = x0 + 1; if (x1 >= sw) x1 = sw - 1;
+                out[x] = bilinear_pixel(row0[x0], row0[x1],
+                                        row1[x0], row1[x1], fx, fy);
+            }
+        }
+    }
+    return 0;
+}
+
 static JSValue imgscale_scale(JSContext *ctx, JSValueConst this_val,
                               int argc, JSValueConst *argv)
 {
@@ -149,30 +185,8 @@ static JSValue imgscale_scale(JSContext *ctx, JSValueConst this_val,
             int in_place = (sbegin == dbegin) && (send == dend0) &&
                            (sw32 == dw32) && (sh32 == dh32);
             if (!overlap || in_place) {
-                int swi = (int)sw32, shi = (int)sh32;
-                int dwi = (int)dw32, dhi = (int)dh32;
-                for (int y = 0; y < dhi; y++) {
-                    uint16_t *out = dst.data + (size_t)y * dwi;
-                    if (mode == MODE_NEAREST) {
-                        int sy = axis_nearest(y, dhi, shi);
-                        const uint16_t *row = src.data + (size_t)sy * swi;
-                        for (int x = 0; x < dwi; x++) out[x] = row[axis_nearest(x, dwi, swi)];
-                    } else {
-                        int sy = axis_bilinear(y, dhi, shi);
-                        int y0 = sy >> 8, fy = sy & (IMGSCALE_FP - 1);
-                        int y1 = y0 + 1; if (y1 >= shi) y1 = shi - 1;
-                        const uint16_t *row0 = src.data + (size_t)y0 * swi;
-                        const uint16_t *row1 = src.data + (size_t)y1 * swi;
-                        for (int x = 0; x < dwi; x++) {
-                            int sx = axis_bilinear(x, dwi, swi);
-                            int x0 = sx >> 8, fx = sx & (IMGSCALE_FP - 1);
-                            int x1 = x0 + 1; if (x1 >= swi) x1 = swi - 1;
-                            out[x] = bilinear_pixel(row0[x0], row0[x1],
-                                                    row1[x0], row1[x1], fx, fy);
-                        }
-                    }
-                }
-                rc = 0;
+                rc = lume_imgscale_pixels(src.data, sw32, sh32,
+                                          dst.data, dw32, dh32, mode);
             }
         }
     }

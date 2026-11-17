@@ -1224,3 +1224,33 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   大图 PSRAM 余量与 bundle 推送均 pending board。host 单样本性能对照
   （JS 17.8550 ms vs native 0.4000 ms，64x64->128x128，200 次均值）及
   固件 `idf.py size` 绿 ≠ 硬件验收。
+
+## r85 / lume.image.decode 像素出口 + gallery 缩略（host + 固件构建证据，无真机验收）
+
+- **decode 内存口径**：`decode()` 先把整张图按原生路径解到 PSRAM（PNG 为
+  RGB565A8 3 B/px，JPEG 为 RGB565 2 B/px），再把 RGB565 颜色面 `memcpy` 进
+  QuickJS 堆的 Uint16Array，随后立刻释放 PSRAM 缓冲。因此单张 480x480 图的
+  瞬时峰值 = PSRAM 解码面（PNG 另加 w*h*4 RGBA 临时面）+ JS 堆 460,800 B
+  像素；若同时保留原图 Image 节点与多个缩略图，`retainImage` 还会各占一份
+  PSRAM 精灵拷贝。大图 + 大缩略并存的实际 PSRAM 峰值、GC 时序与碎片情况
+  未在本机测量，须接板用 `heap_caps` 读数验收。host harness 只验证位模式与
+  契约，不模拟 PSRAM 压力。
+- **PNG alpha 平面丢弃**：原生 PNG 解码面是颜色面 + A8 面，`decode()` 只导出
+  颜色面，半透明/透明信息不进入 JS。需要透明像素的场景继续使用 `Image()`
+  的 `_setSource` 原生路径（A8 由 bridge 消费）。
+- **缩略质量**：`decode(bytes, maxW, maxH)` 的缩放固定为 nearest（r84 默认），
+  小尺寸缩略会有锯齿；未暴露 mode 参数。bilinear 由调用方对返回的 pixels
+  另调 `lume.imgscale.scale(..., 'bilinear')` 自行完成。gallery 的 96x96 缩略
+  用 nearest，视觉质量待真机确认。
+- **错误码语义**：`-1` 参数/类型错（非 ArrayBuffer、缺少一个目标维度、
+  coercion 抛错），`-2` 解码失败/超尺寸（含 480x480 上限与非法目标维度），
+  `-3` PSRAM OOM 直接透传原生解码器返回值而非折叠为 -2。`maxW/maxH` 的
+  16384 维度上限与整数校验复用 r84 口径；部分重叠拒绝规则在 decode 路径
+  不适用（输出是新建 JS 缓冲，不会与源 PSRAM 缓冲重叠）。
+- **gallery 演示范围**：TF 卡图片走 decode -> 96x96 -> Canvas.retainImage 缩略；
+  无卡/解码失败回退既有内嵌 1x1 PNG 与原 Image 直显路径。点按看大图未做，
+  如实登记为未做项（可选）。host 桩无真实 PNG/JPEG 解码器，返回确定性
+  RGB565 图案；浏览器 playground 与 Node host 桩均为结构桩，不代表原生画质。
+- **待真机验收**：缩略解码耗时、retainImage 串联吞吐、PSRAM 峰值、TF 卡
+  （<=64 KiB）实际读取成功率、bundle 推送与 AMOLED 观感均 pending board；
+  host、浏览器与固件 `idf.py size` 结果均不代表板上验收。

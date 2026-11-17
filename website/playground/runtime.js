@@ -115,6 +115,25 @@
     };
   }
 
+  // No PNG/JPEG decoder in the browser stub: return a deterministic RGB565
+  // pattern with the same shape/marshalling contract as the native binding.
+  function imageDecodeStub() {
+    const isAB = v => Object.prototype.toString.call(v) === '[object ArrayBuffer]';
+    const dim = d => Number.isInteger(d) && d >= 1 && d <= 16384;
+    return (bytes, maxW, maxH) => {
+      if (!isAB(bytes) || bytes.byteLength === 0) return -2;
+      const hasW = maxW !== undefined && maxW !== null;
+      const hasH = maxH !== undefined && maxH !== null;
+      if (hasW !== hasH) return -1;
+      if (hasW && (!dim(maxW) || !dim(maxH))) return -2;
+      const w = hasW ? maxW : 1, h = hasH ? maxH : 1;
+      const pixels = new Uint16Array(w * h);
+      for (let i = 0; i < pixels.length; i++)
+        pixels[i] = (((i * 7) & 31) << 11) | (((i * 11) & 63) << 5) | ((i * 13) & 31);
+      return {width: w, height: h, pixels};
+    };
+  }
+
   function createSession(script, options = {}) {
     const messages = [];
     let nextId = 0, token = 0, alive = true;
@@ -236,6 +255,7 @@
           return { width: w ? +w[1] : 100, height: h ? +h[1] : 100 };
         } catch (e) { return -2; }
       },
+      decode: imageDecodeStub(),
       _setSource: (id, bytes) => {
         try {
           const text = new TextDecoder().decode(bytes);
