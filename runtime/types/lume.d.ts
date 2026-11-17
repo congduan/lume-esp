@@ -1071,6 +1071,34 @@ declare namespace lume.imgscale {
   function scale(src: Uint16Array, sw: number, sh: number, dst: Uint16Array, dw: number, dh: number, mode?: 'nearest' | 'bilinear'): number;
 }
 
+/** Native crypto primitives backed by ESP-IDF mbedTLS (r91). Inputs are
+ * borrowed zero-copy typed arrays (subarray byteOffsets are honoured) and no
+ * JS callback runs while a backing-store pointer is in use. All outputs are
+ * written into a caller-owned Uint8Array. Return codes: 0 success, -1 bad
+ * argument type, -2 invalid key/iv/output length, -3 internal failure.
+ * Browser playground / host prelude stubs return -3 (unsupported). */
+declare namespace lume.crypto {
+  /** SHA-256 digest of data into out (a Uint8Array with >= 32 bytes; its
+   * byteOffset is honoured). Returns 0, -1 for a non-typed-array/non-Uint8Array
+   * argument, or -2 if out is shorter than 32 bytes. */
+  function sha256(data: ArrayBufferView, out: Uint8Array): number;
+  /** HMAC-SHA256 of data under key into out (>= 32 bytes). Returns 0, -1 for a
+   * bad argument type, or -2 if out is shorter than 32 bytes. */
+  function hmacSha256(key: ArrayBufferView, data: ArrayBufferView, out: Uint8Array): number;
+  /** Reflected CRC-32 (polynomial 0xEDB88320), zlib-compatible: seed is the
+   * previous zlib.crc32() return value (omit/0 for a fresh stream). Returns
+   * the unsigned 32-bit CRC value, or -1 for a bad argument type (a valid CRC
+   * of 0xFFFFFFFF is returned as 4294967295, not -1). */
+  function crc32(data: ArrayBufferView, seed?: number): number;
+  /** AES-CTR (key 16/24/32 bytes, iv 16 bytes). CTR is symmetric: the same
+   * call encrypts and decrypts. Writes data.length bytes into out, which may
+   * be the same view as data (in-place); a partially overlapping out is -2.
+   * The caller's iv is copied and never modified. Returns 0, -1 for a bad
+   * argument type, -2 for an invalid key/iv/out length or overlap, or -3 if
+   * mbedTLS fails. */
+  function aesCtr(key: ArrayBufferView, iv: ArrayBufferView, data: ArrayBufferView, out: Uint8Array): number;
+}
+
 /** Native DDA renderer for a fixed-size RGB565 Canvas. */
 declare namespace lume.raycast {
   /** Bind a Uint8Array map without copying its backing store.
@@ -1090,6 +1118,7 @@ declare namespace lume {
   const math: typeof lume.math;
   const fft: typeof lume.fft;
   const imgscale: typeof lume.imgscale;
+  const crypto: typeof lume.crypto;
   const raycast: typeof lume.raycast;
   const ui: typeof lume.ui;
   const system: typeof lume.system;
