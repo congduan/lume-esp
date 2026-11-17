@@ -1022,3 +1022,41 @@ native 23ms vs Node zlib 40ms（后者是 native C 基准，均不代表 ESP32-S
 DEFLATE 吞吐/时延、热更新大包与日志消费方接入、256KiB bundle 上限内实际压缩比）
 未做，仍 deferred；详见 `docs/r92-compress-report.md` 与
 `docs/KNOWN-SIMPLIFICATIONS.md`。
+
+### r93 result — lvgl_task 事件驱动化（appended, milestone checkboxes untouched）
+
+Vendored 魔改候选 #1（标「优先」）落地。**开工实证翻案**：简报/r35b 所述
+「33 ms timer + 10 ms 固定轮询」已是过期快照；r92 基线 `lume_board.c:125-133`
+早就是 `wait_ms = lv_timer_handler()` 驱动，只是封顶 10 ms（r36b commit
+`62bb0ff` 引入，见 `docs/r36b-perf-report.md:9`）。r93 删掉封顶，改为
+**到期睡眠 + 通知唤醒**：`ulTaskNotifyTake()` 按 `wait_ms` 睡到 LVGL 下一到期，
+`LV_NO_TIMER_READY` → `portMAX_DELAY`；用 LVGL 自带的
+`lv_timer_handler_set_resume_cb()`（vendored `lv_timer.c:375-382`；参考上游
+`lv_nuttx_libuv.c:124-166`）让新建/恢复的 LVGL timer 立即唤醒，并以函数指针
+注册 `lume_ui_bridge_set_wake_cb()` 让 Queue A post 立即唤醒（保持
+`lume-board → lume-ui-bridge` 单向依赖不成环）。面板 sleep/wake 与抓帧路径
+也主动唤醒。触摸由 LVGL indev timer 轮询、属于 deadline 集合；`lv_tick` 走
+`esp_timer` 单调时钟，睡眠不令动画时长漂移；esp32sim 加载同一份
+`lume.bin`（`run.sh:37-43`），无独立仿真循环，两条路径共用。
+
+未改 vendored lv_conf / LVGL / QuickJS 源码，**无 VENDOR.md 变更**。
+
+验证原始输出（全文见 `docs/r93-lvglev-report.md`）：固件 build+size 绿——
+Flash Code 2,030,276 → **2,030,508（+232）** / Flash Data 850,196 不变 /
+DIRAM 247,267 不变 / **IRAM 16384 Remain 0 硬线未破** / Total 3,022,243 →
+3,022,475；QuickJS 汇编本轮未卡死，无需 `-g0`。全量 `tests/*.js` 51 pass /
+0 FAIL，`npm test --prefix tools/lume` 43 pass / 0 fail / 1 skipped，
+`lume check examples/counter --no-emu` PASS。emu（worktree 自己 build 的
+r93 三件套 + `EMU_SKIP_BUILD=1`）launcher `<home>` 主屏 + counter 10 s、
+fishtank 60 s、invaders 60 s 全绿，三份 serial.log 均 eval_ok=2 /
+RELOAD ERR=0 / ui queue full=0；invaders 自然 game over 非崩溃。
+
+收益口径（诚实）：**空载功耗/帧率上限量化收益 pending board**——5 ms
+drain timer（`lume_ui_bridge.c:40,1811`）常驻使 `lv_timer_handler()` 总返回
+≤5 ms，旧 `>10` 封顶在 r92 配置下是死代码，故删封顶**未改变空载唤醒频率**
+（host/emu 可证，不代表 ESP32-S3）；r35b 的 30 fps 上限来自 33 ms 刷新
+周期本身，本轮不改该配置、不宣称解锁帧率。可证的变化是事件响应延迟
+（Queue A post 后立即 drain、timer 新建立即唤醒、`LV_NO_TIMER_READY` 时真睡
+眠）。未做 drain timer 暂停优化（跨任务 LVGL API + 满队列回归风险），
+若要真正压低空载唤醒频率另行评估。详见 `docs/r93-lvglev-report.md` 与
+`docs/KNOWN-SIMPLIFICATIONS.md`。
