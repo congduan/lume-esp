@@ -199,7 +199,8 @@ typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
                 * draw opcodes keep their wire values. ARC reuses the fixed
                 * 128 B message's spare fields (image_w = radius,
                 * duration_ms/token = from/to degrees); no struct change. */
-               LUME_DRAW_ARC } lume_draw_t;
+               LUME_DRAW_ARC, LUME_DRAW_FILL_CIRCLE,
+               LUME_DRAW_FILL_ELLIPSE, LUME_DRAW_ELLIPSE } lume_draw_t;
 
 typedef enum { LUME_EASE_LINEAR = 0, LUME_EASE_IN, LUME_EASE_OUT,
                LUME_EASE_IN_OUT } lume_easing_t;

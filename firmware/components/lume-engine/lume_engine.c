@@ -735,13 +735,16 @@ static JSValue js_canvas_draw(JSContext *ctx, JSValueConst this_val, int argc, J
         JS_ToInt32(ctx,&x,argv[2]) < 0 || JS_ToInt32(ctx,&y,argv[3]) < 0 ||
         JS_ToInt32(ctx,&a,argv[4]) < 0 || JS_ToInt32(ctx,&b,argv[5]) < 0 ||
         JS_ToInt32(ctx,&color,argv[6]) < 0 || JS_ToInt32(ctx,&width,argv[7]) < 0) return JS_EXCEPTION;
-    if (id < 1 || id >= LUME_MAX_NODES || op < LUME_DRAW_CLEAR || op > LUME_DRAW_ARC ||
+    if (id < 1 || id >= LUME_MAX_NODES || op < LUME_DRAW_CLEAR || op > LUME_DRAW_ELLIPSE ||
         width < 1 || width > 16 ||
         x < -LUME_LCD_H_RES || x > LUME_LCD_H_RES ||
         y < -LUME_LCD_V_RES || y > LUME_LCD_V_RES ||
         a < -LUME_LCD_H_RES || a > LUME_LCD_H_RES ||
         b < -LUME_LCD_V_RES || b > LUME_LCD_V_RES)
         return JS_ThrowRangeError(ctx, "lume: canvas draw argument out of range");
+    if (op >= LUME_DRAW_FILL_CIRCLE && (a < 0 ||
+        (op != LUME_DRAW_FILL_CIRCLE && b < 0)))
+        return JS_ThrowRangeError(ctx, "lume: canvas radius out of range");
     if (s_node_dead[id]) return JS_UNDEFINED;
     lume_ui_msg_t m; msg_init(&m);
     m.op = LUME_OP_CANVAS_DRAW; m.node_id = id; m.attr = op;
