@@ -49,8 +49,8 @@
 #define LUME_LCD_V_RES        466
 #define LUME_LCD_BPP          16
 
-/* TBD on-device: verify any 466-panel column gap after first light-up. */
-#define LUME_LCD_COLUMN_OFFSET 0
+/* Waveshare 1.75C BSP CASET starts at column 6 (visible columns 6..471). */
+#define LUME_LCD_COLUMN_OFFSET 6
 
 /* ------------------------------------------------------------------ */
 /* 3. Shared-I2C device addresses (7-bit)                             */
@@ -92,20 +92,20 @@
 /* LCD and touch reset use direct ESP GPIOs; no IO expander. */
 
 /*
- * CO5300 vendor init command table (Waveshare BSP 1.0.0/2.0.1,
- * esp32_s3_touch_amoled_2_16.c:53-71). Expanded as the initializer of
+ * CO5300 vendor init command table (Waveshare 1.75C BSP,
+ * esp32_s3_touch_amoled_1_75c.c:52-68). Expanded as the initializer of
  * lume_init_cmd_t s_init_cmds[] in lume_display.c — that type stays in the
  * driver; only the board-specific command sequence lives here.
- * CASET/RASET upper bounds are derived from the geometry above so a board
- * with a different panel size does not need a second edit.
+ * CASET/RASET upper bounds are derived from the geometry above. The round
+ * panel init has no MADCTL rotation; touch orientation uses the BSP's two
+ * mirror flags.
  */
-#define LUME_LCD_CASET_RASET_HI()  ((uint8_t)((LUME_LCD_H_RES - 1) >> 8))
-#define LUME_LCD_CASET_RASET_LO()  ((uint8_t)(LUME_LCD_H_RES - 1))
+#define LUME_LCD_CASET_RASET_HI()  ((uint8_t)((LUME_LCD_COLUMN_OFFSET + LUME_LCD_H_RES - 1) >> 8))
+#define LUME_LCD_CASET_RASET_LO()  ((uint8_t)(LUME_LCD_COLUMN_OFFSET + LUME_LCD_H_RES - 1))
 #define LUME_LCD_CASET_RASET_VHI() ((uint8_t)((LUME_LCD_V_RES - 1) >> 8))
 #define LUME_LCD_CASET_RASET_VLO() ((uint8_t)(LUME_LCD_V_RES - 1))
 
 #define LUME_LCD_INIT_CMDS                                                       \
-    {0x11, (uint8_t[]){0x00}, 0, LUME_LCD_SLEEP_OUT_SETTLE_MS},                \
     {0xFE, (uint8_t[]){0x20}, 1, 0},                                           \
     {0x19, (uint8_t[]){0x10}, 1, 0},                                           \
     {0x1C, (uint8_t[]){0xA0}, 1, 0},                                           \
@@ -116,14 +116,14 @@
     {0x53, (uint8_t[]){0x20}, 1, 0},                                           \
     {0x51, (uint8_t[]){0xFF}, 1, 0},                                           \
     {0x63, (uint8_t[]){0xFF}, 1, 0},                                           \
-    {0x2A, (uint8_t[]){0x00, 0x00, LUME_LCD_CASET_RASET_HI(),                 \
+    {0x2A, (uint8_t[]){0x00, LUME_LCD_COLUMN_OFFSET, LUME_LCD_CASET_RASET_HI(), \
                        LUME_LCD_CASET_RASET_LO()},                              \
      4, 0},                                                                     \
     {0x2B, (uint8_t[]){0x00, 0x00, LUME_LCD_CASET_RASET_VHI(),                \
                        LUME_LCD_CASET_RASET_VLO()},                             \
-     4, 0},                                                                     \
-    {0x36, (uint8_t[]){0xA0}, 1, 0},                                           \
-    {0x29, (uint8_t[]){0x00}, 0, LUME_LCD_SLEEP_OUT_SETTLE_MS}
+     4, LUME_LCD_SLEEP_OUT_SETTLE_MS},                                         \
+    {0x11, (uint8_t[]){0x00}, 0, LUME_LCD_SLEEP_OUT_SETTLE_MS},                \
+    {0x29, (uint8_t[]){0x00}, 0, 0}
 
 /* ------------------------------------------------------------------ */
 /* 5. CST9217 touch config / coordinate mapping                       */
@@ -133,12 +133,11 @@
 #define LUME_TOUCH_CHIP        LUME_TOUCH_CHIP_CST9220
 #define LUME_TOUCH_I2C_SPEED_HZ 400000
 /*
- * Provisional mapping copied from 2.16: mirror_y then swap_xy.
- * px = V_RES - ty, py = tx. A board with a different mounting supplies its
- * own mapping here; the driver just calls these two macros.
+ * Waveshare 1.75C BSP bsp_display_start: swap_xy=0, mirror_x=1, mirror_y=1.
+ * The round panel maps px = H_RES - 1 - tx, py = V_RES - 1 - ty.
  */
-#define LUME_TOUCH_MAP_X(tx, ty) ((int32_t)(LUME_LCD_V_RES - (ty)))
-#define LUME_TOUCH_MAP_Y(tx, ty) ((int32_t)(tx))
+#define LUME_TOUCH_MAP_X(tx, ty) ((int32_t)(LUME_LCD_H_RES - 1 - (tx)))
+#define LUME_TOUCH_MAP_Y(tx, ty) ((int32_t)(LUME_LCD_V_RES - 1 - (ty)))
 
 /* ------------------------------------------------------------------ */
 /* 6. Board identity (logs / diagnostics)                             */

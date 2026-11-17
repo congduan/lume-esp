@@ -25,9 +25,9 @@ reused from Lume's existing CST92xx contract and remains to be probed on-device.
 | TF slot | SPI pins declared | No pins declared; SD-backed calls return `-2` |
 | Touch I2C | `0x5A` | `0x5A` |
 
-The new profile preserves the 2.16 panel command sequence and uses column
-offset 0 provisionally. The copied touch orientation also requires board
-validation. The `lume_touch.c` CST92xx path reads 16-bit registers and logs the
+The initial r86 profile preserved the 2.16 panel command sequence, used column
+offset 0, and copied the 2.16 touch orientation. These were corrected in the
+review fix below. The `lume_touch.c` CST92xx path reads 16-bit registers and logs the
 project ID from `0xD204` but never rejects a CST9217 ID, so no new touch
 selector or driver fork was introduced. `mp3_decoder.c` now compiles without
 SD pin macros and returns its existing unavailable error `-2` for a board
@@ -101,3 +101,23 @@ Compilation and host tests establish that the selected profile and guarded
 code build. The panel's first light-up, column offset, touch orientation and
 feel, reset timing, audio, sleep current, WiFi/BLE, persistence and bundle
 push await on-device acceptance. No hardware behavior is claimed here.
+
+## Review 修复（1.75C panel/touch）
+
+对照 Waveshare BSP `bsp/esp32_s3_touch_amoled_1_75c/esp32_s3_touch_amoled_1_75c.c`
+中的 `lcd_init_cmds` 与 `bsp_display_start`，只修改 1.75C profile。板级行为仍待实机验收。
+
+| 差异 | 改前 | 改后 | BSP 依据 |
+|---|---|---|---|
+| 列偏移与 CASET | 偏移 0；列 0..465 | 偏移 6；列 6..471（`00 06 01 D7`）；RASET 保持 0..465 | `lcd_init_cmds`：`0x2A={00,06,01,D7}`、`0x2B={00,00,01,D1}` |
+| 触摸映射 | 2.16 的 swap 映射：`px=466-ty, py=tx` | `px=465-tx, py=465-ty` | `bsp_display_start`：`swap_xy=0, mirror_x=1, mirror_y=1` |
+| 初始化顺序 | 开头 `0x11`；末尾 `0x36=A0`；`0x29` 后延时 600 ms | `FE,19,1C,FE,C4,3A,35,53,51,63,2A,2B,11,29`；`2B` 与 `11` 后各延时 600 ms；无 MADCTL 旋转 | `lcd_init_cmds` 同序列与延时；round panel 的触摸方向按 BSP 双轴镜像 |
+
+Review 重建证据：`artifacts/r86/review-new-board-build-size.log` 与
+`artifacts/r86/review-default-build-size.log`。新板使用独立 `SDKCONFIG` 与
+`-B build-175c` 全量重建，并运行 `idf.py -B build-175c size`，两步均退出 0；
+生成的 `sdkconfig.h` 选中 `waveshare_esp32_s3_touch_amoled_1_75c`。
+新板 Flash Code 1,978,852 B，Flash Data 838,540 B，DIRAM 246,823 B，
+IRAM 16,384/16,384 B，总量 2,958,815 B。默认板 `idf.py build && idf.py size`
+通过，Flash Code **2,023,708 B**，符合本轮硬门禁；Flash Data 849,476 B，
+DIRAM 247,267 B，IRAM 16,384/16,384 B，总量 3,014,955 B。
