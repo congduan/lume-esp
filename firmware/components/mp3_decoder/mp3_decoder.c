@@ -22,10 +22,15 @@ struct mp3_decoder {
     size_t available, offset, size;
     int eof;
 };
+#if defined(LUME_PIN_SD_MOSI) && defined(LUME_PIN_SD_CLK) && \
+    defined(LUME_PIN_SD_MISO) && defined(LUME_PIN_SD_CS)
 static int card_ready;
 static sdmmc_card_t *card;
+#endif
 static int mount_card(void)
 {
+#if defined(LUME_PIN_SD_MOSI) && defined(LUME_PIN_SD_CLK) && \
+    defined(LUME_PIN_SD_MISO) && defined(LUME_PIN_SD_CS)
     if (card_ready) return 0;
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = SPI3_HOST;
@@ -44,6 +49,9 @@ static int mount_card(void)
     }
     card_ready = 1;
     return 0;
+#else
+    return -2; /* No TF slot on this board. */
+#endif
 }
 static int card_path(const char *path, char *out, size_t cap)
 {
