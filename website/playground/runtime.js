@@ -3,6 +3,7 @@
   function createSession(script, options = {}) {
     const messages = [];
     let nextId = 0, token = 0, alive = true;
+    const imageRevisions = new Map();
     const emit = (...message) => {
       if (!alive) return;
       messages.push(message);
@@ -107,8 +108,7 @@
     },
     image: {
       /* Browser SVG support: sizeOf parses width/height attrs (default 100x100
-       * viewBox convention); _setSource rasterises the SVG via an <img> and
-       * hands the bitmap to the renderer through LUME_IMAGE_BITMAPS[nodeId]. */
+       * viewBox convention); _setSource rasterises the SVG via an <img>. */
       sizeOf: bytes => {
         try {
           const text = new TextDecoder().decode(bytes);
@@ -119,8 +119,11 @@
       _setSource: (id, bytes) => {
         try {
           const text = new TextDecoder().decode(bytes);
+          const revision = (imageRevisions.get(id) || 0) + 1;
+          imageRevisions.set(id, revision);
           const img = new Image();
           img.onload = () => {
+            if (!alive || imageRevisions.get(id) !== revision) return;
             /* Render at the NODE's box, not the SVG's intrinsic size: apps size
              * Image nodes via style (abc123 uses 320x320 for a 100x100 viewBox).
              * drawImage(img, 0, 0) painted the SVG at 100x100 in the corner,
@@ -131,11 +134,12 @@
             const c = document.createElement('canvas');
             c.width = W; c.height = H;
             c.getContext('2d').drawImage(img, 0, 0, W, H);
-            if (!globalThis.LUME_IMAGE_BITMAPS) globalThis.LUME_IMAGE_BITMAPS = {};
-            globalThis.LUME_IMAGE_BITMAPS[id] = c;
             const mount = () => {
+              if (!alive || imageRevisions.get(id) !== revision) return;
               const host = document.querySelector('#device [data-node-id="' + id + '"]');
-              if (host && !host.querySelector('canvas')) { host.textContent = ''; host.appendChild(c.cloneNode ? c : c); }
+              if (!host) return;
+              host.replaceChildren(c);
+              host.classList.remove('image-placeholder');
             };
             mount();
             setTimeout(mount, 100); setTimeout(mount, 400); /* node may attach after decode */
