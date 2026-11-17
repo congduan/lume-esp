@@ -1,0 +1,10 @@
+bundle /tmp/lume-r79-spike-wt/examples/raycast: source 1956 bytes; payload 1956 bytes; frame 1968 bytes (source)
+I (1735) lume-engine: engine task up (pinned core 1), PSRAM free=5505960 bytes
+I (1807) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1933) lume-engine: app eval ok; entering event loop
+I (2687) lume-engine: engine recv RELOAD -> recycle runtime
+I (2918) lume-engine: runtime up; eval app '<embedded-demo>' (1956 bytes)
+I (2942) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 1247790488 + core1 64353820 insns in 37.4s wall = 35.1 Minsn/s; emulated 8.000s (1920000000 cycles); 774820 exceptions, 25399 interrupts
+TFT: /tmp/lume-r79-spike-wt/artifacts/emu/raycast/tft.png
+serial: /tmp/lume-r79-spike-wt/artifacts/emu/raycast/serial.log
