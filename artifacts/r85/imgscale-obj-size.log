@@ -1,0 +1,62 @@
+=== lume_image_decode.c.obj ===
+firmware/build/esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_image_decode.c.obj  :
+section                                      size   addr
+.literal.read_dim$constprop$0                  40      0
+.literal.js_image_decode                      100      0
+.literal.lume_image_decode_register            16      0
+.text                                           0      0
+.data                                           0      0
+.bss                                            0      0
+.text.read_dim$constprop$0                    136      0
+.rodata.js_image_decode.str1.4                 23      0
+.text.js_image_decode                         570      0
+.rodata.lume_image_decode_register.str1.4       7      0
+.text.lume_image_decode_register               46      0
+.debug_frame                                   88      0
+.debug_info                                  3407      0
+.debug_abbrev                                 797      0
+.debug_loc                                   1354      0
+.debug_aranges                                 48      0
+.debug_ranges                                 168      0
+.debug_line                                  3015      0
+.debug_str                                   2131      0
+.comment                                       48      0
+.xtensa.info                                   56      0
+.xt.lit                                        24      0
+.xt.prop                                      588      0
+Total                                       12662
+
+
+=== lume_imgscale.c.obj ===
+firmware/build/esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_imgscale.c.obj  :
+section                                  size   addr
+.literal.u16_view                          16      0
+.literal.read_dim                          40      0
+.literal.lume_imgscale_pixels              24      0
+.literal.imgscale_scale                    80      0
+.literal.lume_imgscale_register            28      0
+.text                                       0      0
+.data                                       0      0
+.bss                                        0      0
+.text.u16_view                            118      0
+.text.read_dim                            136      0
+.text.lume_imgscale_pixels                877      0
+.rodata.imgscale_scale.str1.4              17      0
+.text.imgscale_scale                      434      0
+.rodata.lume_imgscale_register.str1.4      17      0
+.text.lume_imgscale_register               78      0
+.debug_frame                              136      0
+.debug_info                              5009      0
+.debug_abbrev                             891      0
+.debug_loc                               3709      0
+.debug_aranges                             64      0
+.debug_ranges                             680      0
+.debug_line                              4848      0
+.debug_str                               2322      0
+.comment                                   48      0
+.xtensa.info                               56      0
+.xt.lit                                    40      0
+.xt.prop                                  732      0
+Total                                   20400
+
+

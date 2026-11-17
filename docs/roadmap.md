@@ -652,6 +652,31 @@ r81 的 blit 钥匙落成第一个 app 层实战：`examples/scroller/app.js`。
 - **未做/待验**：可选消费方 demo（image_gallery 缩略）未加；缩放耗时、缩略视觉、
   与 retainImage 串联吞吐、PSRAM 余量与 bundle 推送均待接板，不声称硬件验收。
 
+### r85 result — `lume.image.decode` 像素出口 + gallery 缩略（appended, milestone checkboxes untouched）
+
+r84 登记的可选消费方尾巴已收：`firmware/components/lume-engine/lume_image_decode.c`
+注册 `lume.image.decode(bytes, maxW?, maxH?)`，复用 `lume_image_decode_ex`；
+返回 `{width,height,pixels:Uint16Array}`（RGB565 颜色面，PNG 的 A8 面丢弃），
+PSRAM 缓冲拷入 JS 堆后立即释放。可选的 maxW/maxH 复用 r84 抽出的共享缩放核心
+`lume_imgscale_pixels`（同 16384 上限/整数校验；重叠规则在新建缓冲场景不适用）。
+`examples/image_gallery` 的 TF 图片改走 decode -> 96x96 -> `retainImage` 缩略，
+无卡回退内嵌 1x1 PNG；点按看大图未做（已登记）。
+
+- **验证**：新增 `node tests/decode.js`（宿主 QuickJS 直链同一份 decode /
+  imgscale / RGB565A8 C 源 + 最小合成 PNG 的 zlib 解码 shim）5 项全绿；
+  `for t in tests/*.js` 0 FAIL / 493 行 / 458 条 PASS/ALL；
+  `npm test --prefix tools/lume` 43 pass / 0 fail / 1 skipped；
+  `lume check examples/counter` 与 `lume check examples/image_gallery`
+  均 RESULT: PASS（后者 eval 2x，布局无 expectations）；
+  `gen_api_docs.py --check`（130 条）与 `check_website.py` 全绿。
+- **固件 size**：QuickJS 汇编再次遇 host swap 卡死，按 r78/r84 先例仅对该目标
+  `-g0` 单独重编后构建成功。Flash Code **2,025,296 B**（r84 基线 2,024,560，
+  +736 B），DIRAM 247,267 B 不变，**IRAM 16,384/16,384、Remain 0 硬线守住**；
+  `lume_image_decode.c.obj` 自身约 938 B 代码+常量，`.data/.bss` 为 0。
+- **取舍/未做**：PNG alpha 平面丢弃、缩略 nearest 质量、错误码 -3 透传、
+  内存峰值与点按看大图均已写入 `KNOWN-SIMPLIFICATIONS.md`。全部结果为主机/
+  构建证据，不代表板上验收。详见 `docs/r85-imgpix-report.md` 与 `artifacts/r85/`。
+
 
 ## 引擎调试基建与分发加固路线（2026-11-16，结论固化防重复评估）
 

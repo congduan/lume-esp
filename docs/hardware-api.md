@@ -278,3 +278,25 @@ copy; any other overlap of the same backing buffer is rejected with `-2` so a
 write cannot clobber a source pixel still needed. Scaling is pure per-pixel
 sampling: it does not interpret RGB565 `0x0000` transparency or any colour key
 — those remain the `retainImage` / `drawImage` layer's responsibility.
+
+## Image pixel export (r85)
+
+`lume.image.decode(bytes, maxW?, maxH?)` decodes PNG/JPEG `ArrayBuffer` bytes
+through the same native path used by `Image({src})` and returns
+`{ width, height, pixels }` on success. `pixels` is a `Uint16Array` holding the
+RGB565 colour plane (little-endian words, same bit layout as Image/retainImage)
+in the QuickJS heap; the PSRAM decode buffer is copied and released before the
+call returns. PNG's A8 plane is discarded — the export is colour only.
+
+With no optional arguments the intrinsic size is returned. When **both** `maxW`
+and `maxH` are supplied, the decoded grid is scaled in one step with nearest
+sampling via the shared r84 core; each target dimension must be an integer in
+1..16384. Supplying only one dimension is a bad argument. Raster inputs keep
+the existing 480x480 cap enforced by the header parser. Return codes: `-1` for
+a missing/non-ArrayBuffer argument, a single target dimension, or a coercion
+error; `-2` for corrupt/unsupported data, an over-480x480 input, or an invalid
+target dimension; `-3` for PSRAM allocation failure (propagated verbatim from
+the native decoder). The result can be fed to `lume.imgscale.scale` or to
+`ctx.retainImage(slot, w, h, pixels)`; `examples/image_gallery` uses the latter
+for 96x96 TF-card thumbnails. Memory/quality caveats are recorded in
+`KNOWN-SIMPLIFICATIONS.md`.
