@@ -3,6 +3,8 @@
   const examples = [
     ['counter','＋','Counter','计数器','Tap-driven counter','点击计数'],
     ['clock','◷','Clock','时钟','Time and alarms','时间与闹钟'],
+    ['clock_round','12','Round clock','圆屏时钟','Round analog clock','圆屏模拟表盘'],
+    ['dashboard_round','N','Round dashboard','圆屏仪表','Relative heading and level','相对方位和水平仪'],
     ['games_snake','▦','Snake','贪吃蛇','Swipe to steer','滑动控制方向'],
     ['games_2048','▣','2048','2048','Merge the tiles','合并方块'],
     ['games_breakout','◉','Breakout','打砖块','Arcade paddle game','街机挡板游戏'],
@@ -37,6 +39,18 @@
   ];
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');
+  const shapeButtons = [...document.querySelectorAll('[data-screen-shape]')];
+  function setShape(shape) {
+    const round = shape === 'round';
+    wrap.classList.toggle('round', round);
+    shapeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.screenShape === shape)));
+    device.setAttribute('aria-label', round ? 'Lume round screen' : 'Lume rounded square screen');
+    try { localStorage.setItem('lume-screen-shape', shape); } catch (error) { /* storage disabled */ }
+    resize();
+  }
+  shapeButtons.forEach(button => button.addEventListener('click', () => setShape(button.dataset.screenShape)));
+  let savedShape = 'square';
+  try { savedShape = localStorage.getItem('lume-screen-shape') === 'round' ? 'round' : 'square'; } catch (error) { /* storage disabled */ }
   const list = document.querySelector('#app-list');
   const errorBox = document.querySelector('#error');
   const title = document.querySelector('#app-title');
@@ -94,7 +108,7 @@
   const gestures = new Set();
   function showError(error) { errorBox.hidden = false; errorBox.textContent = error?.stack || String(error); }
   function resize() { device.style.transform = `scale(${wrap.clientWidth / 480})`; }
-  new ResizeObserver(resize).observe(wrap); resize();
+  new ResizeObserver(resize).observe(wrap); setShape(savedShape);
   function startScript(script) {
     generation++;
     session?.destroy(); session = null;
