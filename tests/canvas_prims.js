@@ -1,5 +1,9 @@
 const assert = require('node:assert/strict');
-const { runApp } = require('./lib/prelude_runner');
+const fs = require('node:fs');
+const path = require('node:path');
+const { runApp, prelude } = require('./lib/prelude_runner');
+const snapshot = fs.readFileSync(path.join(__dirname, '../website/playground/prelude.js'), 'utf8');
+assert.equal(JSON.parse(snapshot.split('window.LUME_PRELUDE = ')[1].trim().slice(0, -1)), prelude);
 const app = `Canvas({width:100,height:100,onDraw:function(ctx){
   ctx.fillCircle(20,21,9,'#ff0000');
   ctx.fillEllipse(40,41,12,6,'#00ff00');
@@ -15,3 +19,4 @@ assert.deepEqual(draws.map(m => m.slice(2)), [
   [8,70,71,11,5,0xffffff,4]
 ]);
 console.log('PASS prelude emits fillCircle/fillEllipse/ellipse draw records');
+console.log('PASS Playground prelude snapshot matches firmware source');
