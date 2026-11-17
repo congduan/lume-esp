@@ -51,7 +51,10 @@
 #define LCD_BPP         LUME_LCD_BPP
 #define LCD_SPI_HOST    LUME_LCD_SPI_HOST
 /* CO5300 datasheet: 20 ns minimum write cycle (50 MHz). The requested
- * 80 MHz default is an experimental overclock; Kconfig permits 40 MHz fallback. */
+ * Default is 40 MHz — the Waveshare BSP / Brookesia / esp_lcd_co5300 macro
+ * default, and the only speed with prior art on this panel. The datasheet
+ * allows up to 50 MHz (20 ns min write cycle); higher values (e.g. 80) are
+ * experimental overclocks selectable via Kconfig, pending board validation. */
 #define LCD_PCLK_HZ     LUME_LCD_PCLK_HZ
 /* The A/B height is selected by Kconfig; 48 falls back to 20 on allocation failure. */
 #define DRAW_BUF_LINES CONFIG_LUME_DRAW_BUF_LINES

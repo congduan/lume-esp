@@ -3,11 +3,15 @@ menu "Lume board"
     config LUME_LCD_PCLK_MHZ
         int "CO5300 QSPI pixel clock (MHz)"
         range 20 80
-        default 80
+        default 40
         help
-            QSPI clock for the CO5300 panel. The 80 MHz default exceeds the
-            datasheet's 50 MHz write-clock limit and needs board validation.
-            Select 40 if the panel shows corruption or instability.
+            QSPI clock for the CO5300 panel. 40 MHz is the value used by the
+            Waveshare BSP, the Brookesia examples and the esp_lcd_co5300
+            component's own QSPI macro default — the only speed with prior
+            art on this panel. The datasheet permits up to 50 MHz (20 ns
+            minimum write cycle); 80 is an experimental overclock kept as a
+            Kconfig option, pending board validation. If the panel shows
+            corruption or instability, step down towards 40.
 
     choice LUME_BOARD
         prompt "Lume target board"

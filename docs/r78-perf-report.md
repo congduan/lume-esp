@@ -4,7 +4,7 @@
 
 ## A. CO5300 QSPI 40 → 80 MHz
 
-- `CONFIG_LUME_LCD_PCLK_MHZ` 默认 80，Kconfig 可设回 40；两个板 profile 共用。`firmware/sdkconfig` 已同步为 80。
+- `CONFIG_LUME_LCD_PCLK_MHZ` 默认 80，Kconfig 可设回 40；两个板 profile 共用。`firmware/sdkconfig` 当时同步为 80（后按下方决策更新回落 40）。
 - 总线理想带宽：80 MHz × 4 bit = 40 MB/s。480 × 480 × 16 bit = 460,800 B = 460.8 kB/帧，故全帧纯传输上限约 86.8 fps；40 MHz 为 20 MB/s、43.4 fps。命令、间隙、DMA、渲染开销都会降低实际帧率。
 - **超规格风险**：[CO5300 原厂 datasheet](https://dl.espressif.com/AE/esp-iot-solution/CO5300_Datasheet_V0.00.pdf) 表 6.4 给出写时钟周期最小 20 ns，即 50 MHz 最大写时钟。80 MHz 是本刀按简报要求设置的实验超频，不能称为 CO5300 规格内频率。真机信号完整性、花屏、温度/批次稳定性均为 **pending board**；失败时设 `CONFIG_LUME_LCD_PCLK_MHZ=40`。emu 层不受时钟设置影响。
 - 固件独立构建与 `idf.py -B build-r78 size` PASS：IRAM **16,384/16,384 B**，Flash Code **2,010,348 B**。同一配置下暂时使用 `origin/main` 的 `lume_engine.c` 移除 math 注册后复建为 **2,008,740 B**，故本刀原生绑定的 Flash Code 增量 **+1,608 B**；A 的时钟常量改动未单独测尺寸。QuickJS 目标的调试信息汇编在宿主 swap 压力下停滞，构建时仅对该目标使用 `-g0`，未改变源码或 `-O2`。
@@ -30,3 +30,9 @@
 - `node tools/lume/lume.js check examples/counter --no-emu`：PASS。
 - `idf.py -B build-r78 build` + `idf.py -B build-r78 size`：PASS；基线差值 +1,608 B Flash Code，IRAM 仍满线。
 - **pending board**：80 MHz 超规格 CO5300 实机信号/画面验收；app 字节码实机冷启动时间；原生积分在 Xtensa 上的真实加速比。
+
+
+## 决策更新（2026-11-17，用户拍板）：默认回落 40 MHz
+
+证据核实：Waveshare 官方 BSP（esp32_s3_touch_amoled_2_16.c 未覆盖 PCLK）、Brookesia 示例、esp_lcd_co5300 v2.2.0 组件宏默认（.pclk_hz = 40*1000*1000）三方一致用 40 MHz——这是该面板唯一有先例的速度。datasheet 50 MHz 与实验 80 MHz 均无公开先例。
+Kconfig default 已从 80 改回 40（80 保留为 range 内实验选项）；sdkconfig 同步。接板路径：40 MHz 基线点亮 → 有意切 50（规格内）→ 观察稳定后可选 80 对比。
