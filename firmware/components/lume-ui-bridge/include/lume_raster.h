@@ -201,6 +201,88 @@ static void lume_raster_ring(const lume_raster_surf_t *s,
     }
 }
 
+/* r89 axis-aligned ellipse coverage. A pixel is fully inside when its farthest
+ * corner is inside, and fully outside when its nearest corner is outside.
+ * Only boundary pixels need the 4x4 sub-pixel test. All products fit int64 for
+ * the board's <=480px radii; no division, float, lookup table or sqrt. */
+static inline int lume_ellipse_inside(int32_t x16, int32_t y16,
+                                      int32_t rx16, int32_t ry16)
+{
+    int64_t xx = (int64_t)x16 * x16, yy = (int64_t)y16 * y16;
+    int64_t rxx = (int64_t)rx16 * rx16, ryy = (int64_t)ry16 * ry16;
+    return xx * ryy + yy * rxx <= rxx * ryy;
+}
+
+static inline int32_t lume_ellipse_coverage(int32_t dx, int32_t dy,
+                                             int32_t rx16, int32_t ry16)
+{
+    if (rx16 < 0 || ry16 < 0) return 0;
+    if (rx16 == 0 && ry16 == 0) return (dx == 0 && dy == 0) ? 256 : 0;
+    /* A zero axis has zero area; it paints no pixels. */
+    if (rx16 == 0 || ry16 == 0) return 0;
+    int32_t ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
+    int32_t nearx = ax * 16 - 8, neary = ay * 16 - 8;
+    if (nearx < 0) nearx = 0;
+    if (neary < 0) neary = 0;
+    if (!lume_ellipse_inside(nearx, neary, rx16, ry16)) return 0;
+    if (lume_ellipse_inside(ax * 16 + 8, ay * 16 + 8, rx16, ry16)) return 256;
+    int32_t count = 0;
+    for (int32_t sy = -6; sy <= 6; sy += 4)
+        for (int32_t sx = -6; sx <= 6; sx += 4)
+            count += lume_ellipse_inside(dx * 16 + sx, dy * 16 + sy, rx16, ry16);
+    return count * 16;
+}
+
+static inline void lume_raster_ellipse_band(const lume_raster_surf_t *s,
+                                            int32_t cx, int32_t cy,
+                                            int32_t rx16, int32_t ry16,
+                                            int32_t inner_rx16, int32_t inner_ry16)
+{
+    if (rx16 < 0 || ry16 < 0) return;
+    int32_t ex = (rx16 + 15) / 16 + 1, ey = (ry16 + 15) / 16 + 1;
+    int32_t x0 = cx - ex, x1 = cx + ex;
+    int32_t y0 = cy - ey, y1 = cy + ey;
+    if (x0 < 0) x0 = 0;
+    if (y0 < 0) y0 = 0;
+    if (x1 >= s->w) x1 = s->w - 1;
+    if (y1 >= s->h) y1 = s->h - 1;
+    for (int32_t y = y0; y <= y1; y++) {
+        uint16_t *row = s->px + (size_t)y * s->stride;
+        for (int32_t x = x0; x <= x1; x++) {
+            int32_t a = lume_ellipse_coverage(x-cx, y-cy, rx16, ry16);
+            if (a && inner_rx16 > 0 && inner_ry16 > 0)
+                a -= lume_ellipse_coverage(x-cx, y-cy, inner_rx16, inner_ry16);
+            if (a > 0) row[x] = a >= 256 ? s->color : lume_raster_blend(s, row[x], a);
+        }
+    }
+}
+
+static inline void lume_raster_fill_ellipse(const lume_raster_surf_t *s,
+                                            int32_t cx, int32_t cy,
+                                            int32_t rx, int32_t ry)
+{
+    lume_raster_ellipse_band(s, cx, cy, rx * 16, ry * 16, -1, -1);
+}
+
+static inline void lume_raster_fill_circle(const lume_raster_surf_t *s,
+                                           int32_t cx, int32_t cy, int32_t r)
+{
+    lume_raster_fill_ellipse(s, cx, cy, r, r);
+}
+
+/* Stroke width follows line/ring: hw=(width-1)/2, with one-pixel AA on
+ * either edge. The inner hole vanishes once either inner radius is <=0. */
+static inline void lume_raster_ellipse_ring(const lume_raster_surf_t *s,
+                                            int32_t cx, int32_t cy,
+                                            int32_t rx, int32_t ry, int32_t width)
+{
+    if (rx < 0 || ry < 0 || width < 1) return;
+    int32_t hw = (width - 1) >> 1;
+    lume_raster_ellipse_band(s, cx, cy,
+                             (rx + hw) * 16 + 8, (ry + hw) * 16 + 8,
+                             (rx - hw) * 16 - 8, (ry - hw) * 16 - 8);
+}
+
 /* ---- r48: native anti-aliased partial arc (rendering backlog #2) --------
  *
  * ctx.arc(cx, cy, r, from, to, width, color). Angles are integer degrees,
