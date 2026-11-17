@@ -232,6 +232,7 @@ esp_err_t lume_display_capture(SemaphoreHandle_t done,
             s_cap_ready = NULL;
             s_cap_done = done;
             s_cap_req = true;
+            lume_lvgl_wake(); /* arm tick consumes this on the next loop */
         }
     }
     xSemaphoreGive(s_cap_lock);

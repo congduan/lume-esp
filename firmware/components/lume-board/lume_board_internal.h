@@ -17,6 +17,10 @@ esp_err_t lume_display_init(lv_display_t **out_disp);
 esp_err_t lume_panel_sleep(void);
 esp_err_t lume_panel_wake(void);
 void lume_display_invalidate_all(void);
+/* lume_board.c — wake the LVGL task from its deadline sleep. Call after a
+ * cross-task request that has no LVGL timer of its own (panel wake/sleep,
+ * screen capture, Queue A posts). Safe before task creation (no-op). */
+void lume_lvgl_wake(void);
 /* Screen-capture state machine step: consumes arm/cancel requests and arms
  * (or aborts) the flush_cb shadow copy. LVGL task only (lvgl_task loop). */
 void lume_display_capture_tick(void);

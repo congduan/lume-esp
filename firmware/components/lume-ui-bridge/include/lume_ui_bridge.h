@@ -263,6 +263,14 @@ void lume_ui_bridge_init(void);
  * (JS/UI state may diverge) and returns -1. M1 has no rollback/resync. */
 int lume_ui_bridge_post(const lume_ui_msg_t *msg);
 
+/* r93: optional cross-task wake hook, set once by lume-board during init.
+ * post() calls it after a successful enqueue so the LVGL task drains Queue A
+ * immediately instead of waiting for the next drain-timer deadline. NULL by
+ * default. Registered as a function pointer to keep the component dependency
+ * one-way (lume-board -> lume-ui-bridge, no cycle). `wake_cb` must be safe to
+ * call from the engine task and must not block. */
+void lume_ui_bridge_set_wake_cb(void (*wake_cb)(void));
+
 /* LVGL-task side: drain Queue A and apply each message to lv_obj. Invoked by
  * the bridge's lv_timer, i.e. from inside the lv_timer_handler() loop. */
 void lume_ui_bridge_drain(void);

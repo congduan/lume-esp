@@ -37,6 +37,7 @@ static atomic_bool s_frame_paused;
 static atomic_bool s_redraw_pending;
 static SemaphoreHandle_t s_pause_ack;
 static bool s_panel_asleep;
+static TaskHandle_t s_lvgl_task;
 
 /* LVGL 9 tick source: monotonic milliseconds from esp_timer (already running
  * this early in boot). Registered in lume_board_init() after lv_init(). */
@@ -96,6 +97,7 @@ static void create_demo_ui(void)
      * Keeping the declaration here makes create_demo_ui the only edit point in
      * this frozen board file. */
     extern void lume_ui_bridge_init(void);
+    extern void lume_ui_bridge_set_wake_cb(void (*wake_cb)(void));
 
     lv_obj_t *scr = lv_screen_active();
     lv_obj_set_style_bg_color(scr, lv_color_hex(0x0B1E3F), 0);
@@ -105,19 +107,50 @@ static void create_demo_ui(void)
      * drain timer here, on the main task BEFORE lvgl_task starts -> no race
      * with a running lv_timer_handler (LV_USE_OS == LV_OS_NONE). */
     lume_ui_bridge_init();
+    /* Queue A posts do not create/resume an LVGL timer, so LVGL's own
+     * resume callback cannot see them. Register a wake hook so the LVGL
+     * task drains a freshly posted message immediately instead of waiting
+     * for the next timer deadline. */
+    lume_ui_bridge_set_wake_cb(lume_lvgl_wake);
 #endif
+}
+
+/* LVGL calls this from lv_timer_create/resume/reset/enable via
+ * lv_timer_handler_resume() (vendored lv_timer.c:375-382). Mirror LVGL's own
+ * libuv/NuttX port (src/drivers/nuttx/lv_nuttx_libuv.c:141-166): a timer that
+ * becomes due while we sleep must wake the handler now, not at the old
+ * deadline. A null handle means the task has not started yet (bridge init on
+ * the main task creates the drain timer before lvgl_task runs). */
+static void lvgl_resume_cb(void *data)
+{
+    (void)data;
+    if (s_lvgl_task != NULL) xTaskNotifyGive(s_lvgl_task);
+}
+
+/* Board-internal cross-task wake hook. Producers that do not create an LVGL
+ * timer (panel wake, screen capture, Queue A posts via the registered
+ * ui-bridge callback) call this after publishing their request so the LVGL
+ * task services it immediately. Safe before task creation (no-op). */
+void lume_lvgl_wake(void)
+{
+    if (s_lvgl_task != NULL) xTaskNotifyGive(s_lvgl_task);
 }
 
 /* LVGL super-loop. M1: all LVGL calls are confined to this task + the ISR
  * flush-ready callback; M3's JS bridge must add a mutex before touching LVGL
- * from the engine task. */
+ * from the engine task. r93: deadline sleep woken by notifications; no fixed
+ * poll cap. */
 static void lvgl_task(void *arg)
 {
     (void)arg;
+    s_lvgl_task = xTaskGetCurrentTaskHandle();
+    lv_timer_handler_set_resume_cb(lvgl_resume_cb, NULL);
     for (;;) {
         if (atomic_load(&s_frame_paused)) {
             xSemaphoreGive(s_pause_ack);
-            vTaskDelay(pdMS_TO_TICKS(10));
+            /* Notification-aware pause poll so lume_display_wake() can cut
+             * the 10 ms pause tick short. */
+            ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(10));
             continue;
         }
         if (atomic_exchange(&s_redraw_pending, false)) lume_display_invalidate_all();
@@ -126,11 +159,22 @@ static void lvgl_task(void *arg)
 #if CONFIG_LUME_PERF_PROFILE
         lume_perf_log_second();
 #endif
-        /* LV_NO_TIMER_READY is UINT32_MAX. Bound sleep so a cross-task
-         * invalidation can still be serviced promptly; zero means retry. */
-        if (wait_ms == 0) wait_ms = 1;
-        if (wait_ms > 10) wait_ms = 10;
-        vTaskDelay(pdMS_TO_TICKS(wait_ms));
+        /* LV_NO_TIMER_READY is UINT32_MAX: sleep until a notification wakes
+         * us. Otherwise sleep exactly to LVGL's next deadline. The sleep is
+         * interrupted early by lvgl_resume_cb (an LVGL timer became due) or
+         * by lume_lvgl_wake() (a cross-task request). This replaces r36b's
+         * `if (wait_ms > 10) wait_ms = 10` fixed poll cap. A zero return
+         * means "retry now"; clamp to 1 ms only to avoid a busy loop.
+         * lv_tick is driven by esp_timer (lume_board.c:43-46), not by this
+         * task's sleep, so animation deadlines do not drift. */
+        TickType_t wait_ticks;
+        if (wait_ms == LV_NO_TIMER_READY) {
+            wait_ticks = portMAX_DELAY;
+        } else {
+            if (wait_ms == 0) wait_ms = 1;
+            wait_ticks = pdMS_TO_TICKS(wait_ms);
+        }
+        ulTaskNotifyTake(pdTRUE, wait_ticks);
     }
 }
 
@@ -140,6 +184,7 @@ esp_err_t lume_display_sleep(void)
     if (s_panel_asleep) return ESP_OK;
     xSemaphoreTake(s_pause_ack, 0); /* discard an old acknowledgement */
     atomic_store(&s_frame_paused, true);
+    lume_lvgl_wake(); /* cut short the current deadline sleep */
     if (xSemaphoreTake(s_pause_ack, pdMS_TO_TICKS(1000)) != pdTRUE) {
         atomic_store(&s_frame_paused, false);
         return ESP_ERR_TIMEOUT;
@@ -158,6 +203,7 @@ esp_err_t lume_display_wake(void)
         s_panel_asleep = false;
         atomic_store(&s_redraw_pending, true);
         atomic_store(&s_frame_paused, false);
+        lume_lvgl_wake(); /* leave the paused 10 ms tick immediately */
     }
     return err;
 }

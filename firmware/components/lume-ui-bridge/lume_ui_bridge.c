@@ -41,6 +41,7 @@ static const char *TAG = "lume-ui-bridge";
 #define LUME_POST_MAX_ATTEMPTS 8   /* finite retries when Queue A is full */
 
 static QueueHandle_t s_ui_queue;                  /* Queue A */
+static void (*s_wake_cb)(void);                   /* r93: LVGL task wake hook */
 static lv_obj_t *s_nodes[LUME_MAX_NODES];         /* id -> lv_obj* (LVGL task) */
 static uint8_t s_kinds[LUME_MAX_NODES];           /* id -> kind   (LVGL task) */
 static bool s_failed_nodes[LUME_MAX_NODES];       /* suppress queued ops after failed CREATE */
@@ -1782,6 +1783,7 @@ int lume_ui_bridge_post(const lume_ui_msg_t *msg)
      * policy (no rollback/resync); full JS<->UI recovery is the M3 cut. */
     for (int attempt = 0; attempt < LUME_POST_MAX_ATTEMPTS; attempt++) {
         if (xQueueSend(s_ui_queue, msg, pdMS_TO_TICKS(2)) == pdTRUE) {
+            if (s_wake_cb != NULL) s_wake_cb();
             return 0;
         }
     }
@@ -1790,6 +1792,11 @@ int lume_ui_bridge_post(const lume_ui_msg_t *msg)
              "JS/UI state may diverge (M1 log-only, resync in M3)",
              LUME_POST_MAX_ATTEMPTS, (unsigned)msg->op, (unsigned)msg->node_id);
     return -1;
+}
+
+void lume_ui_bridge_set_wake_cb(void (*wake_cb)(void))
+{
+    s_wake_cb = wake_cb;
 }
 
 void lume_ui_bridge_init(void)
