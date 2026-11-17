@@ -277,6 +277,13 @@ declare function Image(props: lume.ui.ImageProps): lume.ui.Node;
 declare namespace lume.image {
   /** Reads PNG IHDR or JPEG SOF only. -1 invalid/oversize (>480x480); -2 corrupt/unsupported. */
   function sizeOf(bytes: ArrayBuffer): { width: number; height: number } | -1 | -2;
+  /** Decode PNG/JPEG bytes into a JS-heap Uint16Array holding the RGB565
+   * colour plane (little-endian words; PNG's A8 plane is discarded). With both
+   * maxW and maxH supplied, the decoded grid is scaled in one step with
+   * nearest sampling; omit both for intrinsic size. Single images keep the
+   * existing 480x480 raster cap. Returns -1 for bad arguments/types, -2 for
+   * corrupt/oversize data or invalid target dimensions, -3 for PSRAM OOM. */
+  function decode(bytes: ArrayBuffer, maxW?: number, maxH?: number): { width: number; height: number; pixels: Uint16Array } | -1 | -2 | -3;
 }
 declare function Canvas(props: lume.ui.CanvasProps): lume.ui.Node;
 declare function signal<T>(initial: T): (() => T) & { set(value: T): void };

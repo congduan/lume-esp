@@ -2784,6 +2784,7 @@ static void register_bindings(JSContext *ctx)
     extern void lume_math_register(JSContext *ctx, JSValue lume);
     extern void lume_fft_register(JSContext *ctx, JSValue lume);
     extern void lume_imgscale_register(JSContext *ctx, JSValue lume);
+    extern void lume_image_decode_register(JSContext *ctx, JSValue image);
     JSValue global = JS_GetGlobalObject(ctx);
     JSValue lume = JS_NewObject(ctx);
     lume_math_register(ctx, lume);
@@ -2811,6 +2812,7 @@ static void register_bindings(JSContext *ctx)
     JSValue image = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, image, "sizeOf", JS_NewCFunction(ctx, js_image_size_of, "sizeOf", 1));
     JS_SetPropertyStr(ctx, image, "_setSource", JS_NewCFunction(ctx, js_image_set_source, "_setSource", 4));
+    lume_image_decode_register(ctx, image);
     JS_SetPropertyStr(ctx, lume, "image", image);
     JS_SetPropertyStr(ctx, lume, "setAttr",
                       JS_NewCFunction(ctx, js_set_attr, "setAttr", 3));
