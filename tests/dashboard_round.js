@@ -1,0 +1,26 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const { runApp } = require('./lib/prelude_runner');
+const source = fs.readFileSync('examples/dashboard_round/app.js', 'utf8');
+const pure = vm.createContext({});
+vm.runInContext(source.split('/* GAME UI */')[0], pure);
+assert.equal(pure.roundWrap(-90), 270);
+assert.equal(pure.roundIntegrate(350, 20, 1000), 10);
+assert.equal(pure.roundIntegrate(0, 90, 1000), 90);
+assert.deepEqual(Array.from(pure.roundBubble(0, 0)), [0, 0]);
+assert.deepEqual(Array.from(pure.roundBubble(9.81, -9.81)), [65, -43]);
+assert.deepEqual(Array.from(pure.roundBubble(4.905, 0)), [33, 0]);
+for (const imu of [undefined, { read: () => ({ ax: 1, ay: -2, az: 9, gx: 0, gy: 0, gz: 90 }) }]) {
+  const ui = runApp(source, imu ? { imu } : {});
+  const start = ui.messages.length;
+  ui.ctx.roundTick();
+  const frame = ui.messages.slice(start);
+  const count = frame.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
+  assert.ok(count < 200, `dashboard draw calls ${count}`);
+  assert.ok(frame.some(m => m[0] === 'invalidate'));
+  assert.ok(!frame.some(m => JSON.stringify(m).includes('NaN')));
+  assert.equal(ui.ctx.roundData().sim, !imu);
+  console.log(`PASS dashboard_round ${imu ? 'IMU' : 'SIM'} prelude, ${count} calls/frame`);
+}
+console.log('PASS dashboard_round relative heading and linear level mapping');
