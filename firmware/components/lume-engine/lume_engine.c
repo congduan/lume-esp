@@ -2585,8 +2585,10 @@ static JSValue js_mp3_id3v2(JSContext *ctx, JSValueConst self, int argc, JSValue
 
 static void register_bindings(JSContext *ctx)
 {
+    extern void lume_math_register(JSContext *ctx, JSValue lume);
     JSValue global = JS_GetGlobalObject(ctx);
     JSValue lume = JS_NewObject(ctx);
+    lume_math_register(ctx, lume);
     /* JS_SetPropertyStr consumes the passed value (no JS_FreeValue needed). */
     JS_SetPropertyStr(ctx, lume, "createNode",
                       JS_NewCFunction(ctx, js_create_node, "createNode", 2));

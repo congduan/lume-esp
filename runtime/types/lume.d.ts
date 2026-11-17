@@ -1001,7 +1001,17 @@ declare namespace lume.gesture {
   };
 }
 
+/** Float32Array operations use the view directly. vecAdd/vecScale mutate a. */
+declare namespace lume.math {
+  function vecAdd(a: Float32Array, b: Float32Array): Float32Array;
+  function vecScale(a: Float32Array, scale: number): Float32Array;
+  function dot(a: Float32Array, b: Float32Array): number;
+  /** acc is interleaved [ax, ay]; vx and vy are mutated in place. */
+  function integrate(acc: Float32Array, vx: Float32Array, vy: Float32Array, dt: number): void;
+}
+
 declare namespace lume {
+  const math: typeof lume.math;
   const ui: typeof lume.ui;
   const system: typeof lume.system;
   const app: typeof lume.app;
