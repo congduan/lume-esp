@@ -9,9 +9,16 @@ int main(void) {
  uint8_t map[256]; for(int y=0;y<16;y++)for(int x=0;x<16;x++)map[y*16+x]=rows[y][x]-'0';
  uint16_t *pixels=calloc(480*480,sizeof(uint16_t));
  lume_raycast_frame_t f={.map=map,.map_w=16,.map_h=16,.px=3.5f,.py=7.5f,.angle=-0.2f,.pixels=pixels,.width=480,.height=480,.stride=480};
+ uint8_t textures[768]; for(int i=0;i<768;i++)textures[i]=(uint8_t)((i/16+i)%16);
  for(int i=0;i<10;i++)lume_raycast_render(&f);
  double start=now_ms(); for(int i=0;i<120;i++){f.angle=-0.2f+i*0.001f;lume_raycast_render(&f);} double ms=(now_ms()-start)/120.0;
  unsigned long checksum=0; for(int i=0;i<480*480;i++)checksum+=pixels[i];
  printf("C host 480x480 frames=120 ms/frame=%.3f equivalent_fps=%.1f checksum=%lu\n",ms,1000.0/ms,checksum);
+ f.textures=textures; start=now_ms();for(int i=0;i<120;i++){f.angle=-0.2f+i*0.001f;lume_raycast_render(&f);}ms=(now_ms()-start)/120.0;
+ checksum=0;for(int i=0;i<480*480;i++)checksum+=pixels[i];
+ printf("C host textured 480x480 frames=120 ms/frame=%.3f equivalent_fps=%.1f checksum=%lu\n",ms,1000.0/ms,checksum);
+ f.quality=4;start=now_ms();for(int i=0;i<120;i++){f.angle=-0.2f+i*0.001f;lume_raycast_render(&f);}ms=(now_ms()-start)/120.0;
+ checksum=0;for(int i=0;i<480*480;i++)checksum+=pixels[i];
+ printf("C host textured q4 480x480 frames=120 ms/frame=%.3f equivalent_fps=%.1f checksum=%lu\n",ms,1000.0/ms,checksum);
  free(pixels);return 0;
 }
