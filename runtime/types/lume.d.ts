@@ -130,6 +130,21 @@ declare namespace lume.ui {
     retainSegments(segments: [number, number, number, number][], color: `#${string}` | number, width?: number): number;
     /** Replays a retained path, optionally offset by (dx, dy) pixels. */
     drawPath(pathId: number, dx?: number, dy?: number): void;
+    /**
+     * Uploads an RGB565 bitmap once (r81) and returns 0 on success. `pixels`
+     * must be a Uint16Array of exactly `w*h` entries; slot ids are 1..8 per
+     * canvas and re-defining a slot replaces the previous bitmap. Pixels equal
+     * to 0x0000 (pure black) are transparent when drawn — use #000001 for
+     * near-black ink. The runtime keeps a PSRAM copy (8-slot budget caps all
+     * sprites of one canvas at 460,800 bytes), so per-frame redraws pay one
+     * drawImage() call instead of per-pixel JS.
+     */
+    retainImage(slot: number, w: number, h: number, pixels: Uint16Array): number;
+    /**
+     * Replays a retained sprite at (dx, dy), clipping to the canvas edges.
+     * `flip` mirrors the sprite horizontally (characters facing left/right).
+     */
+    drawImage(slot: number, dx?: number, dy?: number, flip?: boolean): void;
   }
   interface CanvasProps {
     /** 1..480 pixels; all canvases share a 460,800-byte RGB565 budget. */

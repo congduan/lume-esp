@@ -170,6 +170,11 @@ typedef enum {
     LUME_OP_TRANSITION_COVER,
     LUME_OP_RAYCAST_RENDER, /* image_pixels: owned frame descriptor; map borrowed */
     LUME_OP_RAYCAST_BARRIER, /* image_pixels: engine-owned semaphore, signal after queued renders */
+    /* r81 canvas sprites: DEFINE owns a PSRAM RGB565 payload (attr = slot,
+     * image_w/h = dims); DRAW replays it (attr = slot, from/to = dx/dy,
+     * token = flip flag). Appended at the tail so existing IDs are unchanged. */
+    LUME_OP_CANVAS_SPRITE_DEFINE,
+    LUME_OP_CANVAS_SPRITE_DRAW,
 } lume_op_t;
 
 #define LUME_CANVAS_BATCH_MAX 32
@@ -181,6 +186,12 @@ typedef struct { int16_t x1, y1, x2, y2; uint32_t color; uint8_t width; uint8_t 
 #define LUME_CANVAS_PATHS 8             /* retained paths per canvas */
 #define LUME_CANVAS_PATH_SEG_MAX 240    /* segments in one path (= polyline cap - 1) */
 #define LUME_CANVAS_PATH_BUDGET (32u * 1024u)   /* PSRAM cap for all retained paths */
+
+/* r81 retained sprites: same 8-slot / bounded-budget discipline as paths.
+ * Budget = one full-screen RGBA5551 copy (480*480*2 B); typical game sprites
+ * are a few KB each. 0 is reserved by the JS API (slot ids are 1-based). */
+#define LUME_CANVAS_SPRITES 8                       /* retained sprites per canvas */
+#define LUME_CANVAS_SPRITE_BUDGET (480u * 480u * 2u) /* PSRAM cap for all sprites */
 
 typedef enum { LUME_DRAW_CLEAR = 0, LUME_DRAW_RECT, LUME_DRAW_LINE,
                LUME_DRAW_CIRCLE, LUME_DRAW_TEXT,

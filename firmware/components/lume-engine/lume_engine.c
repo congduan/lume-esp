@@ -884,6 +884,73 @@ static JSValue js_canvas_path_draw(JSContext *ctx, JSValueConst this_val,
     if (lume_ui_bridge_post(&m) != 0) return JS_ThrowInternalError(ctx, "lume: ui queue full");
     return JS_UNDEFINED;
 }
+/* r81: retained canvas sprites. DEFINE takes a Uint16Array of RGB565 pixels
+ * (length must equal w*h) and hands a PSRAM copy to the bridge, which owns it
+ * until the canvas dies or the slot is redefined — the r45 retained-path
+ * pattern, so a sprite-heavy app uploads each bitmap once instead of paying
+ * per-frame JS pixel work. DRAW replays slot `sprite` at dx/dy; flip mirrors
+ * horizontally (character sprites facing left/right). */
+static JSValue js_canvas_sprite_define(JSContext *ctx, JSValueConst this_val,
+                                       int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t id, sprite, w, h;
+    if (argc != 5 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &sprite, argv[1]) < 0 ||
+        JS_ToInt32(ctx, &w, argv[2]) < 0 || JS_ToInt32(ctx, &h, argv[3]) < 0)
+        return JS_ThrowTypeError(ctx, "lume: canvasSpriteDefine needs id, sprite, w, h, pixels");
+    if (id < 1 || id >= LUME_MAX_NODES) return JS_ThrowRangeError(ctx, "lume: invalid canvas id");
+    if (sprite < 1 || sprite > LUME_CANVAS_SPRITES)
+        return JS_ThrowRangeError(ctx, "lume: sprite id must be 1..%d", LUME_CANVAS_SPRITES);
+    if (w < 1 || h < 1 || w > LUME_LCD_H_RES || h > LUME_LCD_V_RES)
+        return JS_ThrowRangeError(ctx, "lume: sprite size out of range");
+    if ((int64_t)w * h * 2 > (int64_t)LUME_CANVAS_SPRITE_BUDGET)
+        return JS_ThrowRangeError(ctx, "lume: sprite too large");
+    if (JS_GetTypedArrayType(argv[4]) != JS_TYPED_ARRAY_UINT16)
+        return JS_ThrowTypeError(ctx, "lume: sprite pixels must be Uint16Array");
+    size_t offset, bytes, element, size;
+    JSValue buffer = JS_GetTypedArrayBuffer(ctx, argv[4], &offset, &bytes, &element);
+    if (JS_IsException(buffer)) return JS_EXCEPTION;
+    uint8_t *base = JS_GetArrayBuffer(ctx, &size, buffer);
+    if (!base || element != 2 || offset > size || bytes != (size_t)w * h * 2u ||
+        bytes > size - offset) {
+        JS_FreeValue(ctx, buffer);
+        return JS_ThrowRangeError(ctx, "lume: sprite length must equal w*h");
+    }
+    uint16_t *px = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
+    if (!px) { JS_FreeValue(ctx, buffer); return JS_ThrowOutOfMemory(ctx); }
+    memcpy(px, base + offset, bytes);
+    JS_FreeValue(ctx, buffer);
+    if (s_node_dead[id]) { heap_caps_free(px); return JS_NewInt32(ctx, 0); }
+    lume_ui_msg_t m; msg_init(&m); m.op = LUME_OP_CANVAS_SPRITE_DEFINE; m.node_id = id;
+    m.attr = (uint8_t)(sprite - 1); m.image_pixels = px;
+    m.image_w = (uint16_t)w; m.image_h = (uint16_t)h;
+    if (lume_ui_bridge_post(&m) != 0) { heap_caps_free(px); return JS_ThrowInternalError(ctx, "lume: ui queue full"); }
+    return JS_NewInt32(ctx, 0);
+}
+static JSValue js_canvas_sprite_draw(JSContext *ctx, JSValueConst this_val,
+                                     int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    int32_t id, sprite, dx = 0, dy = 0, flip = 0;
+    if (argc < 2 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &sprite, argv[1]) < 0)
+        return JS_ThrowTypeError(ctx, "lume: canvasSpriteDraw needs id and sprite");
+    if (argc > 2 && JS_ToInt32(ctx, &dx, argv[2]) < 0) return JS_EXCEPTION;
+    if (argc > 3 && JS_ToInt32(ctx, &dy, argv[3]) < 0) return JS_EXCEPTION;
+    if (argc > 4 && JS_ToInt32(ctx, &flip, argv[4]) < 0) return JS_EXCEPTION;
+    if (id < 1 || id >= LUME_MAX_NODES) return JS_ThrowRangeError(ctx, "lume: invalid canvas id");
+    if (sprite < 1 || sprite > LUME_CANVAS_SPRITES)
+        return JS_ThrowRangeError(ctx, "lume: sprite id must be 1..%d", LUME_CANVAS_SPRITES);
+    if (dx < -LUME_LCD_H_RES || dx > LUME_LCD_H_RES ||
+        dy < -LUME_LCD_V_RES || dy > LUME_LCD_V_RES)
+        return JS_ThrowRangeError(ctx, "lume: canvas draw argument out of range");
+    if (s_node_dead[id]) return JS_UNDEFINED;
+    lume_ui_msg_t m; msg_init(&m); m.op = LUME_OP_CANVAS_SPRITE_DRAW; m.node_id = id;
+    m.attr = (uint8_t)(sprite - 1); m.from = dx; m.to = dy; m.token = flip ? 1u : 0u;
+    if (lume_ui_bridge_post(&m) != 0) return JS_ThrowInternalError(ctx, "lume: ui queue full");
+    return JS_UNDEFINED;
+}
 static JSValue js_canvas_invalidate(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
 {
     (void)this_val;
@@ -2734,6 +2801,10 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_canvas_path_define, "canvasPathDefine", 3));
     JS_SetPropertyStr(ctx, lume, "canvasPathDraw",
                       JS_NewCFunction(ctx, js_canvas_path_draw, "canvasPathDraw", 4));
+    JS_SetPropertyStr(ctx, lume, "canvasSpriteDefine",
+                      JS_NewCFunction(ctx, js_canvas_sprite_define, "canvasSpriteDefine", 5));
+    JS_SetPropertyStr(ctx, lume, "canvasSpriteDraw",
+                      JS_NewCFunction(ctx, js_canvas_sprite_draw, "canvasSpriteDraw", 5));
     JS_SetPropertyStr(ctx, lume, "canvasInvalidate", JS_NewCFunction(ctx, js_canvas_invalidate, "canvasInvalidate", 1));
     JSValue image = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, image, "sizeOf", JS_NewCFunction(ctx, js_image_size_of, "sizeOf", 1));

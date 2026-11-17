@@ -66,6 +66,12 @@ static size_t s_canvas_bytes;
 static lume_canvas_line_t *s_path_lines[LUME_MAX_NODES][LUME_CANVAS_PATHS];
 static uint16_t s_path_count[LUME_MAX_NODES][LUME_CANVAS_PATHS];
 static size_t s_path_bytes;
+/* r81 retained sprites (see LUME_OP_CANVAS_SPRITE_DEFINE): same discipline as
+ * paths — define owns a PSRAM RGB565 payload, draw replays it from C. */
+static uint16_t *s_sprite_px[LUME_MAX_NODES][LUME_CANVAS_SPRITES];
+static uint16_t s_sprite_w[LUME_MAX_NODES][LUME_CANVAS_SPRITES];
+static uint16_t s_sprite_h[LUME_MAX_NODES][LUME_CANVAS_SPRITES];
+static size_t s_sprite_bytes;
 /* r27: canvas budget is one full framebuffer; geometry comes from the board
  * profile instead of a hardcoded frame size. Every canvas is double buffered
  * (front + work), so the budget counts two full framebuffer images. */
@@ -846,6 +852,18 @@ static void canvas_release_paths(uint16_t id)
         }
     }
 }
+/* r81: drop every retained sprite of one canvas (mirrors canvas_release_paths). */
+static void canvas_release_sprites(uint16_t id)
+{
+    for (uint8_t slot = 0; slot < LUME_CANVAS_SPRITES; slot++) {
+        if (s_sprite_px[id][slot] != NULL) {
+            s_sprite_bytes -= (size_t)s_sprite_w[id][slot] * s_sprite_h[id][slot] * 2u;
+            heap_caps_free(s_sprite_px[id][slot]);
+            s_sprite_px[id][slot] = NULL;
+            s_sprite_w[id][slot] = s_sprite_h[id][slot] = 0;
+        }
+    }
+}
 static void release_dead_canvases(void)
 {
     for (uint16_t id = 1; id < LUME_MAX_NODES; id++) {
@@ -858,6 +876,7 @@ static void release_dead_canvases(void)
             s_canvas_work[id] = NULL;
             s_canvas_pixels[id] = NULL;
             canvas_release_paths(id);
+            canvas_release_sprites(id);
         }
     }
 }
@@ -1055,6 +1074,61 @@ static void apply_canvas_path_draw(const lume_ui_msg_t *m)
         canvas_line(&surf, line->x1 + dx, line->y1 + dy, line->x2 + dx, line->y2 + dy,
                     line->width);
     }
+}
+
+/* r81: retained sprite DEFINE — take ownership of the PSRAM RGB565 payload in
+ * slot [id-1] (attr = slot-1), mirroring apply_canvas_path_define's budget
+ * accounting. A define for an occupied slot replaces (and frees) the previous
+ * bitmap, which is how an app swaps animation frames without leaking. */
+static void apply_canvas_sprite_define(const lume_ui_msg_t *m)
+{
+    uint16_t id = m->node_id;
+    uint16_t *px = (uint16_t *)m->image_pixels;
+    uint16_t w = m->image_w, h = m->image_h;
+    uint8_t slot = m->attr;
+    if (id == 0 || id >= LUME_MAX_NODES || !s_canvas_pixels[id] ||
+        !px || w == 0 || h == 0 || slot >= LUME_CANVAS_SPRITES) {
+        ESP_LOGE(TAG, "sprite define id=%u slot=%u %ux%u rejected",
+                 (unsigned)id, (unsigned)slot, (unsigned)w, (unsigned)h);
+        heap_caps_free(px);
+        return;
+    }
+    if (s_sprite_px[id][slot] != NULL) {
+        s_sprite_bytes -= (size_t)s_sprite_w[id][slot] * s_sprite_h[id][slot] * 2u;
+        heap_caps_free(s_sprite_px[id][slot]);
+        s_sprite_px[id][slot] = NULL;
+    }
+    size_t bytes = (size_t)w * h * 2u;
+    if (bytes > LUME_CANVAS_SPRITE_BUDGET - s_sprite_bytes) {
+        ESP_LOGE(TAG, "sprite budget exceeded (%u + %u > %u), sprite dropped",
+                 (unsigned)s_sprite_bytes, (unsigned)bytes,
+                 (unsigned)LUME_CANVAS_SPRITE_BUDGET);
+        heap_caps_free(px);
+        return;
+    }
+    s_sprite_px[id][slot] = px;
+    s_sprite_w[id][slot] = w;
+    s_sprite_h[id][slot] = h;
+    s_sprite_bytes += bytes;
+}
+
+/* r81: retained sprite DRAW — replay one bitmap onto the work buffer from C
+ * (attr = slot-1, from/to = dx/dy, token = flip). The blit is a pure copy
+ * with the 0x0000 colour key, so per-frame JS cost is one function call. */
+static void apply_canvas_sprite_draw(const lume_ui_msg_t *m)
+{
+    uint16_t id = m->node_id;
+    if (id == 0 || id >= LUME_MAX_NODES || !s_canvas_pixels[id]) return;
+    uint8_t slot = m->attr;
+    if (slot >= LUME_CANVAS_SPRITES || s_sprite_px[id][slot] == NULL) return;
+    static lume_raster_surf_t surf;     /* single reader: the LVGL task */
+    surf.px = s_canvas_work[id];
+    surf.w = s_canvas_w[id];
+    surf.h = s_canvas_h[id];
+    surf.stride = s_canvas_stride[id];
+    lume_raster_blit(&surf, s_sprite_px[id][slot],
+                     s_sprite_w[id][slot], s_sprite_h[id][slot],
+                     m->from, m->to, (int32_t)m->token);
 }
 
 /* Publish a finished canvas frame: point lv_canvas at work and make that
@@ -1617,6 +1691,8 @@ void lume_ui_bridge_drain(void)
                 break;
             case LUME_OP_CANVAS_PATH_DEFINE: apply_canvas_path_define(&m); break;
             case LUME_OP_CANVAS_PATH_DRAW: apply_canvas_path_draw(&m); break;
+            case LUME_OP_CANVAS_SPRITE_DEFINE: apply_canvas_sprite_define(&m); break;
+            case LUME_OP_CANVAS_SPRITE_DRAW: apply_canvas_sprite_draw(&m); break;
             case LUME_OP_IMAGE_SOURCE: apply_image_source(&m); break;
             case LUME_OP_CANVAS_INVALIDATE:
                 /* Frame complete: publish the finished image. */

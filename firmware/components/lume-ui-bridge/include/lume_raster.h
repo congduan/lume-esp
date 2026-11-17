@@ -376,4 +376,44 @@ static void lume_raster_arc(const lume_raster_surf_t *s,
     }
 }
 
+/* ---- r81: canvas sprite blit (retained RGB565 image, roadmap P2 key) -----
+ *
+ * ctx.retainImage(slot, w, h, Uint16Array) uploads once (PSRAM, bridge-side,
+ * LUME_OP_CANVAS_SPRITE_DEFINE); ctx.drawImage(slot, dx, dy, flip) replays a
+ * clipped copy onto the canvas work buffer from C, so a sprite-heavy app pays
+ * no per-pixel JS (the engine runs at ~0.5 Mops/s). Mirrors the r45 retained
+ * path discipline: define owns a bounded budget, draw is a pure replay.
+ *
+ * Transparency is a colour key, not an alpha plane: source pixels equal to
+ * 0x0000 (RGB565 pure black) are skipped, everything else is copied opaque.
+ * Apps that need near-black use #000001 (RGB565 0x0001 still 3x3x1 channels,
+ * visually indistinguishable on the AMOLED panel). Recorded in
+ * docs/KNOWN-SIMPLIFICATIONS.md (r81).
+ *
+ * Coordinates may be negative or exceed the surface: the loops clip against
+ * the surface like the r47 rasterisers, and sx/sy step so that the source
+ * rectangle stays aligned when destination rows/columns are cut. flip
+ * mirrors the source horizontally (character sprites facing left/right).
+ * Row padding (stride > w) is never touched.
+ */
+static void lume_raster_blit(const lume_raster_surf_t *s,
+                             const uint16_t *src, int32_t sw, int32_t sh,
+                             int32_t dx, int32_t dy, int32_t flip)
+{
+    if (!src || sw < 1 || sh < 1) return;
+    for (int32_t sy = 0; sy < sh; sy++) {
+        int32_t py = dy + sy;
+        if (py < 0 || py >= s->h) continue;
+        uint16_t *row = s->px + (size_t)py * s->stride;
+        const uint16_t *srow = src + (size_t)sy * sw;
+        for (int32_t sx = 0; sx < sw; sx++) {
+            uint16_t c = srow[flip ? sw - 1 - sx : sx];
+            if (c == 0x0000) continue;          /* colour key: transparent */
+            int32_t px = dx + sx;
+            if (px < 0 || px >= s->w) continue;
+            row[px] = c;
+        }
+    }
+}
+
 #endif /* LUME_RASTER_H */

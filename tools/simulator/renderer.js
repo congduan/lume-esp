@@ -51,6 +51,8 @@
       else if (op === 'batch') this.batch(m);
       else if (op === 'pathDefine') this.pathDefine(m);
       else if (op === 'pathDraw') this.pathDraw(m);
+      else if (op === 'spriteDefine') this.spriteDefine(m);
+      else if (op === 'spriteDraw') this.spriteDraw(m);
       /* invalidate is a native-side dirty flag; the following draw/batch
        * messages replay the full frame, so nothing to do in the browser. */
     }
@@ -152,6 +154,36 @@
       const flat = (this.paths || new Map()).get(`${id}:${pid}`);
       if (flat) this.batch([, id, ...flat]);
       void dx; void dy;
+    }
+    /* r81 retainImage(): RGB565 pixels uploaded once; drawImage() replays them
+     * with the 0x0000 colour key and optional horizontal flip (mirrors the
+     * firmware blit in lume_raster.h). */
+    spriteDefine(m) {
+      const [, id, slot, w, h, px] = m;
+      this.sprites = this.sprites || new Map();
+      this.sprites.set(`${id}:${slot}`, { w, h, px });
+    }
+    spriteDraw(m) {
+      const [, id, slot, dx = 0, dy = 0, flip = 0] = m;
+      const el = this.nodes.get(id); if (!el || !el.getContext) return;
+      const bmp = (this.sprites || new Map()).get(`${id}:${slot}`);
+      if (!bmp) return;
+      const c = el.getContext('2d');
+      const img = c.createImageData(bmp.w, bmp.h);
+      for (let y = 0; y < bmp.h; y++) {
+        for (let x = 0; x < bmp.w; x++) {
+          const v = bmp.px[y * bmp.w + (flip ? bmp.w - 1 - x : x)];
+          if (v === 0x0000) continue;               /* colour key: transparent */
+          const px = dx + x, py = dy + y;
+          if (px < 0 || py < 0 || px >= el.width || py >= el.height) continue;
+          const o = (py * el.width + px) * 4;
+          img.data[o] = ((v >> 11) & 0x1f) * 255 / 31 | 0;
+          img.data[o + 1] = ((v >> 5) & 0x3f) * 255 / 63 | 0;
+          img.data[o + 2] = (v & 0x1f) * 255 / 31 | 0;
+          img.data[o + 3] = 255;
+        }
+      }
+      c.putImageData(img, 0, 0);
     }
   }
   global.LumeRenderer = Renderer;
