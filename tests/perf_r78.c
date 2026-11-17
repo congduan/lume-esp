@@ -65,11 +65,11 @@ int main(int argc, char **argv) {
       "let acc=new Float32Array(2000),vx=new Float32Array(1000),vy=new Float32Array(1000);"
       "for(let i=0;i<1000;i++){acc[2*i]=Math.fround(i/1000);acc[2*i+1]=Math.fround(-i/2000);vx[i]=1;vy[i]=-1;}"
       "let ex=new Float32Array(vx),ey=new Float32Array(vy);"
-      "for(let s=0;s<100;s++)for(let i=0;i<1000;i++){ex[i]+=acc[2*i]*Math.fround(0.016);ey[i]+=acc[2*i+1]*Math.fround(0.016)}"
+      "for(let s=0;s<100;s++)for(let i=0;i<1000;i++){ex[i]+=acc[2*i]*0.016;ey[i]+=acc[2*i+1]*0.016}"
       "for(let s=0;s<100;s++)lume.math.integrate(acc,vx,vy,0.016);eq(vx,ex);eq(vy,ey);"
       "globalThis.r78Acc=acc;globalThis.r78Vx=vx;globalThis.r78Vy=vy;"
     );
-    const char *js_loop = "for(let s=0;s<100;s++)for(let i=0;i<1000;i++){r78Vx[i]+=r78Acc[2*i]*Math.fround(0.016);r78Vy[i]+=r78Acc[2*i+1]*Math.fround(0.016)}";
+    const char *js_loop = "for(let s=0;s<100;s++)for(let i=0;i<1000;i++){r78Vx[i]+=r78Acc[2*i]*0.016;r78Vy[i]+=r78Acc[2*i+1]*0.016}";
     const char *native_loop = "for(let s=0;s<100;s++)lume.math.integrate(r78Acc,r78Vx,r78Vy,0.016)";
     t0 = now_ms(); run_code(ctx, js_loop); double js_ms = now_ms()-t0;
     t0 = now_ms(); run_code(ctx, native_loop); double native_ms = now_ms()-t0;

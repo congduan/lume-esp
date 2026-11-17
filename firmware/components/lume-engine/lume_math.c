@@ -50,7 +50,7 @@ static JSValue math_vec_scale(JSContext *ctx, JSValueConst this_val, int argc, J
     if (JS_ToFloat64(ctx, &scale, argv[1])) return JS_EXCEPTION;
     float_view_t a;
     if (float_view(ctx, argv[0], &a)) return JS_EXCEPTION;
-    for (size_t i = 0; i < a.length; i++) a.data[i] *= (float)scale;
+    for (size_t i = 0; i < a.length; i++) a.data[i] = (float)((double)a.data[i] * scale);
     JS_FreeValue(ctx, a.buffer);
     return JS_DupValue(ctx, argv[0]);
 }
@@ -89,7 +89,7 @@ static JSValue math_integrate(JSContext *ctx, JSValueConst this_val, int argc, J
         JS_FreeValue(ctx, acc.buffer); JS_FreeValue(ctx, vx.buffer); JS_FreeValue(ctx, vy.buffer);
         return JS_ThrowRangeError(ctx, "acc must have twice as many elements as vx and vy");
     }
-    float step = (float)dt;
+    double step = dt;
     for (size_t i = 0; i < vx.length; i++) {
         /* JS Float32Array assignments round once after double arithmetic. */
         vx.data[i] = (float)((double)vx.data[i] + (double)acc.data[2 * i] * step);
