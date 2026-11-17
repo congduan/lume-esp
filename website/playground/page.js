@@ -30,6 +30,7 @@
     ['lcd_dual','◫','LCD dual','双屏 LCD','Segment-LCD catch & dodge','幽灵段接面包与闪避'],
     ['memory','▸','Memory Match','记忆翻牌','4x4 pair-matching card game','4x4 配对翻牌'],
     ['minesweeper','✸','Minesweeper','扫雷','10x10 grid, tap dig + long-press flag','10x10 扫雷：点开 + 长按插旗'],
+    ['golf','◉','Golf','迷你高尔夫','Swing golf, 10 procedural holes','体感挥杆，10 个程序化球洞'],
   ];
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');
