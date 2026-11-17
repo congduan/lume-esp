@@ -27,6 +27,9 @@ int main(void) {
     assert(at(25,25)==0 && at(43,25)!=0 && at(25,33)!=0);
     assert(at(25,29)==0); /* width 3 does not fill four pixels inside */
     puts("PASS ellipse stroke and hollow center");
+    reset(); lume_raster_ellipse_ring(&surf,25,25,18,8,1);
+    assert(at(43,25)==0xffff && at(42,25)==0 && at(44,25)==0);
+    puts("PASS width 1 is centred on the ellipse radius");
     reset(); lume_raster_fill_circle(&surf,-2,5,12);
     lume_raster_fill_ellipse(&surf,62,62,15,9);
     lume_raster_ellipse_ring(&surf,62,3,9,8,4);
