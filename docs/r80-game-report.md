@@ -103,6 +103,7 @@ raycast game: 18 cases PASS
 PASS raycast UV center east: u=7 v=8 palette=6 rgb565=0xc638
 PASS sprite visible at center rgb565=0x4149
 PASS sprite occluded by column z-buffer rgb565=0x9d14
+PASS far-to-near sprite sort rgb565=0x4149
 ```
 
 全量 `for t in tests/*.js; do node "$t" ...; done` 原始输出（445 行、零 `FAIL`）：
