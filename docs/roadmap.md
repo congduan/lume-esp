@@ -1086,3 +1086,31 @@ RELOAD ERR=0 / ui queue full=0，无崩溃；3 张 sim 截图 vision 自查粒�
 invaders 93 ms），**不宣称 emu 20 fps 达标**；真机帧率/IMU 方向/触摸观感/
 功耗仍 deferred。详见 `docs/r94-particles-report.md` 与
 `docs/KNOWN-SIMPLIFICATIONS.md`。
+
+### r95 result — voice_assistant 对讲机 demo `examples/voice_assistant`（appended, milestone checkboxes untouched）
+
+语音助手路线 E 刀先行落地为**纯 app 层** legacy 同步模式 demo：
+`IDLE→LISTEN→THINK→SPEAK` 全 signal 状态机，tap/longpress 唤醒与发送、
+SPEAK 中 tap 立即 barge-in 回 IDLE、LISTEN 4 s 看门狗超时回 IDLE，非法迁移拒绝并记日志。
+`lume.ai.chat` / `lume.audio.record` 同步阻塞的诚实处理：只翻 signal + 用
+`setTimeout(...,0)` 错拍到下一帧再发起阻塞调用，**不宣称流式/不卡 UI**；
+「发送→回复」抽象为单一 `vaTransport` 槽（`vaSetTransport` 注入，async-ready），
+逐字上屏按 typewriter 先例只在 timer 写整数 signal，`Text` getter 拼串；
+单 canvas 320×160 = 51,200 px（远低于 230,400 px 全预算），16 电平条 + 局部脏区，
+每帧 18 draw calls。无 key/无网络/无 mic → canned 问答轮换 DEMO 模式，`MODE DEMO/LIVE`
+徽章如实标注；UI 文案纯 ASCII（r64 纪律）。**零固件改动、零 `lume.d.ts` 改动**。
+
+验证原始输出全见 `docs/r95-voice-report.md`：新 `tests/voice_assistant.js` 13 组绿
+（合法性/帧错拍/barge-in/超时/轮换/逐字节拍/canvas 预算/ASCII/transport 注入/
+LIVE 委托/音频降级）；全量 `tests/*.js` 53 文件 0 FAIL；
+`npm test --prefix tools/lume` 43 pass / 0 fail / 1 skipped；
+`lume check examples/voice_assistant --no-emu` 与 counter 哨兵均 PASS；
+playground 36→37 apps 重生成 + 浏览器 verify 全绿（新增「无音频/网络进 DEMO 且可点按」
+定向用例）；`check_website.py` 与 `gen_api_docs.py --check` 绿。
+emu 12 s 烟测（主仓 build 为空，从固件源码与本基线逐字节同一的 r94 worktree
+拷三件套，`EMU_SKIP_BUILD=1`）eval_ok=2 / RELOAD ERR=0 / ui queue full=0，
+TFT 截图 vision 自查为完整 `MODE DEMO / IDLE` 主屏、非白屏。
+未跑 `idf.py build/size`（零固件改动）。诚实口径：legacy 阻塞窗口真实存在、
+无 ASR/TTS（canned prompt + beep 播报）、`MODE LIVE` 仅 harness 注入覆盖，
+真机音频/时延/触摸 barge-in 手感/功耗 deferred to board bring-up。详见
+`docs/r95-voice-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。

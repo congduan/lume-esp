@@ -1359,3 +1359,31 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **KV 偏好**：`pt.mode`（7 字符）只存 `auto`/`demo` 字符串偏好；
   `get()` 用严格 `===` 匹配，不把负数当错误码（r10 歧义口径），
   NVS 不可用时退化为内存偏好。详见 `docs/r94-particles-report.md`。
+
+## r95 / voice_assistant 对讲机 demo examples/voice_assistant（纯 app 层，legacy 同步）
+
+- **legacy 同步阻塞口径**：`lume.ai.chat`（同步 HTTP，最长 120 s）与
+  `lume.audio.record`（整段录音，最长 10 s）都阻塞单引擎 task。本刀只在阻塞前
+  用 `setTimeout(...,0)` 让出一帧渲染 THINK/LISTEN 卡片，**不宣称「不卡 UI」或
+  流式输出**。真流式/全双工需 D 刀网关 + async 路线（A/B/C 固件刀已就绪，
+  D 未拍板），真机「开口 <2 s」时延预算未验证。
+- **无 ASR/TTS 的对讲机闭环**：legacy 没有语音识别/合成——「用户语句」是
+  `VA_CANNED` 里的 canned prompt，录音 PCM 只驱动波形电平（crude RMS），
+  「回答播报」是 0.18 s 660 Hz 合成 beep 经 `audio.play()`，不是语音合成。
+  该 demo 验证的是状态机/产品手感，不验证语音链路正确性。
+- **DEMO 降级**：无 `ai_api_key` 或 `net.status().state !== GOT_IP` → DEMO，
+  4 条 canned 问答轮换；`MODE DEMO/LIVE` 徽章如实标注。host/浏览器因无 key、
+  无网络、无 mic 恒为 DEMO；`MODE LIVE` 仅在 harness 注入下覆盖，未在真机
+  WiFi 下验证。`record()` 返回 -3 时只记日志并保留 demo 电平，不崩溃。
+- **状态机边界**：合法边仅 6 条（`IDLE→LISTEN`、`LISTEN→{IDLE,THINK}`、
+  `THINK→{SPEAK,IDLE}`、`SPEAK→IDLE`）；THINK 中 tap 不动作；barge-in 只在
+  SPEAK 生效；LISTEN 4 s 看门狗超时回 IDLE 而非自动发送。逐字上屏 30 cps
+  按 typewriter 的 OOM 教训只在 timer 写整数 signal，字符串由 `Text` getter
+  拼接；canvas 单 320×160 = 51,200 px（预算 230,400 px 余量充足）。
+- **transport 槽是唯一替换点**：`vaTransport`/`vaSetTransport(fn)` 用 `done(text,err)`
+  回调造型兼容同步 legacy 与未来异步 WS/网关；本刀默认 legacy，未接 D 刀网关。
+- **未做接板验收**：ES7210/ES8311 音频链路、触摸唤醒/长按/打断手感、
+  AMOLED 观感、barge-in 实际延迟、功耗全部 deferred to board bring-up；
+  emu/simulator 不能验证硬件行为（esp32sim 触摸模型与 CST9220 不匹配）。
+  emu 12 s 仅证 eval_ok=2 / RELOAD ERR=0 / ui queue full=0 的 DEMO 主屏不白屏。
+  详见 `docs/r95-voice-report.md`。
