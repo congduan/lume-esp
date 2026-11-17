@@ -1,0 +1,3 @@
+HOST stub: 0 b800 5e0
+BROWSER stub messages: [["gesture",0],["attr",1,1,"0,b800,5e0"]]
+BROWSER stub result: 0,b800,5e0
