@@ -1,0 +1,19 @@
+lume check examples/fishtank
+
+[PASS] bundle   4513 bytes (35 ms)
+[FAIL] eval
+       error: emulator timed out after 120s
+       --- log tail ---
+       Activating ESP-IDF 5.5
+       Setting IDF_PATH to '/opt/esp/esp-idf'.
+       * Checking python version ... 3.12.3
+       * Checking python dependencies ... OK
+       * Deactivating the current ESP-IDF environment (if any) ... OK
+       * Establishing a new ESP-IDF environment ... OK
+       * Identifying shell ... bash
+       * Detecting outdated tools in system ... OK - no outdated tools found
+       * Shell completion ... Autocompletion code generated
+[SKIP] layout   no layout expectations for fishtank
+[SKIP] perf     profile disabled
+
+RESULT: FAIL (4 steps, 1 failed; exit 1)
