@@ -172,6 +172,14 @@
     // r81 retained sprites: DEFINE uploads RGB565 pixels once, DRAW replays.
     canvasSpriteDefine: (id, slot, w, h, px) => emit('spriteDefine', id, slot, w, h, [...px]),
     canvasSpriteDraw: (id, slot, dx, dy, flip) => emit('spriteDraw', id, slot, dx, dy, flip),
+    // r80 raycast: native renders walls via C into the canvas surface; the
+    // browser keeps the map/textures host-side and replays a JS raycaster in
+    // the renderer (see renderer.js 'raycastRender').
+    raycast: {
+      setMap: (w, h, map) => { emit('raycastMap', w, h, [...map]); return 0; },
+      setTextures: (textures) => { emit('raycastTextures', [...textures]); return 0; },
+      render: (id, x, y, angle, hp, sprites) => emit('raycastRender', id, x, y, angle, hp, sprites || []),
+    },
     // Same arity as the native: (id) for a full canvas, (id, x, y, w, h) for a
     // dirty rect. Harnesses rely on the rect to check the redraw budget.
     canvasInvalidate: (...args) => emit('invalidate', ...args),
