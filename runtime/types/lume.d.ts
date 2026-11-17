@@ -1040,6 +1040,24 @@ declare namespace lume.fft {
   function magnitude(out: Float32Array, re: Float32Array, im?: Float32Array): number;
 }
 
+/** Zero-copy RGB565 scaling into a caller-owned Uint16Array. Pure per-pixel
+ * sampling: 0x0000 transparency and colour keys are NOT interpreted here; the
+ * retainImage / drawImage layer owns those semantics. */
+declare namespace lume.imgscale {
+  /** Scale the sw*sh RGB565 pixels in src into the dw*dh region in dst.
+   * Both views are used directly (no backing-store copy); offsets from
+   * subarray() are honoured. mode defaults to 'nearest'; 'bilinear' samples
+   * R5/G6/B5 independently with 8-bit fixed-point weights and clamps to the
+   * source border. dst may be the same view as src only when sw===dw and
+   * sh===dh (in-place copy); partially overlapping buffers are rejected.
+   * Returns 0 on success, -1 for a bad argument/type/mode, -2 for invalid
+   * dimensions, too-short views or buffer overlap, -3 reserved for internal
+   * failure (no reachable path in the current implementation).
+   * Each dimension must be an integer in 1..16384 and each view long enough
+   * for its grid; fractional dimensions are rejected with -2. */
+  function scale(src: Uint16Array, sw: number, sh: number, dst: Uint16Array, dw: number, dh: number, mode?: 'nearest' | 'bilinear'): number;
+}
+
 /** Native DDA renderer for a fixed-size RGB565 Canvas. */
 declare namespace lume.raycast {
   /** Bind a Uint8Array map without copying its backing store.
@@ -1058,6 +1076,7 @@ declare namespace lume.raycast {
 declare namespace lume {
   const math: typeof lume.math;
   const fft: typeof lume.fft;
+  const imgscale: typeof lume.imgscale;
   const raycast: typeof lume.raycast;
   const ui: typeof lume.ui;
   const system: typeof lume.system;

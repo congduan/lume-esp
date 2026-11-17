@@ -58,6 +58,63 @@
     };
   }
 
+  function imgscaleStub() {
+    const isU16 = value => Object.prototype.toString.call(value) === '[object Uint16Array]';
+    const MAX = 16384, FP = 256;
+    const axisNearest = (d, dsize, ssize) => {
+      let pos = Math.floor((2 * d + 1) * ssize / (2 * dsize));
+      return pos < 0 ? 0 : pos >= ssize ? ssize - 1 : pos;
+    };
+    const axisBilinear = (d, dsize, ssize) => {
+      let pos = Math.floor((2 * d + 1) * ssize * FP / (2 * dsize)) - FP / 2;
+      const hi = (ssize - 1) * FP;
+      return pos < 0 ? 0 : pos > hi ? hi : pos;
+    };
+    const lerp = (p00, p10, p01, p11, fx, fy) => {
+      const gx = FP - fx, gy = FP - fy;
+      const w00 = gx * gy, w10 = fx * gy, w01 = gx * fy, w11 = fx * fy;
+      const ch = (shift, mask) => {
+        const v = (((p00 >> shift) & mask) * w00 + ((p10 >> shift) & mask) * w10 +
+          ((p01 >> shift) & mask) * w01 + ((p11 >> shift) & mask) * w11 + 32768) >> 16;
+        return v < 0 ? 0 : v > mask ? mask : v;
+      };
+      return ((ch(11, 31) << 11) | (ch(5, 63) << 5) | ch(0, 31)) & 0xffff;
+    };
+    return {
+      scale(src, sw, sh, dst, dw, dh, mode) {
+        if (!isU16(src) || !isU16(dst)) return -1;
+        if (mode !== undefined && mode !== 'nearest' && mode !== 'bilinear') return -1;
+        const [swi, shi, dwi, dhi] = [sw, sh, dw, dh].map(d => Number(d));
+        if ([swi, shi, dwi, dhi].some(d => !Number.isInteger(d) || d < 1 || d > MAX)) return -2;
+        if (swi > src.length || shi > Math.floor(src.length / swi) ||
+            dwi > dst.length || dhi > Math.floor(dst.length / dwi)) return -2;
+        const overlap = src.buffer === dst.buffer &&
+          src.byteOffset < dst.byteOffset + dwi * dhi * 2 &&
+          dst.byteOffset < src.byteOffset + swi * shi * 2;
+        const inPlace = src.buffer === dst.buffer && src.byteOffset === dst.byteOffset &&
+          swi === dwi && shi === dhi;
+        if (overlap && !inPlace) return -2;
+        const bilinear = mode === 'bilinear';
+        for (let y = 0; y < dhi; y++) {
+          if (!bilinear) {
+            const sy = axisNearest(y, dhi, shi);
+            for (let x = 0; x < dwi; x++) dst[y * dwi + x] = src[sy * swi + axisNearest(x, dwi, swi)];
+          } else {
+            const sy = axisBilinear(y, dhi, shi);
+            const y0 = sy >> 8, fy = sy & 255, y1 = Math.min(y0 + 1, shi - 1);
+            for (let x = 0; x < dwi; x++) {
+              const sx = axisBilinear(x, dwi, swi);
+              const x0 = sx >> 8, fx = sx & 255, x1 = Math.min(x0 + 1, swi - 1);
+              dst[y * dwi + x] = lerp(src[y0 * swi + x0], src[y0 * swi + x1],
+                src[y1 * swi + x0], src[y1 * swi + x1], fx, fy);
+            }
+          }
+        }
+        return 0;
+      },
+    };
+  }
+
   function createSession(script, options = {}) {
     const messages = [];
     let nextId = 0, token = 0, alive = true;
@@ -82,6 +139,7 @@
   let bootPin = options.bootPin || '';
   const lume = {
     fft: fftStub(),
+    imgscale: imgscaleStub(),
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
     removeChild: id => emit('remove', id),
