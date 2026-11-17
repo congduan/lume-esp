@@ -720,9 +720,16 @@ work buffer，r79）、`lume.svg`（mini-SVG 光栅化，r58）。
   已在引擎调试基建路线否决过同款思路。
 - **每个小函数都下放**：属性赋值/字符串拼接/signals 更新留在 JS（r78 报告
   已明确位置坐标更新由调用方负责）——下放粒度以「批量×重复×数值」为准绳。
-- **Rust 实现组件**：调研中（esp-rs 与 ESP-IDF 组件共存构建的工作量/收益
-  待数据），不作为本路线前置；C 先行，Rust 结论出来后只影响后续新组件的
-  实现语言选择，不改变 API 契约。
+- **Rust 实现组件**：2026-11-17 调研结论（GitHub API 实查 esp-rs/Slint/wasm3
+  star 与活跃度、Slint 授权条款、社区先例）——**不迁移，维持 JS+C 下沉现状**：
+  ①Slint 嵌入式固件 GPLv3 传染或商业付费，与 MIT + 开放 app 生态定位冲突
+  （硬否决）；②Rust→WASM 需嵌 wasm3 双解释器，性能 ≈ native/11 与 QuickJS
+  同量级，负收益；③Xtensa Rust 工具链（espup fork）绑版本跟进延迟；④渲染
+  非瓶颈（LVGL 全帧 SW 2-4ms，天花板在 QSPI 43fps，引擎无关）。保留观察位：
+  Slint 授权模式变化可重估；「不受信任第三方 Rust app 沙箱」需求出现时重估
+  wasm3 路线；内存安全增量优先在现有 C 层做（freestanding 宏隔离，mini-SVG
+  先例）。API 契约不受影响——本路线原语仍按 C 实现。
+
 
 ### 里程碑口径
 
