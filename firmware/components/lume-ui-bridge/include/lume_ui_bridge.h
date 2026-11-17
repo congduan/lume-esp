@@ -168,6 +168,8 @@ typedef enum {
      * fade completes it posts a COVERED event back through the existing
      * reverse sink/queue, and the engine then starts teardown/RESET. */
     LUME_OP_TRANSITION_COVER,
+    LUME_OP_RAYCAST_RENDER, /* image_pixels: owned frame descriptor; map borrowed */
+    LUME_OP_RAYCAST_BARRIER, /* image_pixels: engine-owned semaphore, signal after queued renders */
 } lume_op_t;
 
 #define LUME_CANVAS_BATCH_MAX 32

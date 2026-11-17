@@ -18,6 +18,7 @@
  */
 #include <stdlib.h>          /* abort(): boot-stage fail-fast on OOM */
 #include <string.h>
+#include <math.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -43,6 +44,7 @@
 #include "lume_power.h"
 #include "lume_image.h"
 #include "lume_svg.h"
+#include "lume_raycast.h"
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include "quickjs.h"
 #include "lume_perf.h"
@@ -902,6 +904,81 @@ static JSValue js_canvas_invalidate(JSContext *ctx, JSValueConst this_val, int a
     }
     if (lume_ui_bridge_post(&m) != 0) return JS_ThrowInternalError(ctx,"lume: ui queue full");
     return JS_UNDEFINED;
+}
+
+/* A queue barrier keeps a zero-copy map's ArrayBuffer alive until every
+ * asynchronous LVGL render using its pointer is finished. */
+static JSValue s_raycast_map = JS_UNDEFINED;
+static const uint8_t *s_raycast_bytes;
+static int s_raycast_w, s_raycast_h;
+static void raycast_release(JSContext *ctx);
+
+static JSValue js_raycast_set_map(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    int32_t w, h;
+    if (argc != 3 || JS_ToInt32(ctx, &w, argv[0]) < 0 ||
+        JS_ToInt32(ctx, &h, argv[1]) < 0) return JS_EXCEPTION;
+    if (w < 3 || h < 3 || w > 64 || h > 64)
+        return JS_ThrowRangeError(ctx, "raycast map must be 3..64 cells per axis");
+    if (JS_GetTypedArrayType(argv[2]) != JS_TYPED_ARRAY_UINT8)
+        return JS_ThrowTypeError(ctx, "raycast map must be Uint8Array");
+    size_t offset, bytes, element, size;
+    JSValue buffer = JS_GetTypedArrayBuffer(ctx, argv[2], &offset, &bytes, &element);
+    if (JS_IsException(buffer)) return JS_EXCEPTION;
+    uint8_t *base = JS_GetArrayBuffer(ctx, &size, buffer);
+    if (!base || element != 1 || offset > size || bytes != (size_t)w * h ||
+        bytes > size - offset) {
+        JS_FreeValue(ctx, buffer);
+        return JS_ThrowRangeError(ctx, "raycast map length must equal w*h");
+    }
+    if (!JS_IsUndefined(s_raycast_map)) raycast_release(ctx);
+    s_raycast_bytes = base + offset;
+    s_raycast_w = w; s_raycast_h = h;
+    s_raycast_map = buffer;
+    return JS_NewInt32(ctx, 0);
+}
+
+static JSValue js_raycast_render(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    int32_t id;
+    double px, py, angle;
+    if (argc != 4 || JS_ToInt32(ctx, &id, argv[0]) < 0 ||
+        JS_ToFloat64(ctx, &px, argv[1]) < 0 ||
+        JS_ToFloat64(ctx, &py, argv[2]) < 0 ||
+        JS_ToFloat64(ctx, &angle, argv[3]) < 0) return JS_EXCEPTION;
+    if (!s_raycast_bytes) return JS_ThrowTypeError(ctx, "raycast map is not set");
+    if (id < 1 || id >= LUME_MAX_NODES || !isfinite(px) || !isfinite(py) ||
+        !isfinite(angle) || px < 0 || py < 0 || px >= s_raycast_w || py >= s_raycast_h)
+        return JS_ThrowRangeError(ctx, "invalid raycast pose or canvas id");
+    if (s_node_dead[id]) return JS_UNDEFINED;
+    lume_raycast_frame_t *f = calloc(1, sizeof(*f));
+    if (!f) return JS_ThrowOutOfMemory(ctx);
+    f->map = s_raycast_bytes; f->map_w = s_raycast_w; f->map_h = s_raycast_h;
+    f->px = (float)px; f->py = (float)py; f->angle = (float)angle;
+    lume_ui_msg_t m; msg_init(&m);
+    m.op = LUME_OP_RAYCAST_RENDER; m.node_id = id; m.image_pixels = f;
+    if (lume_ui_bridge_post(&m) != 0) {
+        free(f);
+        return JS_ThrowInternalError(ctx, "lume: ui queue full");
+    }
+    return JS_UNDEFINED;
+}
+
+static void raycast_release(JSContext *ctx)
+{
+    if (JS_IsUndefined(s_raycast_map)) return;
+    SemaphoreHandle_t done = xSemaphoreCreateBinary();
+    if (!done) abort();
+    lume_ui_msg_t m; msg_init(&m);
+    m.op = LUME_OP_RAYCAST_BARRIER; m.image_pixels = done;
+    while (lume_ui_bridge_post(&m) != 0) vTaskDelay(1);
+    xSemaphoreTake(done, portMAX_DELAY);
+    vSemaphoreDelete(done);
+    JS_FreeValue(ctx, s_raycast_map);
+    s_raycast_map = JS_UNDEFINED;
+    s_raycast_bytes = NULL;
 }
 
 static JSValue js_set_attr(JSContext *ctx, JSValueConst this_val,
@@ -2589,6 +2666,10 @@ static void register_bindings(JSContext *ctx)
     JSValue global = JS_GetGlobalObject(ctx);
     JSValue lume = JS_NewObject(ctx);
     lume_math_register(ctx, lume);
+    JSValue raycast = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, raycast, "setMap", JS_NewCFunction(ctx, js_raycast_set_map, "setMap", 3));
+    JS_SetPropertyStr(ctx, raycast, "render", JS_NewCFunction(ctx, js_raycast_render, "render", 4));
+    JS_SetPropertyStr(ctx, lume, "raycast", raycast);
     /* JS_SetPropertyStr consumes the passed value (no JS_FreeValue needed). */
     JS_SetPropertyStr(ctx, lume, "createNode",
                       JS_NewCFunction(ctx, js_create_node, "createNode", 2));
@@ -3627,6 +3708,7 @@ static void engine_task(void *arg)
                 ESP_LOGE(TAG, "UI reset after eval failure failed");
             s_rt = NULL;
             s_ctx = NULL;
+            raycast_release(ctx);
             JS_FreeContext(ctx);
             JS_FreeRuntime(rt);
             const bool attempted_home = cand_is_home && cand_src == NULL;
@@ -3889,6 +3971,7 @@ static void engine_task(void *arg)
         s_rt = NULL;
         s_ctx = NULL;
         lume_perf_switch_mark(LUME_SW_PRE_FREE);
+        raycast_release(ctx);
         JS_FreeContext(ctx);
         lume_perf_switch_mark(LUME_SW_POST_FREECTX);
         JS_FreeRuntime(rt);

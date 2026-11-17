@@ -15,6 +15,7 @@
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "lvgl.h"
@@ -23,6 +24,8 @@
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include "lume_perf.h"
 #include "lume_raster.h"     /* r47: anti-aliased canvas stroke rasteriser  */
+#include "lume_raycast.h"
+#include "esp_timer.h"
 
 _Static_assert(sizeof(lume_ui_msg_t) <= 128, "UI queue record size budget");
 
@@ -1565,6 +1568,31 @@ void lume_ui_bridge_drain(void)
             case LUME_OP_ANIMATE: apply_animate(&m); break;
             case LUME_OP_ANIMATE_CANCEL: cancel_anim(m.node_id, m.attr); break;
             case LUME_OP_CANVAS_DRAW: apply_canvas_draw(&m); break;
+            case LUME_OP_RAYCAST_RENDER: {
+                lume_raycast_frame_t *frame = (lume_raycast_frame_t *)m.image_pixels;
+                if (frame && m.node_id > 0 && m.node_id < LUME_MAX_NODES &&
+                    s_canvas_work[m.node_id] && s_nodes[m.node_id]) {
+                    uint16_t id = m.node_id;
+                    frame->pixels = s_canvas_work[id];
+                    frame->width = s_canvas_w[id];
+                    frame->height = s_canvas_h[id];
+                    frame->stride = s_canvas_stride[id];
+                    int64_t start = esp_timer_get_time();
+                    lume_raycast_render(frame);
+                    int64_t elapsed = esp_timer_get_time() - start;
+                    static unsigned raycast_count;
+                    if (++raycast_count % 30 == 0) {
+                        float ms = (float)elapsed / 1000.0f;
+                        ESP_LOGI(TAG, "RAYCAST %.2fms %.1ffps", (double)ms,
+                                 (double)(ms > 0 ? 1000.0f / ms : 0));
+                    }
+                }
+                free(frame);
+                break;
+            }
+            case LUME_OP_RAYCAST_BARRIER:
+                if (m.image_pixels) xSemaphoreGive((SemaphoreHandle_t)m.image_pixels);
+                break;
             case LUME_OP_CANVAS_BATCH:
                 if (m.image_pixels && m.image_w <= LUME_CANVAS_BATCH_MAX &&
                     m.node_id > 0 && m.node_id < LUME_MAX_NODES && s_canvas_pixels[m.node_id]) {

@@ -1084,6 +1084,7 @@ const char lume_prelude_js[] =
 "    pushLine(x1,y1,x2,y2,__canvasColor(c),__canvasInt(width === undefined ? 1 : width,1,16));\n"
 "  }\n"
 "  var ctx = {\n"
+"    nodeId: id,\n"
 "    fillColor: function (c) { ink = __canvasColor(c); },\n"
 "    clear: function () { flushLines(); lume.canvasDraw(id, 0, 0, 0, 0, 0, 0, 1); },\n"
 "    fillRect: function (x,y,rw,rh) { flushLines(); lume.canvasDraw(id, 1, __canvasInt(x,-SW,SW), __canvasInt(y,-SH,SH), __canvasInt(rw,0,SW), __canvasInt(rh,0,SH), ink, 1); },\n"

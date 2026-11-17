@@ -100,6 +100,8 @@ declare namespace lume.ui {
   interface ImageProps { src: ArrayBuffer; style?: Style; parent?: Node }
   /** RGB565 canvas, fixed size. All coordinates use canvas-local integer pixels. */
   interface CanvasContext {
+    /** Canvas node id for native renderers that write to this canvas. */
+    readonly nodeId: Node;
     fillColor(color: `#${string}` | number): void;
     /** Clears to black. */
     clear(): void;
@@ -1010,8 +1012,20 @@ declare namespace lume.math {
   function integrate(acc: Float32Array, vx: Float32Array, vy: Float32Array, dt: number): void;
 }
 
+/** Native Wolfenstein-style DDA renderer for a fixed-size RGB565 Canvas. */
+declare namespace lume.raycast {
+  /** Bind a Uint8Array map without copying its backing store.
+   * 0 is empty; 1..255 select wall palette. The view must contain exactly w*h
+   * cells and remain unchanged while a frame is queued. */
+  function setMap(w: number, h: number, bytes: Uint8Array): 0;
+  /** Queue a full-frame render into the Canvas work buffer. Angle is radians.
+   * Call from Canvas.onDraw; its normal invalidate publishes the frame. */
+  function render(id: lume.ui.Node, px: number, py: number, angle: number): void;
+}
+
 declare namespace lume {
   const math: typeof lume.math;
+  const raycast: typeof lume.raycast;
   const ui: typeof lume.ui;
   const system: typeof lume.system;
   const app: typeof lume.app;
