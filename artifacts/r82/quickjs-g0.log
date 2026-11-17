@@ -184,7 +184,7 @@ compile QuickJS target with final -g0 (same -O2 and source)
       |                                                                       [01;35m[Kint[m[K
       |                                                                      [32m[K%ld[m[K
 36777 |                                   [32m[Ks->catch_pos_tab[pos][m[K, catch_pos, pos);
-      |                                   [32m[K~~~~~~~~~~~~~~~~~~~~~[m[K                
+      |                                   [32m[K~~~~~~~~~~~~~~~~~~~~~[m[K
       |                                                   [32m[K|[m[K
       |                                                   [32m[Kint32_t {aka long int}[m[K
 [01m[K/tmp/lume-r82-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_WriteObjectRec[m[K':
@@ -215,7 +215,7 @@ compile QuickJS target with final -g0 (same -O2 and source)
       |                                                                             [01;35m[Kunsigned int[m[K
       |                                                                            [32m[K%lu[m[K
 40546 |                                            [32m[Kval[m[K, s->objects_count);
-      |                                            [32m[K~~~[m[K                               
+      |                                            [32m[K~~~[m[K
       |                                            [32m[K|[m[K
       |                                            [32m[Kuint32_t {aka long unsigned int}[m[K
 [01m[K/tmp/lume-r82-wt/firmware/components/quickjs-ng/quickjs.c:[m[K In function '[01m[KJS_ReadObjectAtoms[m[K':
@@ -226,7 +226,7 @@ compile QuickJS target with final -g0 (same -O2 and source)
       |                                                                  [01;35m[Kunsigned int[m[K
       |                                                                 [32m[K%lu[m[K
 40606 |                               [32m[Ks->idx_to_atom_count[m[K);
-      |                               [32m[K~~~~~~~~~~~~~~~~~~~~[m[K                
+      |                               [32m[K~~~~~~~~~~~~~~~~~~~~[m[K
       |                                [32m[K|[m[K
       |                                [32m[Kuint32_t {aka long unsigned int}[m[K
 [01m[K/tmp/lume-r82-wt/firmware/components/quickjs-ng/quickjs.c:40610:24:[m[K [01;35m[Kwarning: [m[Kformat '[01m[K%u[m[K' expects argument of type '[01m[Kunsigned int[m[K', but argument 3 has type '[01m[Kuint32_t[m[K' {aka '[01m[Klong unsigned int[m[K'} [[01;35m[K-Wformat=[m[K]

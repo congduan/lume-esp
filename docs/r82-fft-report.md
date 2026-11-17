@@ -91,7 +91,7 @@ lume.bin binary size 0x2df1f0 bytes. Smallest app partition is 0x640000 bytes. 0
 `idf.py size` **全表原始输出**：
 
 ```text
-                           Memory Type Usage Summary                            
+                           Memory Type Usage Summary
 ┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
 ┃ Memory            ┃              ┃          ┃                ┃               ┃
 ┃ Type/Section      ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
@@ -116,10 +116,10 @@ lume.bin binary size 0x2df1f0 bytes. Smallest app partition is 0x640000 bytes. 0
 │    .force_slow    │           32 │     0.39 │                │               │
 └───────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
 Total image size: 3010935 bytes (.bin may be padded larger)
-Note: The reported total sizes may be smaller than those in the technical 
+Note: The reported total sizes may be smaller than those in the technical
 reference manual due to reserved memory and application configuration. The total
-flash size available for the application is not included by default, as it 
-cannot be reliably determined due to the presence of other data like the 
+flash size available for the application is not included by default, as it
+cannot be reliably determined due to the presence of other data like the
 bootloader, partition table, and application partition size.
 ```
 
