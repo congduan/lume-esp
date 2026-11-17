@@ -35,6 +35,7 @@
     ['golf','◉','Golf','迷你高尔夫','Swing golf, 10 procedural holes','体感挥杆，10 个程序化球洞'],
     ['scroller','▤','Scroller','横向卷轴','Retained-sprite side scroller','精灵 blit 横向卷轴'],
     ['raycast','◈','Raycast 3D','射线迷宫','Raycast maze shooter','第一人称射线迷宫射击'],
+    ['fishtank','◉','Fishtank','电子鱼缸','Procedural aquarium with feeding','程序化鱼群 + 投喂互动'],
 
   ];
   const device = document.querySelector('#device');
