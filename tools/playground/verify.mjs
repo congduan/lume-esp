@@ -111,9 +111,49 @@ try {
     await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x, y - 70, { steps: 5 }); await page.mouse.up();
     if (errors.length || await page.locator('#error').isVisible()) throw Error(errors.join('\n') || await page.locator('#error').textContent());
   });
+  await check('abc123 clears placeholder and redraws on five taps', async () => {
+    await page.locator('[data-app="abc123"]').click();
+    const glyph = page.locator('#device .kind-4');
+    await glyph.locator('canvas').waitFor();
+    const background = await glyph.evaluate(el => getComputedStyle(el).backgroundColor);
+    if (background === 'rgb(119, 119, 119)') throw Error('gray placeholder remains');
+    if (await glyph.evaluate(el => el.classList.contains('image-placeholder'))) throw Error('placeholder class remains');
+    const target = await glyph.locator('canvas').evaluate(el => el.closest('[data-node-id]')?.dataset.nodeId);
+    if (!target) throw Error('glyph canvas does not reach a node');
+    const box = await page.locator('.device-wrap').boundingBox();
+    if (!box) throw Error('missing device');
+    let bitmap = await glyph.locator('canvas').evaluate(el => el.toDataURL());
+    for (const [letter, word] of [['B','Ball'],['C','Cat'],['D','Dog'],['E','Egg'],['F','Fish']]) {
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height * 200 / 480);
+      const hint = `${letter} is for ${word}`;
+      await page.locator('#device').getByText(hint, { exact: true }).waitFor();
+      await page.waitForFunction(previous => {
+        const canvas = document.querySelector('#device .kind-4 canvas');
+        return canvas && canvas.toDataURL() !== previous;
+      }, bitmap);
+      bitmap = await glyph.locator('canvas').evaluate(el => el.toDataURL());
+      console.log(`  ${hint}`);
+    }
+    console.log(`  glyph background: ${background}; canvas node: ${target}`);
+    if (errors.length || await page.locator('#error').isVisible()) throw Error(errors.join('\n') || await page.locator('#error').textContent());
+  });
+  await check('abc123 mobile touchscreen advances card', async () => {
+    const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+    try {
+      await mobile.goto(pageUrl);
+      await mobile.locator('[data-app="abc123"]').click();
+      await mobile.locator('.device-wrap').scrollIntoViewIfNeeded();
+      await mobile.locator('#device .kind-4 canvas').waitFor();
+      const box = await mobile.locator('.device-wrap').boundingBox();
+      if (!box) throw Error('missing mobile device');
+      await mobile.touchscreen.tap(box.x + box.width / 2, box.y + box.height * 200 / 480);
+      await mobile.locator('#device').getByText('B is for Ball', { exact: true }).waitFor();
+      console.log('  mobile tap: B is for Ball');
+    } finally { await mobile.close(); }
+  });
   await check('all examples load without runtime errors', async () => {
     const names = await page.locator('.app-item').evaluateAll(items => items.map(item => item.dataset.app));
-if (names.length !== 27) throw Error(`expected 27 examples, got ${names.length}`);
+    if (names.length !== 29) throw Error(`expected 29 examples, got ${names.length}`);
     for (const name of names) {
       await page.locator(`[data-app="${name}"]`).click();
       const count = await page.locator('#device .lume-node').count();
