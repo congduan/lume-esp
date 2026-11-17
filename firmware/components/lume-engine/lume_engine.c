@@ -2715,9 +2715,11 @@ static JSValue js_mp3_id3v2(JSContext *ctx, JSValueConst self, int argc, JSValue
 static void register_bindings(JSContext *ctx)
 {
     extern void lume_math_register(JSContext *ctx, JSValue lume);
+    extern void lume_fft_register(JSContext *ctx, JSValue lume);
     JSValue global = JS_GetGlobalObject(ctx);
     JSValue lume = JS_NewObject(ctx);
     lume_math_register(ctx, lume);
+    lume_fft_register(ctx, lume);
     JSValue raycast = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, raycast, "setMap", JS_NewCFunction(ctx, js_raycast_set_map, "setMap", 3));
     JS_SetPropertyStr(ctx, raycast, "setTextures", JS_NewCFunction(ctx, js_raycast_set_textures, "setTextures", 1));

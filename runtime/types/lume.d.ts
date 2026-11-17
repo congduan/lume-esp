@@ -1012,6 +1012,19 @@ declare namespace lume.math {
   function integrate(acc: Float32Array, vx: Float32Array, vy: Float32Array, dt: number): void;
 }
 
+/** Forward, unnormalised real FFT over 2..4096 power-of-two Float32 samples. */
+declare namespace lume.fft {
+  /** Writes N packed floats into re, or out when supplied: [DC, Nyquist,
+   * Re(1), Im(1), ..., Re(N/2-1), Im(N/2-1)]. Returns 0, -1 for a non-Float32Array,
+   * -2 for an invalid length, or -3 if scratch allocation fails. */
+  function realfft(re: Float32Array, out?: Float32Array): number;
+  /** Writes N/2 magnitudes (DC through bin N/2-1; Nyquist is omitted).
+   * With im omitted, re is the packed N-slot realfft output. With im supplied,
+   * re and im are separate N/2-slot spectra. out must not overlap either input.
+   * Returns 0, -1 for a non-Float32Array, or -2 for invalid lengths/overlap. */
+  function magnitude(out: Float32Array, re: Float32Array, im?: Float32Array): number;
+}
+
 /** Native DDA renderer for a fixed-size RGB565 Canvas. */
 declare namespace lume.raycast {
   /** Bind a Uint8Array map without copying its backing store.
@@ -1029,6 +1042,7 @@ declare namespace lume.raycast {
 
 declare namespace lume {
   const math: typeof lume.math;
+  const fft: typeof lume.fft;
   const raycast: typeof lume.raycast;
   const ui: typeof lume.ui;
   const system: typeof lume.system;

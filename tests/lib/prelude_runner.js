@@ -16,6 +16,64 @@ function extract(name, next) {
 const prelude = extract('lume_prelude_js', 'lume_demo_js');
 const demo = extract('lume_demo_js');
 
+  function fftStub() {
+    const isFloat32 = value => Object.prototype.toString.call(value) === '[object Float32Array]';
+    const valid = n => n >= 2 && n <= 4096 && (n & (n - 1)) === 0;
+    return {
+      realfft(input, output = input) {
+        if (!(isFloat32(input)) || !(isFloat32(output))) return -1;
+        const n = input.length;
+        if (!valid(n) || output.length !== n) return -2;
+        if (output !== input) output.set(input);
+        const im = new Float32Array(n);
+        let j = 0;
+        for (let i = 1; i < n; i++) {
+          let bit = n >> 1;
+          while (j & bit) { j ^= bit; bit >>= 1; }
+          j ^= bit;
+          if (i < j) { const tmp = output[i]; output[i] = output[j]; output[j] = tmp; }
+        }
+        for (let width = 2; width <= n; width <<= 1) {
+          const angle = -2 * Math.PI / width;
+          const stepRe = Math.cos(angle), stepIm = Math.sin(angle);
+          for (let start = 0; start < n; start += width) {
+            let twRe = 1, twIm = 0;
+            for (let k = 0; k < width / 2; k++) {
+              const a = start + k, b = a + width / 2;
+              const vr = twRe * output[b] - twIm * im[b];
+              const vi = twRe * im[b] + twIm * output[b];
+              const ur = output[a], ui = im[a];
+              output[a] = ur + vr; im[a] = ui + vi;
+              output[b] = ur - vr; im[b] = ui - vi;
+              const nextRe = twRe * stepRe - twIm * stepIm;
+              twIm = twRe * stepIm + twIm * stepRe;
+              twRe = nextRe;
+            }
+          }
+        }
+        const nyquist = output[n / 2];
+        for (let k = n / 2 - 1; k > 0; k--) {
+          output[2 * k] = output[k]; output[2 * k + 1] = im[k];
+        }
+        output[1] = nyquist;
+        return 0;
+      },
+      magnitude(out, re, im) {
+        if (!(isFloat32(out)) || !(isFloat32(re)) ||
+            (im !== undefined && !(isFloat32(im)))) return -1;
+        const split = im !== undefined, n = split ? re.length * 2 : re.length;
+        if (!valid(n) || out.length !== n / 2 || (split && im.length !== re.length)) return -2;
+        const overlaps = x => out.buffer === x.buffer &&
+          out.byteOffset < x.byteOffset + x.byteLength && x.byteOffset < out.byteOffset + out.byteLength;
+        if (overlaps(re) || (split && overlaps(im))) return -2;
+        out[0] = Math.abs(re[0]);
+        for (let k = 1; k < n / 2; k++)
+          out[k] = Math.hypot(split ? re[k] : re[2 * k], split ? im[k] : re[2 * k + 1]);
+        return 0;
+      },
+    };
+  }
+
 function runApp(script, options = {}) {
   const messages = [];
   let nextId = 0, token = 0;
@@ -34,6 +92,7 @@ function runApp(script, options = {}) {
   let currentApp = options.currentApp || '';
   let bootPin = options.bootPin || '';
   const lume = {
+    fft: fftStub(),
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
     removeChild: id => emit('remove', id),
