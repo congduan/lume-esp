@@ -122,8 +122,11 @@ function deckFaces(st) { return st.deck.map((f) => f); }
   assert.equal(s.memoryTap(st, 5), 'flip');
   assert.equal(s.memoryTap(st, 5), 'ignore', 'same card twice');
   assert.deepEqual(plain(st.open), [5]);
-  assert.equal(s.memoryTap(st, 6), 'miss');
-  assert.equal(s.memoryTap(st, 7), 'ignore', 'third flip while a pair is showing');
+  // Pick a different face: a random deal may place the mate at index 6.
+  const other = st.deck[6] === st.deck[5] ? 7 : 6;
+  const third = other === 7 ? 6 : 7;
+  assert.equal(s.memoryTap(st, other), 'miss');
+  assert.equal(s.memoryTap(st, third), 'ignore', 'third flip while a pair is showing');
   assert.equal(st.moves, 1, 'ignored taps do not count as moves');
   assert.deepEqual(st.open.length <= 2, true);
   console.log('PASS memory negative: no double-flip, no third-card flip');
