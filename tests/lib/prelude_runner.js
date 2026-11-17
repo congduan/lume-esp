@@ -167,9 +167,26 @@ function runApp(script, options = {}) {
   const installedApps = { ...(options.apps || {}) };
   let currentApp = options.currentApp || '';
   let bootPin = options.bootPin || '';
+  // r91: mbedTLS does not exist in the host prelude. Keep the lume.crypto
+  // shape and return -3 (internal/unsupported) instead of faking
+  // cryptographic results; pass options.crypto to inject an implementation.
+  function cryptoStub() {
+    const unsupported = name => () => {
+      options.onWarn?.(`lume.crypto.${name} unsupported in host (no mbedTLS); returning -3`);
+      return -3;
+    };
+    return {
+      sha256: unsupported('sha256'),
+      hmacSha256: unsupported('hmacSha256'),
+      crc32: unsupported('crc32'),
+      aesCtr: unsupported('aesCtr'),
+      ...(options.crypto || {}),
+    };
+  }
   const lume = {
     fft: fftStub(),
     imgscale: imgscaleStub(),
+    crypto: cryptoStub(),
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
     removeChild: id => emit('remove', id),
