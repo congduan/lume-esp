@@ -1,0 +1,50 @@
+### gcc canvas_blit.c
+PASS opaque 4x4 blit lands exactly at (2,3)
+PASS 0x0000 colour key is transparent
+PASS blit clips at all four surface edges
+PASS flip mirrors the sprite horizontally
+PASS NULL/zero-size blit is a no-op
+PASS fully off-surface blit is a no-op
+canvas_blit: all cases PASS
+EXIT=0
+
+### gcc canvas_aa.c
+PASS isqrt 8.8 fixed-point contract
+PASS width=1 horizontal line: 1px core, no stray ink, stride padding intact
+PASS width=1 diagonal line: feather band present (was the staircase)
+PASS coverage rises monotonically toward the centreline
+PASS zero-length stroke paints a bounded point
+PASS width=4 envelope: hw=1 core, feather to +2, nothing at +3
+PASS ring: continuous annulus, centre clean, 45-degree sites smooth
+PASS wide ring degenerates to anti-aliased disc
+PASS 50% blend of white over grey is the channel-exact midpoint
+PASS shared joint: opaque core continuous, envelope not doubled
+PASS set_color channel decomposition exact
+PASS arc: wedge band, round end cap, empty gap, AA feather, padding intact
+PASS arc: full 360deg sweep across 0deg is bit-identical to ring
+PASS arc: 0deg wrap normalisation, equivalent geometry, correct gap
+PASS arc: end seam is continuous (no hard step / gap)
+PASS arc: from==to degenerates to a bounded round dot
+PASS arc: width>=2r-1 degenerates to a filled AA sector (no hole)
+PASS arc: bbox clipped to surface, stride padding intact
+PASS arc: r<=0 early return
+ALL CANVAS AA HOST TESTS PASSED
+EXIT=0
+
+### bridge_protocol.c
+EXIT=0
+
+### all JS harnesses
+TOTAL_JS=42 JS_HARNESS_FAILURES=0
+
+### lume check counter
+lume check examples/counter
+
+[PASS] bundle   2160 bytes (33 ms)
+[PASS] eval     2x "app eval ok; entering event loop"
+[PASS] layout   R1 PASS  R2 PASS  R3 PASS  R4 PASS  R5 PASS  R6 PASS  R7 PASS
+[SKIP] perf     profile disabled
+
+screenshot: artifacts/check/counter/tft.png
+RESULT: PASS (4 steps, 0 failed; exit 0)
+EXIT=0

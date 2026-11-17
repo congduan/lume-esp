@@ -553,6 +553,43 @@ Flash Data 830,016 / DIRAM 230,499 / IRAM 16384/16384 Remain 0, `lume.bin`
 0x2ca8f0). On-device acceptance (display / touch / audio / sleep current /
 radio / persistence / bundle push) remains **not** performed.
 
+### r81 result — retained canvas sprite blit (appended, milestone checkboxes untouched)
+
+Closes the P2 "全屏精灵卷轴" key: the firmware `ctx.drawImage` blit that was
+deferred since r58. A JS pixel array (`Uint16Array`, RGB565, length `w*h`) is
+uploaded once via `ctx.retainImage(slot, w, h, pixels)` and replayed from C each
+frame via `ctx.drawImage(slot, dx, dy, flip)` — the r45 retained-path pattern for
+bitmaps, so a sprite-heavy app pays no per-pixel JS on the ~0.5 Mops/s engine.
+New header-only `lume_raster_blit()` (colour key 0x0000 transparent, horizontal
+flip, four-edge clipping, stride padding untouched); two tail-appended ops
+`LUME_OP_CANVAS_SPRITE_DEFINE` (=18) / `_DRAW` (=19); 8 slots per canvas +
+460,800 B PSRAM budget; write into the canvas work buffer then normal
+invalidate publish. Full trade-offs in `docs/KNOWN-SIMPLIFICATIONS.md` (r81),
+implementation report in `docs/r81-sprite-report.md`.
+
+- **Host**: `tests/canvas_blit.c` (freestanding, new) 6/6 cases green — opaque
+  landing, 0x0000 colour key, four-edge clip + padding columns intact, flip,
+  NULL/zero-size no-op, fully-off-surface no-op. `tests/canvas_aa.c` 19/19 and
+  `tests/bridge_protocol.c` (static asserts for IDs 18/19 + slot count 8) green.
+  Raw: `EXIT=0` for all three C harnesses.
+- **JS harness**: `for t in tests/*.js; do node "$t" || echo FAIL "$t"; done` →
+  `TOTAL_JS=42 JS_HARNESS_FAILURES=0`; 3 new `canvas_mapping.js` sprite cases
+  (single upload/multi replay with offset+flip, 6 negative validation cases,
+  slot redefinition). `lume check examples/counter` regression sentinel →
+  `RESULT: PASS (4 steps, 0 failed; exit 0)`, layout R1-R7 all PASS. Raw:
+  `artifacts/r81/host-tests.log`.
+- **Size** (default 2.16 board, `idf.py build` + `idf.py size`, `BUILD_SIZE_EXIT=0`):
+  Flash Code 2,021,336 -> **2,021,204 B (−132 B**, within codegen noise);
+  Flash Data 847,828 -> 849,396 (+1,568); DIRAM 239,043 -> 247,267 (+8,224,
+  the `s_sprite_px/w/h[128][8]` BSS arrays — pixel payloads live in PSRAM);
+  **IRAM 16384/16384, Remain 0 (unchanged, hard line held)**; Total image
+  3,010,935 -> 3,012,371 B (+1,436). Raw: `artifacts/r81/size.log`.
+- **Not on-device acceptance**: host / simulator evidence only. AMOLED colour
+  of blitted sprites, real frame rate under a scroll demo, PSRAM headroom for
+  bulk defines and sprite demo feel remain pending board bring-up. The P2 row
+  below still lists the full side-scroller as blocked on app-layer work; r81
+  only delivers the firmware blit key, not a finished scrolling game.
+
 
 ## 引擎调试基建与分发加固路线（2026-11-16，结论固化防重复评估）
 
