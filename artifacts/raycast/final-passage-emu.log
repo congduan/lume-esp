@@ -1,0 +1,10 @@
+bundle /tmp/lume-r80-passage: source 7787 bytes; payload 7787 bytes; frame 7799 bytes (source)
+I (1735) lume-engine: engine task up (pinned core 1), PSRAM free=5505128 bytes
+I (1807) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1933) lume-engine: app eval ok; entering event loop
+I (2690) lume-engine: engine recv RELOAD -> recycle runtime
+I (2921) lume-engine: runtime up; eval app '<embedded-demo>' (7787 bytes)
+I (3072) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 955520152 + core1 144406952 insns in 26.4s wall = 41.6 Minsn/s; emulated 8.000s (1920000000 cycles); 861461 exceptions, 25430 interrupts
+TFT: artifacts/emu/raycast-passage/tft.png
+serial: artifacts/emu/raycast-passage/serial.log
