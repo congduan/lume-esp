@@ -172,10 +172,23 @@
       ...(options.crypto || {}),
     };
   }
+  // r92: no synchronous DEFLATE decoder is available in the browser. Keep the
+  // lume.compress shape and return -3 (unsupported) instead of faking results;
+  // pass options.compress to inject a host implementation.
+  function compressStub() {
+    return {
+      inflate: () => {
+        options.onWarn?.('lume.compress.inflate unsupported in browser (no native inflate); returning -3');
+        return -3;
+      },
+      ...(options.compress || {}),
+    };
+  }
   const lume = {
     fft: fftStub(),
     imgscale: imgscaleStub(),
     crypto: cryptoStub(),
+    compress: compressStub(),
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
     removeChild: id => emit('remove', id),

@@ -1280,3 +1280,31 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **接板验收 deferred**：真机 mbedTLS/AES 硬件加速路径、吞吐与时延、WS 鉴权/
   OTA 校验/配网 token 等消费方接入未验证；host 向量、build 与 size 不代表
   板上验收。详见 `docs/r91-crypto-report.md`。
+
+## r92 / lume.compress 原生原语
+
+- **只解压不压缩**：vendored miniz 3.1.0 tinfl 只含解压协程（`lume.compress.inflate`），
+  不含 tdefl/`compress` 入口。沿用简报「解压优先，压缩 JS/设备侧用不上」口径；
+  如将来确需压缩再独立评估，不为对称 API 提前引入无消费方入口。
+- **zlib 校验口径**：`format='zlib'`（RFC 1950）由 tinfl 内置校验——CMF/FLG
+  合法性（`(CMF<<8|FLG)%31==0`、`CM=8`）、拒绝 preset dictionary（FDICT）、
+  解压结束校验 Adler-32（不匹配返回 `-2`）。`format='raw'`/默认（RFC 1951）
+  不读 zlib 头、不校验 Adler。因 tinfl 已覆盖 Adler-32，**不额外暴露
+  `adler32` 原语**（避免无消费方 API）。error code：`-1` 类型/format 非法、
+  `-2` 损坏/截断/校验失败、`-3` out 太小（拒绝越界写，视图外字节不动）。
+- **vendored 取材与修改**：ESP-IDF 自带 `miniz.h` 是 ROM 实现声明头（host
+  harness 不可用，同 r91 `esp_crc32_le` 坑），LVGL 内 `lodepng.c` 的 inflate
+  绑 malloc/ucvector、侵入大，均排除。选本机已有的 miniz 3.1.0 单文件
+  `miniz_tinfl.c`（public domain/MIT），合并 prologue、丢弃 malloc 版 helper、
+  固定 32-bit bitbuf；协程逐字节原样，来源与全部修改见组件 `VENDOR.md`。
+- **browser playground / Node prelude 桩为 unsupported**：宿主无同步 inflate
+  解码器，`lume.compress.inflate` 只保留命名空间形状并返回 -3（未支持），带
+  onWarn 提示，可通过 `options.compress` 注入实现；不伪造解压结果。权威路径是
+  固件与 host harness（编译同一份 `lume_compress.c`）。
+- **性能口径**：host 单样本 native 23ms vs Node zlib 40ms（200×111KB），两者均
+  为宿主测量、Node zlib 本身是 native C（非 JS 解压实现），不代表 ESP32-S3
+  吞吐；真机 DEFLATE 解压耗时/功耗未测。
+- **接板验收 deferred**：真机热更新大包解压、日志/历史数据压缩存储消费方接入、
+  256KiB bundle 上限内实际压缩比、AMOLED 观感未验证；host、build 与 size 只
+  证明编译与宿主行为。本轮无 UI 改动，emu 未跑。详见
+  `docs/r92-compress-report.md`。

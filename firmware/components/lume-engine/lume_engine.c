@@ -2788,6 +2788,7 @@ static void register_bindings(JSContext *ctx)
     extern void lume_fft_register(JSContext *ctx, JSValue lume);
     extern void lume_imgscale_register(JSContext *ctx, JSValue lume);
     extern void lume_crypto_register(JSContext *ctx, JSValue lume);
+    extern void lume_compress_register(JSContext *ctx, JSValue lume);
     extern void lume_image_decode_register(JSContext *ctx, JSValue image);
     JSValue global = JS_GetGlobalObject(ctx);
     JSValue lume = JS_NewObject(ctx);
@@ -2795,6 +2796,7 @@ static void register_bindings(JSContext *ctx)
     lume_fft_register(ctx, lume);
     lume_imgscale_register(ctx, lume);
     lume_crypto_register(ctx, lume);
+    lume_compress_register(ctx, lume);
     JSValue raycast = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, raycast, "setMap", JS_NewCFunction(ctx, js_raycast_set_map, "setMap", 3));
     JS_SetPropertyStr(ctx, raycast, "setTextures", JS_NewCFunction(ctx, js_raycast_set_textures, "setTextures", 1));

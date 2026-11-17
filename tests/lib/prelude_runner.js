@@ -183,10 +183,23 @@ function runApp(script, options = {}) {
       ...(options.crypto || {}),
     };
   }
+  // r92: no synchronous DEFLATE decoder is wired into the host prelude. Keep
+  // the lume.compress shape and return -3 (unsupported); pass options.compress
+  // to inject an implementation. The authoritative path is the native build.
+  function compressStub() {
+    return {
+      inflate: () => {
+        options.onWarn?.('lume.compress.inflate unsupported in host (no native inflate); returning -3');
+        return -3;
+      },
+      ...(options.compress || {}),
+    };
+  }
   const lume = {
     fft: fftStub(),
     imgscale: imgscaleStub(),
     crypto: cryptoStub(),
+    compress: compressStub(),
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
     removeChild: id => emit('remove', id),
