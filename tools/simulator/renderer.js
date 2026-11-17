@@ -129,6 +129,9 @@
         c.arc(x, y, a, from, from === to ? from + 0.01 : to, false);
         c.stroke();
       }
+      if (op === 6) { c.beginPath(); c.arc(x, y, a, 0, Math.PI * 2); c.fill(); }
+      if (op === 7) { c.beginPath(); c.ellipse(x, y, a, b, 0, 0, Math.PI * 2); c.fill(); }
+      if (op === 8) { c.lineWidth = width; c.beginPath(); c.ellipse(x, y, a, b, 0, 0, Math.PI * 2); c.stroke(); }
     }
     /* line()/polyline() flush: flat [x1,y1,x2,y2,color,width] sextuplets
      * (the host emits them as one nested array: ['batch', id, [...]]) */

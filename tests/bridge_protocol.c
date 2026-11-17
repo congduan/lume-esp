@@ -55,6 +55,8 @@ _Static_assert(LUME_DRAW_CLEAR == 0 && LUME_DRAW_RECT == 1 &&
                LUME_DRAW_LINE == 2 && LUME_DRAW_CIRCLE == 3 &&
                LUME_DRAW_TEXT == 4 && LUME_DRAW_ARC == 5,
                "r48 canvas draw opcode ids (ARC appended at tail)");
+_Static_assert(LUME_DRAW_FILL_CIRCLE == 6 && LUME_DRAW_FILL_ELLIPSE == 7 &&
+               LUME_DRAW_ELLIPSE == 8, "r89 canvas primitives appended at tail");
 _Static_assert(LUME_NODE_IMAGE == 4 && LUME_OP_IMAGE_SOURCE == 10, "image wire ids");
 _Static_assert(LUME_FLEX_SPACE_BETWEEN == 3 && LUME_FLEX_CROSS_STRETCH == 3,
                "axis-specific align wire values");
