@@ -1308,3 +1308,28 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   256KiB bundle 上限内实际压缩比、AMOLED 观感未验证；host、build 与 size 只
   证明编译与宿主行为。本轮无 UI 改动，emu 未跑。详见
   `docs/r92-compress-report.md`。
+
+## r93 / lvgl_task 事件驱动化
+
+- **简报前提翻案**：r35b/roadmap 候选 #1 所述「33 ms timer + 10 ms 固定轮询」
+  是过期快照。r92 基线 `lume_board.c:125-133` 已是 `wait_ms = lv_timer_handler()`
+  驱动 + 10 ms 封顶（r36b commit `62bb0ff`，见 `docs/r36b-perf-report.md:9`）。
+  r93 删封顶并接入通知唤醒，不是把固定轮询改成 wait_ms（那步 r36b 已做）。
+- **删封顶不改变空载唤醒频率**：`lume_ui_bridge.c:40,1811` 的 5 ms drain timer
+  常驻且从不暂停，`lv_timer_handler()`（`lv_timer.c:119-147`）总返回 ≤5 ms，
+  故旧 `if (wait_ms>10) wait_ms=10` 在 r92 配置下从不命中。r93 的可证收益是
+  **事件响应延迟**（post/timer 新建立即唤醒、`LV_NO_TIMER_READY` 真睡眠），
+  不是空闲唤醒数；这是 host/emu 侧可证事实，**不代表 ESP32-S3 功耗**。
+- **功耗/帧率量化收益 pending board**：调度轮无真机功耗计，也不改
+  `CONFIG_LUME_REFRESH_PERIOD_MS`（默认 33 ms）。r35b 的 30 fps 上限来自刷新
+  周期本身，r93 不宣称解锁帧率；真机 A/B（r92 vs r93 固件 + profile + 功耗计）
+  未做，sleep current / 动画帧率 / 触摸手感仍 deferred。
+- **未做 drain timer 暂停优化**：没有把 5 ms drain timer 改成「队列空则暂停、
+  post 时恢复」，因为那要从引擎任务跨任务调用 `lv_timer_resume`（`LV_USE_OS=NONE`
+  无锁、写 LVGL 全局状态）并触碰 Queue A 满队列重试语义，回归风险超出本刀；
+  真要压低空载唤醒频率需独立评估并在此登记翻案。
+- **vendored 未改**：只用 LVGL 已导出的 `lv_timer_handler_set_resume_cb`
+  （`lv_timer.h:73`），未动 `lv_conf.h`/LVGL/QuickJS 源码，故无 VENDOR.md 变更。
+  esp32sim 加载同一份 `lume.bin`，与真机共用 `lvgl_task`（`tools/emu/run.sh:37-43`），
+  两条路径本轮均过；模拟器 CST820 触摸模型与 CST9220 驱动不匹配，触摸手感
+  不能由 emu 验收。详见 `docs/r93-lvglev-report.md`。
