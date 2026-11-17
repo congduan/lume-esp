@@ -1,0 +1,29 @@
+$ git show 7f902d6:docs/r84-imgscale-report.md (size excerpt)
+最终 `idf.py size` **全表原始输出**：
+
+```text
+                            Memory Type Usage Summary
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory Type/Section ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code          │      2024560 │          │                │               │
+│    .text            │      2024560 │          │                │               │
+│ Flash Data          │       849428 │          │                │               │
+│    .rodata          │       849172 │          │                │               │
+│    .appdesc         │          256 │          │                │               │
+│ DIRAM               │       247267 │    72.35 │          94493 │        341760 │
+│    .bss             │       121960 │    35.69 │                │               │
+│    .text            │       101679 │    29.75 │                │               │
+│    .data            │        23628 │     6.91 │                │               │
+│ IRAM                │        16384 │    100.0 │              0 │         16384 │
+│    .text            │        15356 │    93.73 │                │               │
+│    .vectors         │         1028 │     6.27 │                │               │
+│ RTC FAST            │           72 │     0.88 │           8120 │          8192 │
+│    .text            │           44 │     0.54 │                │               │
+│    .rtc_reserved    │           24 │     0.29 │                │               │
+│    .force_fast      │            4 │     0.05 │                │               │
+│ RTC SLOW            │           32 │     0.39 │           8160 │          8192 │
+│    .force_slow      │           32 │     0.39 │                │               │
+└─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 3015759 bytes (.bin may be padded larger)
+```

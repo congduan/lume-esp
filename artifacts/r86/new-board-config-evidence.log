@@ -1,0 +1,15 @@
+$ rg -n "LUME_BOARD|FLASHSIZE" /tmp/lume-r86-build-175c/config/sdkconfig.h
+464:#define CONFIG_ESPTOOLPY_FLASHSIZE_32MB 1
+465:#define CONFIG_ESPTOOLPY_FLASHSIZE "32MB"
+477:#define CONFIG_LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C 1
+478:#define CONFIG_LUME_BOARD_DIR "waveshare_esp32_s3_touch_amoled_1_75c"
+
+$ rg -n "^#define LUME_LCD_[HV]_RES|^#define LUME_PIN_(LCD_RST|TP_RST|I2S_MCLK)" firmware/boards/waveshare_esp32_s3_touch_amoled_1_75c/lume_board_profile.h
+29:#define LUME_PIN_LCD_RST      1
+32:#define LUME_PIN_TP_RST       2
+36:#define LUME_PIN_I2S_MCLK     16
+48:#define LUME_LCD_H_RES        466
+49:#define LUME_LCD_V_RES        466
+
+$ rg -o "boards/waveshare_esp32_s3_touch_amoled_1_75c" /tmp/lume-r86-build-175c/esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/flags.make
+boards/waveshare_esp32_s3_touch_amoled_1_75c

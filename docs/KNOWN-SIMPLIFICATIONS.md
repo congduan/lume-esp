@@ -1254,3 +1254,15 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **待真机验收**：缩略解码耗时、retainImage 串联吞吐、PSRAM 峰值、TF 卡
   （<=64 KiB）实际读取成功率、bundle 推送与 AMOLED 观感均 pending board；
   host、浏览器与固件 `idf.py size` 结果均不代表板上验收。
+
+## r86 / Waveshare ESP32-S3-Touch-AMOLED-1.75C profile
+
+- 466×466 CO5300 / CST9217 / 32 MB flash profile is selected at compile time.
+  The CST9217 uses the existing CST92xx protocol path; its project ID is
+  diagnostic only. The board has no TF slot, so SD-backed file and MP3 calls
+  return the existing unavailable error `-2`.
+- Column offset 0, the copied CO5300 init sequence and 2.16 touch orientation
+  are provisional pending first board power-on. Display placement, touch
+  mapping and feel, audio, sleep current, radio, persistence and bundle push
+  remain unverified on hardware. Build and host checks establish only compile
+  and host behavior; details are in `docs/r86-amoled-175c-report.md`.

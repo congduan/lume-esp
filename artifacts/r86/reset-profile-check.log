@@ -1,0 +1,10 @@
+$ rg -n "^#define LUME_HAS_IO_EXPANDER_RESET" firmware/boards/*/lume_board_profile.h
+firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/lume_board_profile.h:105:#define LUME_HAS_IO_EXPANDER_RESET 0
+firmware/boards/waveshare_esp32_s3_touch_amoled_1_8/lume_board_profile.h:261:#define LUME_HAS_IO_EXPANDER_RESET 1
+
+$ rg -n "LUME_PIN_(LCD_RST|TP_RST)" firmware/boards/waveshare_esp32_s3_touch_amoled_1_75c/lume_board_profile.h
+29:#define LUME_PIN_LCD_RST      1
+32:#define LUME_PIN_TP_RST       2
+
+$ test no 1.75C expander macro
+PASS

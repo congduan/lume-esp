@@ -32,6 +32,11 @@ menu "Lume board"
                 only: the touch/reset/gap/SD driver paths are not yet adapted
                 and no on-device acceptance has happened - see
                 docs/KNOWN-SIMPLIFICATIONS.md (r44).
+        config LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C
+            bool "Waveshare ESP32-S3-Touch-AMOLED-1.75C (CO5300/CST9217)"
+            help
+                Third compile-time board profile: 466x466 CO5300, CST9217,
+                32 MB flash and no TF card. On-device acceptance is pending.
     endchoice
 
     # Hidden: derived from the choice, consumed by lume-board/CMakeLists.txt
@@ -40,6 +45,7 @@ menu "Lume board"
         string
         default "waveshare_esp32_s3_touch_amoled_2_16" if LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_2_16
         default "waveshare_esp32_s3_touch_amoled_1_8" if LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_8
+        default "waveshare_esp32_s3_touch_amoled_1_75c" if LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C
         help
             Directory under firmware/boards/ that holds the selected profile.
             Add a "default <dir> if LUME_BOARD_<NEW>" line when adding a board.

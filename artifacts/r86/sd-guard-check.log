@@ -1,0 +1,21 @@
+$ rg -n "^#define LUME_PIN_SD_" firmware/boards/*/lume_board_profile.h
+firmware/boards/waveshare_esp32_s3_touch_amoled_1_8/lume_board_profile.h:159:#define LUME_PIN_SD_MOSI      1    /* BSP_SD_CMD — SDMMC CMD, not SPI MOSI */
+firmware/boards/waveshare_esp32_s3_touch_amoled_1_8/lume_board_profile.h:160:#define LUME_PIN_SD_CLK       2    /* BSP_SD_CLK */
+firmware/boards/waveshare_esp32_s3_touch_amoled_1_8/lume_board_profile.h:161:#define LUME_PIN_SD_MISO      3    /* BSP_SD_D0  — SDMMC D0,  not SPI MISO */
+firmware/boards/waveshare_esp32_s3_touch_amoled_1_8/lume_board_profile.h:162:#define LUME_PIN_SD_CS        41   /* TODO(board): unsourced; SDMMC has no CS. 2.16 placeholder. */
+firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/lume_board_profile.h:49:#define LUME_PIN_SD_MOSI      1
+firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/lume_board_profile.h:50:#define LUME_PIN_SD_CLK       2
+firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/lume_board_profile.h:51:#define LUME_PIN_SD_MISO      3
+firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/lume_board_profile.h:52:#define LUME_PIN_SD_CS        41
+
+$ rg -n "LUME_PIN_SD_" firmware/components --glob "*.c"
+firmware/components/mp3_decoder/mp3_decoder.c:25:#if defined(LUME_PIN_SD_MOSI) && defined(LUME_PIN_SD_CLK) && \
+firmware/components/mp3_decoder/mp3_decoder.c:26:    defined(LUME_PIN_SD_MISO) && defined(LUME_PIN_SD_CS)
+firmware/components/mp3_decoder/mp3_decoder.c:32:#if defined(LUME_PIN_SD_MOSI) && defined(LUME_PIN_SD_CLK) && \
+firmware/components/mp3_decoder/mp3_decoder.c:33:    defined(LUME_PIN_SD_MISO) && defined(LUME_PIN_SD_CS)
+firmware/components/mp3_decoder/mp3_decoder.c:37:    spi_bus_config_t bus = {.mosi_io_num=LUME_PIN_SD_MOSI,
+firmware/components/mp3_decoder/mp3_decoder.c:38:        .miso_io_num=LUME_PIN_SD_MISO,.sclk_io_num=LUME_PIN_SD_CLK,
+firmware/components/mp3_decoder/mp3_decoder.c:42:    slot.gpio_cs = LUME_PIN_SD_CS;
+
+$ git diff --check
+EXIT=0
