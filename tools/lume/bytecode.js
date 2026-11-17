@@ -47,21 +47,18 @@ export async function qjsVersion() {
   return parseQjsVersion(headerText, sourceText);
 }
 
-/** Locate qjsc: $LUME_QJSC, then tools/lume/bin/qjsc (fetch-qjsc.sh), then PATH. */
+/** Locate qjsc: explicit override, local binary, or build from vendored source. */
 export async function findQjsc() {
-  const explicit = [process.env.LUME_QJSC, localQjsc].filter(Boolean);
-  for (const candidate of explicit) {
+  if (process.env.LUME_QJSC) {
+    await access(process.env.LUME_QJSC);
+    return process.env.LUME_QJSC;
+  }
+  for (const candidate of [localQjsc]) {
     try { await access(candidate); return candidate; } catch { /* keep looking */ }
   }
-  try {
-    await execFileAsync('qjsc', ['-h']);
-    return 'qjsc';
-  } catch (err) {
-    // `qjsc -h` prints the version and exits 1; only ENOENT means "not found".
-    if (err && err.code !== 'ENOENT') return 'qjsc';
-  }
-  throw new Error('qjsc not found. Run tools/lume/fetch-qjsc.sh to build it ' +
-                  'from the vendored QuickJS-NG sources, or set LUME_QJSC=/path/to/qjsc');
+  try { await execFileAsync(join(here, 'fetch-qjsc.sh'), [], { maxBuffer: 4 * 1024 * 1024 }); }
+  catch (err) { throw new Error(`cannot build vendored qjsc: ${(err.stderr || err.message).toString().trim()}`); }
+  return localQjsc;
 }
 
 /** Compile one esbuild bundle to a raw qjsc bytecode blob.

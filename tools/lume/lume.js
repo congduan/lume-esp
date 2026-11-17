@@ -11,7 +11,7 @@ import { check, render } from './check.js';
 import { scan, renderScan } from './scan.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--bytecode]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--bytecode]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--timeout <s>]\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --bytecode compiles the bundle with qjsc and pushes QuickJS bytecode\n  (build qjsc first: tools/lume/fetch-qjsc.sh); source mode stays the default.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n  screenshot --scan N boots the app under esp32sim at N successive instants\n  (no board needed) and checks every frame for the expected layer set and\n  out-of-bounds changed pixels; exit 0 = all frames pass, 1 = any fail.\n`;
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --ota <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--timeout <s>]\n  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --ota pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  deploy/dev compile with vendored qjsc by default; the first run builds\n  qjsc locally. --source sends JS for older firmware.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n  screenshot --scan N boots the app under esp32sim at N successive instants\n  (no board needed) and checks every frame for the expected layer set and\n  out-of-bounds changed pixels; exit 0 = all frames pass, 1 = any fail.\n`;
 
 const APP_COMMANDS = new Set(['list', 'launch', 'remove', 'home']);
 
@@ -20,7 +20,7 @@ function parse(args) {
   if (command === '--help' || command === '-h' || !command) return { command: 'help' };
   if (command === '--version' || command === '-v') return { command: 'version' };
   if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
-  let dir, port, ota, token, otaPort, id, sub, subArg, ephemeral = false, bytecode = false;
+  let dir, port, ota, token, otaPort, id, sub, subArg, ephemeral = false, bytecode = true;
   let json = false, noEmu = false, timeout = 120, scanN = null;
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
@@ -30,7 +30,8 @@ function parse(args) {
     else if (a === '--ota-port' && (command === 'deploy' || command === 'screenshot') && rest[i + 1]) otaPort = rest[++i];
     else if (a === '--id' && (command === 'dev' || command === 'deploy') && rest[i + 1]) id = rest[++i];
     else if (a === '--ephemeral' && (command === 'dev' || command === 'deploy')) ephemeral = true;
-    else if (a === '--bytecode' && command === 'deploy') bytecode = true;
+    else if (a === '--bytecode' && (command === 'deploy' || command === 'dev')) bytecode = true;
+    else if (a === '--source' && (command === 'deploy' || command === 'dev')) bytecode = false;
     else if (a === '--json' && (command === 'check' || command === 'screenshot')) json = true;
     else if (a === '--scan' && command === 'screenshot' && rest[i + 1]) scanN = rest[++i];
     else if (a === '--no-emu' && command === 'check') noEmu = true;
@@ -189,14 +190,25 @@ async function runScreenshot(outPath, options) {
   } finally { await device.close(); }
 }
 
-async function runDev(dir, portPath, id, ephemeral) {
+async function prepareBytecode(device, source) {
+  const bc = await import('./bytecode.js');
+  const local = await bc.qjsVersion();
+  const deviceVersion = await bc.queryEngineVersion(device);
+  bc.assertEngineVersion(deviceVersion, local.version);
+  return bc.buildBytecodePayload(source);
+}
+
+async function runDev(dir, portPath, id, ephemeral, bytecode) {
   const root = resolve(dir);
-  const first = await bundle(root, { minify: false });
+  let first = await bundle(root, { minify: false });
   const appId = id ?? defaultId(root);
   const serial = await openPort(portPath, { monitor: true });
+  try { if (bytecode) first = await prepareBytecode(serial, first); }
+  catch (err) { await serial.close(); throw err; }
   process.stdout.write(`Connected to ${serial.path}\n`);
   if (ephemeral) {
-    await serial.push(first);
+    if (bytecode) await serial.pushBytecode(first);
+    else await serial.push(first);
     process.stdout.write(`Reload OK (${first.length} bytes). Watching ${root}\n`);
   } else {
     await install(serial, root, appId, first);
@@ -209,10 +221,12 @@ async function runDev(dir, portPath, id, ephemeral) {
     do {
       dirty = false;
       try {
-        const source = await bundle(root, { minify: false });
+        let source = await bundle(root, { minify: false });
+        if (bytecode) source = await (await import('./bytecode.js')).buildBytecodePayload(source);
         // Hot updates stay in memory: the installed copy is only replaced by
         // an explicit deploy, so a crashed dev session cannot brick the app.
-        await serial.push(source);
+        if (bytecode) await serial.pushBytecode(source);
+        else await serial.push(source);
         process.stdout.write(`Reload OK (${source.length} bytes)\n`);
       } catch (err) { process.stderr.write(`lume: ${err.message}\n`); }
     } while (dirty);
@@ -265,7 +279,7 @@ try {
   if (command === 'help') process.stdout.write(usage);
   else if (command === 'version') process.stdout.write(pkg.version + '\n');
   else if (command === 'create') process.stdout.write(`Created ${await create(dir)}\n`);
-  else if (command === 'dev') await runDev(dir, port, id, ephemeral);
+  else if (command === 'dev') await runDev(dir, port, id, ephemeral, bytecode);
   else if (command === 'apps') await runApps(sub, subArg, { port, ota, token, otaPort });
   else if (command === 'screenshot' && scanN !== null) {
     const result = await scan(dir, { scan: scanN });
@@ -282,16 +296,7 @@ try {
     const appId = id ?? defaultId(dir);
     const device = await openDevice({ port, ota, token, otaPort });
     try {
-      if (bytecode) {
-        /* r43b: query the device's engine version FIRST, reject locally on a
-         * mismatch, then compile to bytecode. Source pushes never do this, so
-         * older firmware without VER is unaffected. */
-        const bc = await import('./bytecode.js');
-        const local = await bc.qjsVersion();
-        const deviceVersion = await bc.queryEngineVersion(device);
-        bc.assertEngineVersion(deviceVersion, local.version);
-        source = await bc.buildBytecodePayload(source);
-      }
+      if (bytecode) source = await prepareBytecode(device, source);
       const kind = bytecode ? ' (bytecode)' : '';
       if (ephemeral) {
         if (bytecode) await device.pushBytecode(source);
