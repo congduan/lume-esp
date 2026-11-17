@@ -1099,6 +1099,24 @@ declare namespace lume.crypto {
   function aesCtr(key: ArrayBufferView, iv: ArrayBufferView, data: ArrayBufferView, out: Uint8Array): number;
 }
 
+/** Native DEFLATE decompression via vendored miniz tinfl (r92). Inputs are
+ * borrowed zero-copy typed arrays (subarray byteOffsets are honoured) and no
+ * JS callback runs while a backing-store pointer is in use. The result is
+ * written into a caller-owned Uint8Array; no native allocation happens.
+ * format is "raw" (RFC 1951, default when omitted/null) or "zlib" (RFC 1950).
+ * zlib mode validates CMF/FLG, rejects preset dictionaries and verifies
+ * Adler-32 internally, so no separate adler32 primitive is exposed.
+ * Browser playground / host prelude stubs return -3 (unsupported). */
+declare namespace lume.compress {
+  /** Decompress src into out. Returns the number of bytes written (>= 0;
+   * 0 for an empty stream), -1 for a bad argument type/format string, -2 for
+   * a malformed/truncated/checksum-mismatched input stream, or -3 if out is
+   * too small for the decompressed data. src may be any typed array; out must
+   * be a Uint8Array. Views are used directly; bytes outside a view are never
+   * written. */
+  function inflate(src: ArrayBufferView, out: Uint8Array, format?: 'raw' | 'zlib'): number;
+}
+
 /** Native DDA renderer for a fixed-size RGB565 Canvas. */
 declare namespace lume.raycast {
   /** Bind a Uint8Array map without copying its backing store.
@@ -1119,6 +1137,7 @@ declare namespace lume {
   const fft: typeof lume.fft;
   const imgscale: typeof lume.imgscale;
   const crypto: typeof lume.crypto;
+  const compress: typeof lume.compress;
   const raycast: typeof lume.raycast;
   const ui: typeof lume.ui;
   const system: typeof lume.system;
