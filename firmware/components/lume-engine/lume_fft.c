@@ -118,7 +118,7 @@ static JSValue fft_magnitude(JSContext *ctx, JSValueConst this_val, int argc, JS
         JS_FreeValue(ctx, re.buffer); JS_FreeValue(ctx, out.buffer);
         return JS_NewInt32(ctx, -1);
     }
-    size_t n = split ? re.length * 2 : re.length;
+    size_t n = split ? (re.length <= FFT_MAX / 2 ? re.length * 2 : 0) : re.length;
     int valid = valid_length(n) && out.length == n / 2 && (!split || im.length == re.length);
     if (valid) {
         /* Magnitudes are independent; reject overlapping output views so a
