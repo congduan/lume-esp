@@ -1,0 +1,6 @@
+PASS 60 s smoke: six fish bounded, finite, continuous, capped turn; eaten=40
+PASS food pursuit changes heading and position
+PASS eating removes pellet and accelerates swimming/tail
+PASS prelude integration: tap feeding, no errors, max draw calls/frame=131
+ALL FISHTANK HARNESS CASES PASSED
+harness_exit=0

@@ -1,0 +1,9 @@
+lume check examples/fishtank
+
+[PASS] bundle   5278 bytes (21 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+check_exit=0
