@@ -1266,3 +1266,17 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   mapping and feel, audio, sleep current, radio, persistence and bundle push
   remain unverified on hardware. Build and host checks establish only compile
   and host behavior; details are in `docs/r86-amoled-175c-report.md`.
+
+## r91 / lume.crypto 原生原语
+
+- **CRC-32 不是 mbedTLS 封装**：mbedTLS 3.x 无 `mbedtls_crc32`，ESP-IDF 的
+  `esp_crc32_le` 是 ROM 封装（host harness 不可用），故 CRC32 在组件内用
+  表无关反射 0xEDB88320 循环实现（与 zlib/Node zlib.crc32 seed 语义一致）。
+  SHA-256 / HMAC-SHA256 / AES-CTR 仍全部走 IDF mbedTLS，未改任何 IDF 源码。
+- **browser playground / Node prelude 桩为 unsupported**：宿主没有 mbedTLS，
+  `lume.crypto` 四个方法只保留命名空间形状并返回 -3（未支持），带 onWarn
+  提示，可通过 `options.crypto` 注入实现；不伪造密码学结果。权威路径是
+  固件与 host harness（编译同一份 `lume_crypto.c`）。
+- **接板验收 deferred**：真机 mbedTLS/AES 硬件加速路径、吞吐与时延、WS 鉴权/
+  OTA 校验/配网 token 等消费方接入未验证；host 向量、build 与 size 不代表
+  板上验收。详见 `docs/r91-crypto-report.md`。

@@ -958,3 +958,33 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 ### r90 result — fishtank 鱼形升级：r89 ellipse 图元回补鱼缸（appended, milestone checkboxes untouched）
 
 纯 app 层刀（无固件改动）：`examples/fishtank/app.js` 鱼身从 r87 的 5 条变宽线段改为 4 站点 `fillEllipse` 椭圆链（沿鱼体轴采样，轴对齐图元贴合任意朝向），腹部叠浅色椭圆（深背浅腹）、条纹鱼叠深色横斑、背鳍/鳃线用小椭圆、眼睛用 `fillCircle`；绘制顺序按体型降序（近大远小）。每帧 137 次绘制调用（<200 断言，简报预算 250 未用满）。验证全绿：`tests/fishtank.js`（60s smoke + 觅食/进食/摆尾 + prelude 集成）、`lume check --no-emu` PASS、全量 `tests/*.js` 0 FAIL、`npm test` 43 pass/0 fail、playground 重生成（35 apps）、simulator verify.js 10 PASS、浏览器截图 3 张 vision 验收确认鱼形已圆润化（橙白条纹鱼可辨为小丑鱼风格）。取舍：最小体型鱼 4 站点仍偏蝌蚪感（加站点超预算）；真机 30fps/色彩/手感 pending board。详见 `docs/r90-fishtank-ellipse-report.md`。本轮引擎额度尽中断（engine_exit=1），主控接管收口。
+
+### r91 result — `lume.crypto` 原生原语落地（appended, milestone checkboxes untouched）
+
+原生原语扩展路线候选 #3（P2）落地，新增独立组件 `firmware/components/lume-crypto/`，
+封装 ESP-IDF 自带 mbedTLS：`lume.crypto.sha256/hmacSha256/crc32/aesCtr`，不自己实现
+SHA/HMAC/AES。契约按 r78/r79 的 `lume.fft`/`lume.imgscale` 变体：typed array 经
+`JS_GetTypedArrayBuffer` 零拷贝、subarray 偏移生效、访问期间不回调 JS，全部返回
+0/-码（CRC32 例外返回无符号值），定案为写入调用方 `out`（不返回新分配数组），
+`.d.ts` 已写清。CRC32 用表无关反射 0xEDB88320 实现（mbedTLS 3.x 无 crc32，
+IDF 的 esp_crc32_le 是 ROM 封装，host harness 用不了），非密码学原语。
+
+host 编译方案取 (a)：用唯一命名的最小 mbedTLS config 把 IDF 的
+`sha256.c+md.c+aes.c+platform_util.c+constant_time.c` 编入 host QuickJS runner，
+直接编译**固件同一份** `lume_crypto.c`（证据强于并行 JS 参考实现）。踩过 config
+被 `build_info.h` 同目录同名文件遮蔽、check_config 过早包含等坑，详见报告。
+`node tests/crypto.js` 全绿：NIST SHA-256（空/abc/56B）、RFC 4231 HMAC 三例、
+CRC32 0xCBF43926 + Node zlib/JS 交叉、SP 800-38A F.5 AES-128/256 CTR 加解密对称、
+四类带偏移视图、-1/-2 错误路径；host 单样本 native 55.5x JS（不代表 ESP32-S3）。
+`lume check examples/counter --no-emu` PASS、全量 `tests/*.js` 0 FAIL、
+`npm test` 43 pass/0 fail、`gen_api_docs.py --check` 过（134 行 +4 crypto）、
+`check_website.py` 无缺失/无发明。playground 与 prelude_runner 加 `lume.crypto`
+桩（无 mbedTLS，返回 -3 标注 unsupported，可注入实现）。
+
+固件改 C 必跑：基线 Flash Code 2027804 / Flash Data 850132 / DIRAM 247267 /
+IRAM 16384(Remain 0) / Total 3019707；r91 后 2031220 / 850164 / 247267 /
+16384(Remain 0) / 3023155，逐项 +3416 / +32 / 0 / 0 / +3448。IRAM 硬线未破，
+新代码全在 flash `.text/.rodata`。基线 quickjs.c 汇编遇 host swap 卡死，按 r78/r82
+先例仅对该 build 目标加 `-g0` 单独重编（不改源码/-O2），构建无新增警告。
+接板验收（真机 mbedTLS/AES 硬件路径、WS/OTA/配网消费方接入、时延与功耗）未做，
+仍 deferred；详见 `docs/r91-crypto-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。
