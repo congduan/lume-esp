@@ -1060,3 +1060,29 @@ drain timer（`lume_ui_bridge.c:40,1811`）常驻使 `lv_timer_handler()` 总返
 眠）。未做 drain timer 暂停优化（跨任务 LVGL API + 满队列回归风险），
 若要真正压低空载唤醒频率另行评估。详见 `docs/r93-lvglev-report.md` 与
 `docs/KNOWN-SIMPLIFICATIONS.md`。
+
+### r94 result — 流体粒子沙盒 `examples/particles`（appended, milestone checkboxes untouched）
+
+「经典 app 复刻生态 P1」候选落地为**纯 app 层**：220 粒子、单个 480x480
+canvas（230,400 px = 全 app 预算，先例 examples/memory），物理用网格邻域位置式
+分离 + 阻尼 + IMU 重力矢量做**简化近似**，明确不是 SPH/流体求解；每帧 1 次
+dirty-union clear + 220 次 fillRect 小方块（恒 221 draw calls，harness 锁 <250），
+禁逐粒子 fillCircle 全帧重画。`lume.imu.read()` 的 m/s^2 单位直接映射（静止
+9.81 @ +Z，shake 用 `|a-9.80665|>4 m/s^2` 而非 g 阈值），无板/浏览器返回 null →
+自动降级慢转重力 demo（compass 先例）；tap/swipe/STIR 按钮注入速度场；
+`pt.mode` KV 存偏好（7 字符）。
+
+零固件改动、零 `runtime/types/lume.d.ts` 改动。验证原始输出全见
+`docs/r94-particles-report.md`：新 `tests/particles.js` 绿（粒子上限、221
+draw calls/帧、30 s demo 无 NaN/无出界、触摸速度场、手势真 prelude 路径）；
+全量 `tests/*.js` 52 文件 0 FAIL；`npm test --prefix tools/lume` 43 pass /
+0 fail / 1 skipped；`lume check examples/particles --no-emu` PASS；playground
+35→36 apps 重生成 + 浏览器 verify 全绿（顺手修正 verify.mjs 基线即僵化的
+31 期望值为从 `LUME_SOURCES` 动态取）；`gen_api_docs.py --check` 与
+`check_website.py` 绿。emu 60 s 真跑（从固件源码与基线逐字节相同的
+r93 worktree 拷三件套，主仓 firmware/build 本轮为空）eval_ok=2 /
+RELOAD ERR=0 / ui queue full=0，无崩溃；3 张 sim 截图 vision 自查粒子形态
+可辨。诚实口径：emu 无 JIT 下 JS 57–257 ms（host 仅 1.5–2.5 ms，先例
+invaders 93 ms），**不宣称 emu 20 fps 达标**；真机帧率/IMU 方向/触摸观感/
+功耗仍 deferred。详见 `docs/r94-particles-report.md` 与
+`docs/KNOWN-SIMPLIFICATIONS.md`。

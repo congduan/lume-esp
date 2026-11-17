@@ -1333,3 +1333,29 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   esp32sim 加载同一份 `lume.bin`，与真机共用 `lvgl_task`（`tools/emu/run.sh:37-43`），
   两条路径本轮均过；模拟器 CST820 触摸模型与 CST9220 驱动不匹配，触摸手感
   不能由 emu 验收。详见 `docs/r93-lvglev-report.md`。
+
+## r94 / 流体粒子沙盒 examples/particles（纯 app 层）
+
+- **物理是简化近似，不是真流体**：220 粒子的邻域作用只做 3x3 网格的
+  capped **位置式分离**（防重叠）+ 速度阻尼 + 限速 + 四壁回弹 + 重力；
+  无 SPH 密度/压力投影、无黏性、无表面张力、无粒子-粒子速度交换。
+  「流体感」是视觉近似，不宣称物理正确。网格是每步重建的预分配链表，
+  无逐帧 JS 分配；detected 的 shake 只是一次径向速度注入，非真实甩动积分。
+- **渲染预算取舍**：单 480x480 canvas 恰满 460,800 B 全 app 预算，无第二个
+  canvas/HUD 画布；每帧清旧+画新用 union dirty box 一次 clear +
+  220 次 fillRect(6x6)（恒 221 draw/帧，harness 锁 <250）。粒子铺满屏后
+  union box 实为全屏，脏区纪律在代码层成立但**不带来像素节省**；这是
+  屏幕填满型沙盒的固有结果，不是 bug。
+- **IMU 单位与降级**：`lume.imu.read()` 返回 m/s^2（静止 +Z ~9.81），
+  本 app 直接乘 GAIN 映射为 px/s^2，shake 用 `|a-9.80665|>4 m/s^2`
+  （**非 g 阈值**）；静止补 `STATIC_G=2 m/s^2` 避免平板失重，属展示取向。
+  无板/浏览器 `read()===null` → demo 慢转重力（compass 先例），真机 IMU
+  轴向/增益/甩动阈值均未接板核对，pending board。
+- **性能口径**：host harness 的 `particleTick` 约 1.5–2.5 ms/50 ms，
+  但 esp32sim `jit: 0 compiled` 下报 57–257 ms（221 次 canvasDraw 跨语言
+  边界被解释执行放大；先例 invaders 同口径 93.72 ms）。emu 60 s 全程
+  eval_ok=2 / RELOAD ERR=0 / ui queue full=0、数组长度恒定，**不宣称
+  emu 20 fps 已达标**；真机帧率/功耗/观感 deferred 到接板验收。
+- **KV 偏好**：`pt.mode`（7 字符）只存 `auto`/`demo` 字符串偏好；
+  `get()` 用严格 `===` 匹配，不把负数当错误码（r10 歧义口径），
+  NVS 不可用时退化为内存偏好。详见 `docs/r94-particles-report.md`。
