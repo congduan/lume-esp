@@ -669,6 +669,68 @@ LLM 首 token ~500ms（网关按句切分，首句完成即送 TTS）｜TTS 首�
 评估口径：魔改必须有可对拍的前后数据（收益量化），否则不动；改 lv_conf.h /
 vendored 源码前先核对该项是否踩 KNOWN-SIMPLIFICATIONS 既有登记，翻案要在登记处注明
 翻案依据与数据。
+
+## 原生原语扩展路线（2026-11-16 立项，模式已由 r78/r79 验证）
+
+背景：QuickJS 解释执行对**批量数值/像素/密码学**负载慢 1-2 个数量级（r78 实测
+`lume.math.vecAdd` host 单样本 82×），但 UI 状态计算（signals 粒度属性更新）在
+JS 里已是微秒级——瓶颈不在语言层。结论：**不换语言，按 r78/r79 模式给
+`lume.*` 加 C 原生原语**，JS 只做编排；app 热更新卖点不变。既有先例：
+`lume.math`（零拷贝 Float32Array，r78）、`lume.raycast`（C 渲染直写 Canvas
+work buffer，r79）、`lume.svg`（mini-SVG 光栅化，r58）。
+
+### 契约纪律（每刀必须遵守）
+
+- 硬件 API 契约不变式：0 成功/负值失败；typed array 用
+  `JS_GetTypedArrayBuffer` 零拷贝，访问期间不回调 JS（r78 模式）。
+- 渲染类原语写 Canvas work buffer + 走正常 invalidate 发布（r79 模式），
+  不绕过 ui-bridge。
+- 纯计算类放独立 `firmware/components/lume-<name>/` 组件；新代码全在
+  flash `.text/.rodata`，IRAM 16384 硬线 Remain 0 不得突破（每刀 `idf.py size`
+  贴数）。
+- host harness 必测：正确性（Float32 位模式比较）+ 带偏移视图 + 类型/长度错误
+  + 性能对照（JS vs native，标注 host 单样本不代表 ESP32-S3）。
+- `.d.ts` 同步 + `gen_api_docs.py --check` 通过 + browser playground stub
+  同步（宿主 prelude_runner 与 website/playground/runtime.js 都要有桩）。
+
+### 候选清单（按价值序，逐刀评估后再派）
+
+1. **`lume.fft`（P1，音频可视化直接受益）**——radix-2 实数 FFT，
+   512/1024 点 Float32，单帧 <5ms（C 循环估算）。消费方：music_player 频谱
+   视图、录音波形、语音助手 VAD 能量条。接口：`fft(re, im?, out?)` +
+   `magnitude(out, re, im)`。host 基准：JS 蝶形 vs native。
+2. **`lume.imgscale`（P1，图片/精灵通用）**——RGB565 最近邻 + 双线性缩放，
+   写 Canvas work buffer（r79 模式）。消费方：image_gallery 缩略、游戏 sprite
+   缩放、图片查看器双指缩放。零拷贝进出。
+3. **`lume.crypto`（P2，配网/OTA/WS 鉴权）**——SHA-256 + HMAC + CRC32 +
+   AES-CTR（封装 esp-idf mbedtls，不自己实现）。消费方：WS 鉴权签名、OTA
+   校验、配网 token。接口全部 typed array 进出。
+4. **`lume.compress`（P2，热更新大包/日志）**——deflate/raw 解压（miniz 级
+   单文件实现 vendored）。消费方：bundle 压缩传输（256KiB 上限内装更多）、
+   日志/历史数据压缩存储。解压优先（压缩 JS 侧用不上）。
+5. **`lume.raymarch`/`lume.particles`（P3，演示效果类）**——按需立项：
+   raycast 模式的推广（体素/粒子系统整帧 C 渲染）。只有具体 demo app 拉动
+   时才做，不做无消费方的投机 API。
+6. **`lume.dsp`（P3，随语音助手 C/E 刀评估）**——Goertzel 单频检测、
+   RMS/峰值、简单 IIR 滤波。与 `lume.fft` 合并考虑，不单独立项。
+
+### 排除项（评估过，不做）
+
+- **通用 JS 引擎加速（编译 JS→native）**：超出「原语」范畴，等于换运行时，
+  已在引擎调试基建路线否决过同款思路。
+- **每个小函数都下放**：属性赋值/字符串拼接/signals 更新留在 JS（r78 报告
+  已明确位置坐标更新由调用方负责）——下放粒度以「批量×重复×数值」为准绳。
+- **Rust 实现组件**：调研中（esp-rs 与 ESP-IDF 组件共存构建的工作量/收益
+  待数据），不作为本路线前置；C 先行，Rust 结论出来后只影响后续新组件的
+  实现语言选择，不改变 API 契约。
+
+### 里程碑口径
+
+每刀交付：组件 + d.ts + host harness（正确性/位模式/偏移视图/错误/性能对照）
++ `idf.py size`（IRAM Remain 0）+ playground/browser stub 同步 + 真机 pending
+清单。第一个先例刀建议 `lume.fft`（消费方最明确）。
+
+
 ### r54 result — QuickJS PSRAM allocator profile (host + esp32sim; board pending)
 
 `s_psram_mf` now counts live blocks and net allocated bytes at the four Lume allocator hooks, using `heap_caps_get_allocated_size` before free and on successful allocation/reallocation. The `lume_engine_alloc_stats` read API is engine-task-only. `CONFIG_LUME_PERF_PROFILE=y` compiles in the counters and a one-second `lume-perf` allocator line; the default config compiles them out. QuickJS runtime creation, eval, callbacks, GC and teardown all run on the sole engine task; the LVGL task posts events and does not call the JS allocator. Vendored sources, prelude, bridge ABI, frame protocol, `.d.ts` and `tools/lume` were not changed.
