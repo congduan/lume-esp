@@ -110,6 +110,12 @@ declare namespace lume.ui {
     /** Up to 240 [x,y] points. */
     polyline(points: [number, number][], color: `#${string}` | number, width?: number): void;
     circle(x: number, y: number, radius: number, color: `#${string}` | number): void;
+    /** Anti-aliased solid circle at canvas-local integer centre; radius is in pixels. */
+    fillCircle(cx: number, cy: number, r: number, color: `#${string}` | number): void;
+    /** Anti-aliased solid axis-aligned ellipse; rx/ry are pixel radii. */
+    fillEllipse(cx: number, cy: number, rx: number, ry: number, color: `#${string}` | number): void;
+    /** Anti-aliased axis-aligned ellipse outline. Width defaults to 1 pixel (1..16), as for line. */
+    ellipse(cx: number, cy: number, rx: number, ry: number, color: `#${string}` | number, width?: number): void;
     /**
      * Native anti-aliased annulus arc (r48). Angles are degrees, clockwise from
      * +x (3 o'clock), wrapping at 360; `from == to` draws a round dot and a
