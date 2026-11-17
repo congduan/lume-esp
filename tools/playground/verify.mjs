@@ -102,6 +102,17 @@ try {
     await page.locator('#device').getByText('1', { exact: true }).waitFor();
     if (errors.length || await page.locator('#error').isVisible()) throw Error(errors.join('\n') || await page.locator('#error').textContent());
   });
+  await check('voice_assistant degrades to DEMO without audio/network and is tappable', async () => {
+    await page.locator('[data-app="voice_assistant"]').click();
+    await page.locator('#device').getByText('MODE DEMO', { exact: false }).first().waitFor();
+    if (await page.locator('#error').isVisible()) throw Error(await page.locator('#error').textContent());
+    const box = await page.locator('.device-wrap').boundingBox();
+    if (!box) throw Error('missing device');
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    await page.locator('#device').getByText('LISTEN', { exact: true }).waitFor({ timeout: 5000 });
+    console.log('  DEMO badge + tap -> LISTEN');
+    if (errors.length || await page.locator('#error').isVisible()) throw Error(errors.join('\n'));
+  });
   await check('snake screen tap and swipe do not throw', async () => {
     await page.locator('[data-app="games_snake"]').click();
     const box = await page.locator('.device-wrap').boundingBox();
