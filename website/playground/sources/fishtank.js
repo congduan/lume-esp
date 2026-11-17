@@ -3,9 +3,9 @@
 var TANK_W = 480, TANK_H = 480, FISH_LEFT = 38, FISH_RIGHT = 442;
 var FISH_TOP = 58, FISH_BOTTOM = 406, TANK_DT = 1 / 30;
 var FISH_COLORS = [
-  { body: '#F5A66B', light: '#FFD5A1', fin: '#D96A5A', eye: '#142331' },
-  { body: '#58C6C4', light: '#A8EBDE', fin: '#298EAE', eye: '#102C38' },
-  { body: '#B692DB', light: '#E0C7F4', fin: '#775DA9', eye: '#1D2038' }
+  { body: '#F5A66B', light: '#FFD5A1', fin: '#D96A5A', deep: '#E08A4E', eye: '#142331' },
+  { body: '#58C6C4', light: '#A8EBDE', fin: '#298EAE', deep: '#2F9FA8', eye: '#102C38' },
+  { body: '#B692DB', light: '#E0C7F4', fin: '#775DA9', deep: '#9A74C4', eye: '#1D2038' }
 ];
 function tankClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function tankAngle(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
@@ -101,11 +101,12 @@ function tankFish(ctx, f) {
       Math.max(1, Math.round(rx * f.size)), Math.max(1, Math.round(ry * f.size)), ink);
   }
   var beat = sway / 6;
-  /* Three overlapping ellipses forming a connected fan; each overlaps the
-   * previous by ~60% so it reads as one fin surface, not a dot trail. */
-  fan(-0.88, beat * -1.5, 3.2, 4.6, c.fin);
-  fan(-1.24, beat * -3.2, 2.6, 3.8, c.fin);
-  fan(-1.56, beat * -4.6, 2.0, 2.9, c.fin);
+  /* Fan of three ellipses spaced in PIXELS (not body-t fraction) with ~50%
+   * overlap: large and small fish both get a connected fin surface. */
+  var step = 2.6 * f.size;               /* ~55% of the previous ellipse ry */
+  fan(-0.84, beat * -1.2, 3.4, 5.0, c.fin);
+  fan((-0.84 * length - step) / length, beat * -2.6, 2.8, 4.2, c.fin);
+  fan((-0.84 * length - step * 2) / length, beat * -3.8, 2.2, 3.2, c.fin);
   /* Body: a chain of filled ellipses whose radii follow the fish profile
    * (narrow nose -> broad mid -> tapered peduncle), so any heading works
    * with the axis-aligned primitive. */
@@ -133,9 +134,9 @@ function tankFish(ctx, f) {
   /* Striped variant: two dark bars across the body (large fish only). */
   if (f.size > 1.1) {
     for (i = 0; i < 2; i++) {
-      var bar = point((0.3 - i * 0.34) * length, 0);
+      var bar = point((0.26 - i * 0.3) * length, 0);
       ctx.fillEllipse(Math.round(bar[0]), Math.round(bar[1]),
-        Math.round(1.4 * f.size), Math.round((i ? 6.0 : 7.2) * f.size), c.fin);
+        Math.round(1.6 * f.size), Math.round((i ? 5.4 : 6.6) * f.size), c.deep);
     }
   }
   /* Dorsal fin: a small ellipse standing on the back, leaning with sway. */
