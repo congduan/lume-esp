@@ -1,0 +1,360 @@
+Executing action: all (aliases: build)
+Running make in directory /tmp/lume-r86-wt/firmware/build
+Executing "make -j 4 all"...
+[  0%] Built target memory.ld
+[  0%] Built target custom_bundle
+[  0%] Built target sections.ld.in
+[  0%] Built target partition_table_bin
+[  0%] Built target _project_elf_src
+[  0%] Built target __idf_esp_https_ota
+[  0%] Performing build step for 'bootloader'
+[  1%] Built target __idf_esp_http_server
+[  1%] Built target _project_elf_src
+[  9%] Built target __idf_log
+[  1%] Built target __idf_esp_http_client
+[ 19%] Built target __idf_esp_rom
+[  2%] Built target __idf_tcp_transport
+[ 21%] Built target __idf_esp_common
+[  2%] Built target __idf_esp_adc
+[ 30%] Built target __idf_esp_hw_support
+[  3%] Built target __idf_esp-tls
+[ 32%] Built target __idf_esp_system
+[  3%] Built target __idf_http_parser
+[ 40%] Built target __idf_efuse
+[  4%] Built target __idf_driver
+[ 59%] Built target __idf_bootloader_support
+[  4%] Built target __idf_esp_driver_twai
+[ 60%] Built target __idf_esp_bootloader_format
+[  4%] Built target __idf_esp_driver_ledc
+[ 62%] Built target __idf_spi_flash
+[  4%] Built target __idf_esp_driver_i2c
+[ 68%] Built target __idf_hal
+[  4%] Built target __idf_esp_driver_sdm
+[ 69%] Built target __idf_micro-ecc
+[  4%] Built target __idf_esp_driver_tsens
+[ 92%] Built target __idf_soc
+[  5%] Built target __idf_esp_driver_rmt
+[ 94%] Built target __idf_xtensa
+[  5%] Built target __idf_esp_driver_sdspi
+[ 96%] Built target __idf_main
+[  5%] Built target __idf_esp_driver_sdmmc
+[ 98%] Built target bootloader.elf
+[100%] Built target gen_project_binary
+[  6%] Built target __idf_sdmmc
+[  7%] Built target __idf_esp_driver_i2s
+Bootloader binary size 0x5710 bytes. 0x28f0 bytes (32%) free.
+[  7%] Built target __idf_esp_driver_mcpwm
+[100%] Built target bootloader_check_size
+[  7%] Built target __idf_esp_driver_pcnt
+[100%] Built target app
+[  8%] Built target __idf_esp_gdbstub
+[  8%] No install step for 'bootloader'
+[  9%] Completed 'bootloader'
+[  9%] Built target __idf_esp_driver_spi
+[ 10%] Built target __idf_esp_wifi
+[ 10%] Built target bootloader
+[ 10%] Built target __idf_esp_coex
+[ 15%] Built target __idf_wpa_supplicant
+[ 16%] Built target __idf_esp_netif
+[ 22%] Built target __idf_lwip
+[ 22%] Built target __idf_vfs
+[ 22%] Built target __idf_esp_vfs_console
+[ 23%] Built target __idf_esp_driver_usb_serial_jtag
+[ 24%] Built target __idf_esp_phy
+[ 25%] Built target __idf_nvs_flash
+[ 25%] Built target __idf_esp_event
+[ 25%] Built target __idf_esp_driver_uart
+[ 25%] Built target __idf_esp_psram
+[ 25%] Built target __idf_esp_ringbuf
+[ 25%] Built target __idf_esp_driver_gptimer
+[ 25%] Built target __idf_esp_timer
+[ 25%] Built target __idf_cxx
+[ 26%] Built target __idf_pthread
+[ 27%] Built target __idf_newlib
+[ 28%] Built target __idf_freertos
+[ 31%] Built target __idf_esp_hw_support
+[ 31%] Built target __idf_esp_security
+[ 32%] Built target __idf_soc
+[ 32%] Built target __idf_heap
+[ 33%] Built target __idf_log
+[ 37%] Built target __idf_hal
+[ 38%] Built target __idf_esp_rom
+[ 38%] Built target __idf_esp_common
+[ 41%] Built target __idf_esp_system
+[ 43%] Built target __idf_spi_flash
+[ 43%] Built target __idf_esp_mm
+[ 44%] Built target __idf_bootloader_support
+[ 44%] Built target __idf_efuse
+[ 44%] Built target __idf_esp_partition
+[ 44%] Built target __idf_app_update
+[ 44%] Built target __idf_esp_bootloader_format
+[ 45%] Built target __idf_esp_app_format
+[ 46%] Built target mbedtls
+[ 47%] Built target mbedx509
+[ 53%] Built target mbedcrypto
+[ 53%] Built target p256m
+[ 54%] Built target everest
+[ 54%] Built target __idf_mbedtls
+[ 54%] Built target __idf_esp_pm
+[ 55%] Built target __idf_esp_driver_gpio
+[ 56%] Built target __idf_xtensa
+[ 56%] Built target __idf_lume-svg
+[ 57%] Built target __idf_wear_levelling
+[ 58%] Built target __idf_lume-perf
+[ 58%] Built target __idf_esp_lcd
+[ 58%] Built target __idf_lume-raycast
+[ 58%] Built target __idf_lume-gpio
+[ 58%] Built target __idf_lume-adc
+[ 59%] Built target __idf_joltwallet__littlefs
+[ 66%] Built target __idf_bt
+[ 67%] Built target __idf_espressif__esp_websocket_client
+[ 67%] Built target __idf_app_trace
+[ 67%] Built target __idf_unity
+[ 68%] Built target __idf_console
+[ 68%] Built target __idf_esp_driver_cam
+[ 68%] Built target __idf_esp_driver_touch_sens
+[ 68%] Built target __idf_esp_eth
+[ 68%] Built target __idf_esp_hid
+[ 68%] Built target __idf_esp_https_server
+[ 69%] Built target __idf_protobuf-c
+[ 69%] Built target __idf_espcoredump
+[ 69%] Built target __idf_json
+[ 70%] Built target __idf_mqtt
+[ 70%] Built target __idf_nvs_sec_provider
+[ 70%] Built target __idf_perfmon
+[ 70%] Built target __idf_rt
+[ 81%] Built target __idf_spiffs
+[ 94%] Built target __idf_lvgl
+[ 94%] Built target __idf_touch_element
+[ 95%] Built target __idf_usb
+[ 95%] Built target __idf_lume-storage
+[ 95%] Built target __idf_quickjs-ng
+[ 95%] Built target __idf_fatfs
+[ 95%] Built target __idf_lume-ble
+[ 96%] Built target __idf_lume-net
+[ 97%] Built target __idf_cmock
+[ 97%] Built target __idf_protocomm
+[ 98%] Built target __idf_lume-engine
+[ 98%] Built target __idf_esp_local_ctrl
+[ 98%] Built target __idf_wifi_provisioning
+[ 98%] Built target __idf_lume-power
+[ 98%] Building C object esp-idf/mp3_decoder/CMakeFiles/__idf_mp3_decoder.dir/mp3_decoder.c.obj
+[ 98%] Linking C static library libmp3_decoder.a
+[ 98%] Built target __idf_mp3_decoder
+[ 98%] Built target __idf_lume-audio
+[ 98%] Built target __idf_lume-imu
+[ 98%] Built target __idf_lume-pmic
+[ 98%] Built target __idf_lume-board
+[100%] Built target __idf_lume-ui-bridge
+[100%] Built target __idf_lume-hotreload
+[100%] Built target __idf_main
+[100%] Generating esp-idf/esp_system/ld/sections.ld
+[100%] Built target __ldgen_output_sections.ld
+[100%] Linking CXX executable lume.elf
+[100%] Built target lume.elf
+[100%] Generating binary image from built executable
+esptool.py v4.13.0
+Creating esp32s3 image...
+Merged 3 ELF sections
+Successfully created esp32s3 image.
+Generated /tmp/lume-r86-wt/firmware/build/lume.bin
+[100%] Built target gen_project_binary
+lume.bin binary size 0x2dfea0 bytes. Smallest app partition is 0x640000 bytes. 0x360160 bytes (54%) free.
+[100%] Built target app_check_size
+[100%] Built target app
+
+Project build complete. To flash, run:
+ idf.py flash
+or
+ idf.py -p PORT flash
+or
+ python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/lume.bin
+or from the "/tmp/lume-r86-wt/firmware/build" directory
+ python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"
+Executing action: size
+Running make in directory /tmp/lume-r86-wt/firmware/build
+Executing "make -j 4 all"...
+[  0%] Built target memory.ld
+[  0%] Built target partition_table_bin
+[  0%] Built target sections.ld.in
+[  0%] Built target custom_bundle
+[  0%] Performing build step for 'bootloader'
+[  0%] Built target _project_elf_src
+[  0%] Built target __idf_esp_https_ota
+[  1%] Built target _project_elf_src
+[  9%] Built target __idf_log
+[  1%] Built target __idf_esp_http_server
+[ 19%] Built target __idf_esp_rom
+[  1%] Built target __idf_esp_http_client
+[ 21%] Built target __idf_esp_common
+[  2%] Built target __idf_tcp_transport
+[ 30%] Built target __idf_esp_hw_support
+[ 32%] Built target __idf_esp_system
+[  2%] Built target __idf_esp_adc
+[  3%] Built target __idf_esp-tls
+[ 40%] Built target __idf_efuse
+[  3%] Built target __idf_http_parser
+[ 59%] Built target __idf_bootloader_support
+[  4%] Built target __idf_driver
+[ 60%] Built target __idf_esp_bootloader_format
+[  4%] Built target __idf_esp_driver_twai
+[ 62%] Built target __idf_spi_flash
+[  4%] Built target __idf_esp_driver_ledc
+[ 68%] Built target __idf_hal
+[  4%] Built target __idf_esp_driver_i2c
+[ 69%] Built target __idf_micro-ecc
+[  4%] Built target __idf_esp_driver_sdm
+[ 92%] Built target __idf_soc
+[  4%] Built target __idf_esp_driver_tsens
+[ 94%] Built target __idf_xtensa
+[  5%] Built target __idf_esp_driver_rmt
+[ 96%] Built target __idf_main
+[  5%] Built target __idf_esp_driver_sdspi
+[ 98%] Built target bootloader.elf
+[  5%] Built target __idf_esp_driver_sdmmc
+[100%] Built target gen_project_binary
+[  6%] Built target __idf_sdmmc
+Bootloader binary size 0x5710 bytes. 0x28f0 bytes (32%) free.
+[  7%] Built target __idf_esp_driver_i2s
+[100%] Built target bootloader_check_size
+[100%] Built target app
+[  7%] Built target __idf_esp_driver_mcpwm
+[  7%] No install step for 'bootloader'
+[  7%] Completed 'bootloader'
+[  7%] Built target __idf_esp_driver_pcnt
+[  7%] Built target bootloader
+[  8%] Built target __idf_esp_gdbstub
+[  9%] Built target __idf_esp_driver_spi
+[ 10%] Built target __idf_esp_wifi
+[ 10%] Built target __idf_esp_coex
+[ 15%] Built target __idf_wpa_supplicant
+[ 16%] Built target __idf_esp_netif
+[ 22%] Built target __idf_lwip
+[ 22%] Built target __idf_vfs
+[ 22%] Built target __idf_esp_vfs_console
+[ 23%] Built target __idf_esp_driver_usb_serial_jtag
+[ 24%] Built target __idf_esp_phy
+[ 25%] Built target __idf_nvs_flash
+[ 25%] Built target __idf_esp_event
+[ 25%] Built target __idf_esp_driver_uart
+[ 25%] Built target __idf_esp_psram
+[ 25%] Built target __idf_esp_ringbuf
+[ 25%] Built target __idf_esp_driver_gptimer
+[ 25%] Built target __idf_esp_timer
+[ 25%] Built target __idf_cxx
+[ 26%] Built target __idf_pthread
+[ 27%] Built target __idf_newlib
+[ 28%] Built target __idf_freertos
+[ 31%] Built target __idf_esp_hw_support
+[ 31%] Built target __idf_esp_security
+[ 32%] Built target __idf_soc
+[ 32%] Built target __idf_heap
+[ 33%] Built target __idf_log
+[ 37%] Built target __idf_hal
+[ 38%] Built target __idf_esp_rom
+[ 38%] Built target __idf_esp_common
+[ 41%] Built target __idf_esp_system
+[ 43%] Built target __idf_spi_flash
+[ 43%] Built target __idf_esp_mm
+[ 44%] Built target __idf_bootloader_support
+[ 44%] Built target __idf_efuse
+[ 44%] Built target __idf_esp_partition
+[ 44%] Built target __idf_app_update
+[ 44%] Built target __idf_esp_bootloader_format
+[ 45%] Built target __idf_esp_app_format
+[ 46%] Built target mbedtls
+[ 47%] Built target mbedx509
+[ 53%] Built target mbedcrypto
+[ 53%] Built target p256m
+[ 54%] Built target everest
+[ 54%] Built target __idf_mbedtls
+[ 54%] Built target __idf_esp_pm
+[ 55%] Built target __idf_esp_driver_gpio
+[ 56%] Built target __idf_xtensa
+[ 56%] Built target __idf_lume-svg
+[ 57%] Built target __idf_wear_levelling
+[ 58%] Built target __idf_esp_lcd
+[ 58%] Built target __idf_lume-perf
+[ 58%] Built target __idf_lume-raycast
+[ 58%] Built target __idf_lume-adc
+[ 58%] Built target __idf_lume-gpio
+[ 59%] Built target __idf_joltwallet__littlefs
+[ 60%] Built target __idf_espressif__esp_websocket_client
+[ 60%] Built target __idf_app_trace
+[ 67%] Built target __idf_bt
+[ 67%] Built target __idf_unity
+[ 68%] Built target __idf_console
+[ 68%] Built target __idf_esp_driver_cam
+[ 68%] Built target __idf_esp_driver_touch_sens
+[ 68%] Built target __idf_esp_eth
+[ 68%] Built target __idf_esp_hid
+[ 68%] Built target __idf_esp_https_server
+[ 69%] Built target __idf_protobuf-c
+[ 69%] Built target __idf_json
+[ 69%] Built target __idf_espcoredump
+[ 70%] Built target __idf_mqtt
+[ 70%] Built target __idf_nvs_sec_provider
+[ 70%] Built target __idf_perfmon
+[ 70%] Built target __idf_rt
+[ 94%] Built target __idf_lvgl
+[ 94%] Built target __idf_spiffs
+[ 94%] Built target __idf_touch_element
+[ 95%] Built target __idf_usb
+[ 95%] Built target __idf_lume-storage
+[ 95%] Built target __idf_quickjs-ng
+[ 95%] Built target __idf_fatfs
+[ 96%] Built target __idf_lume-net
+[ 97%] Built target __idf_cmock
+[ 97%] Built target __idf_lume-ble
+[ 97%] Built target __idf_protocomm
+[ 97%] Built target __idf_esp_local_ctrl
+[ 98%] Built target __idf_lume-engine
+[ 98%] Built target __idf_wifi_provisioning
+[ 98%] Built target __idf_lume-power
+[ 98%] Built target __idf_mp3_decoder
+[ 98%] Built target __idf_lume-audio
+[ 98%] Built target __idf_lume-imu
+[ 98%] Built target __idf_lume-pmic
+[ 98%] Built target __idf_lume-board
+[100%] Built target __idf_lume-ui-bridge
+[100%] Built target __idf_lume-hotreload
+[100%] Built target __idf_main
+[100%] Built target __ldgen_output_sections.ld
+[100%] Built target lume.elf
+[100%] Built target gen_project_binary
+lume.bin binary size 0x2dfea0 bytes. Smallest app partition is 0x640000 bytes. 0x360160 bytes (54%) free.
+[100%] Built target app_check_size
+[100%] Built target app
+Running make in directory /tmp/lume-r86-wt/firmware/build
+Executing "make -j 4 size"...
+                           Memory Type Usage Summary                            
+┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory            ┃              ┃          ┃                ┃               ┃
+┃ Type/Section      ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code        │      2022976 │          │                │               │
+│    .text          │      2022976 │          │                │               │
+│ Flash Data        │       849428 │          │                │               │
+│    .rodata        │       849172 │          │                │               │
+│    .appdesc       │          256 │          │                │               │
+│ DIRAM             │       247267 │    72.35 │          94493 │        341760 │
+│    .bss           │       121960 │    35.69 │                │               │
+│    .text          │       101679 │    29.75 │                │               │
+│    .data          │        23628 │     6.91 │                │               │
+│ IRAM              │        16384 │    100.0 │              0 │         16384 │
+│    .text          │        15356 │    93.73 │                │               │
+│    .vectors       │         1028 │     6.27 │                │               │
+│ RTC FAST          │           72 │     0.88 │           8120 │          8192 │
+│    .text          │           44 │     0.54 │                │               │
+│    .rtc_reserved  │           24 │     0.29 │                │               │
+│    .force_fast    │            4 │     0.05 │                │               │
+│ RTC SLOW          │           32 │     0.39 │           8160 │          8192 │
+│    .force_slow    │           32 │     0.39 │                │               │
+└───────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 3014175 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical 
+reference manual due to reserved memory and application configuration. The total
+flash size available for the application is not included by default, as it 
+cannot be reliably determined due to the presence of other data like the 
+bootloader, partition table, and application partition size.
+Built target size

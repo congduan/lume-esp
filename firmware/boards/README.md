@@ -8,7 +8,7 @@ sdkconfig values and the partition table — lives in one directory here.
 This is a **compile-time, single-board-at-a-time abstraction**. There is no
 runtime board switching. r44 added a second profile (Waveshare
 ESP32-S3-Touch-AMOLED-1.8) as the first real use of the six-step flow below;
-both profiles are compile-time parameter sets and NEITHER has on-device
+r86 adds the 1.75C profile. All profiles are compile-time parameter sets; none has on-device
 acceptance. See `docs/KNOWN-SIMPLIFICATIONS.md` (r27 / r31 / r44 entries) and
 `docs/r27-board-param-audit.md`. The default board is still the 2.16 profile.
 
@@ -61,12 +61,27 @@ firmware/boards/
     lume_board_profile.h
     sdkconfig.defaults
     partitions.csv
+  waveshare_esp32_s3_touch_amoled_1_75c/       <- r86: 466x466 round AMOLED
+    lume_board_profile.h
+    sdkconfig.defaults
+    partitions.csv
 ```
 
 `lume_board_profile.h` is re-exported to the whole firmware by
 `firmware/components/lume-board/include/lume_pins.h` (a one-line shim). No `.c`
 file should hardcode a pin, a resolution, an I2C address or a panel command
 again — include `lume_pins.h` and use the `LUME_*` macros.
+
+## Waveshare ESP32-S3-Touch-AMOLED-1.75C (r86)
+
+The third compile-time profile targets the 466×466 CO5300 panel, CST9217
+touch controller, 32 MB flash and 8 MB PSRAM. The LCD reset is GPIO1, touch
+reset is GPIO2 and audio MCLK is GPIO16. Unlike the 1.8 profile, this board
+uses direct GPIO resets with no IO expander. It has no TF slot, so the profile
+defines no `LUME_PIN_SD_*` pins; SD-backed MP3/file calls return the existing
+`-2` unavailable result. The CST9217 reuses the CST92xx touch path because
+that path has no hard chip-ID check. Panel column offset 0 and touch mapping
+are provisional until on-device acceptance. See `docs/r86-amoled-175c-report.md`.
 
 ## How the selection works (ESP-IDF v5.5.5 native mechanisms)
 
