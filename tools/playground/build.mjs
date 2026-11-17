@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const out = join(root, 'website/playground');
 const require = createRequire(join(root, 'tools/lume/package.json'));
 const { build } = require('esbuild');
-const apps = ['counter', 'clock', 'games_snake', 'games_2048', 'games_breakout',
+const apps = ['counter', 'clock', 'clock_round', 'dashboard_round', 'games_snake', 'games_2048', 'games_breakout',
   'games_tetris', 'mario', 'game_of_life', 'pet', 'calculator', 'weather', 'music_player',
   'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo',
   'watchface', 'async_demo', 'piano', 'compass', 'invaders', 'frogger', 'abc123', 'sokoban', 'lcd_dual', 'memory', 'minesweeper', 'golf', 'scroller', 'raycast'];
