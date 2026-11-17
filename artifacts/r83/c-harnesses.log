@@ -1,0 +1,10 @@
+gcc -std=c11 -Wall -Wextra -Werror -I firmware/components/lume-ui-bridge/include tests/canvas_blit.c -o /tmp/lume_canvas_blit && /tmp/lume_canvas_blit
+PASS opaque 4x4 blit lands exactly at (2,3)
+PASS 0x0000 colour key is transparent
+PASS blit clips at all four surface edges
+PASS flip mirrors the sprite horizontally
+PASS NULL/zero-size blit is a no-op
+PASS fully off-surface blit is a no-op
+canvas_blit: all cases PASS
+ALL CANVAS AA HOST TESTS PASSED (19/19 cases)
+bridge_protocol.c: EXIT=0

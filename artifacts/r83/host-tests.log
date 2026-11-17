@@ -1,0 +1,480 @@
+PASS 62 SVG outlines and 26 Aa pairs have valid structure
+PASS 36-card deck, words and digit dot counts
+PASS Image glyph and auxiliary Canvas nodes
+PASS page advance, Z-to-0 transition and Image bounce
+PASS four-mode cycle, random bag and vertical Aa source
+PASS number-dot Canvas draws three filled arcs
+ALL ABC123 HARNESS CASES PASSED
+request construction + key storage: PASS
+HTTP error + timeout + bad JSON + truncation: PASS
+Node local POST round trip: PASS
+PASS initial transition value uses SET_ATTR
+PASS transition signal.set emits ANIMATE with omitted from and ease-out
+PASS ANIMATE_CANCEL path
+PASS onComplete registered and dispatched through reverse event hook
+PASS same-property replacement discards old completion
+PASS color animation rejected
+PASS apps entries merges meta.json and falls back per field
+PASS apps entries tolerates a store without native metadata
+PASS apps entries ignores malformed meta instead of throwing
+PASS apps current() reports the running app id
+PASS apps launch/home/remove return the native status codes
+PASS apps setBoot pins independently of launch and home, then clears
+PASS apps setBoot reports invalid ids and storage errors
+PASS apps launcher pins itself and its edit exit clears the pin before home
+PASS apps Launcher defaults to the installed app set
+PASS apps Launcher tap launches the app by default (no host callback)
+PASS apps explicit apps + onLaunch still override the store
+PASS apps Launcher rejects a non-array app list
+PASS apps embedded home renders a clock and one tile per installed app
+PASS apps embedded home launches a tile and keeps BACK at the root
+PASS apps embedded home shows an empty state with no apps
+PASS 15 multi-app cases
+async jobs host prelude: PASS
+PASS lume.ble wiring (header, CMake, sdkconfig, natives, types, docs)
+PASS onStart advertises; first poll of a live link sends HELLO
+PASS poll drains one RX packet, verifies the link and acks it
+PASS Ping Button press sends a ping
+PASS Ping counter Text reflects the press
+PASS negative read() status is handled by the app
+PASS onPause / shutdown stops advertising
+PASS failed start() is surfaced without starting the poll timer
+PASS canvas create dimensions and fixed wire kind
+PASS drawing command order and final invalidate
+PASS r48 native arc emits one LUME_DRAW_ARC (opcode 5) with normalised args
+PASS r48 native arc rounds fractional degrees and rejects bad angles
+PASS optional dirty rectangles preserve local coordinates
+PASS signal change redraws once; equal value stays idle
+PASS canvas is adopted into flex layout flow at fixed size
+PASS dimensions/coordinates/color/text/point bounds reject
+PASS injected 390x390 screen governs canvas size, budget and draw bounds
+PASS counter example retains count and theme behavior
+SAMPLE messages (first 12): [["create",1,0],["attr",1,12,12],["attr",1,0,"taps: 0"],["create",0,0],["attr",2,1,2377581],["attr",2,16,100],["attr",2,3,120],["attr",2,7,1],["attr",2,8,2],["attr",2,9,2],["attr",2,11,6],["attr",2,12,12]]
+SAMPLE totals: {"create":7,"attr":42,"press":3}
+PASS 33 contiguous lines split at 32
+CANVAS 240 points: old=239 messages / 27724 queue bytes; new=8 messages / 928 queue bytes + 3824 payload bytes
+PASS 240-point polyline uses eight batches
+CANVAS retained path: 2 segments uploaded once, 2 draws / 1 upload
+PASS retained path uploads geometry once and replays from C
+PASS retainSegments uploads independent segments
+PASS retained sprite uploads pixels once and replays from C
+PASS sprite argument validation matches the native contract
+PASS sprite slot redefinition re-uploads (animation frame swap)
+PASS compass heading wraps 0-360
+PASS compass demo mode angular speed (18 deg/s)
+PASS compass gyro-Z integration wraps and scales by dt
+PASS compass retained ring: 36 segments + 2 paths uploaded once
+PASS compass DRIFT badge condition (IMU mode, |spin|>30deg)
+PASS compass no-IMU fallback to demo (honest, no crash)
+PASS compass serial smoke: COMPASS HDG <deg> mode=<demo|imu>
+PASS compass IMU mode integrates gz and shows DRIFT badge
+PASS compass mode toggle returns to demo, badge clears
+PASS compass honest wording: inertial/relative only, no north promise in UI
+PASS compass host harness: 10/10 assertions
+PASS: create-failed notice disposes signal effects and warns once
+PASS: Canvas failure latches dead id and native attrs become no-op
+PASS 8/16-point known DFT, Float32 bit patterns, packed magnitude
+PASS 1kHz peak bin 64/1024 and Parseval
+PASS 4096-point inclusive upper bound
+PASS offset views, guards, split magnitude
+PASS error codes for type, length, non-power-of-two, limit, overlap
+PERF 1024-point mean over 1000 calls: JS butterflies=2.0310 ms native=0.0250 ms (host single sample; not ESP32-S3)
+PASS files before: DEL -> status confirmation -> DEL -> remove
+PASS files after: DEL -> Dialog -> Delete -> remove -> Toast
+PASS frogger four-direction hop + boundary clamp
+PASS frogger vehicle collision
+PASS frogger log carry displacement
+PASS frogger water death
+PASS frogger home fill + level up
+PASS frogger difficulty speed-up
+PASS frogger high-score KV + graceful failure
+PASS frogger sprite spans precomputed once, stable across ticks
+PASS frogger game over restart
+PASS frogger canvas/events + tap-direction hops
+ALL FROGGER HARNESS CASES PASSED
+PASS life budget: GRID<=60, 9px cells, single canvas <=300x300
+PASS life B3 birth: dead cell with exactly 3 live neighbours comes alive
+PASS life B3/S23 survival 2-3, death 0-1 and 4+
+PASS life stable 2x2 block is unchanged
+PASS life torus edges wrap neighbour counts across all four borders
+PASS life boot: glider seeded, RUN at 350ms, LIFE READY logged
+PASS life STATIC layer: retainSegments uploaded exactly once (72 segments)
+PASS life LIVE layer: each generation logs LIFE GEN and invalidates <30% of frame
+PASS life glider translates while conserving 5 live cells
+PASS life tap: empty cell plants glider; live cell toggles off
+PASS life swipe up toggles play/pause; left/right cycle 200/350/500ms
+PASS life longpress clears the grid
+PASS life PATTERN cycles GLIDER -> LWSS -> PULSAR(48) -> RANDOM
+life harness: 13 cases passed
+PASS 2048 left
+PASS 2048 right
+PASS 2048 up
+PASS 2048 down
+PASS 2048 no change
+PASS 2048 game over
+PASS snake turns
+PASS snake eats
+PASS snake wall
+PASS snake body
+PASS snake IMU threshold and axis sign
+PASS 2048 high score KV key
+PASS snake high score KV key
+PASS brkout high score KV key
+PASS breakout wall rebound
+PASS breakout brick
+PASS breakout level
+PASS breakout game over
+PASS tetris clockwise wall kick
+PASS tetris line clear, score and speed floor
+PASS tetris lock scores cleared row
+PASS tetris high score KV and graceful failure
+PASS tetris canvas, tap rotation, pan follow, soft and hard drop, line log
+PASS: DOWN MOVE UP retain FIFO order
+PASS: MOVE pressure reserves capacity and UP reaches queue tail
+PASS tap: short press with small displacement -> one tap with end coords
+PASS tap boundary: displacement >= tapMovePx(10) is NOT a tap
+PASS tap boundary: duration >= tapMaxMs(400) is NOT a tap (becomes longpress)
+PASS longpress boundary: fires while still down once t-start >= 400ms
+PASS longpress suppresses tap AND swipe on release (no double-fire)
+EVIDENCE pan stream types=["panstart","pan","pan","panend"] final dx/dy=35/2
+PASS pan stream: panstart -> pan* -> panend, with dx/dy from press start
+PASS swipe: LVGL gesture-dir hint (right=2) wins over axis inference
+PASS swipe: axis fallback when no LVGL dir hint (vertical -> down)
+PASS swipe speed gate: a 5s STATIONARY hold is a longpress, never a swipe
+PASS r21-fix: a SLOW drag held past 400ms is pan, NEVER longpress (movement gate)
+PASS r21-fix: a slow drag that ends fast stays swipe-eligible (no longpress steal)
+PASS r21-fix: slow long drag (dist>=50px, vel<min) is neither longpress nor swipe
+PASS swipeMinVel is a real, tunable gate (raise it -> slow drag stops swiping)
+PASS scroll-cancelled UP: a List scroll wins, no tap/swipe/longpress
+PASS tuning is centralized and tunable: swipeMinPx can be raised at runtime
+PASS on() enables LVGL events once per node and rejects bad type/callback
+PASS  dispatched GestureEvent reaches the right callback with coordinates
+PASS unregister function is idempotent and stops future delivery
+PASS longpress then release: no tap delivered; onPress (CLICKED) suppressed
+PASS normal tap: onPress AND gesture tap both fire (no longpress latch)
+PASS dispose clears per-node gesture state (removed node stops dispatching)
+EVIDENCE demo tap -> status="tap (61,100)" taps=1
+PASS examples/gestures/app.js evaluates and its tap counter responds
+PASS example swipe changes page and longpress toggles color
+PASS 20 r21 gesture cases
+PASS golf UI strings are ASCII-only (r64 font rule)
+PASS golf seeded generation deterministic, safe, water/sand/slope spread
+PASS golf terrain classification (tee managed ground, hole green)
+PASS golf straight drive rolls and stops on managed grass
+PASS golf sand friction kills the roll
+PASS golf water splash detection deterministic
+PASS golf hole capture speed gate
+PASS golf swing peak -> power ramp clamps and monotonic
+PASS golf all 10 holes solvable by grid search, round total=18
+PASS golf water penalty +1 and reset to pre-shot spot
+PASS golf strike guards (rolling/holed rejected, wild input finite)
+PASS golf boots in demo mode with HUD
+PASS golf tap aim + demo strike through the gesture pipeline
+PASS golf dirty-rect discipline + canvas pixel budget
+PASS golf round completion + restart through the real prelude
+ALL golf harness checks passed
+PASS gravity_ball gravity accelerates and displaces
+PASS gravity_ball the screen edge clamps and reflects normal velocity
+PASS gravity_ball tilting the other way reverses the fall direction
+PASS gravity_ball dt cap limits delayed tick
+PASS gravity_ball a hard tilt keeps the ball inside the screen
+PASS gravity_ball the first frame paints the canvas once and invalidates all of it
+PASS gravity_ball no frame falls back to the whole canvas
+PASS gravity_ball per-frame raster stays far below a full repaint
+PASS gravity_ball the dirty rect tracks the ball and stays small
+PASS gravity_ball the canvas holds exactly one ball and no ghost
+PASS Image create/source/size message order
+PASS Image participates in View flex child adoption
+PASS Image preserves aspect ratio for one explicit dimension
+PASS Image forwards two explicit raster dimensions
+PASS Image propagates decoder error and removes failed node
+PASS Image rejects invalid input and propagates header error
+PASS embedded PNG 1x1 decodes to exact opaque red RGBA bytes
+PASS invaders formation direction flip at right edge
+PASS invaders edge contact descends one row
+PASS invaders bullet hit removes member + score
+PASS invaders player hit loses lives / game over
+PASS invaders UFO adds bonus score
+PASS invaders wave speed-up and formation reset
+PASS invaders last kill enters next wave
+PASS invaders high-score KV + graceful failure
+PASS invaders sprite spans precomputed once, stable across ticks
+PASS invaders game over restart
+PASS invaders canvas/dirty budget, pan follow, tap fire, swipe pause
+ALL INVADERS HARNESS CASES PASSED
+PASS lcd ghost geometry bounded (A=124, B=99) + lit/ghost split
+PASS lcd dual state machines independent
+PASS lcd bread catch + score
+PASS lcd MISS count + 3-miss game over
+PASS lcd bread 3-stage fall + phase wrap
+PASS lcd lane collision = one-hit game over
+PASS lcd lane clamp + dodge scoring
+PASS lcd MODE switch cleanup + score preservation + reset
+PASS lcd score KV (<=15 char key, graceful failure)
+PASS lcd canvas/ghost-once/dirty budget, A+B swipes, MODE button
+ALL LCD_DUAL HARNESS CASES PASSED
+PASS registration, unregistration and start/pause/resume sequence
+PASS onBack unregistered selects default
+PASS onBack false selects default
+PASS onBack true intercepts
+PASS timeout once and interval skips missed periods
+PASS timer clear is idempotent
+PASS paused timer waits and resumes without catch-up burst
+PASS hot replacement disposes effect, canvas onDraw, animation and timer
+PASS shutdown clears lifecycle and timer registries
+PASS replacement starts fresh app without old callbacks
+EVIDENCE 1000 items / 12 visible: actual created nodes=17 (15 rows + container + spacer)
+PASS 1000 items, 12 visible: initial 15 rows, 17 total nodes
+EVIDENCE 1000 items / 12 visible: middle window live nodes=20 (18 rows + 2 fixed)
+PASS scroll maps to 18-row middle window
+PASS scroll window reclaims old rows before creating replacements
+PASS small scroll within same window does not churn nodes
+PASS same-length items replacement rebuilds window and keeps offset
+PASS length change rebuilds and resets scroll to top
+PASS removed row loses press callback and signal effects
+PASS 1000-item traversal stays within the 127-node table
+PASS bridge throttle and overflow policy are present
+EVIDENCE files seedTestEntries(): 1000 entries, 40 new nodes
+PASS files example seeds 1000 entries without creating 1000 rows
+PASS 10 list virtualization cases
+PASS memory deal: 16 cards, 8 faces x2
+PASS memory shuffle: deterministic under injected rnd, true permutation
+PASS memory single flip: one-open, moves not yet counted
+PASS memory match: pair removed, counter advanced
+PASS memory miss: face-up window, flipback on tick, cards stay in play
+PASS memory negative: no double-flip, no third-card flip
+PASS memory negative: range/matched/won guards
+PASS memory full game: 8-pair clear, WIN event, best=8 saved
+PASS memory best: worse keeps / fewer overwrites / equal keeps
+PASS memory spans: 8 faces decoded, palette refs all valid
+PASS memory canvas budget: 230400 px single canvas, grid in bounds
+PASS memory solvability: 20 random deals all contain exactly 8 pairs
+ALL tests/memory.js PASS
+PASS minesweeper deal: fresh board, mines pending first tap
+PASS minesweeper neighbors: corner=3 edge=5 interior=8, in bounds
+PASS minesweeper placement: 15 mines, first-tap 3x3 safe, counts correct (10 boards)
+PASS minesweeper first tap: always digs, placement deterministic under seed
+PASS minesweeper flood: zero region opens, boundary counts stay closed
+PASS minesweeper flood vs flags: flagged cells are not auto-opened
+PASS minesweeper flag: toggle + guards on revealed/out-of-range
+PASS minesweeper dig-vs-flag: flag blocks the dig, unflag re-opens
+PASS minesweeper boom: round over, mines revealed, hit cell marked
+PASS minesweeper win: 85 safe cells, WIN event, best time saved
+PASS minesweeper best: worse keeps / lower overwrites / equal keeps
+PASS minesweeper tick: clock runs only between start and end
+PASS minesweeper spans: 10 sprites decoded, palette refs all valid
+PASS minesweeper canvas budget: 230400 px single canvas, grid in bounds
+PASS minesweeper solvability: 20 random boards all diggable to a win
+ALL tests/minesweeper.js PASS
+LRC normal: PASS
+LRC skip untimed: PASS
+LRC sort: PASS
+LRC bad GBK bytes: PASS
+Scheduler: ticks=7 decoded=5 sent=4 retry=2 PASS
+Scheduler: stop and negative-index wrap PASS
+Lyrics: five-line window and missing LRC PASS
+Library: recursive scan, ID3 title order, last track and offset KV PASS
+Restart: last track and LRC offset restored, playback starts at zero PASS
+PASS pet app loads: IDLE, skin 0, precomputed sprite spans and one full paint
+PASS pet buildSpans merges runs and covers exactly the non-empty cells
+EVIDENCE PET PET happy=77 state=HAPPY | state=HAPPY
+PASS pet tap = pet: happy rises, state -> HAPPY (via gesture dispatch)
+EVIDENCE PET FEED hunger=15 state=IDLE | state=IDLE
+PASS pet longpress = feed: hunger drops (via gesture dispatch)
+PASS pet IMU magnitude spike = startle: -> SURPRISED, then decays back
+PASS pet time decay drives hunger into HUNGRY and feeding resolves it
+PASS pet sleep is timer-driven; wake()/startle resumes, sleeping decays slowly
+EVIDENCE skin KV keys=["pet.skin"]
+PASS pet skin switch writes pet.skin (<=15 chars) and wraps modulo 2
+PASS pet a fresh runtime restores the persisted skin on boot
+PASS pet bad KV values fall back to skin 0 (no negative-number discriminator)
+EVIDENCE idle dirty rects=12 widths=72,84,96,96,72,84,96,96,72,84,96,96
+PASS pet idle animation repaints only the eye rows (<=96px wide, 12px tall)
+EVIDENCE sleep 40 ticks -> draws=0 invalidates=0
+PASS pet sleeping never repaints the canvas across many ticks
+PASS 12 pet host cases
+PASS piano note->frequency and note-name table
+PASS piano envelope sample count, attack budget and stream chunking
+PASS piano envelope continuity at handoff and decay shape
+PASS piano stereo 16-bit LE PCM, L=R, soft attack
+PASS piano 14x34px white row + 10 black seam keys fit 480px
+PASS piano tap injection emits PIANO KEY C5 freq=523.25
+PASS piano highlight is ATTR_BG_COLOR change, no node rebuild
+PASS piano pan glissando crosses keys with per-key dedupe
+PASS piano octave switch maps C4->C3/C5 (12-semitone steps)
+PASS piano demo melody starts/stops and plays notes
+PASS piano host harness: 10/10 assertions
+PASS wake registration, unregister, and success-only dispatch
+PASS touch feeds idle timer and wake resets activity
+PASS shutdown clears wake callbacks
+PASS three rectangular levels and bounded map values
+PASS BFS reaches exit or every enemy spawn in all stages
+PASS three textures carry exactly 768 in-range indices
+PASS 16x16 brick and portal texels are distinct
+PASS collision blocks wall with player radius
+PASS collision admits open corridor
+PASS step moves forward and reveals fog
+PASS closed door opens and becomes passable
+PASS pickup grants 100 only once
+PASS patrol reverses at a wall
+PASS hunter changes to chase only with line of sight
+PASS wall blocks line of sight
+PASS shoot rejects occluded or off-axis target
+PASS shoot clears aligned visible target and scores
+PASS exit cell completes stages one and two
+PASS arena requires every enemy cleared
+PASS damage has cooldown and resets current stage on death
+PASS four sound heads remain within 48 ms stereo PCM
+raycast game: 18 cases PASS
+PASS: A post failure frees only A; B posts latest frame with pending set
+PASS: successful post coalesces replacement and preserves latest frame
+PASS scroller camera advance + 20-tick dash/crouch
+PASS scroller jump impulse + gravity landing
+PASS scroller one-shot coin pickup + score
+PASS scroller spike collision + invulnerability window
+PASS scroller game over + restart reset
+PASS scroller KV hiscore (13-char key) + offline fallback
+PASS scroller sprite spans -> Uint16Array precomputed once
+PASS scroller integration: 8 uploads (idempotent), 2327 blits, 0 fillRect, 4 rects / 63872 px
+PASS scroller tap jump + swipe-down dash + 2 buttons
+ALL SCROLLER HARNESS CASES PASSED
+PASS shell Card and IconButton expose watch-sized defaults
+PASS shell StatusBar getter follows signal
+PASS shell StatusBar clock timer and disposal
+PASS shell EdgeNavigation true handles back
+PASS shell EdgeNavigation false forwards page swipe
+PASS shell indicator draws and rebounds, mask toggles
+PASS shell Launcher creates bounded virtual grid
+PASS shell app press and edge gesture route independently
+PASS shell dispose unregisters gestures and app close clears resources
+PASS shell spacing injects missing View padding and gap and follows theme changes
+PASS shell explicit spacing wins and invalid token is atomic
+PASS shell Dialog opens and close is idempotent
+PASS shell Dialog stack ignores covered button and closes top first
+PASS shell Dialog lifecycle pause removes overlays
+PASS shell danger button follows theme danger token
+PASS shell primary button follows theme primary token
+PASS shell Toast replaces current and resets timer
+PASS shell Toast fades then removes itself
+PASS 18 shell component cases
+PASS sokoban single-box push + move counter
+PASS sokoban no two-box push / no wall walk
+PASS sokoban box cannot be pushed into wall
+PASS sokoban goal coverage + all-boxes-home win
+PASS sokoban corner deadlock + goal exemption
+PASS sokoban all 10 levels BFS-solvable at stated par (data integrity)
+PASS sokoban progress KV (<=15 char key, clamp, graceful failure)
+PASS sokoban unlock + next/prev/restart navigation
+PASS sokoban sprite spans precomputed once, stable across moves
+PASS sokoban canvas/events, dirty budget, swipe push, tap push, reset button
+ALL SOKOBAN HARNESS CASES PASSED
+PASS spectrum single sine peak ±1 bin
+PASS spectrum two tones produce two peaks
+PASS spectrum Hann coherent gain normalization
+PASS spectrum log groups strictly advance
+PASS spectrum 256 FFT and 32 bars bounded
+PASS spectrum tap starts one 1024-frame stream
+PASS spectrum callback does not redraw canvas
+PASS spectrum timer signal drives 400x200 dirty rect
+PASS spectrum drop count and SPEC serial event
+PASS spectrum stopStream clears callback and capture
+PASS column + dimensions + color: [[1,728639],[16,100],[17,50],[7,1]]
+PASS row: [[7,0]]
+PASS row wrap: [[7,2]]
+PASS column wrap: [[7,3]]
+PASS justify start: [[8,0]]
+PASS justify end: [[8,1]]
+PASS justify center: [[8,2]]
+PASS justify space-between: [[8,3]]
+PASS justify space-around: [[8,4]]
+PASS justify space-evenly: [[8,5]]
+PASS stretch + gap + padding: [[9,3],[10,16],[11,8]]
+PASS radius + border + opacity: [[12,12],[13,2],[14,11259375],[15,128]]
+PASS pixel + legacy bg: [[1,1122867],[2,240],[3,120]]
+PASS vertical scroll + auto scrollbar: [[20,1],[21,1]]
+PASS horizontal scroll + on scrollbar: [[20,2],[21,2]]
+PASS scroll disabled + scrollbar off: [[20,0],[21,0]]
+PASS per-side padding overrides box shorthand: [[10,8],[30,2],[31,4],[32,6],[33,10]]
+PASS margin box + per-side margin: [[34,4],[38,12]]
+PASS margin sides only: [[35,2],[36,3],[37,5],[38,7]]
+PASS flex grow inside a flex row: [[7,0],[39,1]]
+PASS auto sizing: [[43,1],[44,1]]
+PASS min/max size bounds: [[45,10],[46,200],[47,20],[48,40]]
+PASS absolute position escapes the flow: [[23,1],[18,4],[19,8]]
+PASS relative position sends nothing: []
+PASS translate px + percent: [[49,6],[52,50]]
+PASS text align + long mode: [[53,1],[54,1]]
+PASS align string + alignTo + alignOffset: [[40,5],[41,-8],[42,-4],[4,6]]
+PASS align center: [[4,0]]
+PASS align top-left: [[4,1]]
+PASS align top-mid: [[4,2]]
+PASS align top-right: [[4,3]]
+PASS align bottom-mid: [[4,4]]
+PASS align bottom-left: [[4,5]]
+PASS align bottom-right: [[4,6]]
+PASS align left-mid: [[4,7]]
+PASS align right-mid: [[4,8]]
+PASS align numeric constant: [[4,4]]
+PASS aligned to parent with an offset: [[40,0],[42,12],[4,2]]
+PASS outside align below a base node: [[40,7],[4,13]]
+PASS outside align above a base node: [[40,7],[4,10]]
+PASS outside align right of a base node: [[40,7],[4,19]]
+PASS outside align corner: [[40,7],[41,4],[4,18]]
+PASS outside align numeric constant: [[4,20]]
+PASS invalid align/alignTo/alignOffset/flexGrow/margin/position/translate/text rejected in prelude
+PASS Row presets flex row: [[7,0]]
+PASS Column presets flex column: [[16,100],[7,1]]
+PASS fontSize/letterSpacing/lineHeight: [[55,20],[56,1],[57,-2]]
+PASS fontSize snaps + scales via theme.fontScale: [[55,18]]
+PASS fontScale below 1 keeps faces in range: [[55,22]]
+PASS invalid percentage/metric/color/opacity rejected in prelude
+PASS all style mapping cases
+PASS embedded demo and refreshed counter both register buttons
+PASS line-clear frame: rect=[0,0,160,320] cells=200 redrawn=200 (rect subset of redraw)
+PASS normal-drop frame: rect=[80,80,32,48] cells=6 redrawn=6 (still a tight dirty rect)
+ALL PASS: tetris dirty-rect coverage invariant holds
+PASS: 240-byte Chinese and 256-byte ASCII text accepted; 257 bytes rejected
+PASS: external text payload has sender rollback and receiver release paths
+PASS set/get returns an isolated snapshot
+PASS named background and borderColor resolve
+PASS hex literals remain valid
+dark→light ATTR messages: [[1,1,15332090],[1,12,16],[1,14,2310751]]
+PASS theme.set invalidates every named color and implicit radius
+PASS unreferenced literal colors and explicit radius post no messages
+PASS removing default radius clears inherited radius
+PASS invalid theme is atomic
+PASS disposed node stops receiving theme updates
+PASS unknown token falls through to literal parser
+demo dark→light ATTR messages: [[2,1,16777215],[7,1,15332090]]
+PASS demo buttons recolor card, controls and full-screen root
+PASS watchface five-page swipe cycle
+PASS watchface canvas budget 228544/230400 px; modular uses zero canvas
+PASS watchface weather updates only its own complication text
+PASS watchface weather WiFi-down fallback --°
+PASS watchface six native AA arcs; dirty area 46656 px
+PASS watchface progress clamps 0..100
+PASS weather WMO codes map to descriptions and icon kinds
+PASS weather formatters degrade to -- instead of NaN
+PASS weather weekDay parses the ISO date in UTC
+PASS weather parseForecast keeps current values and caps the forecast at three days
+PASS weather parseForecast rejects bodies it cannot use
+PASS weather parseForecast survives a missing daily block and short arrays
+PASS weather buildUrl asks for current + daily with auto timezone
+PASS weather parseCity validates the Kv JSON
+PASS weather dayAt falls back for out-of-range indexes
+PASS weather icons issue the expected raster commands and repaint the whole canvas
+PASS 10 weather logic cases
+PASS weather refresh replaces the demo data
+PASS weather request failure keeps the app usable
+PASS weather non-200 response is reported
+PASS 13 weather cases (10 logic + 3 UI)
+PASS default closed and token required
+PASS start, URL, and duplicate start
+PASS token gate before JS dispatch
+PASS exact route, welcome fallback, 404
+PASS query decode and response framing
+PASS 8 KiB request body cap and full POST to KV
+PASS stop lifecycle
+PASS built-in welcome and handler exception
+webserver: 8 cases PASS
+WebSocket host prelude: PASS

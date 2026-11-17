@@ -191,7 +191,7 @@ CI release notes.
 
 ### Try it in your browser
 
-Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 16 screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
+Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 31 screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
 
 ### Real firmware in your browser
 

@@ -52,6 +52,8 @@
       else if (op === 'batch') this.batch(m);
       else if (op === 'pathDefine') this.pathDefine(m);
       else if (op === 'pathDraw') this.pathDraw(m);
+      else if (op === 'spriteDefine') this.spriteDefine(m);
+      else if (op === 'spriteDraw') this.spriteDraw(m);
       /* invalidate is a native-side dirty flag; the following draw/batch
        * messages replay the full frame, so nothing to do in the browser. */
     }
@@ -168,6 +170,38 @@
           ? value + (index % 2 ? dy : dx) : value);
         this.batch(['batch', id, shifted]);
       }
+    }
+    /* r81 retainImage()/drawImage(): upload RGB565 once into an offscreen canvas
+     * (0x0000 colour key = transparent), then blit it with optional horizontal
+     * flip. Offscreen + drawImage keeps non-zero (dx,dy) correct and clips to
+     * the canvas edges, mirroring lume_raster_blit(). */
+    spriteDefine(m) {
+      const [, id, slot, w, h, px] = m;
+      this.sprites = this.sprites || new Map();
+      const off = document.createElement('canvas');
+      off.width = w; off.height = h;
+      const oc = off.getContext('2d'), img = oc.createImageData(w, h);
+      for (let i = 0; i < w * h; i++) {
+        const v = px[i]; if (v === 0) continue;
+        const o = i * 4;
+        img.data[o] = ((v >> 11) & 0x1f) * 255 / 31 | 0;
+        img.data[o + 1] = ((v >> 5) & 0x3f) * 255 / 63 | 0;
+        img.data[o + 2] = (v & 0x1f) * 255 / 31 | 0;
+        img.data[o + 3] = 255;
+      }
+      oc.putImageData(img, 0, 0);
+      this.sprites.set(`${id}:${slot}`, off);
+    }
+    spriteDraw(m) {
+      const [, id, slot, dx = 0, dy = 0, flip = 0] = m;
+      const el = this.nodes.get(id); if (!el || !el.getContext) return;
+      const off = (this.sprites || new Map()).get(`${id}:${slot}`);
+      if (!off) return;
+      const c = el.getContext('2d');
+      c.save();
+      if (flip) { c.translate(dx + off.width, dy); c.scale(-1, 1); c.drawImage(off, 0, 0); }
+      else c.drawImage(off, dx, dy);
+      c.restore();
     }
   }
   global.LumeRenderer = Renderer;

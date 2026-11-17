@@ -1,0 +1,3 @@
+I (4654) lume-engine: js: SCROLLER PERF js_avg_ms=9.92 js_max_ms=10 dirty_avg_px=59441 dirty_max_px=60800 blits_avg=36.6 dirty_n=4 spans=85
+I (5920) lume-engine: js: SCROLLER PERF js_avg_ms=10.00 js_max_ms=10 dirty_avg_px=61718 dirty_max_px=62336 blits_avg=38.7 dirty_n=4 spans=85
+I (7183) lume-engine: js: SCROLLER PERF js_avg_ms=10.32 js_max_ms=11 dirty_avg_px=63991 dirty_max_px=64800 blits_avg=41.2 dirty_n=4 spans=85

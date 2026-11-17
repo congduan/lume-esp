@@ -161,29 +161,33 @@
     spriteDefine(m) {
       const [, id, slot, w, h, px] = m;
       this.sprites = this.sprites || new Map();
-      this.sprites.set(`${id}:${slot}`, { w, h, px });
+      /* Upload once into an offscreen canvas (colour key 0x0000 -> alpha 0).
+       * drawImage() below then honours non-zero (dx,dy) and flips; the old
+       * putImageData-at-absolute-offset approach only worked at (0,0). */
+      const off = document.createElement('canvas');
+      off.width = w; off.height = h;
+      const oc = off.getContext('2d'), img = oc.createImageData(w, h);
+      for (let i = 0; i < w * h; i++) {
+        const v = px[i]; if (v === 0x0000) continue;
+        const o = i * 4;
+        img.data[o] = ((v >> 11) & 0x1f) * 255 / 31 | 0;
+        img.data[o + 1] = ((v >> 5) & 0x3f) * 255 / 63 | 0;
+        img.data[o + 2] = (v & 0x1f) * 255 / 31 | 0;
+        img.data[o + 3] = 255;
+      }
+      oc.putImageData(img, 0, 0);
+      this.sprites.set(`${id}:${slot}`, off);
     }
     spriteDraw(m) {
       const [, id, slot, dx = 0, dy = 0, flip = 0] = m;
       const el = this.nodes.get(id); if (!el || !el.getContext) return;
-      const bmp = (this.sprites || new Map()).get(`${id}:${slot}`);
-      if (!bmp) return;
+      const off = (this.sprites || new Map()).get(`${id}:${slot}`);
+      if (!off) return;
       const c = el.getContext('2d');
-      const img = c.createImageData(bmp.w, bmp.h);
-      for (let y = 0; y < bmp.h; y++) {
-        for (let x = 0; x < bmp.w; x++) {
-          const v = bmp.px[y * bmp.w + (flip ? bmp.w - 1 - x : x)];
-          if (v === 0x0000) continue;               /* colour key: transparent */
-          const px = dx + x, py = dy + y;
-          if (px < 0 || py < 0 || px >= el.width || py >= el.height) continue;
-          const o = (py * el.width + px) * 4;
-          img.data[o] = ((v >> 11) & 0x1f) * 255 / 31 | 0;
-          img.data[o + 1] = ((v >> 5) & 0x3f) * 255 / 63 | 0;
-          img.data[o + 2] = (v & 0x1f) * 255 / 31 | 0;
-          img.data[o + 3] = 255;
-        }
-      }
-      c.putImageData(img, 0, 0);
+      c.save();
+      if (flip) { c.translate(dx + off.width, dy); c.scale(-1, 1); c.drawImage(off, 0, 0); }
+      else c.drawImage(off, dx, dy);
+      c.restore();
     }
   }
   global.LumeRenderer = Renderer;
