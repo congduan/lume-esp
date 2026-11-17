@@ -53,6 +53,9 @@
       else if (op === 'pathDraw') this.pathDraw(m);
       else if (op === 'spriteDefine') this.spriteDefine(m);
       else if (op === 'spriteDraw') this.spriteDraw(m);
+      else if (op === 'raycastMap') this.raycastMap(m);
+      else if (op === 'raycastTextures') this.raycastTextures(m);
+      else if (op === 'raycastRender') this.raycastRender(m);
       /* invalidate is a native-side dirty flag; the following draw/batch
        * messages replay the full frame, so nothing to do in the browser. */
     }
@@ -191,6 +194,72 @@
       if (flip) { c.translate(dx + off.width, dy); c.scale(-1, 1); c.drawImage(off, 0, 0); }
       else c.drawImage(off, dx, dy);
       c.restore();
+    }
+    raycastMap(m) {
+      const [, w, h, map] = m;
+      this.ray = { w, h, map: Uint8Array.from(map), textures: this.ray ? this.ray.textures : [] };
+    }
+    raycastTextures(m) {
+      const [, textures] = m;
+      this.ray = Object.assign(this.ray || { w: 0, h: 0, map: new Uint8Array(0) }, { textures });
+    }
+    /* Minimal DDA raycaster: same contract as lume_raycast_render — columns
+     * into the canvas identified by m[1], plus HUD text and sprite stamps.
+     * Browser fidelity aid, not a firmware port: lighting/FOV chosen to look
+     * close to the native output (fov 66deg, distance shading). */
+    raycastRender(m) {
+      const [, id, px, py, angle, hp, sprites] = m;
+      const el = this.nodes.get(id); if (!el || !el.getContext || !this.ray || !this.ray.w) return;
+      const c = el.getContext('2d');
+      const W = el.width, H = el.height;
+      const ray = this.ray, map = ray.map, mw = ray.w, mh = ray.h;
+      const FOV = Math.PI / 3;
+      c.fillStyle = '#0a0e12'; c.fillRect(0, 0, W, H);
+      const half = H >> 1;
+      // sky / floor split
+      c.fillStyle = '#101820'; c.fillRect(0, 0, W, half);
+      c.fillStyle = '#1a242e'; c.fillRect(0, half, W, H - half);
+      const colW = 2;
+      for (let sx = 0; sx < W; sx += colW) {
+        const camX = (sx / W - 0.5) * FOV;
+        const a = angle + camX;
+        const dx = Math.cos(a), dy = Math.sin(a);
+        let dist = 0, tile = 0;
+        const step = 0.02;
+        while (dist < 24) {
+          dist += step;
+          const tx = (px + dx * dist) | 0, ty = (py + dy * dist) | 0;
+          if (tx < 0 || ty < 0 || tx >= mw || ty >= mh) { tile = 1; break; }
+          tile = map[ty * mw + tx];
+          if (tile) break;
+        }
+        const lineH = Math.min(H, (H / (dist || 0.01)) | 0);
+        // distance shading + palette per tile id
+        const shade = Math.max(0.25, 1 - dist / 14);
+        const pal = tile === 1 ? [181, 108, 70] : tile === 2 ? [110, 122, 138] : [70, 90, 110];
+        c.fillStyle = `rgb(${(pal[0] * shade) | 0},${(pal[1] * shade) | 0},${(pal[2] * shade) | 0})`;
+        c.fillRect(sx, half - lineH / 2, colW, lineH);
+      }
+      // sprite stamps (enemies/pickups): [sx, sy, slot?] — draw simple markers
+      for (let i = 0; i + 2 < (sprites ? sprites.length : 0); i += 3) {
+        const ex = sprites[i], ey = sprites[i + 1], kind = sprites[i + 2];
+        const relA = Math.atan2(ey - py, ex - px) - angle;
+        const d = Math.hypot(ex - px, ey - py);
+        if (d < 0.3 || Math.abs(relA) > FOV / 1.5) continue;
+        const sxp = (0.5 + relA / FOV) * W;
+        const size = Math.max(6, (H / d) * 0.12);
+        c.fillStyle = '#c8553d';
+        c.fillRect(sxp - size / 2, half - size / 2, size, size);
+        c.fillStyle = '#111';
+        c.fillRect(sxp - size / 2 + 2, half - size / 2 + 2, 2, 2);
+        c.fillRect(sxp + size / 2 - 4, half - size / 2 + 2, 2, 2);
+      }
+      // HUD: hp pips + compass, mirroring the native HUD contract loosely
+      c.fillStyle = '#e8e2d0';
+      for (let i = 0; i < 3; i++) c.fillRect(8 + i * 14, 8, 10, 10);
+      for (let i = 0; i < hp; i++) { c.fillStyle = '#40d8b0'; c.fillRect(8 + i * 14, 8, 10, 10); }
+      c.font = '10px monospace'; c.fillStyle = '#e8e2d0';
+      c.fillText(((angle * 180 / Math.PI) % 360 | 0) + '°', W - 34, 16);
     }
   }
   global.LumeRenderer = Renderer;
