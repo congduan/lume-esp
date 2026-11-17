@@ -90,7 +90,6 @@
 #define LUME_LCD_SLEEP_OUT_SETTLE_MS 600
 
 /* LCD and touch reset use direct ESP GPIOs; no IO expander. */
-#define LUME_HAS_IO_EXPANDER_RESET 0
 
 /*
  * CO5300 vendor init command table (Waveshare BSP 1.0.0/2.0.1,

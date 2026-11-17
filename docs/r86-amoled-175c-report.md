@@ -45,7 +45,10 @@ Raw command output is in `artifacts/r86/`. Build and size details are recorded
 in `default-baseline-build-size.log`, `new-board-build-size.log` and
 `default-final-build-size.log`; generated-config evidence is in
 `new-board-config-evidence.log`. Host evidence is in `host-tests.log`,
-`check-counter-no-emu-final.log`, `ctest.log` and `sd-guard-check.log`.
+`check-counter-no-emu-final.log`, `ctest.log`, `sd-guard-check.log` and
+`reset-profile-check.log`. The final new-board incremental rebuild after
+removing the expander macro is in `new-board-final-rebuild.log`; it passed with
+the same size table as the initial new-board build.
 
 | Check | Result |
 |---|---|
