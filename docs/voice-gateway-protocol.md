@@ -202,7 +202,7 @@ stop()                    收口/中止本轮（幂等；不得回调 session.cl
 真实上游（小智 WS+Opus、ASR/LLM/TTS 三件直连）均为 TODO 桩，
 本轮不做实现，也不在协议或网关里臆测任何 API key / 凭据处理。
 
-## 8.1 上游适配器：OpenAI 兼容（r113 拍板并落地）
+## 8.1 上游适配器：OpenAI 兼容（r113 拍板，r114 chat 段流式化）
 
 r113 拍板采用 **OpenAI 兼容路线** 作为首个真实上游，实现在
 `tools/gateway/upstream-openai.js`（CommonJS，零新 npm 依赖，Node 18+ 内置
@@ -236,12 +236,15 @@ OpenAI Audio API 的 `/audio/transcriptions`（Whisper 系）、`/chat/completio
 1. `POST {base}/audio/transcriptions`：multipart `file` = PCM 包的 44 B 头 WAV
    （立体声下混单声道、16 kHz / 16-bit），`model` = STT 模型；取 `text` 为转写。
 2. `POST {chat_base}/chat/completions`：`messages` = system 提示词 + user（转写文本，
-   可选拼接设备 `text` 控制帧内容）；取 `choices[0].message.content` 为回复。
-3. `POST {base}/audio/speech`：`body` = `model` / `input`=回复 / `voice` /
+   可选拼接设备 `text` 控制帧内容），并带 `stream:true` + `Accept: text/event-stream`。
+   r114 起为 SSE 真流式：每个 chunk 的 `choices[0].delta.content` 即时经
+   `sendTextDelta(content, false)` 下发并累计为完整回复（见 §8.1.6）。
+3. `POST {base}/audio/speech`：`body` = `model` / `input`=累计回复 / `voice` /
    `response_format=pcm`；返回 24 kHz 16-bit mono PCM，线性插值重采样到 16 kHz
    stereo s16le 后按 3840 B 帧序 `session.sendAudio(fmt, pcm)` 下行（帧头见 §5.2）。
-4. 文本回复按句/定长切成 `sendTextDelta()` 逐段上屏，末段 `final=true`；随后
-   `state=idle`，一轮完成即 `close(1000, done)`，不持上游长连接。
+4. 文本 deltas 在第 2 步随 SSE chunk 逐段上屏，SSE 正常结束
+   （`data: [DONE]` 或 EOF）后由适配器发一条 `sendTextDelta('', true)` 收口；随后
+   TTS 音频帧下行、`state=idle`、`close(1000, done)`，不持上游长连接。
 
 `stop()` 是建议性收口（§8）：幂等、不取消已开始的响应、不调 `session.close()`；
 仅当会话仍 `isOpen()` 且已收到至少一帧音频时启动管线（设备主动 close / 致命错误
@@ -267,10 +270,35 @@ OpenAI Audio API 的 `/audio/transcriptions`（Whisper 系）、`/chat/completio
 
 ### 8.1.5 验证边界
 
-宿主 harness（`tests/gateway_upstream.js`）用 `node:http` 本地假端点验证 WAV 头 /
-下混、chat 请求体、重采样、delta 顺序、idle 收口与 401 / 超时 / 5xx 负向；
-集成 smoke 用真实 `cli.js --upstream openai` + 假端点 + device-sim 跑通一轮。
+宿主 harness（`tests/gateway_upstream.js`，r114 共 20 case）用 `node:http` 本地假端点
+验证 WAV 头 / 下混、chat 请求体 + SSE 流式、重采样、delta 顺序 / 单次 final、
+split-line/`[DONE]`、断流收口、stop 中止与 401 / 超时 / 5xx 负向；集成 smoke 用
+真实 `cli.js --upstream openai` + 假 SSE 端点 + device-sim 跑通一轮。
 **不出网、不声称真机验证**；真机 WiFi / 时延 / 双 DMA deferred（见 KNOWN-SIMPLIFICATIONS）。
+
+### 8.1.6 chat SSE 流式口径（r114）
+
+- **请求**：body 在 r113 字段上追加 `stream:true`，头加 `Accept: text/event-stream`；
+  `OPENAI_CHAT_BASE_URL` 覆盖规则不变。响应必须 200 且 `Content-Type` 含
+  `text/event-stream`，否则按错误路径处理（见下）。
+- **行格式**（对照本地 `node:http` 假端点实证）：事件以空行分隔；`field: value`
+  去掉一个前导空格；同一事件多条 `data:` 以 `\n` 拼接；`:comment` 忽略；
+  `data: [DONE]` 终止。Node 18+ `fetch` 的 `res.body` 支持 `for await...of`，
+  分片可落在任意行中间，解析器按 `\n` 缓冲半行，兼容 `\r\n`。
+- **delta**：每个含 `choices[0].delta.content` 的非空 chunk 立即
+  `sendTextDelta(content, false)`，同时累计完整文本供 TTS 与空回复判断。正常收口
+  恰好一条 `final=true`（空回复也发，与 r113 一致）。r113 的 `splitTextDeltas()`
+  伪切块不再在流式路径调用，函数保留为导出工具 / 未来非流式端点备用
+  （取舍见 KNOWN-SIMPLIFICATIONS）。
+- **流中错**：SSE 头已接受后断开 / 读抛错 / 超时 → 已发 delta 不撤回，以一条
+  `final=true`（文本可含截断标记）收口，按非 fatal `upstream_error` 处理
+  （与 401 同类，`close(1000)`），且**不重试**——重试会重复已上屏 delta。头之前
+  失败（非 200、Content-Type 不符、网络错）保持 r113 映射与 1 次重试。
+- **stop() 交互**：`stop()` 幂等；若它到达时 chat SSE 正在读（管线由静默定时器
+  先启动、`end` / 设备 close 后到），复用同一 `AbortController` 中止读流，不撤
+  已发 delta，最终 `idle` + `close(1000)`，无 error 帧。STT / TTS 在途时仍按
+  r113 建议性语义不取消。
+- **TTS**：仍为整段一次性 `/audio/speech`（输入为累计文本）；流式 TTS deferred。
 
 ## 9. 版本兼容策略
 

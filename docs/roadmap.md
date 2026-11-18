@@ -1440,3 +1440,38 @@ VOICE / 可选 CHAT_BASE_URL）；无 key 报清晰错误 exit 2，`mock` 默认
 并发、barge-in 中断上游全部 deferred。宿主假端点证据为准。零固件改动，`lume check
 examples/counter` 全 emu 模式在本 worktree 报 emulator 120s timeout（与本轮改动无关，
 `--no-emu` 哨兵 PASS）。
+
+### r114 result — OpenAI 上游 chat 段 SSE 流式化（appended, milestone checkboxes untouched）
+
+chat 段由"非流式 POST + `splitTextDeltas` 伪切块"改为 `stream:true` +
+`text/event-stream` 真流式：`for await...of` 读 `res.body`，按 SSE 行格式（空行分
+事件、`data:` 拼接、`:comment` 忽略、`[DONE]` 终止、半行缓冲）解析，每个
+`choices[0].delta.content` 即时 `sendTextDelta(content, false)` 并累计完整文本供
+TTS / 空回复判断；正常收口恰好一条 `final=true`。错语义：SSE 头接受后的中断保留
+已发 delta + 一条带截断标记的 final，按非 fatal `upstream_error`（同 401）处理且
+不重试（重试会重复上屏）；头之前失败维持 r113 映射与 1 次重试。`stop()` 仅在
+"静默定时器先启动管线且 chat 正在读"时复用 `AbortController` 中止读流；STT/TTS
+在途仍建议性不取消。TTS 仍整段一次性（streaming TTS deferred）；
+`splitTextDeltas()` 保留为导出工具但流式路径不再调用。固件 / app JS 零改动。
+
+验证（原始输出摘录）：
+- `node tests/gateway_upstream.js` → `ALL GATEWAY UPSTREAM CASES PASSED (20 cases)`
+  （原 16 case 全绿 + 4 新 case：split-line/CRLF/comment/`[DONE]` + 累计文本 TTS、
+    mid-stream disconnect 收口、stop abort、非 SSE 200 无回退）；连续 5 次重跑均
+  20/20。
+- `node tests/gateway.js` → `ALL GATEWAY HARNESS CASES PASSED (10 cases)`；
+  `node tests/va_ws.js` → `ALL VA WS HARNESS CASES PASSED (6 cases)` 不回归。
+- 全量 `for t in tests/*.js` → 仅 `done`，0 FAIL（64 文件）。
+- `npm test --prefix tools/lume` → `# tests 46 / # pass 45 / # fail 0 / # skipped 1`。
+- `node tools/lume/lume.js check examples/voice_assistant --no-emu` →
+  `RESULT: PASS (4 steps, 0 failed; exit 0)`；`examples/counter --no-emu` 同 PASS。
+- 集成 smoke（假 SSE 端点 + 真 `cli.js --upstream openai --port 18799` + device-sim）：
+  fake `chat stream=true` @10.411，三条 `chat.delta` @10.412 / 10.472 / 10.532，
+  `chat.done` @10.591；device `recv.text-delta seq0/1/2` @10.414 / 10.473 / 10.533，
+  `final=true seq3` @10.595，17 帧 audio @10.632，`idle` + `close(1000)`，
+  `text="HELLO FROM THE SSE STREAM."`；TTS input 为累计全文；gateway 日志无 error；
+  `SMOKE PASS`。delta 逐条到达时间戳与 fake 端点写入节奏一一对应（约 60 ms 间隔），
+  证明为真流式而非伪切块。
+
+诚实口径：无真机 / 无出网 / 无真实 key；真机 WiFi、SSE 长连接稳定性、流式 TTS、
+barge-in deferred。零固件改动，`lume check` 双 `--no-emu` 哨兵 PASS，未跑 `idf.py build`。

@@ -1544,3 +1544,27 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   git / docs 硬编码；真机 WiFi 稳定性、playStream 边收边播时延、双 DMA 并发全部
   deferred。可选 `OPENAI_CHAT_BASE_URL` 只覆盖 LLM 端点，未验证所有兼容网关的
   `/chat/completions` 差异。
+
+## r114 — chat 段 SSE 流式化（真 delta；宿主假端点证据，无真机/无出网）
+
+- **TTS 仍非流式**：chat 已改为 `stream:true` SSE 真流式，但 `/audio/speech` 仍是
+  整段回复一次性合成后按 3840 B 帧下行（边合成边播的流式 TTS deferred）。累计
+  完整文本既用于空回复判断也用于 TTS 输入；首字前仍包含完整录音时长 + STT 往返
+  + TTS 合成，真机时延预算 deferred。
+- **SSE 中断按非 fatal、不重试**：SSE 响应头接受之后的断连 / 读错 / 超时统一封为
+  `upstream_error` 非 fatal（与 401 同类，`close(1000)`），已发 delta 保留、追加
+  一条带截断标记的 `final=true`。取舍理由：重试会重复已上屏 delta，弱网下更看重
+  "不重复上屏 + 干净收口"而非把断流升级为致命错误。头之前的失败仍走 r113 映射
+  （429/5xx/超时 fatal + 1 次重试，401 等 4xx 非 fatal）。
+- **pseudo-delta 去留**：保留 `splitTextDeltas()` 为导出工具（旧 harness 的 helper
+  断言继续成立、API 不破坏），但 r114 流式路径不调用它。当前**没有**非流式回退
+  路径——非 `text/event-stream` 的 200 视为错误而非静默回退，理由：避免把兼容
+  端点的降级掩盖成成功、也避免重复上屏。未来若引入显式非流式模式可复用该函数。
+- **stop() 语义局部收紧**：r113 的 `stop()` 完全建议性；r114 仅在"管线已由静默
+  定时器启动且 chat SSE 正在读"这一种情形复用 `AbortController` 中止读流，
+  STT / TTS 在途仍不取消。真机 barge-in（用户中途插话打断朗读）手感 deferred。
+- **行格式边界**：解析器覆盖空行分事件、`data:` 拼接、`:comment`、`\r\n` 与
+  半行分片；未覆盖多字节 UTF-8 被截在分片边界的高级场景（`TextDecoder` 流式
+  解码已按字节缓冲，正常情况安全），兼容端点的非标准 keepalive 帧 deferred。
+- **仍 open**：无真机 / 无出网 / 无真实 key；真机 WiFi、SSE 长连接稳定性、流式
+  TTS、barge-in 全部 deferred；固件零改动。
