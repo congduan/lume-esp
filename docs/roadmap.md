@@ -1321,3 +1321,38 @@ worktree 无脏配置。板级静态断言 harness 7 行 PASS（含 2 条编译�
 持久化/bundle 推送 deferred to board bring-up，不声称硬件验收；不做运行时切板、
 多板 CI；M5 框仍 `[ ]`。KNOWN-SIMPLIFICATIONS r109 已登记三类差异来源与
 "未真机核对"状态。commits 拆分、未推送。
+
+### r110 result — 多板 CI 矩阵（firmware.yml 三板构建；appended, milestone checkboxes untouched）
+
+基线 `99ea903`。上轮（r109 推送后的 r110 引擎轮）引擎遇 429 限流中断于收口前
+（`/tmp/lume-r110-run.log`：`429 ... 重置` + `engine_exit=0`），但工作树证据显示
+实现与验证均已实质完成、仅差收口（无 commits、roadmap 缺 result 小节）。本轮
+主控接管收口：逐文件审阅未提交改动（firmware.yml +62/-5、KNOWN-SIMPLIFICATIONS
+r110 小节、boards/README out-of-scope 更新），独立复核证据链后按原意补记 result
+并拆 commits 推送；未改动任何实现内容。
+
+实现要点（均已在文件内注释/文档登记）：① firmware.yml 三板 matrix（2_16/1_8/
+1_75c，板名引号防 YAML 1.1 整数化），每板经 `SDKCONFIG_DEFAULTS` overlay 构建；
+② CI 命令强制 `rm -f sdkconfig` 前置（r44 gotcha：tracked sdkconfig 覆盖
+defaults → 三板假绿）；③ 新增 Board-config evidence 步骤（grep 板宏/flash size/
+分区表进 CI 日志）；④ artifact 名加板后缀；⑤ Release 决策：tag 跑全矩阵、三板
+artifact 均上传，但 Release 资产只从默认 2.16 job 组装（扁平五件套字节兼容，
+1.8/1.75c 无真机验收不发布二进制——不夸大就绪度）。
+
+主控独立复测摘录（本轮真实执行）：
+- `python3 -c yaml.safe_load(firmware.yml)` → YAML OK。
+- 三板 overlay 文件存在性核查：`firmware/boards/{2_16,1_8,1_75c}/sdkconfig.defaults`
+  全部在位。
+- 引擎轮双板构建证据复核（/tmp/r110-build-18.log、/tmp/r110-build-175c.log，均
+  RC=0）：1.8 板 Flash Code **2,051,456** / Total 3,043,783；1.75c 板 Flash Code
+  **1,988,068** / Total 2,969,407；与默认 2.16 板（r109 基线 2,032,588）三板数字
+  互异 → overlay 确实生效，非 r44 假绿。1.75c 构建目录 sdkconfig.h 板宏证据：
+  `CONFIG_LUME_BOARD_WAVESHARE_ESP32_S3_TOUCH_AMOLED_1_75C 1` +
+  `CONFIG_ESPTOOLPY_FLASHSIZE "32MB"`。
+- 收口后全量宿主回归不适用（本轮零 C/JS 改动，仅 CI YAML + docs），counter
+  哨兵等留引擎轮证据。
+
+诚实口径：CI 矩阵只在 CI 侧真正跑通后才算完全验收（本轮推送 main 后由
+firmware.yml push 触发自行验证，三板绿 + 板宏证据齐全即闭环）；三板真机验收
+仍全部 deferred；运行时切板仍 out of scope；M5 "Board abstraction" 的 HAL 收敛
+仍 `[ ]`（本轮只闭环其 CI 半边）。commits 拆分（ci/docs）、推送。

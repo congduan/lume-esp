@@ -160,11 +160,16 @@ IRAM symbols: the profile is macros, and the IRAM budget is 16384/16384 (0 free)
    display/touch orientation, bundle push, audio, sleep current, radio and
    persistence acceptance items in `docs/KNOWN-SIMPLIFICATIONS.md`.
 
-## Explicitly out of scope (r27 first cut; status after r44)
+## Explicitly out of scope (r27 first cut; status after r44/r110)
 
 - r27 out of scope: a real second board profile / multi-board CI build matrix.
-  r44 added the second **compile-time** profile, but there is still no
-  multi-board CI matrix and no on-device acceptance of any board.
+  r44 added the second **compile-time** profile. **r110 closed the CI half of
+  this gap**: `.github/workflows/firmware.yml` now builds all three profiles
+  in a 3-entry matrix (push main / workflow_dispatch / tag), each with its
+  board's `sdkconfig.defaults` overlay and the tracked `sdkconfig` deleted
+  first (r44 gotcha). Release assets are still published from the default
+  2.16 job only (see the firmware.yml header for the rationale). There is
+  still no on-device acceptance of any board.
 - Runtime board switching (profiles are compile-time macros only).
 - Converging the `480` canvas-coordinate clamps embedded in the JS prelude
   (`lume_scripts.c`): that string is extracted verbatim by the host harnesses

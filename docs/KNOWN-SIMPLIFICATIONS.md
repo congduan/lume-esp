@@ -1497,3 +1497,24 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   与 r106 逐字节相同不作承诺（r96 OTA 合入改变过代码基线）；只如实记录差值。
 - **仍 open**：运行时切板、多板 CI、以及上述全部板级真机验收；`docs/roadmap.md` 的
   M5 "Board abstraction for additional targets" 保持 `[ ]`。
+
+## r110 — 多板 CI 矩阵（firmware.yml 三板构建）
+
+- **Release 只出默认 2.16 板**：tag 构建跑全 3 板矩阵、三板 artifact zip 均上传，
+  但 GitHub Release 资产只从默认板 job 组装（无板名后缀的扁平五件套），理由：
+  现有刷机文档/网站 flasher 流程/脚本化下载保持字节兼容；1.8 与 1.75c 仍是
+  无真机验收的编译期 profile，发布其二进制会夸大就绪度（矩阵 `release: true`
+  仅标在 2.16 上，决策记录在 firmware.yml 头注释）。
+- **CI 构建用 `rm -f sdkconfig` 前置**：tracked `firmware/sdkconfig` 在 CI
+  checkout 后存在，会让 `SDKCONFIG_DEFAULTS` 静默失效（r44 gotcha），三板全部
+  假绿成默认板。CI 命令必须先删它；本地切板同理（boards/README 第 5 步）。
+- **矩阵板名引号纪律**：YAML 1.1 把未加引号的 `2_16` / `1_8` 解析成整数
+  216 / 18（下划线被吞），artifact 名后缀会坏；matrix 值一律加引号。
+- **本地 -g1 手术不进 repo**：宿主 2G 内存下 quickjs.c 调试信息汇编会 swap
+  卡死（r78/r82 先例）。r110 实测：对 build 目录中 quickjs.c.obj 单独以
+  同 flags 换 `-g1` 编译可 46-48s 完成（`-g0` 会破坏 Xtensa call8 范围导致
+  "dangerous relocation" 链接错，因为剥掉的 @toolchain/cflags 内含
+  -mlongcalls——@file 必须保留或内联）。这是本地 workaround，CI（更大
+  runner）不需要；未改任何 vendored/工程编译选项。
+- **仍 open**：三板真机验收全部 deferred；运行时切板不做；M5
+  "Board abstraction" 的板级 HAL 收敛仍 open（本轮只闭环 CI 矩阵）。
