@@ -88,7 +88,12 @@ jobs:
           path: firmware
           # r44 gotcha: delete the tracked sdkconfig so the board overlay
           # below actually takes effect (see file-header comment).
-          command: rm -f sdkconfig && idf.py -DSDKCONFIG_DEFAULTS='sdkconfig.defaults;boards/${{ matrix.board_dir }}/sdkconfig.defaults' build size
+          # r111 gotcha: the action wraps this string in an OUTER pair of
+          # single quotes (/bin/bash -c '...'), so single quotes here close
+          # that outer pair early and the ';' in the SDKCONFIG_DEFAULTS list
+          # becomes a command separator (exit 127 on all three matrix legs,
+          # run 44354738600). Use double quotes for the -D value instead.
+          command: rm -f sdkconfig && idf.py -DSDKCONFIG_DEFAULTS="sdkconfig.defaults;boards/${{ matrix.board_dir }}/sdkconfig.defaults" build size
 
       - name: Board-config evidence
         run: |
