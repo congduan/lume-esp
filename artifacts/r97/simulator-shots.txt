@@ -1,0 +1,1 @@
+PASS simulator DEMO screenshots; Lume Host Simulator http://localhost:8978 (/tmp/lume-r97-wt/examples/spectrum_music/app.js)
