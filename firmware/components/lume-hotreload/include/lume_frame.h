@@ -33,6 +33,18 @@
  *   source path is unchanged. Old firmware treats "LUMB" as a bad magic and
  *   re-syncs (no crash), so all three frame kinds share one byte stream.
  *
+ * §1d REPL frames (r115) — same 12-byte header layout with magic = 'L'
+ *   'U' 'M' 'R' ("LUMR"). The payload is ONE UTF-8 JS expression, evaluated
+ *   synchronously on the engine task INSIDE the current app context (same ctx
+ *   as a hot reload, unlike LUMC). It does NOT recycle the runtime. The result
+ *   (or error text) is returned through the SAME reply sink as other frames,
+ *   as a bounded, base64-chunked text reply (see lume_hotreload.c). Old
+ *   firmware treats "LUMR" as a bad magic and re-syncs (no crash).
+ *
+ *   Four frame kinds now share one byte stream. §3 holds the REPL output cap
+ *   and a bounded-copy helper that the firmware uses and the host harness
+ *   compiles verbatim.
+ *
  *   Streaming parser aligns on "LUME"; on bad magic / empty / too-large / OOM /
  *   bad CRC it emits an ERR event and re-syncs on the next "LUME". There is NO
  *   frame timeout. Both channels feed byte streams into their OWN reentrant
@@ -64,11 +76,14 @@
 #define LUME_FRAME_CMD_MAGIC      "LUMC"
 /* ---- §1c bytecode frames (r43b) ---- */
 #define LUME_FRAME_BYTECODE_MAGIC "LUMB"
+/* ---- §1d REPL frames (r115) ---- */
+#define LUME_FRAME_REPL_MAGIC     "LUMR"
 
 /* Frame kind stored in the parser (replaces the old bool is_cmd). */
 #define LUME_FRAME_KIND_SOURCE    0u
 #define LUME_FRAME_KIND_CMD       1u
 #define LUME_FRAME_KIND_BYTECODE  2u
+#define LUME_FRAME_KIND_REPL      3u
 
 /* Standard CRC-32 (reflected poly 0xEDB88320), identical to zlib.crc32 and
  * esp_crc32_le(0, ...). Verified by the "123456789" -> 0xcbf43926 vector. */
@@ -87,6 +102,10 @@ size_t lume_frame_encode_cmd(uint8_t *out, size_t out_cap,
 size_t lume_frame_encode_bytecode(uint8_t *out, size_t out_cap,
                                   const uint8_t *payload, size_t len);
 
+/* Same header/CRC, magic "LUMR": payload is one JS expression for the REPL. */
+size_t lume_frame_encode_repl(uint8_t *out, size_t out_cap,
+                              const uint8_t *payload, size_t len);
+
 typedef enum {
     LUME_FRAME_EV_DATA = 1,   /* validated frame; payload valid DURING cb only */
     LUME_FRAME_EV_BACK,
@@ -95,6 +114,7 @@ typedef enum {
     LUME_FRAME_EV_ERR,        /* reason: bad-magic/empty/too-large/oom/bad-crc */
     LUME_FRAME_EV_CMD,        /* "LUMC" frame; payload valid DURING cb only */
     LUME_FRAME_EV_BYTECODE,   /* "LUMB" frame; payload valid DURING cb only */
+    LUME_FRAME_EV_REPL,       /* "LUMR" frame; payload valid DURING cb only */
 } lume_frame_ev_t;
 
 typedef void *(*lume_frame_alloc_fn)(size_t len);
@@ -192,3 +212,15 @@ int lume_ota_reply(char *buf, size_t cap, bool ok, size_t len,
 /* The OTA listener gate: bind ONLY when WiFi has an IP and a token is ready.
  * WiFi-not-connected => false => "refuse to start". Host-harness tested. */
 bool lume_ota_can_serve(bool wifi_has_ip, bool token_ready);
+
+/* ---- §3 REPL output bound (r115) ----
+ * A REPL eval result can be arbitrarily large; the reply path is bounded. The
+ * device copies at most LUME_REPL_OUT_CAP bytes of the JS_ToString() result
+ * and flags truncation so the CLI can print a marker. This helper is portable
+ * (host harness compiles lume_frame.c verbatim) and NUL-terminates `out`, so
+ * the caller's buffer must hold cap+1 bytes. `text` may contain embedded NULs
+ * (JS strings can); `len` is the authoritative byte count. Returns the number
+ * of bytes copied (<= cap) and sets *truncated (when non-NULL). */
+#define LUME_REPL_OUT_CAP 2048u
+size_t lume_repl_clamp(const char *text, size_t len, char *out, size_t cap,
+                       bool *truncated);

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
+import { createInterface } from 'node:readline';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
 import { CONTROL, storeCommand, storeCommandBuffer, simpleCommand } from './protocol.js';
@@ -12,8 +13,8 @@ import { check, render } from './check.js';
 import { scan, renderScan } from './scan.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --host <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--timeout <s>]\n  lume token <32hex> [--port <path>]
-  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --host pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --ota is a legacy alias for --host.\n  deploy/dev compile with vendored qjsc by default; the first run builds\n  qjsc locally. --source sends JS for older firmware.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n  screenshot --scan N boots the app under esp32sim at N successive instants\n  (no board needed) and checks every frame for the expected layer set and\n  out-of-bounds changed pixels; exit 0 = all frames pass, 1 = any fail.\n`;
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --host <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume repl [--port <path>] [--eval "expr"] [--host <ip> --token <t>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--timeout <s>]\n  lume token <32hex> [--port <path>]
+  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --host pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --ota is a legacy alias for --host.\n  deploy/dev compile with vendored qjsc by default; the first run builds\n  qjsc locally. --source sends JS for older firmware.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n  screenshot --scan N boots the app under esp32sim at N successive instants\n  (no board needed) and checks every frame for the expected layer set and\n  out-of-bounds changed pixels; exit 0 = all frames pass, 1 = any fail.\n  repl evaluates one JS expression per line on the device's CURRENT app ctx\n  (so app globals/signals are visible). --eval sends one expression and exits;\n  without it, type expressions interactively (Ctrl+C or "exit" to quit).\n  Output is bounded to 2048 bytes per result; longer replies are truncated.\n`;
 
 const APP_COMMANDS = new Set(['list', 'launch', 'remove', 'home']);
 
@@ -21,15 +22,16 @@ function parse(args) {
   const [command, ...rest] = args;
   if (command === '--help' || command === '-h' || !command) return { command: 'help' };
   if (command === '--version' || command === '-v') return { command: 'version' };
-  if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check', 'token'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
-  let dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, ephemeral = false, bytecode = true;
+  if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check', 'token', 'repl'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
+  let dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr = null, ephemeral = false, bytecode = true;
   let json = false, noEmu = false, timeout = 120, scanN = null;
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     if (a === '--port' && command !== 'create' && rest[i + 1]) port = rest[++i];
-    else if ((a === '--ota' || a === '--host') && (command === 'deploy' || command === 'screenshot') && rest[i + 1]) ota = rest[++i];
-    else if (a === '--token' && (command === 'deploy' || command === 'screenshot') && rest[i + 1]) token = rest[++i];
-    else if (a === '--ota-port' && (command === 'deploy' || command === 'screenshot') && rest[i + 1]) otaPort = rest[++i];
+    else if ((a === '--ota' || a === '--host') && (command === 'deploy' || command === 'screenshot' || command === 'repl') && rest[i + 1]) ota = rest[++i];
+    else if (a === '--token' && (command === 'deploy' || command === 'screenshot' || command === 'repl') && rest[i + 1]) token = rest[++i];
+    else if (a === '--ota-port' && (command === 'deploy' || command === 'screenshot' || command === 'repl') && rest[i + 1]) otaPort = rest[++i];
+    else if (a === '--eval' && command === 'repl' && rest[i + 1]) evalExpr = rest[++i];
     else if (a === '--id' && (command === 'dev' || command === 'deploy') && rest[i + 1]) id = rest[++i];
     else if (a === '--ephemeral' && (command === 'dev' || command === 'deploy')) ephemeral = true;
     else if (a === '--bytecode' && (command === 'deploy' || command === 'dev')) bytecode = true;
@@ -89,7 +91,7 @@ function parse(args) {
       throw new Error(`invalid app id: ${subArg}`);
     }
   }
-  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, tokenHex, ephemeral, bytecode, json, noEmu, timeout, scanN };
+  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr, ephemeral, bytecode, json, noEmu, timeout, scanN };
 }
 
 /* Directory name -> stable app id (same rules as lume_app_id.h). */
@@ -213,6 +215,44 @@ async function runToken(tokenHex, options) {
   } finally { await device.close(); }
 }
 
+/* r115: device REPL. --eval mode sends one expression, prints its result and
+ * exits (scriptable). Interactive mode reads stdin line by line. Evaluations
+ * are serialized so a fast typist can never trip the transport's one-pending
+ * request guard. */
+function printReplResult(r) {
+  if (!r.ok) process.stderr.write(`error: ${r.text}\n`);
+  else process.stdout.write(r.text + '\n');
+  if (r.truncated) process.stderr.write('[output truncated]\n');
+}
+
+async function runRepl(evalExpr, options) {
+  const device = await openDevice(options);
+  try {
+    if (evalExpr !== null) {
+      const r = await device.repl(evalExpr);
+      printReplResult(r);
+      process.exitCode = r.ok ? 0 : 1;
+      return;
+    }
+    const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '' });
+    process.stdout.write('Lume REPL (Ctrl+C or exit to quit)\n');
+    let chain = Promise.resolve();
+    const handle = line => {
+      const expr = line.trim();
+      if (expr === 'exit' || expr === '.exit' || expr === 'quit') { rl.close(); return; }
+      if (!expr) return;
+      chain = chain.then(async () => {
+        try { printReplResult(await device.repl(expr)); }
+        catch (err) { process.stderr.write(`lume: ${err.message}\n`); }
+      });
+    };
+    rl.on('line', handle);
+    rl.on('SIGINT', () => rl.close());
+    await new Promise(resolve => rl.on('close', resolve));
+    await chain;
+  } finally { await device.close(); }
+}
+
 /* SHOT -> RGB565 frame -> 24-bit BMP on disk. The device captures the frame
  * the panel is currently showing; if the display is asleep the capture only
  * completes after wake (the CLI errors out on the device's shot-timeout). */
@@ -310,13 +350,14 @@ async function runDev(dir, portPath, id, ephemeral, bytecode) {
 
 try {
   const opts = parse(process.argv.slice(2));
-  const { command, dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, ephemeral, bytecode, json, noEmu, timeout, scanN } = opts;
+  const { command, dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr, ephemeral, bytecode, json, noEmu, timeout, scanN } = opts;
   if (command === 'help') process.stdout.write(usage);
   else if (command === 'version') process.stdout.write(pkg.version + '\n');
   else if (command === 'create') process.stdout.write(`Created ${await create(dir)}\n`);
   else if (command === 'dev') await runDev(dir, port, id, ephemeral, bytecode);
   else if (command === 'apps') await runApps(sub, subArg, { port, ota, token, otaPort });
   else if (command === 'token') await runToken(tokenHex, { port });
+  else if (command === 'repl') await runRepl(evalExpr, { port, ota, token, otaPort });
   else if (command === 'screenshot' && scanN !== null) {
     const result = await scan(dir, { scan: scanN });
     process.stdout.write(renderScan(result, { json }));

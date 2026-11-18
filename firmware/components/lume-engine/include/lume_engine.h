@@ -30,6 +30,11 @@ void lume_engine_alloc_stats(size_t *net_bytes, size_t *live);
  * in (screen is covered); the engine may now RESET/teardown. node_id unused. */
 #define LUME_EVT_TRANSITION_COVERED 10
 #define LUME_EVT_WS 11
+/* r115: REPL eval request (USB/TCP RX task -> engine task). The expression was
+ * copied into the engine's REPL staging slot before the event is posted; the
+ * engine evals it synchronously on the current app ctx in the inner loop and
+ * answers through the registered REPL result callback. */
+#define LUME_EVT_REPL 12
 typedef struct {
     uint8_t  type;        /* LUME_EVT_* */
     uint16_t node_id;
@@ -144,3 +149,29 @@ void lume_engine_set_ota_token_setter(lume_ota_set_token_fn fn);
  * Used by the hot-reload channel to answer the CLI's VER query before a
  * bytecode push. No quickjs.h needed by the caller. */
 void lume_engine_version(char *out, size_t cap);
+
+/* ------------------------------------------------------------------------
+ * r115: device REPL (serial/TCP line eval) on the CURRENT app context.
+ *
+ * lume_engine_request_repl() is called from an RX task. It copies `len` bytes
+ * of JS expression into an engine-owned PSRAM slot (mutex-guarded; caller must
+ * NOT pass a shared/pending pointer) and posts one LUME_EVT_REPL. Returns 0
+ * when queued, -1 on bad args / OOM / queue full / not started. Unlike a
+ * reload the runtime is NOT recycled: the expression sees the app's globals
+ * and signals. Only one REPL slot exists (last request wins); a superseded
+ * request is reported through the callback with ok=false and text "superseded".
+ *
+ * The eval outcome is delivered through a callback registered by the
+ * hot-reload channel (dependency stays one-way: engine never links hotreload).
+ * `ok` = eval produced a value; `text`/`len` = the JS_ToString() result on
+ * success, or the error text on failure. The string is borrowed and valid only
+ * DURING the callback; the channel applies its own output bound (lume_frame.h
+ * LUME_REPL_OUT_CAP + lume_repl_clamp). `token` is the opaque request id
+ * supplied by the caller and echoed back so the channel can route the reply
+ * to the right sink. The callback runs ON THE ENGINE TASK: it must be quick and
+ * must not call back into engine work. It may be NULL (replies silently dropped).
+ * ------------------------------------------------------------------------ */
+typedef void (*lume_engine_repl_fn)(bool ok, const char *text, size_t len,
+                                    uint32_t token);
+void lume_engine_set_repl_cb(lume_engine_repl_fn cb);
+int lume_engine_request_repl(const char *expr, size_t len, uint32_t token);

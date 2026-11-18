@@ -78,6 +78,12 @@ size_t lume_frame_encode_bytecode(uint8_t *out, size_t out_cap,
     return encode_magic(out, out_cap, LUME_FRAME_BYTECODE_MAGIC, payload, len);
 }
 
+size_t lume_frame_encode_repl(uint8_t *out, size_t out_cap,
+                              const uint8_t *payload, size_t len)
+{
+    return encode_magic(out, out_cap, LUME_FRAME_REPL_MAGIC, payload, len);
+}
+
 /* ------------------------------------------------------------------ */
 /* Streaming frame parser (reentrant)                                  */
 /* ------------------------------------------------------------------ */
@@ -93,7 +99,7 @@ static void sync_push(lume_frame_parser_t *p, uint8_t b)
 }
 
 /* 0 = no magic, 1 = "LUME" (JS source), 2 = "LUMC" (command text),
- * 3 = "LUMB" (bytecode). */
+ * 3 = "LUMB" (bytecode), 4 = "LUMR" (REPL expression). */
 static int sync_magic_kind(const lume_frame_parser_t *p)
 {
     if (p->sync_n != LUME_FRAME_MAGIC_LEN) {
@@ -108,14 +114,18 @@ static int sync_magic_kind(const lume_frame_parser_t *p)
     if (memcmp(p->sync, LUME_FRAME_BYTECODE_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
         return 3;
     }
+    if (memcmp(p->sync, LUME_FRAME_REPL_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
+        return 4;
+    }
     return 0;
 }
 
 static uint8_t magic_kind_to_frame_kind(int kind)
 {
-    /* kind 1 -> source, 2 -> cmd, 3 -> bytecode. */
+    /* kind 1 -> source, 2 -> cmd, 3 -> bytecode, 4 -> repl. */
     return kind == 2 ? LUME_FRAME_KIND_CMD
          : kind == 3 ? LUME_FRAME_KIND_BYTECODE
+         : kind == 4 ? LUME_FRAME_KIND_REPL
                      : LUME_FRAME_KIND_SOURCE;
 }
 
@@ -207,6 +217,9 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
             } else if (memcmp(p->magic, LUME_FRAME_BYTECODE_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
                 p->kind = LUME_FRAME_KIND_BYTECODE;
                 enter_hdr(p);
+            } else if (memcmp(p->magic, LUME_FRAME_REPL_MAGIC, LUME_FRAME_MAGIC_LEN) == 0) {
+                p->kind = LUME_FRAME_KIND_REPL;
+                enter_hdr(p);
             } else {
                 reject(p, "bad-magic", 0);
                 enter_resync(p);
@@ -273,6 +286,8 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
                     ev = LUME_FRAME_EV_CMD;
                 } else if (p->kind == LUME_FRAME_KIND_BYTECODE) {
                     ev = LUME_FRAME_EV_BYTECODE;
+                } else if (p->kind == LUME_FRAME_KIND_REPL) {
+                    ev = LUME_FRAME_EV_REPL;
                 }
                 emit(p, ev, p->payload, p->payload_len, NULL);
                 release_payload(p);
@@ -441,4 +456,25 @@ int lume_ota_reply(char *buf, size_t cap, bool ok, size_t len,
 bool lume_ota_can_serve(bool wifi_has_ip, bool token_ready)
 {
     return wifi_has_ip && token_ready;
+}
+
+/* ---- §3 REPL output bound (r115) ---- */
+size_t lume_repl_clamp(const char *text, size_t len, char *out, size_t cap,
+                       bool *truncated)
+{
+    if (truncated != NULL) {
+        *truncated = false;
+    }
+    if (text == NULL || out == NULL) {
+        return 0;
+    }
+    size_t n = len < cap ? len : cap;
+    if (n > 0) {
+        memcpy(out, text, n);
+    }
+    out[n] = '\0';
+    if (len > cap && truncated != NULL) {
+        *truncated = true;
+    }
+    return n;
 }

@@ -5,6 +5,12 @@ export const CONTROL = Object.freeze({ back: Buffer.from('BACK'), pause: Buffer.
 export const MAGIC_DATA = 'LUME';       // payload = JS app source (eval)
 export const MAGIC_CMD = 'LUMC';        // payload = text command (see lume_cmd.h)
 export const MAGIC_BYTECODE = 'LUMB';   // r43b: payload = LQBC header + qjsc blob
+export const MAGIC_REPL = 'LUMR';       // r115: payload = one JS expression
+
+// r115: the device bounds a REPL eval result to this many bytes before
+// base64-chunking it back (firmware lume_frame.h LUME_REPL_OUT_CAP).
+export const REPL_OUT_CAP = 2048;
+export const REPL_B64_CHUNK = 240;      // 240 raw bytes -> 320 base64 chars
 
 // r106: single-line LUMC verbs that take no id (see lume_cmd.h). FWTAG asks
 // the device for the API tag the CLI stamps into each app's meta.json "fw".
@@ -58,6 +64,46 @@ export function bytecodeFrame(payload) {
 /** Command frame: payload is UTF-8 text parsed by lume_cmd.c. */
 export function cmdFrame(text) {
   return build(MAGIC_CMD, text, 'command');
+}
+
+/** r115 REPL frame: payload is ONE UTF-8 JS expression (eval on app ctx). */
+export function replFrame(source) {
+  return build(MAGIC_REPL, source, 'repl expression');
+}
+
+/**
+ * Decode + validate a frame produced by build()/frame()/cmdFrame()/etc.
+ * Returns { magic, payload } or null on bad magic / length / CRC. The negative
+ * cases are what the streaming parser rejects and re-syncs on.
+ */
+export function parseFrame(bytes) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 12) return null;
+  const magic = bytes.toString('ascii', 0, 4);
+  if (![MAGIC_DATA, MAGIC_CMD, MAGIC_BYTECODE, MAGIC_REPL].includes(magic)) return null;
+  const len = bytes.readUInt32LE(4);
+  if (len === 0 || len > MAX_PAYLOAD || bytes.length !== 12 + len) return null;
+  if (bytes.readUInt32LE(8) !== crc32(bytes.subarray(12))) return null;
+  return { magic, payload: bytes.subarray(12) };
+}
+
+/**
+ * Host mirror of firmware lume_repl_clamp(): bound a REPL result string and
+ * report whether a truncation marker must be shown. Byte-oriented so a long
+ * multi-byte string is clipped on a byte boundary, exactly like the device.
+ */
+export function clampReplOutput(text) {
+  const buf = Buffer.isBuffer(text) ? text : Buffer.from(String(text), 'utf8');
+  if (buf.length <= REPL_OUT_CAP) {
+    return { text: buf.toString('utf8'), truncated: false };
+  }
+  return { text: buf.subarray(0, REPL_OUT_CAP).toString('utf8'), truncated: true };
+}
+
+/** Collect the "R64<base64>" data lines of a REPL reply into raw bytes. */
+export function decodeReplLines(lines) {
+  const b64 = lines.filter(l => typeof l === 'string' && l.startsWith('R64'))
+                   .map(l => l.slice(3)).join('');
+  return Buffer.from(b64, 'base64');
 }
 
 /**

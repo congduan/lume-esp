@@ -1,5 +1,5 @@
 import { SerialPort } from 'serialport';
-import { frame, cmdFrame, bytecodeFrame } from './protocol.js';
+import { frame, cmdFrame, bytecodeFrame, replFrame, decodeReplLines } from './protocol.js';
 import { decodeShot } from './shot.js';
 
 const ACK_TIMEOUT_MS = 15000;
@@ -50,6 +50,24 @@ export async function openPort(path, { monitor = false } = {}) {
       // Device log lines interleaving with the reply are skipped; every line
       // between the header and the footer is kept for decodeShot to sort out.
       pending.shotLines.push(line);
+      return;
+    }
+    if (pending.kind === 'repl') {
+      const header = /^REPL (OK|ERR) (\d+) ([01])\r?$/.exec(line);
+      if (header) {
+        pending.replOk = header[1] === 'OK';
+        pending.replLen = Number(header[2]);
+        pending.replTrunc = header[3] === '1';
+        pending.replLines = [];
+        return;
+      }
+      if (line === 'REPL END') {
+        const text = decodeReplLines(pending.replLines).toString('utf8');
+        return finish(true, { ok: pending.replOk, text, truncated: pending.replTrunc, length: pending.replLen });
+      }
+      // R64 data lines and any interleaved device log lines are both kept;
+      // decodeReplLines() ignores everything that is not an R64 line.
+      pending.replLines.push(line);
       return;
     }
     if (pending.kind === 'cmd' && (line.startsWith('APP\t') || line.startsWith('META\t'))) {
@@ -143,6 +161,14 @@ export async function openPort(path, { monitor = false } = {}) {
       const result = startPending('shot', { shotLines: [] });
       result.catch(() => {});
       try { await write(cmdFrame('SHOT')); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
+      return result;
+    },
+    /** r115 REPL: eval one JS expression on the device's current app ctx. */
+    async repl(expr) {
+      const bytes = replFrame(expr);
+      const result = startPending('repl', { replLines: [] });
+      result.catch(() => {});
+      try { await write(bytes); } catch (err) { failPending(new Error(`serial write failed on ${selected}: ${err.message}`)); }
       return result;
     },
     write,

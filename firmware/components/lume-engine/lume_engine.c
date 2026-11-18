@@ -125,6 +125,16 @@ static bool s_launch_reply;   /* the queued request expects a reload-reply */
 /* Registered by lume-hotreload; reports the final reload outcome over USB TX. */
 static lume_engine_reload_result_fn s_result_cb;
 
+/* r115: REPL slot. One outstanding eval at a time, last request wins. Guarded
+ * by s_stage_mutex (same lock as reload staging) on the producer side; the
+ * engine task moves the buffer out in take_repl() before evaluating. */
+static char    *s_repl_expr;
+static size_t   s_repl_len;
+static uint32_t s_repl_token;
+static bool     s_repl_pending;
+/* Registered by lume-hotreload; called ON the engine task after each eval. */
+static lume_engine_repl_fn s_repl_cb;
+
 /* r26: registered by the WiFi-OTA channel; js_net_ota_status() reads it.
  * Declared here (before the native at ~1244) to avoid a use-before-declare. */
 static lume_ota_status_provider_fn s_ota_status_provider;
@@ -3479,6 +3489,129 @@ void lume_engine_version(char *out, size_t cap)
              QJS_VERSION_PATCH);
 }
 
+/* ------------------------------------------------------------------ */
+/* r115: device REPL on the current app context                          */
+/* ------------------------------------------------------------------ */
+void lume_engine_set_repl_cb(lume_engine_repl_fn cb)
+{
+    s_repl_cb = cb;   /* set once, before any REPL frame can arrive */
+}
+
+int lume_engine_request_repl(const char *expr, size_t len, uint32_t token)
+{
+    if (expr == NULL || len == 0 || s_stage_mutex == NULL ||
+        s_evt_queue == NULL) {
+        return -1;
+    }
+    /* Copy OUTSIDE the lock: expr belongs to an RX task and must not be
+     * shared with the engine. +1 for a defensive NUL terminator. */
+    char *copy = heap_caps_malloc(len + 1, MALLOC_CAP_SPIRAM);
+    if (copy == NULL) {
+        ESP_LOGE(TAG, "request_repl: PSRAM staging alloc failed (%u bytes)",
+                 (unsigned)len);
+        return -1;
+    }
+    memcpy(copy, expr, len);
+    copy[len] = '\0';
+
+    uint32_t superseded_token = 0;
+    xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
+    if (s_repl_pending && s_repl_expr != NULL) {
+        /* Single slot, last-wins. Report the dropped request after unlocking
+         * (its callback only writes a reply; it never touches QuickJS). */
+        superseded_token = s_repl_token;
+        heap_caps_free(s_repl_expr);
+    }
+    s_repl_expr = copy;
+    s_repl_len = len;
+    s_repl_token = token;
+    bool need_post = !s_repl_pending;
+    s_repl_pending = true;
+    if (need_post) {
+        lume_engine_evt_t evt = { .type = LUME_EVT_REPL, .node_id = 0 };
+        if (xQueueSend(s_evt_queue, &evt, pdMS_TO_TICKS(100)) != pdTRUE) {
+            ESP_LOGE(TAG, "request_repl: evt queue full, dropping expression");
+            s_repl_pending = false;
+            s_repl_expr = NULL;
+            s_repl_len = 0;
+            s_repl_token = 0;
+            heap_caps_free(copy);
+            xSemaphoreGive(s_stage_mutex);
+            if (superseded_token != 0 && s_repl_cb != NULL) {
+                s_repl_cb(false, "superseded", strlen("superseded"),
+                          superseded_token);
+            }
+            return -1;
+        }
+    }
+    xSemaphoreGive(s_stage_mutex);
+
+    if (superseded_token != 0 && s_repl_cb != NULL) {
+        s_repl_cb(false, "superseded", strlen("superseded"), superseded_token);
+    }
+    return 0;
+}
+
+/* Engine-task side of request_repl: move the staged expression out. */
+static bool take_repl(char **expr, size_t *len, uint32_t *token)
+{
+    bool have = false;
+    xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
+    if (s_repl_pending) {
+        *expr = s_repl_expr;
+        *len = s_repl_len;
+        *token = s_repl_token;
+        s_repl_expr = NULL;
+        s_repl_len = 0;
+        s_repl_token = 0;
+        s_repl_pending = false;
+        have = true;
+    }
+    xSemaphoreGive(s_stage_mutex);
+    return have;
+}
+
+/* Synchronous eval on the CURRENT app context. Runs ONLY on the engine task
+ * from the inner event loop, so it can touch app globals/signals safely and
+ * never competes with LVGL/touch. The result string is borrowed by the
+ * callback; the channel copies it during the call. */
+static void eval_repl(JSContext *ctx, const char *expr, size_t len,
+                      uint32_t token)
+{
+    JSValue ret = JS_Eval(ctx, expr, len, "<repl>", JS_EVAL_TYPE_GLOBAL);
+    if (JS_IsException(ret)) {
+        JSValue exc = JS_GetException(ctx);
+        const char *msg = JS_ToCString(ctx, exc);
+        ESP_LOGD(TAG, "repl eval exception (token %u)", (unsigned)token);
+        if (s_repl_cb != NULL) {
+            s_repl_cb(false, msg != NULL ? msg : "exception",
+                      msg != NULL ? strlen(msg) : strlen("exception"), token);
+        }
+        if (msg != NULL) JS_FreeCString(ctx, msg);
+        JS_FreeValue(ctx, exc);
+        JS_FreeValue(ctx, ret);
+        return;
+    }
+    JSValue str = JS_ToString(ctx, ret);
+    if (JS_IsException(str)) {
+        dump_js_exception(ctx, "<repl-tostring>");
+        if (s_repl_cb != NULL) {
+            const char *why = "tostring-failed";
+            s_repl_cb(false, why, strlen(why), token);
+        }
+    } else {
+        size_t n = 0;
+        const char *text = JS_ToCStringLen(ctx, &n, str);
+        if (s_repl_cb != NULL) {
+            s_repl_cb(true, text != NULL ? text : "", text != NULL ? n : 0,
+                      token);
+        }
+        if (text != NULL) JS_FreeCString(ctx, text);
+        JS_FreeValue(ctx, str);
+    }
+    JS_FreeValue(ctx, ret);
+}
+
 /* Move the staged source out of the shared slot into the engine task's sole
  * ownership, and clear the "event pending" flag. Returns NULL if the slot is
  * empty (e.g. coalesced duplicate events). */
@@ -4089,6 +4222,16 @@ static void engine_task(void *arg)
                     if (evt.ws_event == LUME_WS_CLOSE) (void)lume_net_ws_close(evt.ws_id);
                     dispatch_ws(&evt);
                     free(evt.ws_data);
+                } else if (evt.type == LUME_EVT_REPL) {
+                    char    *expr = NULL;
+                    size_t   len = 0;
+                    uint32_t token = 0;
+                    if (take_repl(&expr, &len, &token) && expr != NULL) {
+                        ESP_LOGD(TAG, "engine recv REPL token=%u (%u bytes)",
+                                 (unsigned)token, (unsigned)len);
+                        eval_repl(ctx, expr, len, token);
+                        heap_caps_free(expr);
+                    }
                 }
             }
             drain_removals();

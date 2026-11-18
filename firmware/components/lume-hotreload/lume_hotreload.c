@@ -169,6 +169,103 @@ static void on_engine_result(bool ok, size_t len, const char *reason)
 }
 
 /* ================================================================== */
+/* REPL reply routing (r115)                                           */
+/* ================================================================== */
+/* In-flight REPL requests are keyed by an opaque token so the engine-task
+ * result callback can find the original channel/socket. One socket at a time
+ * on TCP and a serialized CLI keep the working set tiny; the table is bounded
+ * so a stuck reply can never grow memory without limit. Guarded by the same
+ * recursive mutex as the reload FIFO. */
+#define REPL_SLOTS 8
+typedef struct { reply_sink_t sink; uint32_t token; bool used; } repl_slot_t;
+static repl_slot_t s_repl_slots[REPL_SLOTS];
+static uint32_t    s_repl_token_next = 1;   /* 0 is reserved: "no token" */
+
+/* caller holds s_pending_mutex */
+static uint32_t repl_slot_alloc(reply_sink_t sink, bool *ok)
+{
+    for (int i = 0; i < REPL_SLOTS; i++) {
+        if (!s_repl_slots[i].used) {
+            s_repl_slots[i].used = true;
+            s_repl_slots[i].sink = sink;
+            uint32_t tok = s_repl_token_next++;
+            if (tok == 0) tok = s_repl_token_next++;   /* skip reserved 0 */
+            s_repl_slots[i].token = tok;
+            *ok = true;
+            return tok;
+        }
+    }
+    *ok = false;
+    return 0;
+}
+static bool repl_slot_take(uint32_t token, reply_sink_t *out) /* caller holds mutex */
+{
+    for (int i = 0; i < REPL_SLOTS; i++) {
+        if (s_repl_slots[i].used && s_repl_slots[i].token == token) {
+            if (out != NULL) *out = s_repl_slots[i].sink;
+            s_repl_slots[i].used = false;
+            s_repl_slots[i].token = 0;
+            return true;
+        }
+    }
+    return false;
+}
+
+/* REPL reply grammar (single logical reply, several reply_write() calls):
+ *   "REPL <OK|ERR> <rawlen> <trunc>\n"   header (rawlen = bytes after clamp)
+ *   "R64<base64, 320 chars per 240 raw bytes>\n"   data lines (0..N)
+ *   "REPL END\n"                          footer
+ * Base64 keeps arbitrary JS strings (newlines / NULs) single-line-safe, and
+ * the 240-byte chunk mirrors the proven SHOT reply path. Output is bounded by
+ * lume_repl_clamp(); trunc=1 tells the CLI to print a truncation marker.
+ * Device log lines may interleave BETWEEN our lines; the CLI skips them. */
+#define REPL_B64_CHUNK 240
+static void repl_reply(reply_sink_t sink, bool ok, const char *text, size_t len)
+{
+    char out[LUME_REPL_OUT_CAP + 1];
+    bool truncated = false;
+    size_t n = lume_repl_clamp(text, len, out, LUME_REPL_OUT_CAP, &truncated);
+
+    char hdr[48];
+    int hn = snprintf(hdr, sizeof(hdr), "REPL %s %u %u\n",
+                      ok ? "OK" : "ERR", (unsigned)n, truncated ? 1u : 0u);
+    if (hn <= 0 || (size_t)hn >= sizeof(hdr)) return;
+    reply_write(sink, hdr, (size_t)hn);
+
+    unsigned char b64[REPL_B64_CHUNK / 3 * 4 + 4];
+    for (size_t off = 0; off < n; off += REPL_B64_CHUNK) {
+        size_t chunk = n - off < REPL_B64_CHUNK ? n - off : REPL_B64_CHUNK;
+        size_t olen = 0;
+        if (mbedtls_base64_encode(b64, sizeof(b64), &olen,
+                                  (const unsigned char *)out + off, chunk) != 0) {
+            ESP_LOGE(TAG, "REPL reply base64 encode failed");
+            return;
+        }
+        memmove(b64 + 3, b64, olen);   /* prepend "R64" sentinel */
+        b64[0] = 'R'; b64[1] = '6'; b64[2] = '4';
+        b64[olen + 3] = '\n';
+        reply_write(sink, (const char *)b64, olen + 4);
+    }
+    reply_write(sink, "REPL END\n", 9);
+}
+
+/* Called ON the engine task (see lume_engine.h). Must stay quick: it resolves
+ * the sink and writes preformatted text, no engine work. */
+static void on_repl_result(bool ok, const char *text, size_t len, uint32_t token)
+{
+    reply_sink_t sink;
+    xSemaphoreTakeRecursive(s_pending_mutex, portMAX_DELAY);
+    bool have = repl_slot_take(token, &sink);
+    xSemaphoreGiveRecursive(s_pending_mutex);
+    if (!have) {
+        ESP_LOGW(TAG, "REPL result with no slot (token %u dropped)",
+                 (unsigned)token);
+        return;
+    }
+    repl_reply(sink, ok, text, len);
+}
+
+/* ================================================================== */
 /* Command channel (r30 multi-app)                                     */
 /* ================================================================== */
 /* Reply lines (one per command, always on the pushing channel):
@@ -486,6 +583,25 @@ static void on_frame_event(lume_frame_ev_t ev, const uint8_t *payload,
     case LUME_FRAME_EV_CMD:
         handle_cmd(sink, payload, len);
         break;
+    case LUME_FRAME_EV_REPL: {  /* r115: eval on the current app ctx */
+        bool slot_ok = false;
+        uint32_t token = 0;
+        xSemaphoreTakeRecursive(s_pending_mutex, portMAX_DELAY);
+        token = repl_slot_alloc(sink, &slot_ok);
+        xSemaphoreGiveRecursive(s_pending_mutex);
+        if (!slot_ok) {
+            repl_reply(sink, false, "repl-busy", strlen("repl-busy"));
+            break;
+        }
+        int r = lume_engine_request_repl((const char *)payload, len, token);
+        if (r != 0) {
+            xSemaphoreTakeRecursive(s_pending_mutex, portMAX_DELAY);
+            repl_slot_take(token, NULL);   /* reclaim the unused slot */
+            xSemaphoreGiveRecursive(s_pending_mutex);
+            repl_reply(sink, false, "stage-oom", strlen("stage-oom"));
+        }
+        break;
+    }
     case LUME_FRAME_EV_ERR:
         ESP_LOGE(TAG, "frame rejected: %s (len=%u)", reason, (unsigned)len);
         reply_line(sink, false, len, reason);
@@ -839,6 +955,9 @@ void lume_hotreload_start(void)
     /* Final reload outcome (eval OK / failed) is reported back to TX for
      * whichever channel pushed the frame. */
     lume_engine_set_reload_result_cb(on_engine_result);
+    /* r115: REPL eval outcome is reported through a separate callback (same
+     * one-way dependency; the engine never links this component). */
+    lume_engine_set_repl_cb(on_repl_result);
 
     usb_start();
     ota_start();
