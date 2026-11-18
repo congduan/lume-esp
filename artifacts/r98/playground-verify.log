@@ -1,0 +1,65 @@
+PASS page loads without JavaScript errors
+  Counter: 15 nodes
+PASS counter has nonempty screen DOM
+  Snake: 5 nodes
+PASS games_snake has nonempty screen DOM
+  2048: 37 nodes
+PASS games_2048 has nonempty screen DOM
+  border-radius: 36px
+PASS rounded square device frame
+PASS editor compiles default and changed source, then reports syntax errors
+  share hash: 116 chars
+PASS hash restores editor source and share copies reloadable URL
+PASS oversized source keeps existing share hash
+PASS counter button updates count without errors
+  DEMO badge + tap -> LISTEN
+PASS voice_assistant degrades to DEMO without audio/network and is tappable
+PASS snake screen tap and swipe do not throw
+  B is for Ball
+  C is for Cat
+  D is for Dog
+  E is for Egg
+  F is for Fish
+  glyph background: rgba(0, 0, 0, 0); canvas node: 2
+PASS abc123 clears placeholder and redraws on five taps
+  mobile tap: B is for Ball
+PASS abc123 mobile touchscreen advances card
+  counter: 15 nodes
+  clock: 4 nodes
+  clock_round: 3 nodes
+  dashboard_round: 4 nodes
+  games_snake: 5 nodes
+  games_2048: 37 nodes
+  games_breakout: 41 nodes
+  mario: 6 nodes
+  calculator: 28 nodes
+  weather: 30 nodes
+  music_player: 36 nodes
+  dashboard: 26 nodes
+  gravity_ball: 2 nodes
+  typewriter: 5 nodes
+  heart_curve: 11 nodes
+  speedometer: 16 nodes
+  power_demo: 11 nodes
+  watchface: 43 nodes
+  games_tetris: 11 nodes
+  game_of_life: 6 nodes
+  pet: 9 nodes
+  async_demo: 3 nodes
+  piano: 61 nodes
+  compass: 8 nodes
+  invaders: 5 nodes
+  frogger: 5 nodes
+  abc123: 5 nodes
+  sokoban: 9 nodes
+  lcd_dual: 7 nodes
+  memory: 7 nodes
+  minesweeper: 7 nodes
+  golf: 7 nodes
+  scroller: 9 nodes
+  raycast: 6 nodes
+  fishtank: 2 nodes
+  particles: 7 nodes
+  plasma: 2 nodes
+  voice_assistant: 8 nodes
+PASS all examples load without runtime errors
