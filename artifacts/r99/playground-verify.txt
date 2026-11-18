@@ -1,0 +1,30 @@
+PASS page loads without JavaScript errors
+  Counter: 15 nodes
+PASS counter has nonempty screen DOM
+  Snake: 5 nodes
+PASS games_snake has nonempty screen DOM
+  2048: 37 nodes
+PASS games_2048 has nonempty screen DOM
+  border-radius: 36px
+PASS rounded square device frame
+PASS editor compiles default and changed source, then reports syntax errors
+  share hash: 116 chars
+PASS hash restores editor source and share copies reloadable URL
+PASS oversized source keeps existing share hash
+PASS counter button updates count without errors
+  DEMO badge + tap -> LISTEN
+PASS voice_assistant degrades to DEMO without audio/network and is tappable
+PASS snake screen tap and swipe do not throw
+  B is for Ball
+  C is for Cat
+  D is for Dog
+  E is for Egg
+  F is for Fish
+  glyph background: rgba(0, 0, 0, 0); canvas node: 2
+PASS abc123 clears placeholder and redraws on five taps
+  mobile tap: B is for Ball
+PASS abc123 mobile touchscreen advances card
+FAIL all examples load without runtime errors: Error: expected 38 examples, got 40
+    at file:///tmp/lume-r100-wt/tools/playground/verify.mjs:168:42
+    at async check (file:///tmp/lume-r100-wt/tools/playground/verify.mjs:32:11)
+    at async file:///tmp/lume-r100-wt/tools/playground/verify.mjs:165:3
