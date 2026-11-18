@@ -42,7 +42,7 @@
     ['voice_assistant','◎','Voice Assistant','语音助手','Push-to-talk walkie-talkie demo','按住说话对讲机演示'],
     ['spectrum_music','♫','Spectrum Music','频谱音乐盒','Radial live and demo spectrum','麦克风与演示径向频谱'],
     ['aurora_clock','o','Aurora Clock','极光时钟','Flowing ribbons and time','流动极光与时间'],
-
+    ['flapdot','b','Flapdot','拍拍鸟','One-tap arcade flyer','一键街机飞行']
   ];
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');
