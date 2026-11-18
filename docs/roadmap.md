@@ -1114,3 +1114,27 @@ TFT 截图 vision 自查为完整 `MODE DEMO / IDLE` 主屏、非白屏。
 无 ASR/TTS（canned prompt + beep 播报）、`MODE LIVE` 仅 harness 注入覆盖，
 真机音频/时延/触摸 barge-in 手感/功耗 deferred to board bring-up。详见
 `docs/r95-voice-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。
+
+### r101 result — 极光蒙版时钟 `examples/aurora_clock`（appended, milestone checkboxes untouched）
+
+「经典 app 复刻生态」表盘向候选落地为**纯 app 层**极光时钟：单 480x480 RGB565
+canvas 20 Hz 动画，三条约六枚重叠椭圆构成的光带 + 预计算重叠色补丁 + 径向渐层
+retained 精灵，中央深色椭圆保数字对比度；三套主题（青绿/紫/蓝绿）四锚点 × 8 级
+启动期 RGB 插值成 32 行查找表，逐帧只查表零混色。设备字体 32px 上限用「分钟变化
+才重建的 76px 七段 retained 精灵」绕过；IMU ax/ay 低通滤波控整体偏移倾斜，静置
+60s 相位步进降为 0.3 倍，触摸切主题并唤醒。常态 30 draw calls（上限 33），两枚
+retained 精灵共 141,248 字节 < 460,800 字节精灵槽预算。
+
+实施于 r99-aurora 分支（基线 18feda0，engine_exit=0，验证全绿后因 main 已被
+skyfire 占用 r99 编号，本主控收口轮改号 r101 合入）。合并轮解 3 处冲突：
+playground build.mjs 取 41-app 并集（顺带把 skyfire 轮 verify 报告的
+clock_round/dashboard_round 40-vs-38 基线差异正式修复）、index.html script 列表
+并集、sources.js 重生成。收口轮验证：`node tests/aurora_clock.js` PASS（含
+per-frame draw calls max=30 断言与 60s 空闲漂移）；全量 `tests/*.js` **57/57
+零 FAIL**；`lume check examples/aurora_clock --no-emu` 与 counter 哨兵双 PASS；
+`npm test --prefix tools/lume` 44 pass / 0 fail；`check_website.py` 绿。截图见
+`artifacts/r101/aurora-clock.png`（playground 实跑）与 r99 实施期三张时刻截图。
+诚实口径：模拟器未实现 `Text.fontSize`，大数字由 retained 精灵绘制；20 fps 全屏
+9.216 MB/s 像素写入为推算非实测；真机 CO5300 渐层台阶感、IMU 轴向/阈值、触摸
+唤醒延迟、PMIC 电流均 deferred to board bring-up。详见
+`docs/r101-aurora-report.md`。
