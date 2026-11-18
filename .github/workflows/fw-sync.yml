@@ -59,14 +59,19 @@ jobs:
           mkdir -p /tmp/fw && cd /tmp/fw && unzip -o /tmp/fw.zip
           test -s lume.bin && test -s bootloader.bin && test -s partition-table.bin
 
+      # r112 fix: the 20241011 tarball stores the ELF at the ARCHIVE ROOT
+      # (`esp32s3_rev0_rom.elf`, no directory prefix — verified by listing the
+      # tarball). The previous `--strip-components=2 --wildcards "*/..."`
+      # therefore never matched and this workflow failed on every run since it
+      # was created (r74, 2026-11-16), leaving website firmware stale while
+      # firmware.yml kept producing fresh binaries. Extract the member by name.
       - name: Fetch mask ROM ELF (Apache-2.0, espressif/esp-rom-elfs 20241011)
         run: |
           set -euo pipefail
           mkdir -p website/wasm/fw
           curl -sfL --retry 3 \
             "https://github.com/espressif/esp-rom-elfs/releases/download/20241011/esp-rom-elfs-20241011.tar.gz" \
-            | tar xz --strip-components=2 -C website/wasm/fw \
-              --wildcards "*/esp32s3_rev0_rom.elf"
+            | tar xz -C website/wasm/fw esp32s3_rev0_rom.elf
           test -s website/wasm/fw/esp32s3_rev0_rom.elf
 
       - name: Install binaries + manifest
