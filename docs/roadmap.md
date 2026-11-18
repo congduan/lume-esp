@@ -922,7 +922,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 | 候选 | 价值与复刻要点 | 可行性口径 |
 |---|---|---|
-| **一键飞行（Flappy 类）** | 单点触摸玩法与硬件形态天作之合；障碍柱水平推进 = 镜头动场景，脏区只救局部动 | 🟡 r83 spike 已完成一半：scroller 的 blit 卷轴证明「两带脏区 ≈6 万 px/帧、emu JS≈10ms/50ms 预算、4.31× counter 指令」模拟侧支持 20fps（详见 r83 报告）；柱体改用 drawImage 后无需逐段 fillRect。**接板 60s p95/p99 实测仍是立项硬门槛**，真机未验 |
+| **一键飞行（Flappy 类）**（已落地 r105，见 `docs/r105-flapdot-report.md`；`examples/flapdot/`：单点触摸拍翅 + hash 确定性柱对 + 难度渐窄缺口 + KV hiscore） | 单点触摸玩法与硬件形态天作之合；障碍柱水平推进 = 镜头动场景，脏区只救局部动 | 🟢 纯 app 层落地：单 480x400 canvas（192,000 px < 230,400 预算），柱体为原生 fillRect 分带（未走 drawImage，spike 的 blit 路线留作后续优化）；脏区实测稳态增量最大 20,680 px/帧；KV `hisc.flapdot`（12 字符）；host harness 13 组 + 60s smoke 全绿。**接板 60s p95/p99 实测仍是硬门槛**，真机未验（r83 spike 结论继续有效） |
 | **康威生命游戏**（已落地 r66，见 `docs/r66-conway-report.md`） | 触摸播种种细胞 + 观察演化，「圆屏上的涌现」演示价值高、实现极小；演示 retained paths（静态网格线）+ canvas（活细胞）分层 | `examples/game_of_life/app.js`：33×33 环面网格 / 9px 格落在 300×300 单 canvas 内（60×60×9px=540px 超出屏幕与 300px 预算，故按预算收敛为 33×33）；静态 72 段 retainSegments 上传一次，活细胞按代脏区重画；实测每代脏区 648–729px = 全帧 0.72–0.81%；代际 200/350/500ms 三档，纯 app 层 |
 | **记忆翻牌**（已落地 r75，见 `docs/r75-memory-report.md`；**扫雷已落地 r76**，见 `docs/r76-minesweeper-report.md`） | 单点触摸网格游戏最低成本品类；与 games_* 不重复（都是新玩法）；hiscore 走 KV | `examples/memory/app.js`：4x4 = 8 对原创像素面（berry/sun/cloud/leaf/heart/star/bolt/ring）spans 预计算，tap 翻牌 / 两张比对 / miss 两帧回扣；KV `hisc.memory`（11 字符）最少步纪录；单 canvas 480x480 = 230,400 px 恰满预算；12 例 harness 含负向（重复翻同一张、三张连翻保护）；纯 app 层。**`examples/minesweeper/app.js`（r76）**：10x10 + 15 雷，首击 3x3 必安全（首击后布雷），tap 翻开（显式栈 flood fill）/ 长按插旗（旗格不可翻、不被 flood 掀开、不计入胜利），踩雷全揭晓；数字 5x7 / 旗雷 7x7 像素字形 spans 预计算（spanBuilds=10）；KV `hisc.mine`（9 字符）最快时间纪录；网格 398x398 harness 锁边；15 例 harness 含 20 板可解性；纯 app 层 |
 | **流体粒子沙盒**（IMU 晃动 + 触摸扰动） | 宣传效果天花板：圆屏 AMOLED 上粒子随重力流转 | ⚠️ 参考社区同款实证需降级到 200-300 粒子（JS 单线程无 SIMD）；粒子间作用用简化近似（网格邻域）；IMU 单位是 m/s² 非 g |
@@ -1138,3 +1138,27 @@ per-frame draw calls max=30 断言与 60s 空闲漂移）；全量 `tests/*.js` 
 9.216 MB/s 像素写入为推算非实测；真机 CO5300 渐层台阶感、IMU 轴向/阈值、触摸
 唤醒延迟、PMIC 电流均 deferred to board bring-up。详见
 `docs/r101-aurora-report.md`。
+
+### r105 result — 拍拍鸟 `examples/flapdot`（appended, milestone checkboxes untouched）
+
+「经典 app 复刻生态」P1 Flappy 类候选落地为**纯 app 层**街机飞行：
+单 480x400 canvas（192,000 px < 230,400 px 全预算），HUD 全走原生 Text
+零 canvas 像素；世界模型 hash 确定性（柱 i 几何以索引为种子的 PRNG 导出，
+host/device 逐位一致，整条赛道可从滚动距离单独重放）；难度 = 缺口宽度随
+柱序号渐窄（GAP_STEP px 每 GAP_EVERY 根，GAP_MIN 下限）；柱对原生 fillRect
+分带绘制（未走 drawImage，r83 spike 的 blit 路线留作后续优化）；KV
+`hisc.flapdot`（12 字符，NVS 15 字符上限内）。r102 半成品经主控接管修复
+收口（上一引擎轮派发即遇上游 429 限流零产出）：顶部柱碰撞矩形高度参数
+错位（缺口上半段被误判致死）与 harness 碰撞用例滚动量用错（整组断言空转）
+两处实锤修正，另加固 `pipeBand` 画布裁剪与三处用例口径。
+
+验证原始输出全见 `docs/r105-flapdot-report.md`：新 `tests/flapdot.js` 13 组绿
+（含 60s smoke：draws=114918 / paints=5648 / 稳态增量最大 20,680 px）；
+全量 `tests/*.js` **59 文件 0 FAIL**；`npm test --prefix tools/lume`
+43 pass / 0 fail / 1 skipped；`lume check examples/flapdot --no-emu` 与
+counter 哨兵双 PASS；playground 41→42 apps 重生成 +
+`tools/simulator/verify.js` 全绿；flapdot 浏览器实跑截图
+`artifacts/simulator/flapdot_ready.png` / `flapdot_run.png`（vision 自查
+HUD/鸟/地面渲染干净）。未跑 `idf.py build/size`（零固件改动）。
+诚实口径：真机触摸手感、帧率、NVS 持久化、功耗均 deferred to board
+bring-up，未声称硬件验证。详见 `docs/r105-flapdot-report.md`。
