@@ -1380,3 +1380,26 @@ ESP-IDF 所以一直绿，CI runner 没有 → 潜在 CI-only 断裂，红了两
 + 无 env 回退路径都跑过）；全量 `for t in tests/*.js` 64 文件 0 FAIL；
 `yaml.safe_load(tests.yml)` OK。诚实口径：CI 侧真绿以 push 触发的
 Host regression matrix 运行为准；本地证据只能证明 provision 步骤的正确性。
+
+### r112 result — fw-sync 修复：ROM ELF 提取从未成功过（appended, milestone checkboxes untouched）
+
+主控轮修复：`Sync firmware to website` 自 r74（2026-11-16）创建起**每次运行都
+failure**（连续 15+ 次，含 44357435742 @ 3313ff0），无人察觉——调度轮只盯引擎，
+CI 红了三天。表现为 "Fetch mask ROM ELF" 步骤死于
+`tar: */esp32s3_rev0_rom.elf: Not found in archive`。
+
+根因（本轮实证）：下载官方 esp-rom-elfs-20241011.tar.gz 并 `tar tzf` 列目录——
+`esp32s3_rev0_rom.elf` 位于**归档根目录**（无 `esp-rom-elfs-*/` 前缀），而
+yml 用 `--strip-components=2 --wildcards "*/esp32s3_rev0_rom.elf"` 提取，
+`*/` 模式在根目录成员上永不匹配（tar 对根目录成员返回 exit 2）。即该步骤
+**从未成功过**，Pages 上的固件三件套停在 11-16（`lume.bin` 2,994,512 B），
+firmware.yml 之后产的新固件全部没同步上网站。
+
+修法：改为按成员名直接提取
+`tar xz -C website/wasm/fw esp32s3_rev0_rom.elf`（无 strip、无 wildcards）。
+本地实证：下载同一 tarball → 提取出的 `esp32s3_rev0_rom.elf`（949,552 B）
+与仓库内现役副本 `cmp` 逐字节一致 → 修法正确且不引入内容漂移；
+`yaml.safe_load(fw-sync.yml)` OK。诚实口径：workflow 真绿以本 push 触发的
+fw-sync 运行为准（其 firmware.yml 触发条件 workflow_run conclusion=success +
+每夜 21:00 UTC 兜底 cron 双通道，修复后首轮即可验证）。
+board-only 项不涉及（纯 CI YAML 改动，零固件/JS 变更）。
