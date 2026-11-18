@@ -1162,3 +1162,33 @@ counter 哨兵双 PASS；playground 41→42 apps 重生成 +
 HUD/鸟/地面渲染干净）。未跑 `idf.py build/size`（零固件改动）。
 诚实口径：真机触摸手感、帧率、NVS 持久化、功耗均 deferred to board
 bring-up，未声称硬件验证。详见 `docs/r105-flapdot-report.md`。
+
+### r106 result — deploy manifest 绑定固件 API tag（app 兼容性安全网，appended, milestone checkboxes untouched）
+
+承接上一轮 429 限流中断的半成品（2 文件 +152 行）：先逐文件 diff 审阅实证，
+修正其偏离简报的 `.fwtag` sidecar 设计，改为 **CLI 查询设备 tag 写入 meta.json
+`fw` 字段** 的方案，并接上此前未接线的 `lume_apps_tag_check()`。
+
+固件：`LUME_API_TAG=1` 固化（bump 纪律写入头注释）；`lume_fwtag.h` portable
+extract/decide 助手（固件与宿主 harness 共用）；`lume_apps.c` launch 校验 match 放行 /
+mismatch 打印两个 tag 值并拒绝 / 无 fw 旧 app WARN 兼容；`lume_engine.c` 接线 boot
+恢复（清 `.current`/`.boot` 回落 home）与 `request_launch_common`（JS launch + LAUNCH
+命令共闸）；LUMC 新增 `FWTAG` 命令回 `CMD OK fwt <TAG>`，LAUNCH 被拒回
+`fwt-mismatch`。CLI：`queryFirmwareTag()` Strict 校验、失败如实报错/降级不造假值；
+deploy/dev 打标 meta.fw，`lume apps list` 标注 fw 与 MISMATCH。`lume.d.ts` API 面无
+变化未改，`gen_api_docs.py --check` fresh。
+
+验证原始输出全见 `docs/r106-fwhash-report.md`：全量 `tests/*.js` **59 文件 0 FAIL**；
+`npm test --prefix tools/lume` 44 pass / 0 fail / 1 skipped；C harness
+`apps_protocol` 41 checks / `fwtag_protocol` 14 checks 均 0 failure（覆盖 match /
+mismatch / 旧 meta WARN 三路径）；`gen_api_docs.py --check` 绿；
+`lume check examples/counter` 哨兵 PASS（r64 worktree 坑：拷三件套 + EMU_SKIP_BUILD=1）。
+改 C 已跑 `idf.py build/size`：Flash Code **2,032,860 B**（对比最近基线 r93
+2,030,508 为 +2,352 B；简报引用的 r82 基线 2,021,336 为 +11,524 B），Flash Data
+850,644，DIRAM 247,267，**IRAM 16,384/16,384、Remain 0 硬线守住**，Total 3,025,275。
+QuickJS 调试汇编遇 host swap 停滞，依 r78/r82 先例仅对 build 目录目标 `-g0` 后构建成功，
+未改源码/优化选项。
+
+诚实口径：无真机 deploy/launch 校验、无新固件 emu（哨兵用预构建图像），
+端到端 mismatch 拒绝留接板轮；真机触摸/显示/功耗全部 deferred to board bring-up，
+未声称硬件验证。
