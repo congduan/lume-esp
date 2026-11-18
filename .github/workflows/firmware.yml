@@ -6,12 +6,38 @@ name: Build firmware
 #   * push of an annotated `vX.Y.Z` tag -> build + artifact + GitHub Release.
 #   * workflow_dispatch -> manual build + artifact.
 #
+# r110: multi-board matrix (M5 board-abstraction gap "no multi-board CI
+# matrix", registered since r45/r109). One matrix job per board profile in
+# firmware/boards/; each job passes the board's sdkconfig.defaults overlay via
+# SDKCONFIG_DEFAULTS (same mechanism as the local flow in
+# firmware/boards/README.md).
+#
+# r44 gotcha (mandatory in CI): firmware/sdkconfig is a TRACKED, generated
+# file and ESP-IDF lets an existing sdkconfig WIN over SDKCONFIG_DEFAULTS.
+# A fresh checkout therefore silently builds the DEFAULT board for every
+# matrix entry (false green). Every build command MUST delete sdkconfig first
+# so idf.py regenerates it from the defaults list.
+#
+# Release-path decision (r110): tag builds (`v*.*.*`) run the full 3-board
+# matrix (each board's artifact zip is uploaded), but the GitHub Release is
+# assembled ONLY from the default 2.16 job (`release: true` in the matrix
+# include). Rationale: release assets keep the historical flat 2.16 file set
+# (bootloader.bin / partition-table.bin / lume.bin / flash_args) with no
+# per-board suffixes, so existing flashing docs, the website flasher flow and
+# any scripted downloads stay byte-compatible; the other two boards remain
+# compile-time profiles without on-device acceptance (docs/
+# KNOWN-SIMPLIFICATIONS.md), so publishing their binaries as release assets
+# would overstate their readiness. Per-board artifacts on tag runs still
+# allow manual download of the 1.8 / 1.75c builds.
+#
 # Verified against espressif/esp-idf-ci-action@v1 action.yml / README:
 #   * inputs are esp_idf_version / target / path / command (default `idf.py build`);
 #   * `v5.5.5` is a published, active `espressif/idf` Docker tag;
 #   * the action mounts $GITHUB_WORKSPACE and sets -w to `<repo>/<path>`, so
 #     `path: firmware` makes `idf.py build` write to `firmware/build/` on the
-#     host workspace, readable by the collection step below.
+#     host workspace, readable by the collection step below;
+#   * `command` is run via the container shell, so `rm -f ... && idf.py ...`
+#     and single-quoted arguments work as-is.
 # GitHub Actions docs note: "Path filters are not evaluated for pushes of tags."
 # That is why `branches`+`paths` (branch-gated builds) and `tags` (releases) can
 # coexist under one `push` trigger: a tag push ignores `paths` and still runs.
@@ -36,15 +62,43 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # board values are quoted: unquoted 2_16 / 1_8 parse as YAML ints
+          # (216 / 18) and would corrupt the artifact-name suffix.
+          - board: "2_16"
+            board_dir: waveshare_esp32_s3_touch_amoled_2_16
+            release: true
+          - board: "1_8"
+            board_dir: waveshare_esp32_s3_touch_amoled_1_8
+            release: false
+          - board: "1_75c"
+            board_dir: waveshare_esp32_s3_touch_amoled_1_75c
+            release: false
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build with ESP-IDF
+      - name: Build with ESP-IDF (${{ matrix.board_dir }})
         uses: espressif/esp-idf-ci-action@v1
         with:
           esp_idf_version: v5.5.5
           target: esp32s3
           path: firmware
+          # r44 gotcha: delete the tracked sdkconfig so the board overlay
+          # below actually takes effect (see file-header comment).
+          command: rm -f sdkconfig && idf.py -DSDKCONFIG_DEFAULTS='sdkconfig.defaults;boards/${{ matrix.board_dir }}/sdkconfig.defaults' build size
+
+      - name: Board-config evidence
+        run: |
+          set -euo pipefail
+          echo "--- board selection (${{ matrix.board_dir }}) ---"
+          grep -E '^#define CONFIG_LUME_BOARD_' firmware/build/config/sdkconfig.h
+          echo "--- flash size ---"
+          grep -E '^#define CONFIG_ESPTOOLPY_FLASHSIZE_' firmware/build/config/sdkconfig.h
+          echo "--- partition table ---"
+          grep -E '^#define CONFIG_PARTITION_TABLE_CUSTOM_FILENAME' firmware/build/config/sdkconfig.h
 
       - name: Collect artifacts
         run: |
@@ -113,12 +167,15 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: lume-firmware-${{ github.run_number }}
+          name: lume-firmware-${{ github.run_number }}-${{ matrix.board }}
           path: dist/
           if-no-files-found: error
 
-      - name: Release (tag builds only)
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Release (default board, tag builds only)
+        # r110 decision: only the default 2.16 job publishes the Release, so
+        # release assets keep the historical unsuffixed flat 2.16 file set
+        # (see file-header comment).
+        if: startsWith(github.ref, 'refs/tags/v') && matrix.release
         uses: softprops/action-gh-release@v2
         with:
           name: Lume firmware ${{ github.ref_name }}
