@@ -24,7 +24,28 @@
   包以免引入重依赖；只支持文本/二进制/关闭/ping、7/16/64 位长度、客户端掩码、64 KiB 上限，
   不支持 permessage-deflate / 扩展协商 / TLS 终结。
 - **未验项**：无真机、无 `idf.py build/size`（固件零改动）、无 `playStream` 边收边播时延、
-  无双 DMA 并发、无上游断线恢复；可选 app 层 `vaSetTransport` WS 工厂本轮未做。
+  无双 DMA 并发、无上游断线恢复。可选 app 层 `vaSetTransport` WS 工厂**已于 r108 兑现**
+  （见下方 r108 段）；但真机项（WiFi 稳定性/时延/双 DMA/barge-in 手感）仍未验。
+
+## r108 / voice_assistant WS transport（E 刀收口；host 证据，无真机/无真实上游）
+
+- **mock 上游不变，未接真实 ASR/LLM/TTS**：r108 只是把 app 接到 r107 的网关协议上，
+  网关侧仍是 canned 问答 + 合成 PCM，小智/三件直连仍是 `NOT_IMPLEMENTED` TODO 桩；
+  上游选型未拍板，无 API key / 凭据处理。
+- **无 TLS / 无鉴权（沿用 r107 LAN 信任模型）**：`ws://` 明文，URL 走 KV
+  `voice_gateway_url` 或顶部 `VA_GATEWAY_URL`，默认 `ws://192.168.1.50:18770/`
+  （CLI 默认 8765，须对齐）。不在控制帧里伪造认证字段。
+- **单连接单轮、无 QoS / 无重连**：一条 WS 一轮；`onClose` 无关闭码（`lume.d.ts`
+  契约），结束原因靠 `state`/`error` 帧；拒连/中途断连/致命错误统一回 IDLE 不挂死，
+  但不做断线重连、不发心跳（`ping/pong` 仅占位）、不重传 delta。
+- **分帧与队列**：上行严格 3840 B（16 kHz/16-bit/2ch 交错，非错误的 1920 B 单声道），
+  原生 `recordStream` 4096 B 块由 app 重组；下行 8 字节头 + ≤4608 B payload 直接喂
+  `playStream`，-3（队列满）下一 tick 重投同一块。WS 事件队列背压与音频吞吐仍待真机测量。
+- **barge-in 语义**：停 mic 并补发 `end` 帧、网关释放上游；触摸实际打断延迟 deferred。
+- **未验项（真机）**：WiFi 下 WS 稳定性、时延预算（开口 <2 s）、双 DMA 并发、
+  playStream 边收边播真实时延、触摸 barge-in 手感，一律 deferred to board bring-up；
+  固件零改动、未跑 `idf.py build/size`。host harness 只证明协议与 app 逻辑正确，
+  **不声称真机验证**。
 
 ## r71 / 本地 Web 服务（C HTTP + JS 路由，host/编译证据，无真机 WiFi 验收）
 

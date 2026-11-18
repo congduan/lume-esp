@@ -1249,3 +1249,42 @@ token 首次设置走既有 LUMC 命令帧的串口 `TOKEN <hex>`（最小侵入
 Total 3,025,919。`gen_api_docs.py --check` 与 `check_website.py` 绿（137 行）。
 真 WiFi、实测时延、真板 token 流程 deferred to board bring-up，不声称硬件验收。
 详见 `docs/r96-ota-report.md` 与 KNOWN-SIMPLIFICATIONS。
+
+### r108 result — voice_assistant WS transport 对接 lume.net.ws（E 刀收口；appended, milestone checkboxes untouched）
+
+交付：`examples/voice_assistant/app.js` 新增 GATEWAY 模式的 `vaTransportWS`（`lume.net.ws`
+薄客户端），按 `docs/voice-gateway-protocol.md` v1 走完 hello → 60 ms recordStream 上行 →
+text-delta 逐字上屏 → 下行音频 playStream → state/idle + close 全轮；`vaSetTransport()` 槽
+与 `IDLE→LISTEN→THINK→SPEAK` 状态机零改动，无网关/非函数注入回落 legacy canned。
+网关 URL 走 KV `voice_gateway_url`（顶部常量 `VA_GATEWAY_URL` 默认
+`ws://192.168.1.50:18770/`，CLI 默认 8765 需对齐）；`examples/voice_assistant/README.md`
+写用法/协议指针/取舍；`tests/va_ws.js` 用 r107 零依赖 mock 网关 + prelude_runner 桥接
+`_connect/_send/_close` 跑全轮，6 用例含 3 条负向；本小节 + `docs/r108-va-ws-report.md`
+（原始输出全录）+ KNOWN-SIMPLIFICATIONS r107/r108 登记。固件零改动、未跑 `idf.py build/size`。
+
+先实证后写：读 `lume.d.ts:714-731`（`onClose()` 无关闭码、`onMessage(string|ArrayBuffer)`）+
+`lume_ws.c:63-101` + `lume_scripts.c:60-118`（`handle.close()` **同步**触发 `onClose`）后定案；
+上行仍是 3840 B 立体声（非错误的 1920 B 单声道），原生 1024 帧=4096 B 块由 app 重组。
+实施中实测 barge-in 竞态：先 close 再标记 finished 会被同步 `onClose` 抢先改 SPEAK→IDLE，
+改为先标记再 close（`vaWSAbort()`），harness 负向用例覆盖。
+
+验证原始输出摘录（本轮真实执行，全录见 `docs/r108-va-ws-report.md`）：
+- `node tests/gateway.js` → `PASS` ×10 + `ALL GATEWAY HARNESS CASES PASSED (10 cases)`，r107 不回归。
+- `node tests/va_ws.js` → `PASS` ×6 + `ALL VA WS HARNESS CASES PASSED (6 cases)`：
+  happy（hello → 3×3840 B → end → 9 delta → 3 audio → idle/close → IDLE）、
+  **3 负向**（网关拒连 / 中途上游断连 / 致命 upstream_error，均回 IDLE 不挂死）、
+  barge-in end 送达、无网关回落 legacy。
+- 全量 `for t in tests/*.js; do node "$t" || echo FAIL "$t"; done` → `EXIT:0`，
+  `FILES:62`（基线 61 + 新增 va_ws）、`FAIL_COUNT:0`、`PASS_LINES:531`。
+- `npm test --prefix tools/lume` → `1..46 / # pass 45 / # fail 0 / # skipped 1`，EXIT:0。
+- `node tools/lume/lume.js check examples/voice_assistant --no-emu` → `RESULT: PASS (4 steps, 0 failed; exit 0)`；
+  哨兵 `examples/counter --no-emu` → `RESULT: PASS`。
+- E2E smoke 双方日志：网关侧 `hello` → 3×`uplink.pcm bytes=3840` → `turn.end` →
+  `session.close code=1000`；设备侧 `VA WS HELLO` → `VA WS ACK` → 3×`VA WS UPLINK frames=N`
+  → `VA WS SEND END` → 8×`VA WS DELTA n=... chars=1..8` → 3×`VA WS AUDIO hdr=1/1/1/16000/2/16`
+  → `VA WS STATE idle` → `VA WS CLOSE` → `VA WS REPLY chars=8 audio=3 deltas=9`。
+
+诚实口径：host harness 只证明协议字段与 app 逻辑正确；**网关仍是 mock 上游，真实
+ASR/LLM/TTS 未接、选型未拍板**，无 API key / TLS / 鉴权（LAN 信任模型）。真机 WiFi 下
+WS 稳定性、时延预算、双 DMA 并发、playStream 边收边播时延、触摸 barge-in 手感 deferred
+to board bring-up，**未声称硬件验证**。commits 拆分、未推送。
