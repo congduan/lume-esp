@@ -12,7 +12,7 @@ import { promisify } from 'node:util';
 import { build } from 'esbuild';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
-import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN, FWTAG_CMD } from './protocol.js';
+import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN, FWTAG_CMD, MAGIC_REPL, REPL_OUT_CAP, replFrame, parseFrame, clampReplOutput, decodeReplLines } from './protocol.js';
 import { queryFirmwareTag } from './fwtag.js';
 import { parseQjsVersion, qjsVersion, assertEngineVersion, queryEngineVersion, compileBytecode, localQjsc } from './bytecode.js';
 import { openOta, otaMac, otaAuthResponse, OTA_PORT_DEFAULT } from './ota.js';
@@ -44,6 +44,64 @@ test('frame bytes match firmware wire layout and CRC-32', () => {
   assert.equal(CONTROL.resume.toString('hex'), '5245534d');
   assert.throws(() => frame(''), /1\.\.262144/);
   assert.throws(() => frame(Buffer.alloc(MAX_PAYLOAD + 1)), /1\.\.262144/);
+});
+
+/* ---- r115 device REPL frame + bounded-output helpers ---- */
+
+test('r115 REPL frame uses LUMR magic with the same 12-byte header and CRC', () => {
+  assert.equal(MAGIC_REPL, 'LUMR');
+  const bytes = replFrame('1+2');
+  assert.equal(bytes.toString('ascii', 0, 4), MAGIC_REPL);
+  assert.equal(bytes.readUInt32LE(4), 3);
+  assert.equal(bytes.readUInt32LE(8), crc32(Buffer.from('1+2')));
+  assert.equal(bytes.subarray(12).toString('utf8'), '1+2');
+  const parsed = parseFrame(bytes);
+  assert.equal(parsed.magic, MAGIC_REPL);
+  assert.equal(parsed.payload.toString('utf8'), '1+2');
+  assert.throws(() => replFrame(''), /1\.\.262144/);
+  assert.throws(() => replFrame(Buffer.alloc(MAX_PAYLOAD + 1)), /1\.\.262144/);
+});
+
+test('parseFrame rejects bad magic, zero/overlong length and bad CRC', () => {
+  const good = replFrame('x');
+  assert.equal(parseFrame(good).payload.toString(), 'x');
+  const badMagic = Buffer.from(good); badMagic.write('XXXX', 0, 'ascii');
+  assert.equal(parseFrame(badMagic), null);
+  const zeroLen = Buffer.from(good); zeroLen.writeUInt32LE(0, 4);
+  assert.equal(parseFrame(zeroLen), null);
+  const badCrc = Buffer.from(good); badCrc.writeUInt32LE((badCrc.readUInt32LE(8) ^ 1) >>> 0, 8);
+  assert.equal(parseFrame(badCrc), null);
+  const wrongSize = Buffer.from(good); wrongSize.writeUInt32LE(2, 4);
+  assert.equal(parseFrame(wrongSize), null);
+  assert.equal(parseFrame(Buffer.alloc(11)), null);
+});
+
+test('clampReplOutput bounds to REPL_OUT_CAP and flags truncation', () => {
+  assert.equal(REPL_OUT_CAP, 2048);
+  const exact = 'a'.repeat(REPL_OUT_CAP);
+  assert.deepEqual(clampReplOutput(exact), { text: exact, truncated: false });
+  const long = exact + 'OVERFLOW';
+  const clamped = clampReplOutput(long);
+  assert.equal(clamped.text.length, REPL_OUT_CAP);
+  assert.equal(clamped.truncated, true);
+  // Byte-oriented: a 3000-byte multibyte string is clipped on a byte boundary;
+  // decoding the clipped bytes may replace a trailing partial UTF-8 sequence,
+  // so allow a few bytes of slack when measuring the decoded text.
+  const utf = '中'.repeat(1000); // 3000 bytes
+  const utfClamped = clampReplOutput(utf);
+  assert.equal(utfClamped.truncated, true);
+  assert.ok(Buffer.byteLength(utfClamped.text) >= REPL_OUT_CAP - 3 &&
+            Buffer.byteLength(utfClamped.text) <= REPL_OUT_CAP + 3);
+});
+
+test('decodeReplLines joins R64 base64 and ignores device log noise', () => {
+  const raw = Buffer.from('a\nb\0c', 'utf8');
+  const b64 = raw.toString('base64');
+  const half = Math.ceil(b64.length / 2);
+  const lines = ['I (495) log noise', 'R64' + b64.slice(0, half),
+                 'E (123) more noise', 'R64' + b64.slice(half)];
+  assert.deepEqual(decodeReplLines(lines), raw);
+  assert.deepEqual(decodeReplLines([]), Buffer.alloc(0));
 });
 
 /* ---- r43b app-bundle bytecode (qjsc + frame protocol + version check) ---- */

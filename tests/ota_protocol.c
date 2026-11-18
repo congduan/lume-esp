@@ -48,7 +48,7 @@ static int g_checks;
 
 /* ---------------- event recorder (one parser instance) ---------------- */
 typedef struct {
-    int      data, back, pause, resume, err, cmd, bytecode;
+    int      data, back, pause, resume, err, cmd, bytecode, repl;
     size_t   len;
     char     reason[32];
     uint8_t  payload[2048];
@@ -87,6 +87,9 @@ static void rec_event(lume_frame_ev_t ev, const uint8_t *payload, size_t len,
         r->len = len;
         snprintf(r->reason, sizeof(r->reason), "%s", reason ? reason : "?");
         break;
+    /* r115 REPL frames share this codec; byte-level assertions live in
+     * tests/repl_protocol.js, so this harness only needs to count them. */
+    case LUME_FRAME_EV_REPL: r->repl++; break;
     }
 }
 static void rec_reset(rec_t *r) { memset(r, 0, sizeof(*r)); }
