@@ -764,12 +764,14 @@ declare namespace lume.net {
   /** Snapshot state + IP; negative error code (number) when WiFi is not up. */
   function status(): NetStatus | number;
 
-  /** r26: local snapshot of the WiFi-OTA push channel (no network probe).
-   * `token` is the plaintext 32-hex token also printed on the serial log. */
+  /** r26/r96: local snapshot of the WiFi-OTA push channel (no network probe).
+   * `token` is the 32-hex HMAC key also printed on the serial log; it is never
+   * sent over the WiFi channel. */
   interface OtaStatus {
     running: boolean;       /* TCP listener currently bound */
     wifiReady: boolean;      /* station has a usable IPv4 */
     tokenReady: boolean;     /* a token is available */
+    hmac: boolean;           /* r96: HMAC-SHA256 challenge-response active */
     port: number;            /* configured TCP port (default 8765) */
     token: string;           /* 32 lowercase hex chars */
   }
@@ -865,6 +867,17 @@ declare namespace lume.net {
     /** "http://<ip>:<port>/?key=<token>" or null when stopped / no WiFi IP. */
     function url(): string | null;
   }
+}
+
+/** r96: WiFi OTA app-push channel (HMAC-SHA256 challenge-response).
+ * The listener is auto-managed by the WiFi GOT_IP gate — there is deliberately
+ * no start()/stop(): status() reflects whether it is currently bound. */
+declare namespace lume.ota {
+  /** Same snapshot as lume.net.otaStatus(), with `hmac: true`. */
+  function status(): lume.net.OtaStatus;
+  /** Replace the WiFi-OTA token (32 lowercase hex chars) and persist it to NVS.
+   * Returns 0 on success, a negative error code otherwise. */
+  function setToken(tokenHex: string): number;
 }
 
 /** Synchronous OpenAI-compatible chat completion. Blocks UI and touch. */
