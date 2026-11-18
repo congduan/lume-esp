@@ -20,6 +20,8 @@
  *                  push; answered "CMD OK ver <MAJOR.MINOR.PATCH>")
  *   FWTAG          (r106: query the firmware API tag; answered
  *                  "CMD OK fwt <TAG>" so the CLI can stamp meta.json)
+ *   TOKEN\t<hex>   (r96: set the WiFi-OTA token to a 32-hex-char value;
+ *                  answered "CMD OK token ok" / "CMD ERR token")
  *
  * Rules:
  *   - The first '\n' ends the first line. Verbs are case-sensitive.
@@ -39,6 +41,7 @@
 
 #define LUME_CMD_ID_MAX      LUME_APP_ID_MAX
 #define LUME_CMD_META_MAX    1024   /* defensive cap on the meta line */
+#define LUME_CMD_TOKEN_HEX_LEN 32   /* r96: 16 random bytes, hex-encoded */
 
 typedef enum {
     LUME_CMD_STORE = 1,
@@ -50,6 +53,7 @@ typedef enum {
     LUME_CMD_SHOT,
     LUME_CMD_VER,
     LUME_CMD_FWTAG,
+    LUME_CMD_TOKEN,   /* r96: TOKEN <32hex> — set the WiFi-OTA HMAC token */
 } lume_cmd_kind_t;
 
 #define LUME_CMD_OK          0
@@ -66,6 +70,7 @@ typedef struct {
     size_t      meta_len;
     const char *src;                   /* points into the payload (STORE only) */
     size_t      src_len;
+    char        token[LUME_CMD_TOKEN_HEX_LEN + 1];  /* r96: TOKEN verb only */
 } lume_cmd_t;
 
 /* Parse one command payload. Returns LUME_CMD_OK or a LUME_CMD_ERR_* code.

@@ -128,6 +128,8 @@ static lume_engine_reload_result_fn s_result_cb;
 /* r26: registered by the WiFi-OTA channel; js_net_ota_status() reads it.
  * Declared here (before the native at ~1244) to avoid a use-before-declare. */
 static lume_ota_status_provider_fn s_ota_status_provider;
+/* r96: token setter registered by lume-hotreload (lume.ota.setToken). */
+static lume_ota_set_token_fn s_ota_token_setter;
 
 /* ------------------------------------------------------------------ */
 /* PSRAM-backed allocator for QuickJS-NG (JSMallocFunctions)            */
@@ -2217,13 +2219,11 @@ static JSValue js_net_scan(JSContext *ctx, JSValueConst this_val,
     return arr;
 }
 
-/* r26: lume.net.otaStatus() -> { running, wifiReady, tokenReady, port, token }.
- * The status is supplied by the WiFi-OTA channel's registered provider (see
- * lume_engine.h); no provider -> an all-false/zero status object. */
-static JSValue js_net_ota_status(JSContext *ctx, JSValueConst this_val,
-                                 int argc, JSValueConst *argv)
+/* r26/r96: lume.net.otaStatus() + lume.ota.status() -> { running, wifiReady,
+ * tokenReady, hmac, port, token }. The status is supplied by the WiFi-OTA
+ * channel's registered provider (see lume_engine.h); no provider -> all-false. */
+static JSValue ota_status_object(JSContext *ctx)
 {
-    (void)this_val; (void)argc; (void)argv;
     lume_ota_status_t st;
     memset(&st, 0, sizeof(st));
     if (s_ota_status_provider != NULL) {
@@ -2233,9 +2233,40 @@ static JSValue js_net_ota_status(JSContext *ctx, JSValueConst this_val,
     JS_SetPropertyStr(ctx, obj, "running",    JS_NewBool(ctx, st.running));
     JS_SetPropertyStr(ctx, obj, "wifiReady",  JS_NewBool(ctx, st.wifi_ready));
     JS_SetPropertyStr(ctx, obj, "tokenReady", JS_NewBool(ctx, st.token_ready));
+    JS_SetPropertyStr(ctx, obj, "hmac",       JS_NewBool(ctx, st.hmac));
     JS_SetPropertyStr(ctx, obj, "port",       JS_NewInt32(ctx, st.port));
     JS_SetPropertyStr(ctx, obj, "token",      JS_NewString(ctx, st.token));
     return obj;
+}
+
+static JSValue js_net_ota_status(JSContext *ctx, JSValueConst this_val,
+                                 int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    return ota_status_object(ctx);
+}
+
+/* r96: lume.ota.setToken("<32hex>") -> 0 or a negative error code. The token
+ * is validated and persisted by the hotreload channel via the registered
+ * setter; the engine never sees or logs the raw token bytes. */
+static JSValue js_ota_set_token(JSContext *ctx, JSValueConst this_val,
+                                int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1 || !JS_IsString(argv[0])) return JS_NewInt32(ctx, -1);
+    size_t len = 0;
+    const char *hex = JS_ToCStringLen(ctx, &len, argv[0]);
+    if (hex == NULL) return JS_EXCEPTION;
+    int r = s_ota_token_setter != NULL ? s_ota_token_setter(hex, len) : -3;
+    JS_FreeCString(ctx, hex);
+    return JS_NewInt32(ctx, r);
+}
+
+static JSValue js_ota_status(JSContext *ctx, JSValueConst this_val,
+                             int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    return ota_status_object(ctx);
 }
 
 /* r71: lume.net.web._start(port?, token) / _stop() / _url(). Thin native
@@ -3021,6 +3052,13 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, web, "_url", JS_NewCFunction(ctx, js_web_url, "_url", 0));
     JS_SetPropertyStr(ctx, net, "web", web);
     JS_SetPropertyStr(ctx, lume, "net", net);
+    /* r96: lume.ota — minimal面 of the WiFi-OTA push channel. start/stop are
+     * intentionally absent: the listener is auto-managed by the WiFi GOT_IP
+     * gate. Only status() and setToken() are exposed. */
+    JSValue ota = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, ota, "status",   JS_NewCFunction(ctx, js_ota_status, "status", 0));
+    JS_SetPropertyStr(ctx, ota, "setToken", JS_NewCFunction(ctx, js_ota_set_token, "setToken", 1));
+    JS_SetPropertyStr(ctx, lume, "ota", ota);
     JSValue audio = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, audio, "play", JS_NewCFunction(ctx, js_audio_play, "play", 2));
     JS_SetPropertyStr(ctx, audio, "record", JS_NewCFunction(ctx, js_audio_record, "record", 2));
@@ -3422,6 +3460,12 @@ void lume_engine_set_reload_result_cb(lume_engine_reload_result_fn cb)
 void lume_engine_set_ota_status_provider(lume_ota_status_provider_fn fn)
 {
     s_ota_status_provider = fn;
+}
+
+/* r96: token setter registered by lume-hotreload (lume.ota.setToken). */
+void lume_engine_set_ota_token_setter(lume_ota_set_token_fn fn)
+{
+    s_ota_token_setter = fn;
 }
 
 /* r43b: engine version for the CLI's pre-push compatibility check (VER

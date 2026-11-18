@@ -58,6 +58,7 @@
 #include "driver/usb_serial_jtag.h"
 #include "driver/usb_serial_jtag_vfs.h"
 #include "mbedtls/base64.h"
+#include "mbedtls/md.h"
 #include "lume_engine.h"
 #include "lume_net.h"
 #include "lume_hotreload.h"
@@ -426,6 +427,14 @@ static void handle_cmd(reply_sink_t sink, const uint8_t *payload, size_t len)
         cmd_reply(sink, true, "ver", v, 0, NULL);
         break;
     }
+    case LUME_CMD_TOKEN: {
+        /* r96: serial-CLI token set. Never echo the token in the reply. */
+        int s = lume_ota_token_set(cmd.token, strlen(cmd.token));
+        cmd_reply(sink, s == 0, s == 0 ? "token" : NULL,
+                  s == 0 ? "ok" : NULL, 0,
+                  s < 0 ? (s == -1 ? "token" : "nvs") : NULL);
+        break;
+    }
     }
 }
 
@@ -537,19 +546,20 @@ static void usb_start(void)
 /* (2) WiFi TCP OTA channel (r26)                                      */
 /* ================================================================== */
 static char     s_token[LUME_OTA_TOKEN_STR_MAX];   /* 32 hex + NUL */
+static uint8_t  s_token_key[16];                   /* raw bytes = HMAC key */
 static volatile bool s_token_ready;
 static volatile bool s_wifi_ready;
 static volatile bool s_ota_running;
 static int      s_listen_sock = -1;
 
-static void hex_encode(const uint8_t *in, size_t n, char *out)
+/* mbedTLS-backed HMAC provider injected into the portable auth glue
+ * (lume_ota_mac_verify). The CLI uses node:crypto over the same key/message. */
+static int ota_hmac(const uint8_t *key, size_t key_len,
+                    const uint8_t *msg, size_t msg_len, uint8_t out[32])
 {
-    static const char hx[] = "0123456789abcdef";
-    for (size_t i = 0; i < n; i++) {
-        out[2 * i]     = hx[in[i] >> 4];
-        out[2 * i + 1] = hx[in[i] & 0x0f];
-    }
-    out[2 * n] = '\0';
+    const mbedtls_md_info_t *info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+    if (info == NULL) return -1;
+    return mbedtls_md_hmac(info, key, key_len, msg, msg_len, out);
 }
 
 /* First boot: generate a random token and persist it in NVS. Later boots:
@@ -562,7 +572,7 @@ static void token_init(void)
     char token[LUME_OTA_TOKEN_STR_MAX];
     uint8_t raw[16];
     esp_fill_random(raw, sizeof(raw));
-    hex_encode(raw, sizeof(raw), token);   /* ephemeral default */
+    lume_ota_hex_encode(raw, sizeof(raw), token);   /* ephemeral default */
 
     esp_err_t err = nvs_flash_init();
     if (err == ESP_OK) {
@@ -594,7 +604,42 @@ static void token_init(void)
                  esp_err_to_name(err));
     }
     memcpy(s_token, token, sizeof(s_token));
+    lume_ota_hex_decode(s_token, LUME_OTA_TOKEN_HEX_LEN, s_token_key);
     s_token_ready = true;   /* publish last, after the token is final */
+}
+
+/* Serial-CLI token set (LUMC "TOKEN <hex>" from lume_cmd.c). Validates the
+ * 32-hex token, persists it under NVS "lume_ota"/"token", and swaps the
+ * runtime HMAC key only after a successful commit. Returns 0 or negative. */
+int lume_ota_token_set(const char *hex, size_t len)
+{
+    if (hex == NULL || len != LUME_OTA_TOKEN_HEX_LEN ||
+        !lume_ota_hex_valid(hex, LUME_OTA_TOKEN_HEX_LEN)) {
+        return -1;
+    }
+    uint8_t raw[16];
+    char canon[LUME_OTA_TOKEN_STR_MAX];
+    if (!lume_ota_hex_decode(hex, LUME_OTA_TOKEN_HEX_LEN, raw)) return -1;
+    lume_ota_hex_encode(raw, sizeof(raw), canon);   /* lowercase canonical form */
+
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_OK) {
+        nvs_handle_t h;
+        err = nvs_open("lume_ota", NVS_READWRITE, &h);
+        if (err == ESP_OK) {
+            err = nvs_set_str(h, "token", canon);
+            if (err == ESP_OK) err = nvs_commit(h);
+            nvs_close(h);
+        }
+    }
+    if (err != ESP_OK) {
+        ESP_LOGW(OTA_TAG, "token persist failed: %s", esp_err_to_name(err));
+        return -2;
+    }
+    memcpy(s_token, canon, sizeof(s_token));
+    memcpy(s_token_key, raw, sizeof(s_token_key));
+    ESP_LOGI(OTA_TAG, "OTA token updated via serial CLI");
+    return 0;
 }
 
 /* Status provider registered into the engine -> lume.net.otaStatus(). */
@@ -604,6 +649,7 @@ static void ota_status_provider(lume_ota_status_t *out)
     out->running     = s_ota_running;
     out->wifi_ready  = s_wifi_ready;
     out->token_ready = s_token_ready;
+    out->hmac        = true;   /* r96: HMAC challenge-response always active */
     out->port        = OTA_PORT;
     if (s_token_ready) memcpy(out->token, s_token, sizeof(out->token));
 }
@@ -636,8 +682,13 @@ static int ota_bind_listener(void)
 }
 
 /* One client at a time. Per-socket I/O timeouts keep the loop responsive so
- * the WiFi gate is re-checked even if a client stalls. After "AUTH OK" the
- * byte stream is fed into a private frame parser (sink = this socket). */
+ * the WiFi gate is re-checked even if a client stalls. r96 auth handshake:
+ *   server -> "CHALLENGE <32hex>\n"   (16 bytes from esp_random, per-connection)
+ *   client -> "AUTH <64hex MAC>\n"    (HMAC-SHA256(token, challenge ASCII))
+ *   server -> "AUTH OK\n" / "AUTH ERR\n"
+ * No token ever crosses the wire; a replayed MAC fails against a fresh
+ * challenge. After "AUTH OK" the byte stream is fed into a PRIVATE instance
+ * of the same portable frame parser the USB channel uses (sink = this socket). */
 static void ota_handle_client(int sock)
 {
     reply_sink_t sink = { REPLY_TCP, sock };
@@ -648,6 +699,20 @@ static void ota_handle_client(int sock)
     struct timeval tv = { .tv_sec = OTA_IO_TIMEOUT_S, .tv_usec = 0 };
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+
+    /* Fresh challenge for this connection: 16 bytes from esp_random (via the
+     * IDF esp_fill_random wrapper) hex-encoded to 32 lowercase chars. */
+    uint8_t  challenge_raw[16];
+    char     challenge_hex[LUME_OTA_CHALLENGE_STR_MAX];
+    esp_fill_random(challenge_raw, sizeof(challenge_raw));
+    lume_ota_hex_encode(challenge_raw, sizeof(challenge_raw), challenge_hex);
+    char chal_line[LUME_OTA_AUTH_LINE_MAX];
+    int chal_n = lume_ota_challenge_line(chal_line, sizeof(chal_line),
+                                         challenge_hex);
+    if (chal_n <= 0 || send(sock, chal_line, (size_t)chal_n, 0) != chal_n) {
+        ESP_LOGW(OTA_TAG, "challenge send failed");
+        goto done;
+    }
 
     char   auth[LUME_OTA_AUTH_LINE_MAX];
     size_t auth_n = 0;
@@ -663,18 +728,23 @@ static void ota_handle_client(int sock)
             uint8_t b = chunk[i];
             if (!authed) {
                 if (b == '\n') {
-                    char provided[LUME_OTA_TOKEN_STR_MAX];
-                    bool valid = lume_ota_auth_parse(auth, auth_n,
-                                                     provided, sizeof(provided)) &&
-                                 s_token_ready &&
-                                 lume_ota_token_equal(provided, s_token);
-                    if (valid) {
+                    char provided[LUME_OTA_MAC_STR_MAX];
+                    int v = -1;
+                    if (s_token_ready) {
+                        v = lume_ota_auth_parse(auth, auth_n, provided,
+                                                sizeof(provided))
+                            ? lume_ota_mac_verify(ota_hmac, s_token_key,
+                                                  sizeof(s_token_key),
+                                                  challenge_hex, provided)
+                            : -2;
+                    }
+                    if (v == 0) {
                         reply_write(sink, ok_line, strlen(ok_line));
                         authed = true;
-                        ESP_LOGI(OTA_TAG, "client authenticated");
+                        ESP_LOGI(OTA_TAG, "client authenticated (HMAC-SHA256)");
                     } else {
                         reply_write(sink, err_line, strlen(err_line));
-                        ESP_LOGW(OTA_TAG, "client rejected: bad token");
+                        ESP_LOGW(OTA_TAG, "client rejected: auth failed (%d)", v);
                         goto done;
                     }
                     auth_n = 0;
@@ -739,10 +809,12 @@ static void ota_start(void)
 {
     token_init();
     /* Intentional: the token is printed so the user can pass it to the CLI.
-     * Plaintext LAN trust model — see docs/KNOWN-SIMPLIFICATIONS.md (r26). */
-    ESP_LOGI(OTA_TAG, "WiFi OTA token: %s  (use: lume deploy --ota <ip> --token %s)",
+     * It is NEVER sent over the WiFi channel (r96 HMAC challenge-response).
+     * LAN trust model — see docs/KNOWN-SIMPLIFICATIONS.md. */
+    ESP_LOGI(OTA_TAG, "WiFi OTA token: %s  (use: lume deploy --host <ip> --token %s)",
              s_token, s_token);
     lume_engine_set_ota_status_provider(ota_status_provider);
+    lume_engine_set_ota_token_setter(lume_ota_token_set);
     BaseType_t ok = xTaskCreate(ota_task, "lume-ota", OTA_TASK_STACK,
                                 NULL, 4, NULL);
     if (ok != pdPASS) {

@@ -24,3 +24,8 @@
  * deferred items: docs/KNOWN-SIMPLIFICATIONS.md (r26).
  * ------------------------------------------------------------------------ */
 void lume_hotreload_start(void);
+
+/* r96: replace the WiFi-OTA token at runtime (32 lowercase hex chars).
+ * Persists to NVS "lume_ota"/"token" and swaps the HMAC key. Returns 0 or a
+ * negative error code. Called via the engine's lume.ota.setToken() binding. */
+int lume_ota_token_set(const char *hex, size_t len);

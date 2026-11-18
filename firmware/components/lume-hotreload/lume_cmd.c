@@ -63,6 +63,22 @@ int lume_cmd_parse(const uint8_t *payload, size_t len, lume_cmd_t *out)
         out->kind = LUME_CMD_FWTAG;
         return LUME_CMD_OK;
     }
+    /* r96: TOKEN <32hex> — validate here so a bad token never reaches NVS. */
+    if (verb_end == 5 && memcmp(p, "TOKEN", 5) == 0) {
+        if (!has_id || id_len != LUME_CMD_TOKEN_HEX_LEN) {
+            return LUME_CMD_ERR_ARG;
+        }
+        for (size_t i = 0; i < id_len; i++) {
+            char c = id[i];
+            bool hex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+                       (c >= 'A' && c <= 'F');
+            if (!hex) return LUME_CMD_ERR_ARG;
+        }
+        memcpy(out->token, id, id_len);
+        out->token[id_len] = '\0';
+        out->kind = LUME_CMD_TOKEN;
+        return LUME_CMD_OK;
+    }
 
     lume_cmd_kind_t kind;
     if (verb_end == 6 && memcmp(p, "LAUNCH", 6) == 0) {

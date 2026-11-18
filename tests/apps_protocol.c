@@ -14,7 +14,7 @@
  * asserts:
  *   1. "LUMC" frames are recognised and distinguished from "LUME" app frames
  *      in one interleaved byte stream, including byte-at-a-time feeding;
- *   2. the text grammar of STORE/LAUNCH/REMOVE/META/LIST/HOME/SHOT/VER/FWTAG;
+ *   2. the text grammar of STORE/LAUNCH/REMOVE/META/LIST/HOME/SHOT/VER/FWTAG/TOKEN;
  *   3. id validation (reserved ".current", traversal, length, charset);
  *   4. CRC / resync behaviour is unchanged for both frame kinds.
  *
@@ -187,6 +187,24 @@ static void test_cmd_parse(void)
                "r106 FWTAG firmware-tag query");
     parse_case("FWTAG\n", 6, LUME_CMD_OK, LUME_CMD_FWTAG, "", NULL, NULL,
                "FWTAG with trailing newline");
+
+    /* r96: TOKEN <32hex> — serial-CLI OTA token set. */
+    {
+        const char *tok = "TOKEN\t0123456789abcdef0123456789abcdef";
+        lume_cmd_t c;
+        CHECK(lume_cmd_parse((const uint8_t *)tok, strlen(tok), &c) == LUME_CMD_OK &&
+              c.kind == LUME_CMD_TOKEN &&
+              strcmp(c.token, "0123456789abcdef0123456789abcdef") == 0,
+              "TOKEN with valid 32-hex token parses");
+        const char *bad = "TOKEN\tzzzz456789abcdef0123456789abcdef";
+        CHECK(lume_cmd_parse((const uint8_t *)bad, strlen(bad), &c) == LUME_CMD_ERR_ARG,
+              "TOKEN with non-hex chars rejected");
+        const char *short_tok = "TOKEN\tabc";
+        CHECK(lume_cmd_parse((const uint8_t *)short_tok, strlen(short_tok), &c) == LUME_CMD_ERR_ARG,
+              "TOKEN with short token rejected");
+        CHECK(lume_cmd_parse((const uint8_t *)"TOKEN", 5, &c) == LUME_CMD_ERR_ARG,
+              "TOKEN without a token rejected");
+    }
 
     parse_case("", 0, LUME_CMD_ERR_ARG, 0, "", NULL, NULL, "empty payload rejected");
     parse_case("FLY\tclock", 10, LUME_CMD_ERR_VERB, 0, "", NULL, NULL,

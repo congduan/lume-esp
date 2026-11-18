@@ -136,19 +136,53 @@ void lume_frame_parser_init(lume_frame_parser_t *p,
 void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t byte);
 
 /* ---- §2 WiFi-OTA channel helpers ---- */
-/* Token = 16 random bytes hex-encoded = 32 lowercase hex chars + NUL. */
+/* Token = 16 random bytes hex-encoded = 32 lowercase hex chars + NUL.
+ * r96 auth upgrade: the token is NEVER sent on the wire. The server sends a
+ * fresh 16-byte random CHALLENGE (32 hex), the client answers with a 64-hex
+ * HMAC-SHA256 over the challenge ASCII bytes, keyed by the raw token bytes.
+ * Every connection gets a new challenge, so a captured reply cannot be replayed. */
 #define LUME_OTA_TOKEN_HEX_LEN    32
 #define LUME_OTA_TOKEN_STR_MAX    (LUME_OTA_TOKEN_HEX_LEN + 1)   /* 33 */
+#define LUME_OTA_CHALLENGE_HEX_LEN 32   /* 16 random bytes -> 32 hex */
+#define LUME_OTA_CHALLENGE_STR_MAX (LUME_OTA_CHALLENGE_HEX_LEN + 1)
+#define LUME_OTA_MAC_HEX_LEN      64   /* 32-byte HMAC-SHA256 -> 64 hex */
+#define LUME_OTA_MAC_STR_MAX      (LUME_OTA_MAC_HEX_LEN + 1)     /* 65 */
 #define LUME_OTA_AUTH_PREFIX      "AUTH "
+#define LUME_OTA_CHALLENGE_PREFIX "CHALLENGE "
 #define LUME_OTA_AUTH_LINE_MAX    128
 #define LUME_OTA_REPLY_MAX        64
 
+/* Portable hex helpers (no platform deps). encode writes 2*n+1 chars incl.
+ * NUL; decode reads exactly nhex hex digits into nhex/2 bytes. */
+void lume_ota_hex_encode(const uint8_t *in, size_t n, char *out);
+bool lume_ota_hex_valid(const char *s, size_t nhex);
+bool lume_ota_hex_decode(const char *in, size_t nhex, uint8_t *out);
+
+/* Format "CHALLENGE <32hex>\n". Returns byte count, or -1 if cap is too small. */
+int lume_ota_challenge_line(char *buf, size_t cap, const char *challenge_hex);
+
 /* Parse "AUTH <token>\n" (CR/LF optional) into `out`. Returns false on a
- * malformed / overlong / non-printable token. `len` is the line byte count. */
+ * malformed / overlong / non-printable token. `len` is the line byte count.
+ * `cap` bounds `out`; callers pass 65 for a 64-hex MAC or 33 for a token. */
 bool lume_ota_auth_parse(const char *line, size_t len, char *out, size_t cap);
 
-/* Constant-time comparison of two 32-hex-char tokens (length-checked). */
+/* Constant-time comparison of two equal-length hex strings. */
+bool lume_ota_hex_equal(const char *a, const char *b, size_t nhex);
+/* Backward-compatible 32-hex token comparison (delegates to hex_equal). */
 bool lume_ota_token_equal(const char *a, const char *b);
+
+/* HMAC-SHA256 provider injected by the firmware (mbedTLS-backed). Returning
+ * 0 means `out` holds the 32-byte digest, anything else is a driver failure. */
+typedef int (*lume_ota_hmac_fn)(const uint8_t *key, size_t key_len,
+                                const uint8_t *msg, size_t msg_len,
+                                uint8_t out[32]);
+/* Verify a 64-hex MAC against HMAC(key, challenge_hex ASCII). The portable
+ * glue (format check + constant-time compare) is shared with the host harness;
+ * only the HMAC math is injected. Returns 0 (match) or a negative error:
+ *   -1 bad args, -2 bad hex/length, -3 hmac failure, -4 mismatch. */
+int lume_ota_mac_verify(lume_ota_hmac_fn hmac,
+                        const uint8_t *key, size_t key_len,
+                        const char *challenge_hex, const char *mac_hex);
 
 /* Format "RELOAD OK <len>\n" or "RELOAD ERR <reason>\n" (same line the USB
  * channel emits). Returns byte count, or -1 if the buffer is too small. */

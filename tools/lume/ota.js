@@ -1,9 +1,16 @@
-// WiFi-OTA transport for `lume deploy --ota`. Talks to the firmware's
+// WiFi-OTA transport for `lume deploy --host`. Talks to the firmware's
 // lume-hotreload TCP channel (see firmware/components/lume-hotreload/ and
 // include/lume_frame.h). Frame protocol is REUSED verbatim from the USB
 // channel: the same frame() from protocol.js, same BACK/PAUS/RESM controls,
-// same RELOAD OK/ERR reply lines. Only the transport + AUTH handshake differ.
+// same RELOAD OK/ERR reply lines. Only the transport + HMAC auth differ.
+//
+// r96 auth handshake (the token is NEVER sent over the wire):
+//   server -> "CHALLENGE <32hex>\n"   (16 bytes from esp_random)
+//   client -> "AUTH <64hex MAC>\n"    HMAC-SHA256(key=raw 16 token bytes,
+//                                     msg=ASCII bytes of the 32-hex challenge)
+//   server -> "AUTH OK\n" / "AUTH ERR\n"
 import net from 'node:net';
+import { createHmac } from 'node:crypto';
 import { frame, cmdFrame, bytecodeFrame } from './protocol.js';
 import { decodeShot } from './shot.js';
 
@@ -17,9 +24,27 @@ const CMD_OK_LINE = /^CMD OK(?: (\S+))?(?: (\S+))?(?: (\d+))?$/;
 const CMD_ERR_LINE = /^CMD ERR (\S+)$/;
 const LIST_LINE = /^(APP|META)\t/;
 
-/** The one-line auth preamble expected by lume_ota_auth_parse(). */
-export function otaAuthLine(token) {
-  return `AUTH ${token}\n`;
+/** Validate a 32-hex-char token and return its 16 raw bytes (the HMAC key). */
+export function otaTokenKey(token) {
+  if (typeof token !== 'string' || !/^[0-9a-fA-F]{32}$/.test(token)) {
+    throw new Error('--token must be 32 hex characters (read it from the serial log)');
+  }
+  return Buffer.from(token, 'hex');
+}
+
+/** HMAC-SHA256 over the challenge hex STRING bytes, keyed by the raw token.
+ * Mirrors firmware lume_ota_mac_verify()/ota_hmac() exactly. */
+export function otaMac(token, challengeHex) {
+  if (!/^[0-9a-fA-F]{32}$/.test(challengeHex || '')) {
+    throw new Error(`malformed CHALLENGE line from device: ${challengeHex}`);
+  }
+  return createHmac('sha256', otaTokenKey(token))
+    .update(challengeHex, 'ascii').digest('hex');
+}
+
+/** The one-line response expected by firmware lume_ota_auth_parse(). */
+export function otaAuthResponse(token, challengeHex) {
+  return `AUTH ${otaMac(token, challengeHex)}\n`;
 }
 
 function connect(ip, port) {
@@ -152,7 +177,11 @@ export async function openOta(ip, token, port = OTA_PORT_DEFAULT) {
       : resolve());
   });
   try {
-    await write(Buffer.from(otaAuthLine(token), 'ascii'));
+    otaTokenKey(token);   // validate early, before any I/O
+    const chal = await reader.waitLine(
+      l => l.startsWith('CHALLENGE '), AUTH_TIMEOUT_MS, 'OTA challenge');
+    const challengeHex = chal.slice('CHALLENGE '.length);
+    await write(Buffer.from(otaAuthResponse(token, challengeHex), 'ascii'));
     const auth = await reader.waitLine(
       l => l === 'AUTH OK' || l === 'AUTH ERR', AUTH_TIMEOUT_MS, 'OTA auth');
     if (auth !== 'AUTH OK') {

@@ -129,11 +129,16 @@ typedef struct {
     bool running;       /* TCP listener currently bound */
     bool wifi_ready;    /* WiFi station has a usable IPv4 */
     bool token_ready;   /* a token is available (persisted or ephemeral) */
+    bool hmac;          /* r96: HMAC-SHA256 challenge-response auth active */
     int  port;          /* configured TCP port */
     char token[33];     /* 32 lowercase hex chars + NUL */
 } lume_ota_status_t;
 typedef void (*lume_ota_status_provider_fn)(lume_ota_status_t *out);
 void lume_engine_set_ota_status_provider(lume_ota_status_provider_fn fn);
+/* r96: token setter registered by lume-hotreload; lets lume.ota.setToken()
+ * change the HMAC token without creating an engine -> hotreload link cycle. */
+typedef int (*lume_ota_set_token_fn)(const char *hex, size_t len);
+void lume_engine_set_ota_token_setter(lume_ota_set_token_fn fn);
 
 /* r43b: fill `out` with the QuickJS engine version ("MAJOR.MINOR.PATCH").
  * Used by the hot-reload channel to answer the CLI's VER query before a

@@ -200,6 +200,11 @@ function runApp(script, options = {}) {
     imgscale: imgscaleStub(),
     crypto: cryptoStub(),
     compress: compressStub(),
+    // r96: no real OTA channel in the host runner; status() mirrors net.otaStatus.
+    ota: {
+      status: () => ({ running: false, wifiReady: false, tokenReady: false, hmac: true, port: 8765, token: '' }),
+      setToken: () => -3,
+    },
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
     removeChild: id => emit('remove', id),
@@ -233,7 +238,7 @@ function runApp(script, options = {}) {
       DISCONNECTED: 0, CONNECTING: 1, CONNECTED: 2, GOT_IP: 3,
       init: () => 0, deinit: () => 0, connect: () => 0, disconnect: () => 0,
       status: () => ({ state: 0, ip: null }),
-      otaStatus: () => ({ running: false, wifiReady: false, tokenReady: false, port: 8765, token: '' }),
+      otaStatus: () => ({ running: false, wifiReady: false, tokenReady: false, hmac: true, port: 8765, token: '' }),
       httpGet: () => -3,
       ws: { _connect: () => -3, _send: () => -1, _close: () => -1 },
       // r71 local web server natives (mock C layer); harnesses override via

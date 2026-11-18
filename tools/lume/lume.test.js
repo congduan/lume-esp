@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import net from 'node:net';
+import { createHmac } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { build } from 'esbuild';
@@ -14,7 +15,7 @@ import { create } from './create.js';
 import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN, FWTAG_CMD } from './protocol.js';
 import { queryFirmwareTag } from './fwtag.js';
 import { parseQjsVersion, qjsVersion, assertEngineVersion, queryEngineVersion, compileBytecode, localQjsc } from './bytecode.js';
-import { openOta, otaAuthLine, OTA_PORT_DEFAULT } from './ota.js';
+import { openOta, otaMac, otaAuthResponse, OTA_PORT_DEFAULT } from './ota.js';
 import { decodeShot, bmpFromRgb565 } from './shot.js';
 import { check, render, parsePerf } from './check.js';
 import { extractLumeCatalog, namespaceMembers, levenshtein, findUnknownMembers, suggest, parseEvalError } from './check_suggest.js';
@@ -22,6 +23,15 @@ import { parseLayoutRules } from './check_layout.js';
 
 const execFileAsync = promisify(execFile);
 const OTA_TOKEN = '0123456789abcdef0123456789abcdef';
+const OTA_CHALLENGE = 'fedcba9876543210fedcba9876543210';
+
+// Emulate the firmware's r96 challenge-response edge: send one fresh
+// CHALLENGE on connect, then validate the AUTH line against the HMAC vector.
+function startOtaHandshake(socket, token) {
+  socket.write(`CHALLENGE ${OTA_CHALLENGE}\n`);
+  const expected = `AUTH ${otaMac(token, OTA_CHALLENGE)}`;
+  return line => line === expected;
+}
 
 test('frame bytes match firmware wire layout and CRC-32', () => {
   const bytes = frame('123456789');
@@ -176,6 +186,7 @@ function mockOtaDevice(token) {
     socket.on('close', () => sockets.delete(socket));
     let buf = Buffer.alloc(0);
     let authed = false;
+    const checkAuth = startOtaHandshake(socket, token);
     socket.on('data', chunk => {
       buf = Buffer.concat([buf, chunk]);
       if (!authed) {
@@ -183,7 +194,7 @@ function mockOtaDevice(token) {
         if (nl < 0) return;
         const line = buf.subarray(0, nl).toString('utf8');
         buf = buf.subarray(nl + 1);
-        authed = line === `AUTH ${token}`;
+        authed = checkAuth(line);
         socket.write(authed ? 'AUTH OK\n' : 'AUTH ERR\n');
         if (!authed) socket.end();
       }
@@ -240,8 +251,17 @@ function mockOtaDevice(token) {
   });
 }
 
-test('OTA auth preamble + default port match the firmware wire format', () => {
-  assert.equal(otaAuthLine(OTA_TOKEN), `AUTH ${OTA_TOKEN}\n`);
+test('OTA auth vector: HMAC-SHA256(token, challenge ASCII) + default port', () => {
+  // Fixed vector so the CLI and firmware glue can be cross-checked by hand.
+  const token = '0123456789abcdef0123456789abcdef';
+  const challenge = 'fedcba9876543210fedcba9876543210';
+  const want = createHmac('sha256', Buffer.from(token, 'hex'))
+    .update(challenge, 'ascii').digest('hex');
+  assert.equal(otaMac(token, challenge), want);
+  assert.equal(otaAuthResponse(token, challenge), `AUTH ${want}\n`);
+  // A different challenge must produce a different MAC (anti-replay property).
+  assert.notEqual(otaMac(token, '00000000000000000000000000000000'), want);
+  assert.throws(() => otaMac('bad', challenge), /32 hex characters/);
   assert.equal(OTA_PORT_DEFAULT, 8765);
 });
 
@@ -322,12 +342,13 @@ test('OTA RELOAD ERR is surfaced as a push error', async () => {
     socket.on('close', () => sockets.delete(socket));
     let buf = Buffer.alloc(0);
     let authed = false;
+    const checkAuth = startOtaHandshake(socket, OTA_TOKEN);
     socket.on('data', chunk => {
       buf = Buffer.concat([buf, chunk]);
       if (!authed) {
         const nl = buf.indexOf(0x0a);
         if (nl < 0) return;
-        authed = buf.subarray(0, nl).toString('utf8') === `AUTH ${OTA_TOKEN}`;
+        authed = checkAuth(buf.subarray(0, nl).toString('utf8'));
         buf = buf.subarray(nl + 1);
         socket.write(authed ? 'AUTH OK\n' : 'AUTH ERR\n');
       }
@@ -438,20 +459,21 @@ test('OTA no-board path: connection refused is a clear error', async () => {
     /cannot connect to OTA device at 127\.0\.0\.1/);
 });
 
-test('CLI --ota usage, arg validation and no-board error output', async () => {
+test('CLI --host usage, arg validation and no-board error output', async () => {
   const cli = new URL('./lume.js', import.meta.url).pathname;
   const help = await execFileAsync(process.execPath, [cli, '--help']);
-  assert.match(help.stdout, /lume deploy <dir> --ota <ip> --token <t>/);
+  assert.match(help.stdout, /lume deploy <dir> --host <ip> --token <t>/);
 
   const parent = await mkdtemp(join(tmpdir(), 'lume-ota-cli-'));
   const root = join(parent, 'app');
   try {
     await create(root);   // valid app.js so bundle() succeeds before connecting
-    // --ota without --token is rejected before bundling
+    // --host without --token is rejected before bundling
     await assert.rejects(
-      execFileAsync(process.execPath, [cli, 'deploy', root, '--ota', '127.0.0.1']),
-      err => /--ota needs --token/.test(err.stderr));
-    // --ota on a closed port -> clear connect error (no board)
+      execFileAsync(process.execPath, [cli, 'deploy', root, '--host', '127.0.0.1']),
+      err => /--host needs --token/.test(err.stderr));
+    // --host on a closed port -> clear connect error (no board). --ota is
+    // retained as a legacy alias and is exercised here.
     const probe = net.createServer();
     await new Promise(r => probe.listen(0, '127.0.0.1', r));
     const closedPort = probe.address().port;
@@ -646,4 +668,13 @@ test('check: CLI --json is valid JSON and exit codes are 0 (pass) / 1 (fail)', a
         return true;
       });
   } finally { await rm(parent, { recursive: true, force: true }); }
+});
+
+test('CLI token command validates the 32-hex token before opening a port', async () => {
+  const cli = new URL('./lume.js', import.meta.url).pathname;
+  const help = await execFileAsync(process.execPath, [cli, '--help']);
+  assert.match(help.stdout, /lume token <32hex>/);
+  await assert.rejects(
+    execFileAsync(process.execPath, [cli, 'token', 'abc']),
+    err => /token needs 32 hex characters/.test(err.stderr));
 });

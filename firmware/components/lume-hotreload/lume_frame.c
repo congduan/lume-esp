@@ -286,6 +286,57 @@ void lume_frame_parser_feed(lume_frame_parser_t *p, uint8_t b)
 /* ------------------------------------------------------------------ */
 /* §2 WiFi-OTA channel helpers                                         */
 /* ------------------------------------------------------------------ */
+void lume_ota_hex_encode(const uint8_t *in, size_t n, char *out)
+{
+    static const char hx[] = "0123456789abcdef";
+    for (size_t i = 0; i < n; i++) {
+        out[2 * i]     = hx[in[i] >> 4];
+        out[2 * i + 1] = hx[in[i] & 0x0f];
+    }
+    out[2 * n] = '\0';
+}
+
+static int hex_nibble(char c)
+{
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+bool lume_ota_hex_valid(const char *s, size_t nhex)
+{
+    if (s == NULL) return false;
+    for (size_t i = 0; i < nhex; i++) {
+        if (hex_nibble(s[i]) < 0) return false;
+    }
+    return true;
+}
+
+bool lume_ota_hex_decode(const char *in, size_t nhex, uint8_t *out)
+{
+    if (in == NULL || out == NULL || (nhex & 1u) != 0) return false;
+    for (size_t i = 0; i < nhex / 2; i++) {
+        int hi = hex_nibble(in[2 * i]);
+        int lo = hex_nibble(in[2 * i + 1]);
+        if (hi < 0 || lo < 0) return false;
+        out[i] = (uint8_t)((hi << 4) | lo);
+    }
+    return true;
+}
+
+int lume_ota_challenge_line(char *buf, size_t cap, const char *challenge_hex)
+{
+    if (buf == NULL || challenge_hex == NULL ||
+        !lume_ota_hex_valid(challenge_hex, LUME_OTA_CHALLENGE_HEX_LEN)) {
+        return -1;
+    }
+    const char *pfx = LUME_OTA_CHALLENGE_PREFIX;
+    int n = snprintf(buf, cap, "%s%s\n", pfx, challenge_hex);
+    if (n < 0 || (size_t)n >= cap) return -1;
+    return n;
+}
+
 bool lume_ota_auth_parse(const char *line, size_t len, char *out, size_t cap)
 {
     const char *prefix = LUME_OTA_AUTH_PREFIX;
@@ -324,21 +375,48 @@ static size_t bounded_strlen(const char *s, size_t max)
     return n;
 }
 
-bool lume_ota_token_equal(const char *a, const char *b)
+bool lume_ota_hex_equal(const char *a, const char *b, size_t nhex)
 {
-    if (a == NULL || b == NULL) {
-        return false;
-    }
-    /* Both must be exactly 32 chars; this leaks length only (fixed by wire). */
-    if (bounded_strlen(a, LUME_OTA_TOKEN_STR_MAX) != LUME_OTA_TOKEN_HEX_LEN ||
-        bounded_strlen(b, LUME_OTA_TOKEN_STR_MAX) != LUME_OTA_TOKEN_HEX_LEN) {
+    if (a == NULL || b == NULL || nhex == 0) return false;
+    /* Bounded length check leaks only the (wire-fixed) length, never content. */
+    if (bounded_strlen(a, nhex + 1) != nhex ||
+        bounded_strlen(b, nhex + 1) != nhex) {
         return false;
     }
     unsigned diff = 0;
-    for (size_t i = 0; i < LUME_OTA_TOKEN_HEX_LEN; i++) {
+    for (size_t i = 0; i < nhex; i++) {
         diff |= (unsigned char)a[i] ^ (unsigned char)b[i];
     }
     return diff == 0;
+}
+
+bool lume_ota_token_equal(const char *a, const char *b)
+{
+    return lume_ota_hex_equal(a, b, LUME_OTA_TOKEN_HEX_LEN);
+}
+
+int lume_ota_mac_verify(lume_ota_hmac_fn hmac,
+                        const uint8_t *key, size_t key_len,
+                        const char *challenge_hex, const char *mac_hex)
+{
+    if (hmac == NULL || key == NULL || key_len == 0 ||
+        challenge_hex == NULL || mac_hex == NULL) {
+        return -1;
+    }
+    if (!lume_ota_hex_valid(challenge_hex, LUME_OTA_CHALLENGE_HEX_LEN) ||
+        !lume_ota_hex_valid(mac_hex, LUME_OTA_MAC_HEX_LEN)) {
+        return -2;
+    }
+    uint8_t digest[32];
+    /* The message is the ASCII bytes of the challenge hex string. Both sides
+     * (firmware mbedtls and CLI node:crypto) sign exactly these 32 bytes. */
+    if (hmac(key, key_len, (const uint8_t *)challenge_hex,
+             LUME_OTA_CHALLENGE_HEX_LEN, digest) != 0) {
+        return -3;
+    }
+    char want[LUME_OTA_MAC_STR_MAX];
+    lume_ota_hex_encode(digest, sizeof(digest), want);
+    return lume_ota_hex_equal(want, mac_hex, LUME_OTA_MAC_HEX_LEN) ? 0 : -4;
 }
 
 int lume_ota_reply(char *buf, size_t cap, bool ok, size_t len,
