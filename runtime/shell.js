@@ -4,7 +4,7 @@
   var cleanups = {};
   /* Shell-owned spacing extension: the embedded prelude remains unchanged. */
   var nativeThemeSet = lume.theme.set, nativeThemeGet = lume.theme.get;
-  var spacing, spaced = {};
+  var spacing, spaced = {}, declared = {};
   if (!Object.keys(nativeThemeGet().colors).length) {
     nativeThemeSet({colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',
       surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',
@@ -30,11 +30,15 @@
   lume.theme.get = function () { var current = nativeThemeGet(); current.spacing = spacing; return current; };
   var nativeView = View;
   var nativeDispatchRemove = __lume_dispatchRemove;
-  __lume_dispatchRemove = function (id) { delete spaced[id]; nativeDispatchRemove(id); };
+  __lume_dispatchRemove = function (id) { delete spaced[id]; delete declared[id]; nativeDispatchRemove(id); };
   View = function (props, children) {
     props = props || {};
     var style = props.style || {};
-    if (spacing === undefined || (style.padding !== undefined && style.gap !== undefined)) return nativeView(props, children);
+    if (spacing === undefined || (style.padding !== undefined && style.gap !== undefined)) {
+      var plainId = nativeView(props, children);
+      declared[plainId] = style;
+      return plainId;
+    }
     var copy = {}, styled = {};
     Object.keys(props).forEach(function (key) { copy[key] = props[key]; });
     Object.keys(style).forEach(function (key) { styled[key] = style[key]; });
@@ -43,6 +47,7 @@
     if (inheritGap) styled.gap = spacing;
     copy.style = styled;
     var id = nativeView(copy, children);
+    declared[id] = style;
     if (inheritPadding || inheritGap) {
       var sides = {};
       if (inheritPadding) ['Top','Right','Bottom','Left'].forEach(function (side, i) {
@@ -129,11 +134,47 @@
     },duration);
   }};
   lume.app.onPause(function () { dialogs.slice().forEach(closeDialog); clearToast(); });
-  function positive(name, value, fallback, max) {
+  function positive(name, value, fallback, max, errorType) {
     var n = value === undefined ? fallback : value;
     if (typeof n !== 'number' || !isFinite(n) || Math.floor(n) !== n || n < 1 || n > max)
-      throw new RangeError('lume: ' + name + ' must be 1..' + max + ' pixels');
+      throw new (errorType || RangeError)('lume: ' + name + ' must be 1..' + max + ' pixels');
     return n;
+  }
+  function safeInsets(shape, size) {
+    if (shape !== 'square' && shape !== 'round')
+      throw new TypeError('lume: SafeArea shape must be square or round');
+    size = positive('SafeArea size', size, undefined, 16384, TypeError);
+    if (shape === 'square') return {top:0,right:0,bottom:0,left:0};
+    var side = Math.floor(size / Math.SQRT2);
+    var near = Math.floor((size - side) / 2);
+    var far = size - side - near;
+    return {top:near,right:far,bottom:far,left:near};
+  }
+  function SafeArea(p) {
+    p = p || {};
+    var shape = p.shape === undefined ? 'square' : p.shape;
+    var size = p.size === undefined ? (typeof __lumeScreen === 'object' ? __lumeScreen.w : 480) : p.size;
+    var insets = safeInsets(shape, size);
+    var side = size - insets.left - insets.right;
+    var children = p.children === undefined ? [] : p.children;
+    if (!Array.isArray(children)) throw new TypeError('lume: SafeArea children must be an array');
+    if (shape === 'round') {
+      for (var i = 0; i < children.length; i++) {
+        var style = declared[children[i]];
+        if (!style) continue;
+        var x = typeof style.x === 'number' ? style.x : 0;
+        var y = typeof style.y === 'number' ? style.y : 0;
+        var width = style.width, height = style.height;
+        if ((typeof width === 'number' && (x < 0 || x + width > side)) ||
+            (typeof height === 'number' && (y < 0 || y + height > side))) {
+          if (typeof console !== 'undefined' && typeof console.warn === 'function')
+            console.warn('lume: SafeArea child exceeds ' + side + 'x' + side + ' safe bounds');
+          break;
+        }
+      }
+    }
+    return View({parent:p.parent,style:{x:insets.left,y:insets.top,width:side,height:side,
+      padding:0,gap:0,scroll:'none'}},children);
   }
   function callback(name, value) {
     if (value !== undefined && typeof value !== 'function') throw new TypeError('lume: ' + name + ' must be a function');
@@ -283,6 +324,8 @@
     return root;
   }
   shell.StatusBar = StatusBar;
+  shell.SafeArea = SafeArea;
+  shell.safeInsets = safeInsets;
   shell.Card = Card;
   shell.IconButton = IconButton;
   shell.EdgeNavigation = EdgeNavigation;
