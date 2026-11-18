@@ -2,7 +2,6 @@
  "board": "waveshare-amoled18-v2",
  "flash_mb": 16,
  "psram_mb": 8,
- "app_direct": false,
  "files": {
   "rom": "esp32s3_rev0_rom.elf",
   "bootloader": "bootloader.bin",
@@ -10,5 +9,5 @@
   "app": "lume.bin"
  },
  "expect": "app eval ok",
- "_note": "Lume real firmware. Populated by CI from the latest firmware.yml build (see .github/workflows/pages.yml firmware-sync job). Boot: run.html?wasm&fw=lume"
+ "_note": "Lume real firmware (Build firmware run 62, base commit a93ae92). Launch: run.html?wasm&fw=lume"
 }
