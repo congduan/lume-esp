@@ -13,6 +13,8 @@
  *      the CLI/USB encoder emits (hard-coded from tools/lume/protocol.js),
  *      field-by-field, plus control frames / CRC / resync / streaming splits;
  *   2. token auth: correct AND wrong token paths, constant-time compare;
+ *   2b. r96 HMAC-SHA256 challenge-response: vectors (RFC 4231 + the CLI's
+ *      otaMac() vector), hex helpers, replay rejection, AUTH-line parsing;
  *   3. "WiFi not connected -> refuse to start" gate;
  *   4. reply-line formatting shared by both channels.
  *
@@ -23,6 +25,17 @@
 #include <string.h>
 #include <stdint.h>
 #include "lume_frame.h"
+#include "mbedtls/md.h"
+
+/* Real mbedTLS HMAC provider — the same primitive lume_hotreload.c injects.
+ * Compiled into this harness with the minimal r91 config (SHA-256 + md). */
+static int host_hmac(const uint8_t *key, size_t klen, const uint8_t *msg,
+                     size_t mlen, uint8_t out[32])
+{
+    const mbedtls_md_info_t *info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+    if (info == NULL) return -1;
+    return mbedtls_md_hmac(info, key, klen, msg, mlen, out);
+}
 
 static int g_fail;
 static int g_checks;
@@ -262,6 +275,67 @@ int main(void)
           "empty token line -> auth_parse false");
     CHECK(!lume_ota_auth_parse("AUTH abc def\n", 13, provided, sizeof(provided)),
           "space in token -> auth_parse false");
+
+    /* ---- 5b. r96 HMAC challenge-response auth vectors ---- */
+    printf("[5b] r96 HMAC-SHA256 challenge-response auth\n");
+    /* RFC 4231 test case 1 (mbedTLS primitive sanity). */
+    const uint8_t rfc_key[20] = { 0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,
+                                  0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b,0x0b };
+    uint8_t digest[32];
+    char digest_hex[LUME_OTA_MAC_STR_MAX];
+    CHECK(host_hmac(rfc_key, sizeof(rfc_key), (const uint8_t *)"Hi There", 8,
+                    digest) == 0, "mbedTLS SHA-256 HMAC primitive available");
+    lume_ota_hex_encode(digest, sizeof(digest), digest_hex);
+    CHECK(strcmp(digest_hex,
+          "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7") == 0,
+          "RFC 4231 case 1 HMAC vector matches");
+
+    /* Hex helpers (portable, same file the firmware links). */
+    uint8_t raw[16];
+    CHECK(lume_ota_hex_valid(token, LUME_OTA_TOKEN_HEX_LEN), "hex_valid: 32 hex OK");
+    CHECK(!lume_ota_hex_valid("zz3456789abcdef0123456789abcdef", 32),
+          "hex_valid: non-hex rejected");
+    CHECK(!lume_ota_hex_decode("abc", 3, raw), "hex_decode: odd nhex rejected");
+    CHECK(lume_ota_hex_decode(token, LUME_OTA_TOKEN_HEX_LEN, raw) &&
+          raw[0] == 0x01 && raw[15] == 0xef, "hex_decode: first/last byte correct");
+    CHECK(lume_ota_hex_valid(digest_hex, LUME_OTA_MAC_HEX_LEN), "hex_valid: 64 hex MAC OK");
+    CHECK(lume_ota_hex_equal(digest_hex, digest_hex, LUME_OTA_MAC_HEX_LEN),
+          "hex_equal: identical MAC matches");
+    CHECK(!lume_ota_hex_equal(digest_hex,
+          "00004c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7",
+          LUME_OTA_MAC_HEX_LEN), "hex_equal: 1-char-off MAC rejected");
+
+    /* Challenge line format — exactly what ota.js waits for. */
+    const char *challenge = "fedcba9876543210fedcba9876543210";
+    char chal_line[LUME_OTA_AUTH_LINE_MAX];
+    int clen = lume_ota_challenge_line(chal_line, sizeof(chal_line), challenge);
+    CHECK(clen == 43 && strcmp(chal_line,
+          "CHALLENGE fedcba9876543210fedcba9876543210\n") == 0,
+          "challenge line format == \"CHALLENGE <32hex>\\n\"");
+
+    /* The CLI's otaMac() vector: key = raw token bytes, msg = challenge ASCII. */
+    const char *mac =
+        "bbbf60336fc30177d6262b9b3b5373787f60ee67ea9bcb8f7f58118e6b983eb2";
+    CHECK(lume_ota_mac_verify(host_hmac, raw, sizeof(raw), challenge, mac) == 0,
+          "RIGHT MAC: mac_verify == 0 (auth OK path)");
+    CHECK(lume_ota_mac_verify(host_hmac, raw, sizeof(raw), challenge,
+          "0000000000000000000000000000000000000000000000000000000000000000") == -4,
+          "WRONG MAC: mac_verify == -4 (auth ERR path)");
+    /* Replay: the same MAC cannot authenticate a different challenge. */
+    CHECK(lume_ota_mac_verify(host_hmac, raw, sizeof(raw),
+          "00000000000000000000000000000000", mac) == -4,
+          "replay with a different challenge -> mac_verify -4");
+    CHECK(lume_ota_mac_verify(host_hmac, raw, sizeof(raw), "xyz", mac) == -2,
+          "malformed challenge hex -> mac_verify -2");
+
+    /* AUTH line carrying a 64-hex MAC is parsed by the same helper. */
+    char mac_line[128];
+    size_t mlen = strlen("AUTH ") + LUME_OTA_MAC_HEX_LEN + 1;
+    snprintf(mac_line, sizeof(mac_line), "AUTH %s\n", mac);
+    char provided_mac[LUME_OTA_MAC_STR_MAX];
+    CHECK(lume_ota_auth_parse(mac_line, mlen, provided_mac,
+          sizeof(provided_mac)) && strcmp(provided_mac, mac) == 0,
+          "auth_parse extracts a 64-hex MAC");
 
     /* ---- 6. reply lines (shared by USB + TCP) ---- */
     printf("[6] RELOAD reply lines\n");
