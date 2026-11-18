@@ -6,8 +6,12 @@
  *   start(session)     begin a turn; emits state=thinking
  *   sendAudio(pcm)     accumulate one 3840-byte uplink frame (16 kHz stereo s16le)
  *   sendText?(text)    optional device text input, folded into the chat user message
- *   stop()             advisory round finalize; idempotent, never cancels an
- *                      in-flight response, never calls session.close()
+ *   stop()             advisory round finalize; idempotent, never calls session.close().
+ *                      r114: also aborts an active chat SSE read (see stop()).
+ *
+ * r114: the chat segment is streamed (SSE `stream:true`); each upstream
+ * choices[0].delta.content becomes a real text delta immediately, and the full
+ * text is accumulated for TTS. STT/TTS remain one-shot (see docs).
  *
  * Turn收口 decision (evidence from server.js + protocol v1):
  *   - server.js calls stop() from _stopUpstream() on the `end` control frame
@@ -103,7 +107,9 @@ function chunkPcm(buf, frameBytes = UPLINK_BYTES) {
   return out;
 }
 
-/* Sentence-aware, fixed-cap text delta split. Concatenation === input. */
+/* r113 pseudo-delta splitter. Retained as an exported utility for API/test
+ * compatibility and any future non-streaming endpoint mode. The r114 chat SSE
+ * path emits real upstream deltas directly and does NOT call this function. */
 function splitTextDeltas(text, maxChars = 24) {
   const chars = Array.from(String(text == null ? '' : text));
   const out = [];
@@ -135,7 +141,7 @@ class OpenAICompatibleUpstream {
     this.timeoutMs = opts.timeoutMs == null ? 30000 : opts.timeoutMs;
     this.retryDelayMs = opts.retryDelayMs == null ? 1000 : opts.retryDelayMs;
     this.silenceTimeoutMs = opts.silenceTimeoutMs == null ? 3000 : opts.silenceTimeoutMs;
-    this.deltaMaxChars = opts.deltaMaxChars == null ? 24 : opts.deltaMaxChars;
+    this.deltaMaxChars = opts.deltaMaxChars == null ? 24 : opts.deltaMaxChars; /* r113 helper; unused by SSE path */
 
     this.session = null;
     this.started = false;
@@ -147,6 +153,8 @@ class OpenAICompatibleUpstream {
     this.deviceText = '';
     this.silenceTimer = null;
     this._abort = null;
+    this._chatStreaming = false;   /* r114: true while reading the chat SSE body */
+    this._stopAborted = false;     /* r114: stop() aborted an active chat SSE read */
   }
 
   /* ---- upstream interface ------------------------------------------------ */
@@ -172,8 +180,18 @@ class OpenAICompatibleUpstream {
     if (this.stopped) return;
     this.stopped = true;
     this._clearSilenceTimer();
-    /* stop() is advisory: never cancel a pipe already in flight. */
-    if (this.pipeStarted) return;
+    if (this.pipeStarted) {
+      /* r114: the only in-flight work we cancel is an active chat SSE read,
+       * when stop() arrives AFTER the pipe was started (e.g. by the silence
+       * timer) and the device says `end` / closes. Emitted deltas are kept and
+       * sealed by _chatStream; _finalize ends the turn. STT/TTS stay advisory
+       * (r113): never cancel them, never call session.close() here. */
+      if (this._chatStreaming && this._abort) {
+        this._stopAborted = true;
+        try { this._abort.abort(); } catch (_) { /* ignore */ }
+      }
+      return;
+    }
     /* Device-close and fatal-error paths also call stop(); the socket is gone,
      * so do not start a response there. */
     if (!this.session || typeof this.session.isOpen !== 'function' || !this.session.isOpen()) return;
@@ -271,7 +289,14 @@ class OpenAICompatibleUpstream {
     return data && typeof data.text === 'string' ? data.text.trim() : '';
   }
 
-  async _chat(transcript) {
+  /* r114: the chat segment is a true SSE stream. `stream:true` + Accept
+   * text/event-stream; each choices[0].delta.content is forwarded immediately
+   * as a text delta and accumulated for TTS. A clean [DONE]/EOF seals the text
+   * with exactly one final delta. Any interruption AFTER the SSE headers are
+   * accepted is non-fatal and non-retryable (a retry would duplicate deltas) and
+   * seals the partial text with a final delta; pre-header failures keep the
+   * r113 error mapping (§8.1.4). */
+  async _chatStream(transcript) {
     const parts = [];
     if (transcript) parts.push(transcript);
     if (this.deviceText) parts.push(this.deviceText);
@@ -280,20 +305,146 @@ class OpenAICompatibleUpstream {
       messages: [
         { role: 'system', content: this.systemPrompt },
         { role: 'user', content: parts.join('\n') || '(no input)' }
-      ]
+      ],
+      stream: true
     };
     const base = this.chatBaseUrl || this.baseUrl;
-    const data = await this._request('chat', joinUrl(base, '/chat/completions'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + this.apiKey
-      },
-      body: JSON.stringify(body)
-    }, 'json');
-    const choices = data && data.choices;
-    const content = choices && choices[0] && choices[0].message && choices[0].message.content;
-    return typeof content === 'string' ? content : '';
+    const ctrl = new AbortController();
+    this._abort = ctrl;
+    const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
+    const session = this.session;
+    const alive = () => !!(session &&
+      (typeof session.isOpen !== 'function' || session.isOpen()));
+    let text = '';
+    let emittedAny = false;
+    let streaming = false;
+    const seal = (note) => {
+      if (emittedAny && alive()) session.sendTextDelta(note || '', true);
+    };
+    try {
+      const res = await fetch(joinUrl(base, '/chat/completions'), {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          Authorization: 'Bearer ' + this.apiKey
+        },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        let rbody = '';
+        try { rbody = (await res.text()).slice(0, 512); } catch (_) { /* ignore */ }
+        const e = new Error('chat HTTP ' + res.status + (rbody ? ': ' + ascii(rbody) : ''));
+        e.status = res.status;
+        e.retryable = RETRYABLE_STATUS(res.status);
+        throw e;
+      }
+      const ct = String(res.headers.get('content-type') || '').toLowerCase();
+      if (ct.indexOf('text/event-stream') < 0) {
+        const e = new Error('chat expected text/event-stream, got ' + ascii(ct));
+        e.status = 415;
+        e.retryable = false;           /* malformed endpoint: same class as 4xx */
+        throw e;
+      }
+      streaming = true;
+      this._chatStreaming = true;
+
+      /* SSE line grammar (verified against a node:http fake endpoint): events
+       * are separated by a blank line; `field: value` drops one leading space;
+       * multiple `data:` fields of one event join with '\n'; ':comment' is
+       * ignored; `data: [DONE]` terminates. Chunk boundaries can split a line,
+       * so a partial line is buffered until the next '\n'. */
+      const decoder = new TextDecoder('utf-8');
+      let buf = '';
+      let dataLines = [];
+      let done = false;
+      const dispatch = (data) => {
+        if (data === '[DONE]') return true;
+        let chunk;
+        try { chunk = JSON.parse(data); } catch (_) { return false; }
+        const content = chunk && chunk.choices && chunk.choices[0] &&
+          chunk.choices[0].delta && chunk.choices[0].delta.content;
+        if (typeof content === 'string' && content.length) {
+          if (!alive()) return false;
+          session.sendTextDelta(content, false);
+          emittedAny = true;
+          text += content;
+        }
+        return false;
+      };
+      for await (const raw of res.body) {
+        if (this._stopAborted || done) break;
+        buf += decoder.decode(raw, { stream: true });
+        let nl;
+        while ((nl = buf.indexOf('\n')) >= 0) {
+          let line = buf.slice(0, nl);
+          buf = buf.slice(nl + 1);
+          if (line.endsWith('\r')) line = line.slice(0, -1);
+          if (line === '') {
+            if (dataLines.length) {
+              const payload = dataLines.join('\n');
+              dataLines = [];
+              if (dispatch(payload)) { done = true; break; }
+            }
+            continue;
+          }
+          if (line.charAt(0) === ':') continue;       /* comment / keepalive */
+          const colon = line.indexOf(':');
+          const field = colon < 0 ? line : line.slice(0, colon);
+          let value = colon < 0 ? '' : line.slice(colon + 1);
+          if (value.charAt(0) === ' ') value = value.slice(1);
+          if (field === 'data') dataLines.push(value);
+        }
+      }
+      /* EOF without trailing blank line: best-effort dispatch of a pending
+       * event (some minimal endpoints omit the final newline). */
+      if (!done && !this._stopAborted && dataLines.length) {
+        done = dispatch(dataLines.join('\n'));
+      }
+      if (this._stopAborted) {
+        seal('');
+        const se = new Error('chat SSE aborted by stop');
+        se.stoppedByUser = true;
+        throw se;
+      }
+      /* clean end: exactly one final delta (even for an empty reply, r113). */
+      if (alive()) session.sendTextDelta('', true);
+      return text;
+    } catch (e) {
+      if (this._stopAborted) {
+        seal('');
+        const se = new Error('chat SSE aborted by stop');
+        se.stoppedByUser = true;
+        throw se;
+      }
+      if (streaming) {
+        /* Stream established: never retry (would duplicate deltas), and treat
+         * the interruption as non-fatal (same class as 401, §8.1.4). */
+        seal(' (truncated)');
+        const be = new Error('chat SSE interrupted: ' + ascii(e && e.message));
+        be.streamBreak = true;
+        be.retryable = false;
+        be.network = false;
+        be.timeout = false;
+        throw be;
+      }
+      if (e && (e.name === 'AbortError' || e.code === 'ABORT_ERR')) {
+        const te = new Error('chat timeout after ' + this.timeoutMs + 'ms');
+        te.timeout = true;
+        te.retryable = true;
+        throw te;
+      }
+      if (e && typeof e.retryable === 'boolean') throw e;
+      const ne = new Error('chat network error: ' + ascii(e && e.message));
+      ne.network = true;
+      ne.retryable = true;
+      throw ne;
+    } finally {
+      clearTimeout(timer);
+      this._chatStreaming = false;
+      if (this._abort === ctrl) this._abort = null;
+    }
   }
 
   async _speak(reply) {
@@ -325,7 +476,8 @@ class OpenAICompatibleUpstream {
       const wav = pcm16StereoToWav(Buffer.concat(this.parts, this.audioBytesIn));
       const transcript = await this._withRetry('stt', () => this._transcribe(wav));
       if (!alive()) return;
-      const reply = await this._withRetry('chat', () => this._chat(transcript));
+      /* r114: chat SSE already streamed text deltas + one final delta inline. */
+      const reply = await this._withRetry('chat', () => this._chatStream(transcript));
       if (!alive()) return;
       const ttsPcm = await this._withRetry('tts', () => this._speak(reply));
       if (!alive()) return;
@@ -338,15 +490,20 @@ class OpenAICompatibleUpstream {
         session.sendAudio(FORMAT, frame);
       }
 
-      /* d) text reply in ordered deltas, then final delta, idle, no held socket. */
-      for (const delta of splitTextDeltas(reply, this.deltaMaxChars)) {
-        if (!alive()) return;
-        session.sendTextDelta(delta, false);
-      }
-      session.sendTextDelta('', true);
+      /* d) text was sealed by _chatStream; only the TTS audio frames remain. */
       session.sendState('idle');
       if (alive() && typeof session.close === 'function') session.close(1000, 'done');
     } catch (err) {
+      if (err && err.stoppedByUser) {
+        /* stop() aborted an active chat read: emitted deltas were already
+         * sealed by _chatStream; no error frame, clean idle + close(1000). */
+        const s = this.session;
+        if (s && (typeof s.isOpen !== 'function' || s.isOpen())) {
+          s.sendState('idle');
+          if (typeof s.close === 'function') s.close(1000, 'done');
+        }
+        return;
+      }
       this._fail(err);
     }
   }
