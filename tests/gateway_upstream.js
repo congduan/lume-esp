@@ -1,8 +1,10 @@
-/* r113 gateway upstream harness - real HTTP against a local fake OpenAI-compatible
- * endpoint (three routes). No network egress, no API key, no new npm deps.
- * Covers: multipart/WAV header + stereo->mono downmix, chat body fields,
- * independent chat base URL, TTS request body, 24k->16k resampling, frame count,
- * delta order/final, idle收口, and 401/5xx/timeout negatives (no hangs).
+/* r113 + r114 gateway upstream harness - real HTTP against a local fake
+ * OpenAI-compatible endpoint (three routes). No network egress, no API key,
+ * no new npm deps. Covers: multipart/WAV header + stereo->mono downmix, chat
+ * body fields + SSE stream:true deltas, independent chat base URL, TTS request
+ * body, 24k->16k resampling, frame count, delta order/final, idle收口,
+ * 401/5xx/timeout negatives (no hangs), SSE split-line chunking, [DONE]
+ * termination, mid-stream disconnect收口 and stop()-abort.
  * Run: node tests/gateway_upstream.js */
 'use strict';
 const assert = require('node:assert/strict');
@@ -17,6 +19,23 @@ const pass = (label) => { checks++; console.log('PASS ' + label); };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clamp16 = (v) => v < -32768 ? -32768 : (v > 32767 ? 32767 : v);
 const json = (obj) => ({ status: 200, contentType: 'application/json', body: Buffer.from(JSON.stringify(obj)) });
+
+/* r114: SSE event helpers — the fake endpoint speaks the same line grammar as
+ * OpenAI chat streaming (verified against Node's fetch body). */
+const sseEvent = (data) => 'data: ' + (typeof data === 'string' ? data : JSON.stringify(data)) + '\n\n';
+const chatChunk = (content) => ({
+  id: 'chatcmpl-test', object: 'chat.completion.chunk',
+  choices: [{ index: 0, delta: { role: 'assistant', content }, finish_reason: null }]
+});
+const sseChat = (contents, opts = {}) => {
+  const parts = contents.map((c) => sseEvent(chatChunk(c)));
+  if (opts.done !== false) parts.push(sseEvent('[DONE]'));
+  return {
+    status: 200,
+    contentType: opts.contentType || 'text/event-stream',
+    body: Buffer.from((opts.comments ? ': keepalive\n\n' : '') + parts.join(''))
+  };
+};
 
 const REPLY = 'FIRST ANSWER. SECOND SENTENCE THIRD!';
 const TRANSCRIPT = 'TRANSCRIBED USER TEXT';
@@ -60,7 +79,21 @@ function makeFake(handlers) {
       res.writeHead(out.status || 200, Object.assign(
         { 'Content-Type': out.contentType || 'application/json', Connection: 'close' },
         out.headers || {}));
-      res.end(out.body == null ? Buffer.alloc(0) : out.body);
+      if (out.writer) {
+        /* custom streaming writer: may destroy the socket mid-stream */
+        await out.writer(res);
+        if (!res.writableEnded && !res.destroyed) res.end();
+      } else if (out.chunks) {
+        /* chunked transfer: each write can land mid-line in the client parser */
+        for (const c of out.chunks) {
+          if (res.destroyed) break;
+          res.write(c);
+          if (out.chunkDelayMs) await sleep(out.chunkDelayMs);
+        }
+        if (!res.destroyed) res.end();
+      } else {
+        res.end(out.body == null ? Buffer.alloc(0) : out.body);
+      }
     } catch (_) { /* client aborted on timeout: ignore */ }
   });
   return {
@@ -138,7 +171,8 @@ async function drive(up, st, frames = 3) {
   await waitIdle(st);
 }
 
-const defaultChat = () => json({ choices: [{ message: { role: 'assistant', content: REPLY } }] });
+const CHAT_CHUNKS = ['FIRST ANSWER. ', 'SECOND SENTENCE ', 'THIRD!']; /* concat === REPLY */
+const defaultChat = () => sseChat(CHAT_CHUNKS);
 const defaultTts = () => ({ status: 200, contentType: 'application/octet-stream', body: ttsPcm() });
 const defaultHandlers = () => ({
   stt: () => json({ text: TRANSCRIPT }),
@@ -206,6 +240,7 @@ function parseMultipart(buf, contentType) {
     const rec = fake.state.requests.find((r) => r.route === 'chat');
     const body = JSON.parse(rec.body.toString());
     assert.equal(body.model, 'gpt-4o-mini');
+    assert.equal(body.stream, true, 'chat requests SSE stream:true');
     assert.equal(body.messages.length, 2);
     assert.equal(body.messages[0].role, 'system');
     assert.ok(body.messages[0].content.length > 0, 'system prompt present');
@@ -258,20 +293,22 @@ function parseMultipart(buf, contentType) {
     pass('tts: 24k->16k linear resample + 3840-byte frame sequence');
   });
 
-  /* 6. delta order + final + concatenation */
+  /* 6. delta order + single final + concatenation (r114: one delta per SSE chunk) */
   await withFake(defaultHandlers(), async (fake) => {
     const up = makeUp(fake), st = makeSession();
     await drive(up, st);
     const deltas = ofKind(st, 'delta');
-    assert.equal(deltas[deltas.length - 1].f, true, 'last delta is final');
+    assert.equal(deltas.filter((d) => d.f).length, 1, 'exactly one final delta');
+    assert.equal(deltas[deltas.length - 1].f, true, 'final delta is last');
     assert.equal(deltas[deltas.length - 1].t, '', 'final delta carries empty text');
     assert.ok(deltas.slice(0, -1).every((d) => d.f === false), 'intermediate deltas not final');
-    assert.equal(deltas.map((d) => d.t).join(''), REPLY, 'deltas concatenate to exact reply');
-    assert.ok(deltas.length > 1, 'reply split into multiple deltas');
+    assert.equal(deltas.slice(0, -1).map((d) => d.t).join(''), REPLY, 'deltas concatenate to exact reply');
+    assert.equal(deltas.length - 1, CHAT_CHUNKS.length, 'one delta per SSE content chunk');
     const audioIdx = st.st.calls.findIndex((c) => c.k === 'audio');
-    const deltaIdx = st.st.calls.findIndex((c) => c.k === 'delta');
-    assert.ok(audioIdx >= 0 && deltaIdx > audioIdx, 'audio frames precede text deltas (segment c then d)');
-    pass('delta: ordered chunks + final marker + exact reassembly');
+    const finalIdx = st.st.calls.findIndex((c) => c.k === 'delta' && c.f);
+    assert.ok(audioIdx >= 0 && finalIdx >= 0 && finalIdx < audioIdx,
+      'streamed text + final precede TTS audio (delta during chat, audio during tts)');
+    pass('delta: one-per-SSE-chunk + single final marker + exact reassembly');
   });
 
   /* 7. state sequence + idle收口 + clean close */
@@ -415,6 +452,119 @@ function parseMultipart(buf, contentType) {
     assert.equal(fake.state.requests.filter((r) => r.route === 'stt').length, 1, 'one pipe despite repeated stop');
     assert.deepEqual(states(st), ['thinking', 'speaking', 'idle']);
     pass('stop: idempotent, never cancels in-flight response');
+  });
+
+  /* 17. r114: SSE chunk boundaries split mid-line; CRLF + comment handled;
+   *     delta order kept; [DONE] terminates (trailing event ignored); TTS uses
+   *     the accumulated full text. */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => {
+      const one = JSON.stringify(chatChunk('AAA '));
+      const two = JSON.stringify(chatChunk('BBB'));
+      return {
+        status: 200, contentType: 'text/event-stream', chunkDelayMs: 5,
+        chunks: [
+          Buffer.from(': keepalive\r\n\r\ndata: ' + one + '\r'),
+          Buffer.from('\n\r\ndata: ' + two.slice(0, 10)),
+          Buffer.from(two.slice(10) + '\r\n\r\ndata: [DONE]\r\n\r\n' + sseEvent(chatChunk('AFTER DONE')))
+        ]
+      };
+    },
+    tts: defaultTts
+  }, async (fake) => {
+    const up = makeUp(fake), st = makeSession();
+    await drive(up, st);
+    const deltas = ofKind(st, 'delta');
+    assert.deepEqual(deltas.map((d) => d.t), ['AAA ', 'BBB', ''],
+      'deltas in upstream chunk order incl. split-line reassembly; [DONE] terminates');
+    assert.equal(deltas.filter((d) => d.f).length, 1, 'single final');
+    const ttsBody = JSON.parse(fake.state.requests.find((r) => r.route === 'tts').body.toString());
+    assert.equal(ttsBody.input, 'AAA BBB', 'TTS uses accumulated SSE text');
+    pass('sse: split-line chunks + CRLF + comment + [DONE] + accumulated TTS text');
+  });
+
+  /* 18. r114: SSE disconnect after headers -> keep deltas, seal final, non-fatal,
+   *     no retry, no TTS. */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => ({
+      status: 200, contentType: 'text/event-stream',
+      writer: async (res) => {
+        res.write(sseEvent(chatChunk('PART ONE ')));
+        await sleep(20);
+        res.write(sseEvent(chatChunk('PART TWO')));
+        await sleep(10);
+        res.destroy();                 /* abrupt: no [DONE] */
+      }
+    }),
+    tts: defaultTts
+  }, async (fake) => {
+    const up = makeUp(fake), st = makeSession();
+    await drive(up, st);
+    const deltas = ofKind(st, 'delta');
+    assert.deepEqual(deltas.slice(0, -1).map((d) => d.t), ['PART ONE ', 'PART TWO'],
+      'emitted deltas preserved on disconnect');
+    assert.equal(deltas[deltas.length - 1].f, true, 'final seals the partial text');
+    assert.ok(/truncated/.test(deltas[deltas.length - 1].t), 'truncation noted in final delta');
+    assert.equal(fake.state.requests.filter((r) => r.route === 'chat').length, 1, 'no retry after stream broke');
+    assert.equal(fake.state.requests.filter((r) => r.route === 'tts').length, 0, 'tts skipped on stream error');
+    const err = ofKind(st, 'error')[0];
+    assert.ok(err && err.c === 'upstream_error' && err.f === false,
+      'stream break -> non-fatal upstream_error (like 401)');
+    assert.ok(states(st).indexOf('idle') >= 0, 'idle after error');
+    assert.equal(ofKind(st, 'close')[0].c, 1000, 'adapter closes cleanly');
+    pass('sse: mid-stream disconnect -> deltas kept + final + non-fatal + no retry');
+  });
+
+  /* 19. r114: stop() during an active chat SSE read aborts it; idempotent, no hang,
+   *     no error frame, emitted deltas kept and sealed. Pipe is started by the
+   *     silence timer so stop() lands AFTER streaming has begun. */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => ({
+      status: 200, contentType: 'text/event-stream', chunkDelayMs: 120,
+      chunks: [
+        Buffer.from(sseEvent(chatChunk('EARLY '))),
+        Buffer.from(sseEvent(chatChunk('LATE'))),
+        Buffer.from(sseEvent('[DONE]'))
+      ]
+    }),
+    tts: defaultTts
+  }, async (fake) => {
+    const up = makeUp(fake, { silenceTimeoutMs: 15 }), st = makeSession();
+    up.start(st);
+    up.sendAudio(makeFrame(0));         /* silence timer starts the pipe */
+    await waitFor(() => ofKind(st, 'delta').length >= 1, 'first streamed delta', 3000, st);
+    up.stop();                          /* device says end mid-stream */
+    up.stop();                          /* idempotent */
+    await waitIdle(st);
+    const deltas = ofKind(st, 'delta');
+    assert.equal(deltas.filter((d) => d.f).length, 1, 'single final seals text on stop');
+    assert.ok(deltas.slice(0, -1).map((d) => d.t).join('').indexOf('LATE') < 0,
+      'late chunk not delivered after abort');
+    assert.equal(ofKind(st, 'error').length, 0, 'user stop is not an error');
+    assert.deepEqual(states(st), ['thinking', 'idle'], 'clean close without speaking');
+    assert.equal(ofKind(st, 'close')[0].c, 1000, 'close(1000)');
+    pass('sse: stop() aborts active read, keeps prior deltas, no error/hang');
+  });
+
+  /* 20. r114: a 200 with non-SSE content-type is an error (no pseudo-delta
+   *     fallback): chat stream:true got application/json. */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => json({ choices: [{ message: { content: REPLY } }] }),
+    tts: defaultTts
+  }, async (fake) => {
+    const up = makeUp(fake), st = makeSession();
+    await drive(up, st);
+    const err = ofKind(st, 'error')[0];
+    assert.ok(err && err.c === 'upstream_error' && err.f === false,
+      'non-SSE chat -> non-fatal upstream_error (like 401)');
+    assert.equal(ofKind(st, 'delta').length, 0, 'no pseudo-delta fallback on wrong content-type');
+    assert.equal(fake.state.requests.filter((r) => r.route === 'tts').length, 0, 'tts skipped');
+    assert.ok(states(st).indexOf('idle') >= 0, 'idle after error');
+    pass('sse: non-SSE 200 -> upstream_error, no fallback deltas');
   });
 
   console.log('ALL GATEWAY UPSTREAM CASES PASSED (' + checks + ' cases)');
