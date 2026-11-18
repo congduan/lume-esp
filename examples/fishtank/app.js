@@ -110,13 +110,20 @@ function tankFish(ctx, f) {
   /* Body: a chain of filled ellipses whose radii follow the fish profile
    * (narrow nose -> broad mid -> tapered peduncle), so any heading works
    * with the axis-aligned primitive. */
-  var stations = [
-    { t: 0.6, rx: 4.4, ry: 4.2 },
-    { t: 0.3, rx: 5.8, ry: 6.8 },
-    { t: 0.02, rx: 6.4, ry: 8.2 },
-    { t: -0.26, rx: 5.8, ry: 7.4 },
-    { t: -0.52, rx: 4.6, ry: 5.4 },
-    { t: -0.76, rx: 3.2, ry: 3.6 }
+  /* Large: six broad stations; medium: five; small: six narrow stations.
+   * The final small station at -0.70 is a 1.8 px tail-peduncle transition. */
+  var stations = f.size >= 1.1 ? [
+    { t: 0.6, rx: 4.4, ry: 4.2 }, { t: 0.3, rx: 5.8, ry: 6.8 },
+    { t: 0.02, rx: 6.4, ry: 8.2 }, { t: -0.26, rx: 5.8, ry: 7.4 },
+    { t: -0.52, rx: 4.6, ry: 5.4 }, { t: -0.76, rx: 3.2, ry: 3.6 }
+  ] : f.size >= 0.8 ? [
+    { t: 0.6, rx: 4.4, ry: 4.2 }, { t: 0.28, rx: 5.8, ry: 6.8 },
+    { t: -0.04, rx: 6.4, ry: 8.2 }, { t: -0.36, rx: 5.2, ry: 6.5 },
+    { t: -0.72, rx: 3.2, ry: 3.6 }
+  ] : [
+    { t: 0.70, rx: 3.0, ry: 2.8 }, { t: 0.46, rx: 4.3, ry: 4.4 },
+    { t: 0.16, rx: 5.5, ry: 6.0 }, { t: -0.16, rx: 5.4, ry: 5.8 },
+    { t: -0.46, rx: 3.8, ry: 3.8 }, { t: -0.70, rx: 1.8, ry: 1.8 }
   ];
   for (var i = 0; i < stations.length; i++) {
     var st = stations[i], pt = point(st.t * length, 0);
@@ -137,6 +144,12 @@ function tankFish(ctx, f) {
       var bar = point((0.26 - i * 0.3) * length, 0);
       ctx.fillEllipse(Math.round(bar[0]), Math.round(bar[1]),
         Math.round(1.6 * f.size), Math.round((i ? 5.4 : 6.6) * f.size), c.deep);
+    }
+    /* Three one-pixel glints track the back rather than the screen axis. */
+    for (i = 0; i < 3; i++) {
+      var scale = 0.26 - i * 0.25;
+      var glint = point(scale * length, -half * (0.72 + i * 0.03));
+      ctx.fillCircle(Math.round(glint[0]), Math.round(glint[1]), 1, c.light);
     }
   }
   /* Dorsal fin: a small ellipse standing on the back, leaning with sway. */
@@ -177,6 +190,9 @@ var tankCanvas = Canvas({ parent: tankRoot, width: TANK_W, height: TANK_H,
     for (i = 0; i < tank.food.length; i++) {
       var p = tank.food[i]; ctx.circle(Math.round(p.x), Math.round(p.y), 3, '#E4C78F');
     }
+    /* Budget without food: 12 bands + 3 caustics + 3 sand + 15 plants
+     * + 10 bubbles = 43. Two large fish x 19 calls, two medium x 13,
+     * two small x 14 = 135; up to 20 food circles => 155, below 250. */
     /* Paint big fish first, small fish last (near = large = on top). */
     var order = [];
     for (i = 0; i < tank.fish.length; i++) order.push(i);
