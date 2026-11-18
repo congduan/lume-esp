@@ -13,6 +13,7 @@ const {
   OpenAICompatibleUpstream, UPLINK_BYTES,
   pcm16StereoToWav, resample24kMonoTo16kStereo, chunkPcm, splitTextDeltas, joinUrl
 } = require('../tools/gateway/upstream-openai');
+const { createSentenceSplitter } = require('../tools/gateway/sentence-splitter');
 
 let checks = 0;
 const pass = (label) => { checks++; console.log('PASS ' + label); };
@@ -134,15 +135,16 @@ function makeUp(fake, extra = {}) {
 /* ---- fake session capturing everything the adapter emits ---------------- */
 function makeSession() {
   const st = { open: true, calls: [] };
+  const rec = (o) => { o.ts = Date.now(); st.calls.push(o); };
   const api = {
     st,
     sessionId: 's-test',
-    sendState(v) { st.calls.push({ k: 'state', v }); },
-    sendTextDelta(t, f) { st.calls.push({ k: 'delta', t, f: !!f }); },
-    sendAudio(fmt, pcm) { st.calls.push({ k: 'audio', fmt, pcm: Buffer.from(pcm) }); },
-    sendError(c, m, f) { st.calls.push({ k: 'error', c, m, f: !!f }); },
-    close(c, r) { st.open = false; st.calls.push({ k: 'close', c, r }); },
-    log(...a) { st.calls.push({ k: 'log', v: a.map(String).join(' ') }); },
+    sendState(v) { rec({ k: 'state', v }); },
+    sendTextDelta(t, f) { rec({ k: 'delta', t, f: !!f }); },
+    sendAudio(fmt, pcm) { rec({ k: 'audio', fmt, pcm: Buffer.from(pcm) }); },
+    sendError(c, m, f) { rec({ k: 'error', c, m, f: !!f }); },
+    close(c, r) { st.open = false; rec({ k: 'close', c, r }); },
+    log(...a) { rec({ k: 'log', v: a.map(String).join(' ') }); },
     isOpen() { return st.open; }
   };
   return api;
@@ -262,35 +264,39 @@ function parseMultipart(buf, contentType) {
     });
   });
 
-  /* 4. TTS request body fields */
+  /* 4. TTS request body fields + per-sentence inputs (r116: was one-shot full reply) */
   await withFake(defaultHandlers(), async (fake) => {
     const up = makeUp(fake), st = makeSession();
     await drive(up, st);
-    const rec = fake.state.requests.find((r) => r.route === 'tts');
-    const body = JSON.parse(rec.body.toString());
+    const tts = fake.state.requests.filter((r) => r.route === 'tts');
+    assert.equal(tts.length, 2, 'one /audio/speech per complete sentence');
+    assert.deepEqual(tts.map((r) => JSON.parse(r.body.toString()).input),
+      ['FIRST ANSWER.', 'SECOND SENTENCE THIRD!'], 'sentences synthesized in order');
+    const body = JSON.parse(tts[0].body.toString());
     assert.equal(body.model, 'tts-1');
-    assert.equal(body.input, REPLY, 'TTS input is the full reply text');
     assert.equal(body.voice, 'alloy');
     assert.equal(body.response_format, 'pcm');
-    assert.equal(rec.headers.authorization, 'Bearer test-key');
-    pass('tts: model/input/voice/response_format=pcm + auth');
+    assert.equal(tts[0].headers.authorization, 'Bearer test-key');
+    pass('tts: one request per sentence + model/voice/format/auth');
   });
 
-  /* 5. TTS 24k->16k resample correctness + frame count */
+  /* 5. TTS resample + frame count, now applied per sentence (r116) */
   await withFake(defaultHandlers(), async (fake) => {
     const up = makeUp(fake), st = makeSession();
     await drive(up, st);
     const frames = ofKind(st, 'audio');
-    assert.equal(frames.length, 17, '64000 stereo bytes / 3840 = 17 padded frames');
+    assert.equal(frames.length, 34, 'two sentences x 17 frames each');
     assert.ok(frames.every((f) => f.pcm.length === 3840), 'every downlink frame is 3840 bytes');
-    const pcm = Buffer.concat(frames.map((f) => f.pcm));
-    for (let i = 0; i < 16000; i++) {
-      const expected = clamp16(Math.round(3 * i - 24000));
-      assert.equal(pcm.readInt16LE(i * 4), expected, 'L sample ' + i + ' matches 1.5x interpolation');
-      assert.equal(pcm.readInt16LE(i * 4 + 2), expected, 'R sample ' + i + ' = L (mono dup)');
+    for (let seg = 0; seg < 2; seg++) {
+      const pcm = Buffer.concat(frames.slice(seg * 17, seg * 17 + 17).map((f) => f.pcm));
+      for (let i = 0; i < 16000; i++) {
+        const expected = clamp16(Math.round(3 * i - 24000));
+        assert.equal(pcm.readInt16LE(i * 4), expected, 'seg' + seg + ' L sample ' + i);
+        assert.equal(pcm.readInt16LE(i * 4 + 2), expected, 'seg' + seg + ' R sample ' + i);
+      }
+      assert.ok(pcm.subarray(64000).every((b) => b === 0), 'seg' + seg + ' tail zero-padded');
     }
-    assert.ok(pcm.subarray(64000).every((b) => b === 0), 'tail zero-padded');
-    pass('tts: 24k->16k linear resample + 3840-byte frame sequence');
+    pass('tts: per-sentence 24k->16k resample + 3840-byte frame sequence');
   });
 
   /* 6. delta order + single final + concatenation (r114: one delta per SSE chunk) */
@@ -377,7 +383,8 @@ function parseMultipart(buf, contentType) {
   }, async (fake) => {
     const up = makeUp(fake, { timeoutMs: 60 }), st = makeSession();
     await drive(up, st);
-    assert.equal(fake.state.requests.filter((r) => r.route === 'tts').length, 2, 'timeout retried once');
+    assert.equal(fake.state.requests.filter((r) => r.route === 'tts').length, 4,
+      '2 sentences x 2 attempts; timeout retried once per sentence');
     assert.equal(states(st).indexOf('idle') >= 0, true, 'idle after timeout');
     const err = ofKind(st, 'error')[0];
     assert.ok(err && err.c === 'upstream_closed' && err.f === true, 'timeout -> fatal upstream_closed');
@@ -409,7 +416,8 @@ function parseMultipart(buf, contentType) {
   }, async (fake) => {
     const up = makeUp(fake), st = makeSession();
     await drive(up, st);
-    assert.equal(fake.state.requests.filter((r) => r.route === 'tts').length, 2, 'tts 5xx capped at 2');
+    assert.equal(fake.state.requests.filter((r) => r.route === 'tts').length, 4,
+      '2 sentences x 2 attempts; tts 5xx capped at 2 per sentence');
     assert.equal(ofKind(st, 'audio').length, 0, 'no audio on failed tts');
     assert.equal(states(st).indexOf('idle') >= 0, true, 'idle收口');
     pass('negative: tts 5xx -> retry cap, idle, no audio');
@@ -484,8 +492,9 @@ function parseMultipart(buf, contentType) {
     pass('sse: split-line chunks + CRLF + comment + [DONE] + accumulated TTS text');
   });
 
-  /* 18. r114: SSE disconnect after headers -> keep deltas, seal final, non-fatal,
-   *     no retry, no TTS. */
+  /* 18. r114 + r116: SSE disconnect after headers -> keep deltas, seal final,
+   *     non-fatal, no retry; residual text sealed into one sentence and its
+   *     audio is still synthesized + played (no queued sentence is lost). */
   await withFake({
     stt: () => json({ text: TRANSCRIPT }),
     chat: () => ({
@@ -508,7 +517,11 @@ function parseMultipart(buf, contentType) {
     assert.equal(deltas[deltas.length - 1].f, true, 'final seals the partial text');
     assert.ok(/truncated/.test(deltas[deltas.length - 1].t), 'truncation noted in final delta');
     assert.equal(fake.state.requests.filter((r) => r.route === 'chat').length, 1, 'no retry after stream broke');
-    assert.equal(fake.state.requests.filter((r) => r.route === 'tts').length, 0, 'tts skipped on stream error');
+    const tts = fake.state.requests.filter((r) => r.route === 'tts');
+    assert.equal(tts.length, 1, 'residual flushed at seal -> one TTS request');
+    assert.equal(JSON.parse(tts[0].body.toString()).input, 'PART ONE PART TWO',
+      'residual text synthesized after disconnect');
+    assert.equal(ofKind(st, 'audio').length, 17, 'residual audio played to completion');
     const err = ofKind(st, 'error')[0];
     assert.ok(err && err.c === 'upstream_error' && err.f === false,
       'stream break -> non-fatal upstream_error (like 401)');
@@ -565,6 +578,188 @@ function parseMultipart(buf, contentType) {
     assert.equal(fake.state.requests.filter((r) => r.route === 'tts').length, 0, 'tts skipped');
     assert.ok(states(st).indexOf('idle') >= 0, 'idle after error');
     pass('sse: non-SSE 200 -> upstream_error, no fallback deltas');
+  });
+
+  /* 21. r116: sentence splitter state machine (mixed CJK/ASCII, ellipsis, closers) */
+  {
+    const s = createSentenceSplitter();
+    assert.deepEqual(s.feed('He said "Hi." '), ['He said "Hi."'], 'closer kept with sentence');
+    assert.deepEqual(s.feed('Then left. Wait... OK?!'), ['Then left.', 'Wait...'],
+      'ellipsis held together, trailing ?! flushed at seal');
+    assert.deepEqual(s.seal(), ['OK?!'], 'residual flushed at seal');
+    assert.deepEqual(s.seal(), [], 'seal is idempotent');
+    assert.deepEqual(s.feed('ignored'), [], 'feed after seal is inert');
+    const c = createSentenceSplitter();
+    assert.deepEqual(c.feed('\u4f60\u597d\u3002Hello! (ok.) '),
+      ['\u4f60\u597d\u3002', 'Hello!', '(ok.)'], 'CJK + ASCII terminators + paren closer');
+    assert.deepEqual(c.feed('A.B'), ['A.'], 'no-space boundary splits after period');
+    assert.deepEqual(c.seal(), ['B'], 'tail without terminator flushed');
+    pass('splitter: stateful boundaries, CJK/ASCII, ellipsis, quotes, residual');
+  }
+
+  /* 22. r116: first sentence audio goes downlink BEFORE chat SSE ends */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: (rec) => ({
+      status: 200, contentType: 'text/event-stream',
+      writer: async (res) => {
+        res.write(sseEvent(chatChunk('FIRST. ')));
+        await sleep(120);
+        res.write(sseEvent(chatChunk('SECOND. ')));
+        await sleep(120);
+        res.write(sseEvent('[DONE]'));
+        rec.chatDoneAt = Date.now();
+        res.end();
+      }
+    }),
+    tts: defaultTts
+  }, async (fake) => {
+    const up = makeUp(fake), st = makeSession();
+    await drive(up, st);
+    const firstAudio = ofKind(st, 'audio')[0];
+    const finalDelta = ofKind(st, 'delta').find((d) => d.f);
+    const chatRec = fake.state.requests.find((r) => r.route === 'chat');
+    assert.ok(firstAudio && finalDelta && chatRec && chatRec.chatDoneAt,
+      'audio, final delta and chat end timestamp recorded');
+    assert.ok(firstAudio.ts < chatRec.chatDoneAt,
+      'first audio precedes chat SSE [DONE] (streaming benefit, direct evidence)');
+    assert.ok(firstAudio.ts < finalDelta.ts, 'first audio precedes the final text delta');
+    assert.equal(ofKind(st, 'audio').length, 34, 'both sentences played');
+    pass('streaming: first audio before chat SSE end + final delta');
+  });
+
+  /* 23. r116: multiple sentences keep TTS request order and audio frame order */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => sseChat(['ONE. ', 'TWO. ', 'THREE. ']),
+    tts: (rec) => {
+      rec.hitAt = Date.now();
+      return { status: 200, contentType: 'application/octet-stream', body: ttsPcm(), delayMs: 20 };
+    }
+  }, async (fake) => {
+    const up = makeUp(fake), st = makeSession();
+    await drive(up, st);
+    const tts = fake.state.requests.filter((r) => r.route === 'tts');
+    assert.deepEqual(tts.map((r) => JSON.parse(r.body.toString()).input),
+      ['ONE.', 'TWO.', 'THREE.'], 'TTS requests in sentence order');
+    assert.ok(tts[1].hitAt - tts[0].hitAt >= 15 && tts[2].hitAt - tts[1].hitAt >= 15,
+      'serial: next request only after prior 20ms response completed');
+    const frames = ofKind(st, 'audio');
+    assert.equal(frames.length, 51, '3 sentences x 17 frames');
+    for (let i = 1; i < frames.length; i++) {
+      assert.ok(frames[i].ts >= frames[i - 1].ts, 'audio frames ordered by emission time');
+    }
+    pass('streaming: sentence order + serial TTS + 51-frame sequence');
+  });
+
+  /* 24. r116: one failing sentence is skipped, later sentences still play */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => sseChat(['GOOD ONE. ', 'BAD TWO. ', 'GOOD THREE. ']),
+    tts: (rec) => {
+      const input = JSON.parse(rec.body.toString()).input;
+      if (input === 'BAD TWO.') return { status: 502, body: Buffer.from('boom') };
+      return { status: 200, contentType: 'application/octet-stream', body: ttsPcm() };
+    }
+  }, async (fake) => {
+    const up = makeUp(fake), st = makeSession();
+    await drive(up, st);
+    const tts = fake.state.requests.filter((r) => r.route === 'tts');
+    assert.deepEqual(tts.map((r) => JSON.parse(r.body.toString()).input),
+      ['GOOD ONE.', 'BAD TWO.', 'BAD TWO.', 'GOOD THREE.'],
+      'failing sentence retried once then skipped');
+    assert.equal(ofKind(st, 'audio').length, 34, 'the two good sentences played');
+    assert.equal(ofKind(st, 'error').length, 0, 'a skipped sentence is not a turn error');
+    assert.deepEqual(states(st), ['thinking', 'speaking', 'idle'], 'clean state progression');
+    assert.equal(ofKind(st, 'close')[0].c, 1000, 'clean close');
+    assert.ok(ofKind(st, 'log').some((l) => /openai\.tts\.skip/.test(l.v)), 'skip logged');
+    pass('streaming: single sentence TTS failure skipped, rest continue');
+  });
+
+  /* 25. r116: chat SSE break -> already-queued sentences still finish playing */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => ({
+      status: 200, contentType: 'text/event-stream',
+      writer: async (res) => {
+        res.write(sseEvent(chatChunk('FIRST. ')));
+        await sleep(10);
+        res.write(sseEvent(chatChunk('SECOND. ')));
+        await sleep(10);
+        res.destroy();                 /* abrupt: no [DONE] */
+      }
+    }),
+    tts: defaultTts
+  }, async (fake) => {
+    const up = makeUp(fake), st = makeSession();
+    await drive(up, st);
+    const tts = fake.state.requests.filter((r) => r.route === 'tts');
+    assert.equal(tts.length, 2, 'both queued sentences synthesized despite chat break');
+    assert.equal(ofKind(st, 'audio').length, 34, 'both sentences played to completion');
+    const deltas = ofKind(st, 'delta');
+    assert.ok(/truncated/.test(deltas[deltas.length - 1].t), 'truncated final delta retained (r114)');
+    const err = ofKind(st, 'error')[0];
+    assert.ok(err && err.c === 'upstream_error' && err.f === false, 'non-fatal error retained');
+    assert.equal(ofKind(st, 'close')[0].c, 1000, 'clean close after audio');
+    pass('streaming: chat break -> queued sentences played + truncated final');
+  });
+
+  /* 26. r116: stop() aborts in-flight TTS, drops not-started sentences, clean close */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => ({
+      status: 200, contentType: 'text/event-stream', chunkDelayMs: 40,
+      chunks: [
+        sseEvent(chatChunk('FIRST. ')), sseEvent(chatChunk('SECOND. ')),
+        sseEvent(chatChunk('THIRD. ')), sseEvent('[DONE]')
+      ]
+    }),
+    tts: (rec) => {
+      const input = JSON.parse(rec.body.toString()).input;
+      return input === 'FIRST.'
+        ? { status: 200, contentType: 'application/octet-stream', body: ttsPcm() }
+        : { status: 200, contentType: 'application/octet-stream', body: ttsPcm(), delayMs: 400 };
+    }
+  }, async (fake) => {
+    const up = makeUp(fake, { silenceTimeoutMs: 15 }), st = makeSession();
+    up.start(st);
+    up.sendAudio(makeFrame(0));         /* silence timer starts the pipe */
+    await waitFor(() => ofKind(st, 'audio').length >= 17, 'first sentence audio', 3000, st);
+    await waitFor(() => fake.state.requests.filter((r) => r.route === 'tts').length >= 2,
+      'second TTS in flight', 3000, st);
+    up.stop();
+    up.stop();                          /* idempotent */
+    await waitIdle(st);
+    const tts = fake.state.requests.filter((r) => r.route === 'tts');
+    assert.equal(tts.length, 2, 'third sentence never started (queue dropped)');
+    assert.equal(ofKind(st, 'audio').length, 17, 'first segment retained, second aborted');
+    assert.equal(ofKind(st, 'error').length, 0, 'user stop is not an error');
+    assert.deepEqual(states(st), ['thinking', 'speaking', 'idle'], 'clean state progression');
+    assert.equal(ofKind(st, 'close')[0].c, 1000, 'close(1000)');
+    pass('streaming: stop abort in-flight TTS + drop queue + clean close');
+  });
+
+  /* 27. r116: stop() after chat sealed but TTS in flight -> clean close, no error */
+  await withFake({
+    stt: () => json({ text: TRANSCRIPT }),
+    chat: () => sseChat(['ONLY ONE. ']),       /* chat sealed immediately */
+    tts: () => ({ status: 200, contentType: 'application/octet-stream', body: ttsPcm(), delayMs: 400 })
+  }, async (fake) => {
+    const up = makeUp(fake, { silenceTimeoutMs: 15 }), st = makeSession();
+    up.start(st);
+    up.sendAudio(makeFrame(0));               /* silence timer starts the pipe */
+    await waitFor(() => ofKind(st, 'delta').some((d) => d.f), 'chat final delta', 3000, st);
+    await waitFor(() => fake.state.requests.filter((r) => r.route === 'tts').length >= 1,
+      'tts in flight', 3000, st);
+    up.stop();
+    await waitIdle(st);
+    const tts = fake.state.requests.filter((r) => r.route === 'tts');
+    assert.equal(tts.length, 1, 'no retry after stop');
+    assert.equal(ofKind(st, 'audio').length, 0, 'aborted before any frame');
+    assert.equal(ofKind(st, 'error').length, 0, 'user stop is not an error');
+    assert.deepEqual(states(st), ['thinking', 'idle'], 'clean state progression');
+    assert.equal(ofKind(st, 'close')[0].c, 1000, 'close(1000)');
+    pass('streaming: stop after chat sealed aborts TTS -> clean close, no error');
   });
 
   console.log('ALL GATEWAY UPSTREAM CASES PASSED (' + checks + ' cases)');
