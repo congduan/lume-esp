@@ -51,6 +51,25 @@ jobs:
       - name: Install CLI dependencies
         run: npm ci --prefix tools/lume
 
+      # r111: the r91/r96 crypto harnesses (tests/crypto.js, tests/ota_auth.js)
+      # compile the firmware's lume_crypto.c against a real mbedTLS. Locally
+      # they use the ESP-IDF component copy (/opt/esp/...), which a CI runner
+      # does not have — this red "Host regression matrix" three runs in a row
+      # (r96 OTA merge onward) while the same harnesses stayed green on the
+      # dev box, i.e. a latent CI-only breakage. Provision the same minimal
+      # closure from a pinned upstream tarball instead: mbed-TLS v3.6.2 is the
+      # generation ESP-IDF v5.5.5 ships (same minimal-config header applies),
+      # verified locally: both harnesses pass against this exact tarball.
+      # LUME_MBEDTLS_ROOT overrides the hardcoded IDF fallback in both files.
+      - name: Provision pinned mbedTLS (crypto harness closure)
+        run: |
+          set -euo pipefail
+          curl -sL --fail -o /tmp/mbedtls.tar.gz \
+            https://github.com/Mbed-TLS/mbedtls/archive/refs/tags/v3.6.2.tar.gz
+          echo "f4a876b1f6921ad0aefb445f974ef62414d33928640b2c45555c5e64a196a1a8  /tmp/mbedtls.tar.gz" | sha256sum --check -
+          mkdir -p /tmp/mbedtls && tar xzf /tmp/mbedtls.tar.gz -C /tmp/mbedtls --strip-components=1
+          echo "LUME_MBEDTLS_ROOT=/tmp/mbedtls" >> "$GITHUB_ENV"
+
       # 22 standalone CommonJS harnesses. They read repo-root-relative paths
       # (e.g. firmware/components/lume-engine/lume_scripts.c, examples/*/app.js)
       # and files_dialog.js requires esbuild from tools/lume/node_modules, so

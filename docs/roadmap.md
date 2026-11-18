@@ -1356,3 +1356,27 @@ artifact 均上传，但 Release 资产只从默认 2.16 job 组装（扁平五�
 firmware.yml push 触发自行验证，三板绿 + 板宏证据齐全即闭环）；三板真机验收
 仍全部 deferred；运行时切板仍 out of scope；M5 "Board abstraction" 的 HAL 收敛
 仍 `[ ]`（本轮只闭环其 CI 半边）。commits 拆分（ci/docs）、推送。
+
+### r111 result — tests.yml 修复：crypto harness 的 mbedTLS 闭包在 CI 可复现（appended, milestone checkboxes untouched）
+
+主控轮顺手修复：`Host regression matrix` 自 r96 OTA 合入起连续 3 次 failure
+（44312373088 / 44319740684 / 44330891041，均死于 "JS host harnesses" 第 14 项
+`tests/crypto.js`：`mbedtls/sha256.h: No such file or directory`）。根因是
+r91/r96 两个 crypto harness（`tests/crypto.js`、`tests/ota_auth.js`）把 mbedTLS
+根路径 hardcode 成 `/opt/esp/esp-idf/components/mbedtls/mbedtls`——开发机有
+ESP-IDF 所以一直绿，CI runner 没有 → 潜在 CI-only 断裂，红了两天无人察觉
+（调度轮只盯引擎，无人看 CI）。
+
+修法（覆盖式，不缩水门禁）：① 两个 harness 的 mbedTLS 根改为
+`LUME_MBEDTLS_ROOT` env 优先、IDF 路径回退（本机行为不变）；② tests.yml 新增
+"Provision pinned mbedTLS" 步骤：下载 Mbed-TLS **v3.6.2** 官方 tarball
+（sha256 校验 `f4a876b1…`，与 ESP-IDF v5.5.5 同代），解包后
+`LUME_MBEDTLS_ROOT=/tmp/mbedtls` 注入 `GITHUB_ENV`；同一 r91 最小 config 头
+编译固件同一份 `lume_crypto.c`。
+
+主控独立验证（真实执行）：pinned tarball 路径下 `node tests/crypto.js` 全绿
+（SHA-256 NIST / HMAC RFC 4231 / CRC32 / AES-CTR SP 800-38A / 偏移视图 / 错误
+契约，host 比率 60-63x）；`node tests/ota_auth.js` 56 checks 0 failures（新路径
++ 无 env 回退路径都跑过）；全量 `for t in tests/*.js` 64 文件 0 FAIL；
+`yaml.safe_load(tests.yml)` OK。诚实口径：CI 侧真绿以 push 触发的
+Host regression matrix 运行为准；本地证据只能证明 provision 步骤的正确性。
