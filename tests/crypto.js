@@ -6,7 +6,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const qjs = path.join(root, 'firmware/components/quickjs-ng');
-const mb = '/opt/esp/esp-idf/components/mbedtls/mbedtls';
+// mbedTLS root: prefer LUME_MBEDTLS_ROOT (set by CI to a pinned upstream
+// tarball, which has no ESP-IDF checkout), fall back to the local ESP-IDF
+// component copy. The r91 minimal-config host build compiles the same five
+// library sources from either; see tests.yml "Provision pinned mbedTLS".
+const mb = process.env.LUME_MBEDTLS_ROOT || '/opt/esp/esp-idf/components/mbedtls/mbedtls';
 const scratchRoot = path.join(root, 'artifacts/r91');
 fs.mkdirSync(scratchRoot, {recursive: true});
 const scratch = fs.mkdtempSync(path.join(scratchRoot, 'crypto-host-'));

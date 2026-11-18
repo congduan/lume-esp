@@ -6,7 +6,9 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
-const mb = '/opt/esp/esp-idf/components/mbedtls/mbedtls';
+// mbedTLS root: prefer LUME_MBEDTLS_ROOT (set by CI to a pinned upstream
+// tarball), fall back to the local ESP-IDF component copy. See tests.yml.
+const mb = process.env.LUME_MBEDTLS_ROOT || '/opt/esp/esp-idf/components/mbedtls/mbedtls';
 const scratchRoot = path.join(root, 'artifacts/r96');
 fs.mkdirSync(scratchRoot, { recursive: true });
 const scratch = fs.mkdtempSync(path.join(scratchRoot, 'ota-host-'));
