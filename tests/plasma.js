@@ -22,7 +22,7 @@ for (let tick = 0; tick < 6000; tick++) {
     const v = Math.hypot(p.x - old[i][0], p.y - old[i][1]);
     if (state.slow) maxSlow = Math.max(maxSlow, v); else maxNormal = Math.max(maxNormal, v);
     for (let theme = 0; theme < logic.PL_THEMES.length; theme++) {
-      for (const kind of ['body', 'core']) {
+      for (const kind of ['body', 'core', 'middle', 'edge']) {
         assert.equal(logic.PL_RINGS[theme][kind].length, 48);
         assert.ok(logic.PL_RINGS[theme][kind].includes(logic.plColor(theme, i, state.colorPhase, kind)));
       }
@@ -52,16 +52,23 @@ console.log(`PASS motion bounds 6000 ticks, speed ${maxNormal.toFixed(2)} -> ${m
 console.log('PASS palette lookup, IMU direction/fallback, idle wake and ripple expiry');
 
 const ui = runApp(app);
+const rings = [];
+ui.ctx.plSoftEllipse({ fillEllipse: (...args) => rings.push(args) }, 200, 210, 100, 80,
+  '#111111', '#222222', '#333333');
+assert.equal(rings.length, 3, 'one blob silhouette has three concentric rings');
+assert.deepEqual(rings.map(r => r.slice(0, 4).join(',')),
+  ['200,210,100,80', '200,210,90,72', '200,210,79,63']);
+assert.deepEqual(rings.map(r => r[4]), ['#111111', '#222222', '#333333']);
 function drawCount(messages) {
   return messages.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
 }
 let maxCalls = drawCount(ui.messages);
-assert.ok(maxCalls > 0 && maxCalls <= 25, `initial draw ${maxCalls}`);
+assert.ok(maxCalls > 0 && maxCalls <= 60, `initial draw ${maxCalls}`);
 for (let i = 0; i < 100; i++) {
   const start = ui.messages.length;
   ui.ctx.plTick();
   const calls = drawCount(ui.messages.slice(start));
-  assert.ok(calls > 0 && calls <= 25, `frame ${i}: ${calls}`);
+  assert.ok(calls > 0 && calls <= 60, `frame ${i}: ${calls}`);
   maxCalls = Math.max(maxCalls, calls);
 }
 assert.equal(ui.ctx.pl.gx, 0, 'no IMU keeps x gravity zero');
@@ -72,10 +79,10 @@ ui.ctx.pl.ripple = { x: 240, y: 240, age: 0 };
 const worstStart = ui.messages.length;
 ui.ctx.plFrame.set(ui.ctx.plFrame() + 1);
 const worstCalls = drawCount(ui.messages.slice(worstStart));
-assert.equal(worstCalls, 25, `worst case budget ${worstCalls}`);
+assert.equal(worstCalls, 47, `worst case budget ${worstCalls}`);
 ui.gesture(ui.ctx.plRoot, 0, 240, 240, 1000);
 ui.gesture(ui.ctx.plRoot, 2, 240, 240, 1050);
 assert.equal(ui.ctx.pl.theme, 1, 'tap changes theme');
 assert.ok(ui.ctx.pl.ripple, 'tap creates ripple');
-console.log(`PASS real prelude: <=25 calls/frame (normal max ${maxCalls}; overlap+ripple ${worstCalls}), no-IMU fallback, gesture`);
+console.log(`PASS concentric three-ring ellipses; real prelude <=60 calls/frame (normal max ${maxCalls}; overlap+ripple ${worstCalls}), no-IMU fallback, gesture`);
 console.log('ALL PLASMA HARNESS CASES PASSED');

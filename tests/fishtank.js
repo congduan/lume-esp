@@ -51,18 +51,24 @@ assert.ok(eater.phase - phaseStep > 0.12 + 0.9 * 0.19, 'tail rate rises with spe
 console.log('PASS eating removes pellet and accelerates swimming/tail');
 
 const ui = runApp(app);
+for (const [size, expected] of [[1.25, 19], [0.92, 13], [0.64, 14]]) {
+  let calls = 0;
+  const sample = { ...ui.ctx.tank.fish[0], size };
+  ui.ctx.tankFish({ fillEllipse: () => calls++, fillCircle: () => calls++ }, sample);
+  assert.equal(calls, expected, `size ${size} uses its station tier and detail budget`);
+}
 function paintCalls(messages) {
   return messages.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
 }
 const firstCalls = paintCalls(ui.messages);
-assert.ok(firstCalls > 0 && firstCalls < 200, `initial paint calls ${firstCalls}`);
+assert.ok(firstCalls > 0 && firstCalls <= 250, `initial paint calls ${firstCalls}`);
 let maxDraws = firstCalls;
 for (let i = 0; i < 90; i++) {
   const start = ui.messages.length;
   ui.ctx.tankTick();
   const count = paintCalls(ui.messages.slice(start));
   maxDraws = Math.max(maxDraws, count);
-  assert.ok(count > 0 && count < 200, `frame ${i} draw calls ${count}`);
+  assert.ok(count > 0 && count <= 250, `frame ${i} draw calls ${count}`);
 }
 const root = ui.ctx.tankRoot;
 ui.gesture(root, 0, 240, 190, 1000);
@@ -70,5 +76,5 @@ ui.gesture(root, 2, 240, 190, 1060);
 assert.equal(ui.ctx.tank.food.length, 5, 'tap creates five pellets');
 ui.ctx.tankTick();
 assert.ok(ui.messages.some(m => m[0] === 'invalidate'), 'canvas repaints');
-console.log(`PASS prelude integration: tap feeding, no errors, max draw calls/frame=${maxDraws}`);
+console.log(`PASS size tiers 6/5/6 stations; prelude integration: tap feeding, no errors, max draw calls/frame=${maxDraws} (limit 250)`);
 console.log('ALL FISHTANK HARNESS CASES PASSED');
