@@ -1192,3 +1192,37 @@ QuickJS 调试汇编遇 host swap 停滞，依 r78/r82 先例仅对 build 目录
 诚实口径：无真机 deploy/launch 校验、无新固件 emu（哨兵用预构建图像），
 端到端 mismatch 拒绝留接板轮；真机触摸/显示/功耗全部 deferred to board bring-up，
 未声称硬件验证。
+
+### r107 result — 语音网关 D 刀：协议先行 + 可插拔上游（appended, milestone checkboxes untouched）
+
+交付：`docs/voice-gateway-protocol.md`（v1 逐字段定案：hello / hello-ack / text-delta /
+state / error / text / end / pong；下行二进制 8 字节头含 version/type/format/rate/channels/
+bits/seq；上行 60 ms 裸 PCM；错误码与 WS 关闭码映射）；`tools/gateway/`（Node >=18、
+**零运行时依赖**，vendored RFC6455 握手/分帧 + 会话管理 + `UpstreamAdapter` 接口
+`start(session)/sendAudio(pcm)/sendText?/stop()`，mock 上游 canned 问答 + 正弦/静音 PCM，
+小智/三件直连各留 TODO 桩）；`tests/gateway.js` 宿主端到端 harness（10 用例）；本小节 +
+`docs/KNOWN-SIMPLIFICATIONS.md` r107 取舍。README 未动。固件零改动，未跑 `idf.py build/size`。
+
+先实证后写协议：简报称上行「16 kHz/16-bit/单声道，60 ms=960 samples=1920 B」，读码证伪——
+`runtime/types/lume.d.ts` 974/986 与 `firmware/components/lume-audio/lume_audio.c` 331 明确
+**channels 必须为 2、交错立体声、playStream 单块 ≤4608 B**，故 60 ms = 960 立体声帧 =
+**3840 B**；固件 `recordStream.chunkSamples` 仅 512/1024/2048（默认 1024=64 ms），
+设备侧需重组为 60 ms 线帧。协议按权威源码定案，harness 用 1920 B 负向用例证明该错帧被拒。
+
+验证原始输出（本轮真实执行，非推断）：
+- `node tests/gateway.js` → `PASS` ×10 + `ALL GATEWAY HARNESS CASES PASSED (10 cases)`，
+  含未 hello 先发数据 / 1920 B 错帧 / 坏 JSON / 未掩码 WS 帧 / 上游断连 / v=2 版本守卫 6 条负向用例。
+- 全量 `for t in tests/*.js; do node "$t" || echo FAIL "$t"; done` → 60 文件（基线 59 + 新增 gateway），
+  533 行 `PASS`，`FAIL count: 0`。
+- `npm test --prefix tools/lume` → `# tests 45 / # pass 44 / # fail 0 / # skipped 1`。
+- `node tools/lume/lume.js check examples/counter --no-emu` → `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- 网关 E2E smoke（mock 网关 + 模拟设备客户端双方日志）：网关侧 `[gateway] hello` → 5×
+  `uplink.pcm bytes=3840` → `turn.end` → `session.close code=1000`；设备侧 `open` → `send.hello`
+  → `hello-ack` → `send.uplink frames=5 totalBytes=19200` → 29 条 text-delta（28 字符 + final）
+  → 3 条 audio（header version=1/type=1/format=1/16000/2ch/16-bit，payload 3840 B）
+  → `state=idle` → `close`。
+
+诚实口径：mock 链路只证明协议与网关自身正确、字段/分帧/关闭/异常路径成立；
+**网关↔真实 ASR/LLM/TTS（小智官方或三件直连）未接、上游选型未拍板**，无 API key 处理；
+无 TLS/鉴权，沿用 LAN 信任模型；无真机验证、无 playStream 边收边播时延、无双 DMA 并发验收。
+可选的 app 层 `vaSetTransport` WS 工厂本轮未做（避免触碰既有 59 文件回归面）。

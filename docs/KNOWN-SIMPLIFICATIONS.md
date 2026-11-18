@@ -1,5 +1,31 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
+## r107 / 语音网关 D 刀（协议先行 + mock 上游；host 证据，无真机/无真实上游）
+
+- **上游未拍板、只做适配器接口**：网关↔上游选型（①小智官方 WS+Opus 60 ms 帧翻译；
+  ②直连 ASR/LLM/TTS 三件）用户尚未定案，本轮**不实现任何真实上游**。`tools/gateway/upstream.js`
+  里 `XiaozhiUpstream` / `DirectStackUpstream` 是显式 `NOT_IMPLEMENTED` TODO 桩，CLI 选非 mock
+  上游直接退出 2；不做臆测的 API key / 凭据 / 第三方 endpoint 处理。mock 上游用 canned 问答 +
+  合成正弦/静音 PCM（每帧 3840 B，60 ms 交错立体声）走完整设备侧链路，只证明协议与网关自身正确。
+- **协议是设备↔网关这一段，不是小智协议**：设备只讲简单双流（下行 JSON text delta + 带 8 字节头的
+  二进制音频帧；上行 60 ms 裸 PCM），Opus 翻译、ASR/LLM/TTS 全留给未来的上游适配器。网关严格校验
+  60 ms = **3840 B**（16 kHz/16-bit/2ch 交错；源证 `lume.d.ts` 974/986、`lume_audio.c` 331），
+  错帧（含简报误写的单声道 1920 B）致命关闭；固件 `recordStream` 原生 1024 帧=64 ms 块的
+  重组属 app 层工作，本轮网关不做猜测性转换。
+- **无 TLS / 无鉴权**：WS server 只监听 `127.0.0.1`，`ws://` 明文，无 token 校验、无速率限制、
+  无重放防护，定位 trusted-LAN / 本机联调。沿用 **lume-hotreload / WiFi OTA 的 AUTH 先例**
+  （见本文件 r26 节）：设备侧 token 机制当初也是 `AUTH <token>` 明文 + 启动日志打印、LAN 信任模型，
+  公网必须加 TLS（wss / 反向代理）并改为带外分发 token；本轮不引入任何设备侧 token 机制，
+  也不在 JSON 控制帧里伪造认证字段。
+- **单连接单轮、无 QoS**：一条 WS 承载一轮 turn，网关发 idle + close(1000) 结束；没有断线重连、
+  没有心跳判活（`ping/pong` 仅占位）、没有 text-delta 重传（seq 仅供设备检测丢包）。
+  WS 事件队列背压与音频帧吞吐仍待真机测量（r57 先例）。
+- **零运行时依赖的取舍**：vendored 轻量 RFC6455 握手/分帧（`tools/gateway/ws.js`），不用 `ws` npm
+  包以免引入重依赖；只支持文本/二进制/关闭/ping、7/16/64 位长度、客户端掩码、64 KiB 上限，
+  不支持 permessage-deflate / 扩展协商 / TLS 终结。
+- **未验项**：无真机、无 `idf.py build/size`（固件零改动）、无 `playStream` 边收边播时延、
+  无双 DMA 并发、无上游断线恢复；可选 app 层 `vaSetTransport` WS 工厂本轮未做。
+
 ## r71 / 本地 Web 服务（C HTTP + JS 路由，host/编译证据，无真机 WiFi 验收）
 
 - **范围**：新增 `firmware/components/lume-net/lume_webserv.c`、`lume_webserv_parse.c`、`include/lume_webserv.h`、`Kconfig.projbuild`（`CONFIG_LUME_WEB_PORT=8080`）；`lume_engine.c` 五个绑定 + 单任务 poll 桥 + app 生命周期停服；prelude `lume.net.web` JS API（`lume_scripts.c`）；`runtime/types/lume.d.ts`、`docs/hardware-api.md`；新 harness `tests/webserver.js`、`tests/webserv_parse.c`；示例 `examples/web_config/`；`README.md` 一行 + roadmap 叙事行 + 本报告。Vendored 组件未改。**playground / website / README 的 apps 计数类改动一律未做**（并行 r69/r70 收口时主控统一处理）。commits 拆分、未推送。
