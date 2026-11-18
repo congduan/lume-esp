@@ -1,0 +1,9 @@
+PASS motion bounds 6000 ticks, speed 2.55 -> 0.16 px/tick
+PASS palette lookup, IMU direction/fallback, idle wake and ripple expiry
+PASS concentric three-ring ellipses; real prelude <=60 calls/frame (normal max 46; overlap+ripple 47), no-IMU fallback, gesture
+ALL PLASMA HARNESS CASES PASSED
+PASS 60 s smoke: six fish bounded, finite, continuous, capped turn; eaten=40
+PASS food pursuit changes heading and position
+PASS eating removes pellet and accelerates swimming/tail
+PASS size tiers 6/5/6 stations; prelude integration: tap feeding, no errors, max draw calls/frame=135 (limit 250)
+ALL FISHTANK HARNESS CASES PASSED

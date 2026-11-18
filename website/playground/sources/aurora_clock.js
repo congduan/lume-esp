@@ -1,4 +1,4 @@
-/* Lume r99 aurora clock. One 480x480 RGB565 canvas; 20 Hz animation.
+/* Lume r101 aurora clock. One 480x480 RGB565 canvas; 20 Hz animation.
  * Four palette keyframes per theme are expanded once into a lookup table.
  * Each ribbon uses six overlapping ellipses and two overlap-color patches.
  * The clock widgets sit above the canvas and update only on minute changes. */
