@@ -4,6 +4,7 @@ import { basename, join, resolve } from 'node:path';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
 import { CONTROL, storeCommand, storeCommandBuffer, simpleCommand } from './protocol.js';
+import { queryFirmwareTag } from './fwtag.js';
 import { openPort } from './transport.js';
 import { openOta, OTA_PORT_DEFAULT } from './ota.js';
 import { bmpFromRgb565 } from './shot.js';
@@ -122,6 +123,15 @@ async function openDevice({ ota, token, otaPort, port }) {
  * device can report "stored" before it pays for the runtime switch. */
 async function install(device, dir, id, source) {
   const meta = await appMeta(dir);
+  /* r106: stamp the deploy manifest with the device's current API tag. If the
+   * query fails, WARN and install WITHOUT a fw field rather than fabricate a
+   * value: the device then treats the app as "unknown compatibility" (launch
+   * allowed with a WARN), which is honest and non-bricking. */
+  try {
+    meta.fw = await queryFirmwareTag(device);
+  } catch (err) {
+    process.stderr.write(`lume: WARN ${err.message}; installing without an fw tag\n`);
+  }
   /* Bytecode payloads are binary: never UTF-8-decode/re-encode them. The
    * firmware stores the raw bytes and the engine auto-detects the LQBC header
    * at eval time, so STORE/LAUNCH works for both source and bytecode. */
@@ -133,7 +143,7 @@ async function install(device, dir, id, source) {
   return stored;
 }
 
-function displayApps(lines) {
+function displayApps(lines, deviceTag = null) {
   const apps = [];
   let current = null;
   for (const line of lines) {
@@ -154,7 +164,13 @@ function displayApps(lines) {
   const width = Math.max(...apps.map(a => a.id.length));
   for (const app of apps) {
     const label = typeof app.meta.label === 'string' ? app.meta.label : '';
-    process.stdout.write(`${app.id.padEnd(width)}  ${label}\n`);
+    const fw = app.meta.fw;
+    let tag = 'fw=?';
+    if (typeof fw === 'number' || (typeof fw === 'string' && /^\d+$/.test(fw))) {
+      tag = `fw=${fw}`;
+      if (deviceTag !== null && Number(fw) !== deviceTag) tag += ' MISMATCH';
+    }
+    process.stdout.write(`${app.id.padEnd(width)}  ${label}  ${tag}\n`);
   }
   return apps;
 }
@@ -164,7 +180,10 @@ async function runApps(sub, subArg, options) {
   try {
     if (sub === 'list') {
       const reply = await device.command(simpleCommand('LIST'));
-      displayApps(reply.lines);
+      let tag = null;
+      try { tag = await queryFirmwareTag(device); }
+      catch (err) { process.stderr.write(`lume: WARN ${err.message}; mismatch status unavailable\n`); }
+      displayApps(reply.lines, tag);
     } else if (sub === 'launch') {
       await device.commandReload(simpleCommand('LAUNCH', subArg));
       process.stdout.write(`Launched ${subArg}\n`);

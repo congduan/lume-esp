@@ -6,6 +6,10 @@ export const MAGIC_DATA = 'LUME';       // payload = JS app source (eval)
 export const MAGIC_CMD = 'LUMC';        // payload = text command (see lume_cmd.h)
 export const MAGIC_BYTECODE = 'LUMB';   // r43b: payload = LQBC header + qjsc blob
 
+// r106: single-line LUMC verbs that take no id (see lume_cmd.h). FWTAG asks
+// the device for the API tag the CLI stamps into each app's meta.json "fw".
+export const FWTAG_CMD = 'FWTAG';       // answered "CMD OK fwt <TAG>"
+
 // firmware/components/lume-engine/include/lume_bytecode.h: 16-byte payload
 // header prepended to the raw `qjsc -b -C` blob. Byte offsets, not a struct.
 export const BC_MAGIC = 'LQBC';

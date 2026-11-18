@@ -20,6 +20,7 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "lume_apps.h"
+#include "lume_fwtag.h"
 #include "lume_fs.h"
 
 static const char *TAG = "lume-apps";
@@ -29,6 +30,11 @@ static const char *TAG = "lume-apps";
 #define BOOT_PATH         "apps/.boot"
 #define LIST_MAX          64
 #define APP_BUNDLE_MAX    (256u * 1024u)   /* matches LUME_FRAME_MAX_PAYLOAD */
+#define FWTAG_TEXT_MAX    24               /* decimal fw value + NUL */
+
+/* r106: bump when an app-visible contract changes (lume.d.ts surface, bridge
+ * ATTR/OP ids, prelude globals). History: 1 = initial tag (r106 baseline). */
+const unsigned long LUME_API_TAG = 1;
 
 static bool s_ready;
 static SemaphoreHandle_t s_lock;   /* recursive: public calls nest (remove) */
@@ -261,6 +267,9 @@ int lume_apps_store(const char *id, const char *meta, size_t meta_len,
     if (r >= 0) {
         r = lume_fs_write(src_path, (const uint8_t *)src, src_len, false);
     }
+    /* r106: the fw tag lives in meta.json and is written by the CLI (which
+     * queries the device via FWTAG before STORE). The firmware stores the meta
+     * verbatim here; no sidecar, no JSON parsing on the write path. */
     xSemaphoreGiveRecursive(s_lock);
     if (r == 0) {
         ESP_LOGI(TAG, "stored app '%s' (%u bytes)", id, (unsigned)src_len);
@@ -417,4 +426,44 @@ bool lume_apps_boot_id(char *out, size_t cap)
         return false;
     }
     return true;
+}
+
+/* ------------------------------------------------------------------ */
+/* r106: deploy-manifest firmware API tag (compatibility safety net)   */
+/* ------------------------------------------------------------------ */
+int lume_apps_tag_check(const char *id)
+{
+    if (!lume_apps_valid_id(id)) {
+        return LUME_APPS_ERR_ID;
+    }
+    char *meta = NULL;
+    size_t meta_len = 0;
+    int r = lume_apps_meta_read(id, &meta, &meta_len);
+    if (r < 0) {
+        /* No meta.json => no deploy manifest => unknown compatibility, same
+         * policy as an old app: allow with a WARN rather than brick it. */
+        ESP_LOGW(TAG, "app '%s' has no meta.json (pre-r106 install); "
+                      "compatibility with API tag %lu unverified",
+                      id, LUME_API_TAG);
+        return LUME_APPS_OK;
+    }
+    char fw[FWTAG_TEXT_MAX];
+    int got = lume_fwtag_extract(meta, meta_len, fw, sizeof(fw));
+    heap_caps_free(meta);
+    if (got != LUME_FWTAG_OK) {
+        /* Pre-r106 app: no fw field. Allowed with a WARN so an existing
+         * install survives a firmware update; a truly broken app still fails
+         * loudly at eval (RELOAD ERR), just less specifically. */
+        ESP_LOGW(TAG, "app '%s' has no fw tag in meta (pre-r106 install); "
+                      "compatibility with API tag %lu unverified",
+                      id, LUME_API_TAG);
+        return LUME_APPS_OK;
+    }
+    int decision = lume_fwtag_decide(fw, LUME_API_TAG);
+    if (decision == LUME_FWTAG_DECIDE_MISMATCH) {
+        ESP_LOGW(TAG, "app '%s' built for API tag %s, firmware is %lu; "
+                      "refusing launch", id, fw, LUME_API_TAG);
+        return LUME_APPS_ERR_FWTAG;
+    }
+    return LUME_APPS_OK;   /* match, or an unreadable value = unknown (allow) */
 }

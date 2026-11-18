@@ -3513,6 +3513,17 @@ static int request_launch_common(const char *id, bool want_reply)
     if (n > 0 && !lume_app_id_valid(id, n)) {
         return -1;
     }
+    /* r106: refuse an app deployed against a different firmware API tag.
+     * tag_check() logs both tag values on a mismatch and warns on old apps
+     * with no fw field. Both lume.apps.launch and the LAUNCH command land
+     * here, so this is the single runtime-launch gate. */
+    if (n > 0) {
+        int tc = lume_apps_tag_check(id);
+        if (tc == LUME_APPS_ERR_FWTAG) {
+            ESP_LOGW(TAG, "LAUNCH '%s' refused (API tag mismatch)", id);
+            return LUME_APPS_ERR_FWTAG;
+        }
+    }
 
     xSemaphoreTake(s_stage_mutex, portMAX_DELAY);
     memcpy(s_launch_req, id, n + 1);
@@ -3715,16 +3726,27 @@ static void engine_task(void *arg)
         char boot[LUME_APP_ID_MAX];
         cand_app[0] = '\0';
         if (lume_apps_boot_id(boot, sizeof(boot))) {
-            char *src = NULL;
-            size_t len = 0;
-            if (lume_apps_read(boot, &src, &len) == 0) {
-                cand_src = src;
-                cand_len = len;
-                snprintf(cand_app, sizeof(cand_app), "%s", boot);
-                ESP_LOGI(TAG, "boot app '%s' (%u bytes)", boot, (unsigned)len);
-            } else {
-                ESP_LOGW(TAG, "boot app '%s' unreadable; starting home", boot);
+            /* r106: a boot target built for another API tag is refused and
+             * falls back to the launcher/home so a firmware upgrade cannot
+             * auto-launch an incompatible app. */
+            int tc = lume_apps_tag_check(boot);
+            if (tc < 0) {
+                ESP_LOGW(TAG, "boot app '%s' tag check failed (%d); starting home",
+                         boot, tc);
                 (void)lume_apps_set_current("");
+                (void)lume_apps_set_boot("");
+            } else {
+                char *src = NULL;
+                size_t len = 0;
+                if (lume_apps_read(boot, &src, &len) == 0) {
+                    cand_src = src;
+                    cand_len = len;
+                    snprintf(cand_app, sizeof(cand_app), "%s", boot);
+                    ESP_LOGI(TAG, "boot app '%s' (%u bytes)", boot, (unsigned)len);
+                } else {
+                    ESP_LOGW(TAG, "boot app '%s' unreadable; starting home", boot);
+                    (void)lume_apps_set_current("");
+                }
             }
         }
         cand_is_home = (cand_src == NULL);

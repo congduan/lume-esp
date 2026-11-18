@@ -401,8 +401,17 @@ static void handle_cmd(reply_sink_t sink, const uint8_t *payload, size_t len)
         }
         xSemaphoreGiveRecursive(s_pending_mutex);
         if (s != 0) {
-            reply_line(sink, false, 0, "stage-oom");
+            reply_line(sink, false, 0,
+                       s == LUME_APPS_ERR_FWTAG ? "fwt-mismatch" : "stage-oom");
         }
+        break;
+    }
+    case LUME_CMD_FWTAG: {
+        /* r106: report the running firmware's API tag so the CLI can stamp
+         * meta.json with the value this firmware will accept at launch. */
+        char t[24];
+        int n = snprintf(t, sizeof(t), "%lu", LUME_API_TAG);
+        cmd_reply(sink, true, "fwt", n > 0 ? t : "", 0, NULL);
         break;
     }
     case LUME_CMD_SHOT:
