@@ -4,8 +4,12 @@
  *
  * Pins and geometry: Waveshare's 1.75C Arduino
  * examples/arduino/libraries/board_config/pin_config.h (2026-11-17).
- * Other unchanged constants reuse the 2.16 CO5300/CST92xx profile and
- * require on-device acceptance; see docs/r86-amoled-175c-report.md.
+ * The panel init table, 6-column CASET offset and mirror_x/mirror_y touch
+ * mapping were aligned with the vendor BSP in the r86 review fix (they are
+ * NOT the 2.16 values); this file is a compile-time parameter set only and
+ * all board-level acceptance stays deferred. See
+ * docs/r86-amoled-175c-report.md and docs/r109-round16-report.md (the latter
+ * also records the freestanding static assertions that lock these macros).
  *
  * Included by lume-board/include/lume_pins.h, which re-exports these names to
  * the rest of the firmware. The selected board directory is added to the
