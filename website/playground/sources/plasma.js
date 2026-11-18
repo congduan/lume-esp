@@ -7,7 +7,7 @@ var PL_BLOBS = [
   { x: 308, y: 251, rx: 105, ry: 125, ax: 27, ay: 25, fx: 0.011, fy: 0.015, phase: 1.7, color: 3 },
   { x: 155, y: 302, rx: 102, ry: 98, ax: 26, ay: 24, fx: 0.015, fy: 0.010, phase: 3.1, color: 6 },
   { x: 295, y: 348, rx: 93, ry: 86, ax: 24, ay: 23, fx: 0.009, fy: 0.014, phase: 4.5, color: 9 },
-  { x: 171, y: 119, rx: 74, ry: 82, ax: 19, ay: 19, fx: 0.016, fy: 0.011, phase: 5.4, color: 11 }
+  { x: 211, y: 163, rx: 74, ry: 82, ax: 27, ay: 24, fx: 0.016, fy: 0.011, phase: 4.7, color: 11 }
 ];
 /* The 12 positions are hand-picked RGB565-friendly stops, not runtime HSV.
  * Each blob reads a different offset in the same ring. Mix inks are pre-set. */
@@ -25,8 +25,8 @@ var PL_THEMES = [
     core: ['#EE8EAB','#F5A5AC','#FFC09A','#FFD389','#FFE29A','#FFE5A4','#FFD4A8','#FFC1B4','#F7B2C6','#EFA2CB','#EB95C4','#E98DB6'],
     mix: ['#FFE5B3','#FFD4C2','#FFB8CE','#FFF0BD'], ink: '#FFE8E2' }
 ];
-/* Expand each hand-picked 12-stop ring to 48 RGB stops once at load. Frame
- * logic only selects a string; it performs no color conversion or mixing. */
+/* Four inks per theme: core, body, middle (78% body), edge (56% body).
+ * Expand the 12-stop rings to 48 RGB stops once; frames only look up inks. */
 function plBlendColor(a, b, t) {
   var out = '#';
   for (var i = 1; i < 7; i += 2) {
@@ -38,13 +38,18 @@ function plBlendColor(a, b, t) {
 }
 var PL_RINGS = [];
 for (var plThemeIndex = 0; plThemeIndex < PL_THEMES.length; plThemeIndex++) {
-  var plR = { body: [], core: [] }, plTheme = PL_THEMES[plThemeIndex];
+  var plR = { body: [], core: [], middle: [], edge: [], haze: [] }, plTheme = PL_THEMES[plThemeIndex];
   for (var plKindIndex = 0; plKindIndex < 2; plKindIndex++) {
     var plKind = plKindIndex ? 'core' : 'body', plStops = plTheme[plKind];
     for (var plAnchor = 0; plAnchor < plStops.length; plAnchor++)
       for (var plSub = 0; plSub < 4; plSub++)
         plR[plKind].push(plBlendColor(plStops[plAnchor], plStops[(plAnchor + 1) % plStops.length], plSub / 4));
   }
+  for (var plColorIndex = 0; plColorIndex < plR.body.length; plColorIndex++) {
+    plR.middle.push(plBlendColor(plTheme.bg, plR.body[plColorIndex], 0.78));
+    plR.edge.push(plBlendColor(plTheme.bg, plR.body[plColorIndex], 0.56));
+  }
+  plR.haze = [0.16, 0.34, 0.55].map(function (t) { return plBlendColor(plTheme.bg, plTheme.haze, t); });
   PL_RINGS.push(plR);
 }
 function plClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
@@ -102,27 +107,39 @@ function plStep(s, sample) {
 /* GAME UI */
 var pl = plState(), plFrame = signal(0), plTimer = null;
 var plRoot = View({ style: { width: PL_W, height: PL_H, background: PL_THEMES[0].bg, scroll: 'none' } });
+function plSoftEllipse(ctx, x, y, rx, ry, edge, middle, body) {
+  ctx.fillEllipse(x, y, rx, ry, edge);
+  ctx.fillEllipse(x, y, Math.round(rx * 0.90), Math.round(ry * 0.90), middle);
+  ctx.fillEllipse(x, y, Math.round(rx * 0.79), Math.round(ry * 0.79), body);
+}
 var plCanvas = Canvas({ parent: plRoot, width: PL_W, height: PL_H,
   style: { position: 'absolute', x: 0, y: 0 }, onDraw: function (ctx) {
     plFrame();
     var theme = PL_THEMES[pl.theme], i, j, p, q, b, n = 0;
     ctx.fillColor(theme.bg); ctx.fillRect(0, 0, PL_W, PL_H);
-    ctx.fillEllipse(250, 230, 210, 188, theme.haze);
-    ctx.fillEllipse(244, 238, 177, 157, theme.haze2);
+    /* Four low-contrast concentric inks dissolve the old hard haze disc. */
+    ctx.fillEllipse(244, 238, 234, 213, PL_RINGS[pl.theme].haze[0]);
+    ctx.fillEllipse(244, 238, 215, 195, PL_RINGS[pl.theme].haze[1]);
+    ctx.fillEllipse(244, 238, 192, 174, PL_RINGS[pl.theme].haze[2]);
+    ctx.fillEllipse(244, 238, 165, 148, theme.haze2);
     for (i = 0; i < PL_BLOBS.length; i++) {
       p = pl.blobs[i]; b = PL_BLOBS[i];
       var body = plColor(pl.theme, i, pl.colorPhase, 'body');
-      ctx.fillEllipse(Math.round(p.x), Math.round(p.y), b.rx, b.ry, body);
+      var middle = plColor(pl.theme, i, pl.colorPhase, 'middle');
+      var edge = plColor(pl.theme, i, pl.colorPhase, 'edge');
       /* Offset lobe breaks the coin silhouette while staying close to the
-       * parent ellipse. Its beat differs from the centre Lissajous beat. */
-      ctx.fillEllipse(Math.round(p.x + b.rx * 0.64 * Math.sin(pl.phase * 0.007 + i * 1.9)),
+       * parent ellipse. Paint it first so its dark fringe cannot cross the
+       * brighter main body. Its beat differs from the centre beat. */
+      plSoftEllipse(ctx, Math.round(p.x + b.rx * 0.64 * Math.sin(pl.phase * 0.007 + i * 1.9)),
         Math.round(p.y + b.ry * 0.61 * Math.cos(pl.phase * 0.009 + i * 1.3)),
-        Math.round(b.rx * 0.62), Math.round(b.ry * 0.62), body);
+        Math.round(b.rx * 0.62), Math.round(b.ry * 0.62), edge, middle, body);
+      plSoftEllipse(ctx, Math.round(p.x), Math.round(p.y), b.rx, b.ry, edge, middle, body);
       ctx.fillEllipse(Math.round(p.x - b.rx * 0.15), Math.round(p.y - b.ry * 0.18),
         Math.round(b.rx * 0.61), Math.round(b.ry * 0.60), plColor(pl.theme, i, pl.colorPhase, 'core'));
     }
-    /* A small warm bridge at actual overlaps suggests additive fusion. Keep
-     * at most four bridges; there is no alpha and no per-frame RGB math. */
+    /* Budget: background 1 + haze 4 + 5 blobs x (3 body + 3 lobe + 1 core)
+     * + 4 bridges + ripple 1 + labels 2 = 47 calls/frame, below 60. */
+    /* A small warm bridge at actual overlaps suggests additive fusion. */
     for (i = 0; i < PL_BLOBS.length && n < 4; i++) for (j = i + 1; j < PL_BLOBS.length && n < 4; j++) {
       p = pl.blobs[i]; q = pl.blobs[j];
       var dx = p.x - q.x, dy = p.y - q.y;
