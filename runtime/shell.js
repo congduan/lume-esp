@@ -186,6 +186,23 @@
   function StatusBar(p) {
     p = p || {};
     var height = positive('StatusBar height', p.height, 56, 480);
+    /* r109: geometry used to be hard-coded to width 432 / x,y 24 (a 480px
+     * square layout). Derive it from the screen instead, reusing SafeArea's
+     * safeInsets() so a round 1.75C bar matches the inscribed safe square
+     * instead of overflowing it. Square screens keep the legacy 24px margin,
+     * which evaluates to the exact old 432x24 layout at 480px (2.16 / 1.8
+     * unchanged). No firmware or prelude change. */
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    var shape = p.shape === undefined ? 'square' : p.shape;
+    if (shape !== 'square' && shape !== 'round')
+      throw new TypeError('lume: StatusBar shape must be square or round');
+    var insets = safeInsets(shape, screen.w);
+    /* Round: the SafeArea insets already provide the margin, so the bar spans
+     * the full safe side (equal-width with a SafeArea View). Square: the
+     * classic 24px side margins; width tracks the screen so 368px-wide bars
+     * no longer overflow. */
+    var margin = shape === 'round' ? 0 : 24;
+    var barWidth = Math.max(1, screen.w - insets.left - insets.right - 2 * margin);
     var clock = signal('');
     var timer;
     if (p.clock) {
@@ -200,9 +217,10 @@
     var right = p.right === undefined ? '' : p.right;
     var id = View({ parent: p.parent, style: {
       display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-      alignItems: 'center', width: 432, height: height, padding: 0,
+      alignItems: 'center', width: barWidth, height: height, padding: 0,
       background: p.background || '#111111', scroll: 'none',
-      x: p.x === undefined ? 24 : p.x, y: p.y === undefined ? 24 : p.y,
+      x: p.x === undefined ? insets.left + margin : p.x,
+      y: p.y === undefined ? insets.top + margin : p.y,
     } }, [Text({ text: left, style: {} }), Text({ text: right, style: {} })]);
     cleanups[id] = function () { if (timer !== undefined) lume.system.clearInterval(timer); };
     return id;
