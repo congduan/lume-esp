@@ -11,7 +11,8 @@ import { promisify } from 'node:util';
 import { build } from 'esbuild';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
-import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN } from './protocol.js';
+import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN, FWTAG_CMD } from './protocol.js';
+import { queryFirmwareTag } from './fwtag.js';
 import { parseQjsVersion, qjsVersion, assertEngineVersion, queryEngineVersion, compileBytecode, localQjsc } from './bytecode.js';
 import { openOta, otaAuthLine, OTA_PORT_DEFAULT } from './ota.js';
 import { decodeShot, bmpFromRgb565 } from './shot.js';
@@ -374,6 +375,22 @@ test('STORE payload layout: verb, id, one-line meta, then raw source', () => {
   assert.equal(simpleCommand('launch', 'clock'), 'LAUNCH\tclock');
   assert.equal(simpleCommand('list'), 'LIST');
   assert.equal(simpleCommand('home'), 'HOME');
+});
+
+/* ---- r106 deploy-manifest firmware API tag (FWTAG) ---- */
+test('r106 FWTAG is an id-less LUMC verb and parses the device reply', async () => {
+  assert.equal(FWTAG_CMD, 'FWTAG');
+  assert.equal(simpleCommand(FWTAG_CMD), 'FWTAG');
+  const device = { command: async (text) => {
+    assert.equal(text, 'FWTAG');
+    return { verb: 'fwt', arg: '7', count: null, lines: [] };
+  } };
+  assert.equal(await queryFirmwareTag(device), 7);
+  // Old firmware / malformed replies surface as honest errors, never a fake 0.
+  const old = { command: async () => { throw new Error('device rejected command: verb'); } };
+  await assert.rejects(queryFirmwareTag(old), /cannot query device firmware tag/);
+  const bad = { command: async () => ({ verb: 'fwt', arg: 'x' }) };
+  await assert.rejects(queryFirmwareTag(bad), /unexpected FWTAG reply/);
 });
 
 test('OTA command round trip: STORE + LIST + LAUNCH ACKs', async () => {
