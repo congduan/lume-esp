@@ -7,7 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const out = join(root, 'website/playground');
 const require = createRequire(join(root, 'tools/lume/package.json'));
 const { build } = require('esbuild');
-const apps = ['counter', 'clock', 'games_snake', 'games_2048', 'games_breakout', 'games_tetris', 'mario', 'game_of_life', 'pet', 'calculator', 'weather', 'music_player', 'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo', 'watchface', 'async_demo', 'piano', 'compass', 'invaders', 'frogger', 'abc123', 'sokoban', 'lcd_dual', 'memory', 'minesweeper', 'golf', 'scroller', 'raycast', 'fishtank', 'particles', 'voice_assistant', 'spectrum_music', 'plasma'];
+const apps = ['counter', 'clock', 'games_snake', 'games_2048', 'games_breakout', 'games_tetris', 'mario', 'game_of_life', 'pet', 'calculator', 'weather', 'music_player', 'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo', 'watchface', 'async_demo', 'piano', 'compass', 'invaders', 'frogger', 'abc123', 'sokoban', 'lcd_dual', 'memory', 'minesweeper', 'golf', 'scroller', 'raycast', 'fishtank', 'particles', 'voice_assistant', 'spectrum_music', 'plasma', 'skyfire'];
 const source = await readFile(join(root, 'firmware/components/lume-engine/lume_scripts.c'), 'utf8');
 const start = 'const char lume_prelude_js[] =\n';
 const part = source.split(start)[1];

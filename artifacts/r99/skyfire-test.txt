@@ -1,0 +1,3 @@
+PASS collision, waves, upgrade cycle, invulnerability, player limits
+PASS real prelude, 60s smoke, draw max 70/250, fixed pools
+ALL SKYFIRE HARNESS CASES PASSED
