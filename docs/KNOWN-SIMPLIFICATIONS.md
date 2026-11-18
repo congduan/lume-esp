@@ -1387,3 +1387,28 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   emu/simulator 不能验证硬件行为（esp32sim 触摸模型与 CST9220 不匹配）。
   emu 12 s 仅证 eval_ok=2 / RELOAD ERR=0 / ui queue full=0 的 DEMO 主屏不白屏。
   详见 `docs/r95-voice-report.md`。
+
+## r96 / WiFi OTA app-push channel（HMAC-SHA256 challenge-response）
+
+- **复用 r26 transport，不新建 `lume-ota` 组件**：r26 已把 TCP 传输、token/NVS、帧
+  parser sink、回复 FIFO、engine reload 链放在 `lume-hotreload` 并与 USB 共用。拆出
+  新组件要么制造双向依赖/函数指针间接层，要么搬走共享 `lume_frame.c` 并重写所有
+  harness include——高风险低收益。`lume_frame.c/.h` 仍是 USB/TCP 唯一共享帧入口，
+  r96 只扩展其便携鉴权导线助手。这是简报允许的「明确登记为何分层」。
+- **端口 8765（非简报举例 7801）**：r26 已文档化、CLI 已默认；webserv 默认 8080，
+  Kconfig 互引注释确认无冲突。改号只会破坏既有部署。
+- **HMAC 分层**：便携层只做 hex/挑战行/AUTH 解析/常量时间比较，HMAC 数学由注入的
+  `lume_ota_hmac_fn` 提供（固件=mbedTLS，host harness=同一 mbedTLS 最小 closure，
+  CLI=node:crypto）。host 不复制密码学实现；`lume.crypto.hmacSha256` 是 JS typed-array
+  API，非固件消费路径，固件在 C 侧直接调 mbedTLS 同原语。
+- **token 首次设置 = 首启自动生成 + 串口日志 + 串口 `TOKEN <32hex>` LUMC 命令**
+  （另给 `lume.ota.setToken()`）；NVS `"lume_ota"/"token"` 合规（≤15 字符）。未接
+  `lume.net.web` 设 token：需新增 web 路由 + JS 暴露，侵入更大且非安全必需（pending）。
+- **`lume.ota` 只有 `status()/setToken()`，无 `start/stop`**：监听器由 WiFi GOT_IP 门
+  自动启停，手动开关会破坏该不变量。`lume.net.otaStatus()` 保留并加 `hmac` 字段。
+- **不做 TLS / mDNS / 固件镜像 OTA 分区**：token 不上线 + 每连接新挑战已高于 r71
+  webserv 明文 key 的水位；TLS（证书/内存/IRAM）、mDNS 发现、A/B 镜像分区登记为
+  pending / 接板后另刀。IP 仍手填。
+- **板验 deferred**：esp32sim 不建模 WiFi；counter emu 烟测只证明未破坏启动/热替换
+  链路。真 WiFi 关联、CHALLENGE/AUTH 真板往返、token 掉电持久性、实测时延/吞吐、
+  多客户端串行行为一律 deferred to board bring-up，不声称硬件验收。

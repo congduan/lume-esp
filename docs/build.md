@@ -115,7 +115,9 @@ post and the LVGL drain frees it after applying or dropping the message. Queue
 A remains 384 fixed records of at most 128 bytes each (at most 48 KiB of queue
 storage); a 257-byte string is rejected before posting.
 
-Source of truth: the shared portable codec [lume_frame.h](../firmware/components/lume-hotreload/include/lume_frame.h) / [lume_frame.c](../firmware/components/lume-hotreload/lume_frame.c). **Both** push channels — the USB RX task and each WiFi-OTA TCP connection — feed their own instance of this codec, so the wire format is literally shared, not duplicated. The CLI encoder is [protocol.js](../tools/lume/protocol.js); the r26 [host harness](../tests/ota_protocol.c) feeds CLI-produced frames into the C decoder and asserts field-by-field equality.
+Source of truth: the shared portable codec [lume_frame.h](../firmware/components/lume-hotreload/include/lume_frame.h) / [lume_frame.c](../firmware/components/lume-hotreload/lume_frame.c). **Both** push channels — the USB RX task and each WiFi-OTA TCP connection — feed their own instance of this codec, so the wire format is literally shared, not duplicated. The CLI encoder is [protocol.js](../tools/lume/protocol.js); the r26 [host harness](../tests/ota_protocol.c) feeds CLI-produced frames into the C decoder and asserts field-by-field equality. r96 extends the same portable layer with the auth wire helpers (`lume_ota_challenge_line`, `lume_ota_auth_parse`, `lume_ota_mac_verify`) used by both the firmware HMAC provider and the host harness.
+
+The r96 WiFi-OTA auth handshake (`lume deploy --host <ip>`, legacy `--ota`) is `CHALLENGE <32hex>` from the device (16 bytes from `esp_random`, fresh per connection) -> `AUTH <64hex>` = HMAC-SHA256(key = raw 16 token bytes, msg = ASCII bytes of the 32-hex challenge) computed by `node:crypto` in the CLI and by `mbedtls_md_hmac` on the device -> `AUTH OK`/`AUTH ERR`. The token is never sent on the wire; a captured reply fails against the next challenge. Frames flow only after `AUTH OK`, using the exact codec below.
 
 | Field | Firmware source | CLI source |
 |---|---|---|
@@ -156,10 +158,9 @@ The payload is little-endian row-major RGB565, `w*h*2` bytes, no stride padding:
 The C host harnesses are compiled on the host (no ESP-IDF stubs):
 
 ```bash
-gcc -std=c11 -Wall -Wextra -Werror \
-  -I firmware/components/lume-hotreload/include \
-  tests/ota_protocol.c firmware/components/lume-hotreload/lume_frame.c \
-  -o /tmp/lume_ota_protocol && /tmp/lume_ota_protocol
+# r96: OTA codec + HMAC auth harness (real mbedTLS SHA-256 HMAC, r91 config)
+node tests/ota_auth.js
+```
 
 gcc -std=c11 -Wall -Wextra -Werror \
   -I firmware/components/lume-hotreload/include \

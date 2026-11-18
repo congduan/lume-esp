@@ -1114,3 +1114,26 @@ TFT 截图 vision 自查为完整 `MODE DEMO / IDLE` 主屏、非白屏。
 无 ASR/TTS（canned prompt + beep 播报）、`MODE LIVE` 仅 harness 注入覆盖，
 真机音频/时延/触摸 barge-in 手感/功耗 deferred to board bring-up。详见
 `docs/r95-voice-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。
+
+### r96 result — WiFi OTA 推送通道 HMAC 鉴权升级（appended, milestone checkboxes untouched）
+
+M4「WiFi OTA channel」代码链路收口。读码实证：TCP 传输 + 帧解析在 r26 已落地
+（`lume_hotreload.c` 的 lwIP socket server + 便携 `lume_frame.c`），本轮真正兑现的是
+r91 `lume.crypto` 在路线图登记的消费方「OTA 鉴权」：明文 token 比对升级为
+**HMAC-SHA256 挑战-响应**（每连接 `esp_random` 16 B 挑战、token 从不上线、防重放），
+并补 `lume.ota.status()/setToken()`、`lume deploy --host <ip>`（CLI 用 node:crypto，
+复用同一 `protocol.js` 帧序列化）与串口 `lume token <32hex>` 设 token 入口。端口保持
+8765（webserv 8080 无冲突）；新组件/并入 lume-net 均不采用——transport 与共享帧 parser
+已在 r26 同处一组件，拆分会制造组件环或大规模 include 重写，登记为「明确为何分层」取舍。
+token 首次设置走既有 LUMC 命令帧的串口 `TOKEN <hex>`（最小侵入），web 路径/TLS/mDNS/
+固件镜像 OTA 未做。
+
+验证：`tests/*.js` 53 文件 0 FAIL（新增 `tests/ota_auth.js`，56 checks 0 failures，
+真实 mbedTLS HMAC 跑 RFC 4231 + CLI 向量 + 重放负向）；`apps_protocol.c` 43 checks 0 fail；
+`npm test --prefix tools/lume` 44 pass / 0 fail / 1 skipped；counter 哨兵 PASS
+（`EMU_SKIP_BUILD=1`，三件套为本次新构建镜像）；固件构建绿（QuickJS 目标按 r78/r82
+先例 `-g0`，无源码/-O2 改动），Flash Code 2,033,760（r95 实际基线 2,030,508，
++3,252）/ Flash Data 850,388 / DIRAM 247,291 / IRAM 16384 Remain 0 硬线不破 /
+Total 3,025,919。`gen_api_docs.py --check` 与 `check_website.py` 绿（137 行）。
+真 WiFi、实测时延、真板 token 流程 deferred to board bring-up，不声称硬件验收。
+详见 `docs/r96-ota-report.md` 与 KNOWN-SIMPLIFICATIONS。
