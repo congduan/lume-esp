@@ -10,8 +10,11 @@
  *                      r114: also aborts an active chat SSE read (see stop()).
  *
  * r114: the chat segment is streamed (SSE `stream:true`); each upstream
- * choices[0].delta.content becomes a real text delta immediately, and the full
- * text is accumulated for TTS. STT/TTS remain one-shot (see docs).
+ * choices[0].delta.content becomes a real text delta immediately.
+ * r116: those deltas also feed a stateful sentence splitter (see
+ * sentence-splitter.js). Every completed sentence enters a TTS queue that is
+ * drained serially, so audio for the first sentence goes downlink while chat
+ * is still streaming. STT stays one-shot (see docs).
  *
  * Turn收口 decision (evidence from server.js + protocol v1):
  *   - server.js calls stop() from _stopUpstream() on the `end` control frame
@@ -26,7 +29,11 @@
  *     that stream but never send `end`. Rationale recorded in docs.
  *
  * Error discipline: 30 s AbortController timeout per segment, at most one retry
- * (1 s gap) for transient faults, then state=idle + error. No retry storm. */
+ * (1 s gap) for transient faults, then state=idle + error. No retry storm.
+ * r116: stop() aborts an in-flight chat SSE read AND an in-flight TTS request,
+ * discards sentences that have not started, and keeps already-sent audio. */
+
+const { createSentenceSplitter } = require('./sentence-splitter');
 
 const UPLINK_FRAMES = 960;                       /* 60 ms @ 16 kHz */
 const UPLINK_BYTES = UPLINK_FRAMES * 4;           /* stereo s16le = 3840 */
@@ -152,9 +159,13 @@ class OpenAICompatibleUpstream {
     this.audioFramesIn = 0;
     this.deviceText = '';
     this.silenceTimer = null;
-    this._abort = null;
+    this._abort = null;             /* r114: chat SSE read controller */
     this._chatStreaming = false;   /* r114: true while reading the chat SSE body */
-    this._stopAborted = false;     /* r114: stop() aborted an active chat SSE read */
+    this._stopAborted = false;     /* r114/r116: stop() aborted an active read */
+    this._ttsAborts = new Set();   /* r116: in-flight TTS controllers (chat+TTS concurrent) */
+    this._ttsSplitter = null;
+    this._pipeline = null;
+    this._speaking = false;
   }
 
   /* ---- upstream interface ------------------------------------------------ */
@@ -181,15 +192,21 @@ class OpenAICompatibleUpstream {
     this.stopped = true;
     this._clearSilenceTimer();
     if (this.pipeStarted) {
-      /* r114: the only in-flight work we cancel is an active chat SSE read,
-       * when stop() arrives AFTER the pipe was started (e.g. by the silence
-       * timer) and the device says `end` / closes. Emitted deltas are kept and
-       * sealed by _chatStream; _finalize ends the turn. STT/TTS stay advisory
-       * (r113): never cancel them, never call session.close() here. */
+      /* r114/r116: when stop() arrives AFTER the pipe was started (e.g. by the
+       * silence timer) and the device says `end` / closes, abort both readers:
+       * the active chat SSE read and the in-flight TTS request. Sentences that
+       * have not started are dropped; already-sent audio stays. Emitted deltas
+       * are kept and sealed by _chatStream; _finalize does the clean收口.
+       * STT stays advisory (r113): never cancel it, never call close() here. */
+      this._stopAborted = true;
       if (this._chatStreaming && this._abort) {
-        this._stopAborted = true;
         try { this._abort.abort(); } catch (_) { /* ignore */ }
       }
+      for (const ctrl of this._ttsAborts) {
+        try { ctrl.abort(); } catch (_) { /* ignore */ }
+      }
+      const p = this._pipeline;
+      if (p) p.queue.length = 0;
       return;
     }
     /* Device-close and fatal-error paths also call stop(); the socket is gone,
@@ -227,7 +244,10 @@ class OpenAICompatibleUpstream {
   /* ---- HTTP plumbing ----------------------------------------------------- */
   async _request(stage, url, options, kind) {
     const ctrl = new AbortController();
-    this._abort = ctrl;
+    /* r116: chat and TTS now run concurrently, so the in-flight TTS
+     * controllers live in their own set; `this._abort` stays the chat reader's
+     * controller and is no longer clobbered here. */
+    if (stage === 'tts') this._ttsAborts.add(ctrl);
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
     try {
       const res = await fetch(url, Object.assign({ signal: ctrl.signal }, options));
@@ -256,7 +276,7 @@ class OpenAICompatibleUpstream {
       throw ne;
     } finally {
       clearTimeout(timer);
-      if (this._abort === ctrl) this._abort = null;
+      if (stage === 'tts') this._ttsAborts.delete(ctrl);
     }
   }
 
@@ -266,7 +286,9 @@ class OpenAICompatibleUpstream {
       try { return await fn(); }
       catch (e) {
         last = e;
-        if (!e || !e.retryable || attempt === 1) break;
+        /* r116: a stop()-induced abort is retryable by shape (timeout) but must
+         * never restart a request the device asked us to cancel. */
+        if (!e || !e.retryable || attempt === 1 || this._stopAborted) break;
         if (this.session && typeof this.session.log === 'function') {
           this.session.log('openai.retry', stage, 'attempt=2');
         }
@@ -291,12 +313,14 @@ class OpenAICompatibleUpstream {
 
   /* r114: the chat segment is a true SSE stream. `stream:true` + Accept
    * text/event-stream; each choices[0].delta.content is forwarded immediately
-   * as a text delta and accumulated for TTS. A clean [DONE]/EOF seals the text
-   * with exactly one final delta. Any interruption AFTER the SSE headers are
-   * accepted is non-fatal and non-retryable (a retry would duplicate deltas) and
-   * seals the partial text with a final delta; pre-header failures keep the
-   * r113 error mapping (§8.1.4). */
-  async _chatStream(transcript) {
+   * as a text delta. A clean [DONE]/EOF seals the text with exactly one final
+   * delta. Any interruption AFTER the SSE headers are accepted is non-fatal and
+   * non-retryable (a retry would duplicate deltas) and seals the partial text
+   * with a final delta; pre-header failures keep the r113 error mapping
+   * (§8.1.4). r116: each delta is also fed to `sink` (the sentence splitter),
+   * and `sink.seal()` is called at every final-delta point so the residual
+   * sentence is enqueued exactly when chat收口. */
+  async _chatStream(transcript, sink) {
     const parts = [];
     if (transcript) parts.push(transcript);
     if (this.deviceText) parts.push(this.deviceText);
@@ -319,6 +343,9 @@ class OpenAICompatibleUpstream {
     let emittedAny = false;
     let streaming = false;
     const seal = (note) => {
+      /* r116: flush residual sentence BEFORE the final text delta so TTS of
+       * the tail can start immediately; splitter.seal() is idempotent. */
+      if (sink && typeof sink.seal === 'function') sink.seal();
       if (emittedAny && alive()) session.sendTextDelta(note || '', true);
     };
     try {
@@ -370,6 +397,9 @@ class OpenAICompatibleUpstream {
           session.sendTextDelta(content, false);
           emittedAny = true;
           text += content;
+          /* r116: feed the splitter synchronously; a completed sentence starts
+           * its TTS request while the SSE body is still being read. */
+          if (sink && typeof sink.feed === 'function') sink.feed(content);
         }
         return false;
       };
@@ -409,6 +439,7 @@ class OpenAICompatibleUpstream {
         throw se;
       }
       /* clean end: exactly one final delta (even for an empty reply, r113). */
+      if (sink && typeof sink.seal === 'function') sink.seal();
       if (alive()) session.sendTextDelta('', true);
       return text;
     } catch (e) {
@@ -464,48 +495,145 @@ class OpenAICompatibleUpstream {
     }, 'buffer');
   }
 
-  /* ---- one full turn ----------------------------------------------------- */
+  /* ---- one full turn (r116: chat SSE + serial sentence-TTS drain) -------- */
   async _finalize() {
     if (this.pipeStarted) return;
     this.pipeStarted = true;
     this._clearSilenceTimer();
-    const session = this.session;
-    const alive = () => !!(session &&
-      (typeof session.isOpen !== 'function' || session.isOpen()));
+    const p = this._pipeline = {
+      queue: [],            /* sentences waiting for /audio/speech */
+      draining: false,      /* at most one /audio/speech request in flight */
+      chatDone: false,      /* chat SSE sealed (clean / broken / stopped) */
+      sealed: false,        /* splitter backstop flag */
+      total: 0,             /* sentences ever enqueued */
+      spoken: 0,            /* sentences whose audio fully went downlink */
+      failed: 0,            /* sentences skipped after exhausted retries */
+      lastTtsError: null,
+      finished: false,
+      resolve: null,
+      promise: null
+    };
+    p.promise = new Promise((resolve) => { p.resolve = resolve; });
+    this._speaking = false;
+
+    const splitter = createSentenceSplitter((sentence) => {
+      if (!sentence) return;
+      p.queue.push(sentence);
+      p.total++;
+      this._drainTts();
+    });
+    this._ttsSplitter = splitter;
+
+    let stopped = false;
+    let fatalErr = null;
+    let streamBreakErr = null;
     try {
       const wav = pcm16StereoToWav(Buffer.concat(this.parts, this.audioBytesIn));
       const transcript = await this._withRetry('stt', () => this._transcribe(wav));
-      if (!alive()) return;
-      /* r114: chat SSE already streamed text deltas + one final delta inline. */
-      const reply = await this._withRetry('chat', () => this._chatStream(transcript));
-      if (!alive()) return;
-      const ttsPcm = await this._withRetry('tts', () => this._speak(reply));
-      if (!alive()) return;
-
-      /* c) downlink audio first: 24k mono -> 16k stereo, 3840-byte frames. */
-      session.sendState('speaking');
-      const stereo = resample24kMonoTo16kStereo(ttsPcm);
-      for (const frame of chunkPcm(stereo)) {
-        if (!alive()) return;
-        session.sendAudio(FORMAT, frame);
+      if (this._alive()) {
+        /* chat and the TTS queue now run concurrently: _chatStream feeds the
+         * splitter, which starts _drainTts() as soon as a sentence completes. */
+        await this._withRetry('chat', () => this._chatStream(transcript, splitter));
       }
-
-      /* d) text was sealed by _chatStream; only the TTS audio frames remain. */
-      session.sendState('idle');
-      if (alive() && typeof session.close === 'function') session.close(1000, 'done');
     } catch (err) {
-      if (err && err.stoppedByUser) {
-        /* stop() aborted an active chat read: emitted deltas were already
-         * sealed by _chatStream; no error frame, clean idle + close(1000). */
-        const s = this.session;
-        if (s && (typeof s.isOpen !== 'function' || s.isOpen())) {
-          s.sendState('idle');
-          if (typeof s.close === 'function') s.close(1000, 'done');
-        }
-        return;
-      }
-      this._fail(err);
+      if (err && err.stoppedByUser) stopped = true;
+      else if (err && err.streamBreak) streamBreakErr = err;  /* r114: non-fatal */
+      else fatalErr = err;
+    } finally {
+      /* backstop: seal exactly once even if _chatStream threw before sealing */
+      if (!p.sealed) { p.sealed = true; splitter.seal(); }
+      p.chatDone = true;
+      this._finishTurn();
     }
+
+    /* join point: the turn ends only when chat is sealed AND every sentence
+     * has been synthesized or skipped. */
+    await p.promise;
+
+    /* stoppedByUser covers stop() during the chat read; _stopAborted also
+     * covers stop() landing after chat sealed but while a TTS segment is
+     * in flight (common barge-in shape). Both are clean, no error frame. */
+    if (stopped || this._stopAborted) { this._cleanClose(); return; }
+    if (fatalErr) { this._fail(fatalErr); return; }
+    if (streamBreakErr) { this._fail(streamBreakErr); return; } /* non-fatal, r114 */
+    if (p.total > 0 && p.spoken === 0 && p.failed === p.total) {
+      this._fail(p.lastTtsError || new Error('all tts sentences failed'));
+      return;
+    }
+    this._cleanClose();
+  }
+
+  _alive() {
+    const s = this.session;
+    return !!(s && (typeof s.isOpen !== 'function' || s.isOpen()));
+  }
+
+  _log(...parts) {
+    const s = this.session;
+    if (s && typeof s.log === 'function') s.log(...parts);
+  }
+
+  /* Serial TTS consumer: at most one /audio/speech request in flight. Each
+   * returned 24k mono PCM is resampled + framed immediately, so the first
+   * sentence starts playing while chat is still streaming. */
+  _drainTts() {
+    const p = this._pipeline;
+    if (!p || p.draining || this._stopAborted) return;
+    p.draining = true;
+    const self = this;
+    (async () => {
+      try {
+        while (p.queue.length) {
+          if (self._stopAborted || !self._alive()) { p.queue.length = 0; break; }
+          const sentence = p.queue.shift();
+          let pcm;
+          try {
+            pcm = await self._withRetry('tts', () => self._speak(sentence));
+          } catch (e) {
+            p.failed++;
+            p.lastTtsError = e;
+            self._log('openai.tts.skip',
+              'sentence=' + ascii(sentence).slice(0, 80), ascii(e && e.message).slice(0, 120));
+            continue;                       /* keep spoken audio; skip this sentence */
+          }
+          if (self._stopAborted || !self._alive()) { p.queue.length = 0; break; }
+          if (!Buffer.isBuffer(pcm) || pcm.length === 0) { p.failed++; continue; }
+          const stereo = resample24kMonoTo16kStereo(pcm);
+          if (!self._speaking) {
+            self._speaking = true;
+            self.session.sendState('speaking');   /* before the first audio frame */
+          }
+          for (const frame of chunkPcm(stereo)) {
+            if (self._stopAborted || !self._alive()) { p.queue.length = 0; return; }
+            self.session.sendAudio(FORMAT, frame);
+          }
+          p.spoken++;
+        }
+      } finally {
+        p.draining = false;
+        self._finishTurn();
+      }
+    })().catch((e) => {
+      /* defensive: never leave the turn hanging on an unexpected throw */
+      p.draining = false;
+      self._log('openai.tts.drain.error', ascii(e && e.message).slice(0, 160));
+      self._finishTurn();
+    });
+  }
+
+  _finishTurn() {
+    const p = this._pipeline;
+    if (!p || p.finished || !p.chatDone || p.draining) return;
+    p.finished = true;
+    if (p.resolve) p.resolve();
+  }
+
+  _cleanClose() {
+    const s = this.session;
+    if (!s) return;
+    if (typeof s.isOpen === 'function' && !s.isOpen()) return;
+    s.sendState('idle');
+    if (typeof s.close === 'function') s.close(1000, 'done');
   }
 
   _fail(err) {
