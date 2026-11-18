@@ -1547,10 +1547,13 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 
 ## r114 — chat 段 SSE 流式化（真 delta；宿主假端点证据，无真机/无出网）
 
-- **TTS 仍非流式**：chat 已改为 `stream:true` SSE 真流式，但 `/audio/speech` 仍是
-  整段回复一次性合成后按 3840 B 帧下行（边合成边播的流式 TTS deferred）。累计
-  完整文本既用于空回复判断也用于 TTS 输入；首字前仍包含完整录音时长 + STT 往返
-  + TTS 合成，真机时延预算 deferred。
+- **TTS 仍非流式（r116 已翻案）**：r114 时 `/audio/speech` 仍是整段回复一次性合成后
+  按 3840 B 帧下行。r116 已兑现该项：chat delta 经状态机切句 → 串行单在途按句 TTS
+  → 每段即刻重采样切帧下行，首句音频不再等待完整 LLM 回复 + 整段 TTS。
+  **翻案依据**：`tests/gateway_upstream.js` r116 case 21-27（切句 / 首帧早于 chat
+  收口 / 帧序 / 单句失败跳过 / 中断补播 / stop abort / chat 收口后 stop）+ 集成 smoke 实测
+  first-audio-before-chat-SSE-end（详见 `docs/voice-gateway-protocol.md` §8.1.7）。
+  真机时延预算仍 deferred。
 - **SSE 中断按非 fatal、不重试**：SSE 响应头接受之后的断连 / 读错 / 超时统一封为
   `upstream_error` 非 fatal（与 401 同类，`close(1000)`），已发 delta 保留、追加
   一条带截断标记的 `final=true`。取舍理由：重试会重复已上屏 delta，弱网下更看重
@@ -1560,9 +1563,10 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   断言继续成立、API 不破坏），但 r114 流式路径不调用它。当前**没有**非流式回退
   路径——非 `text/event-stream` 的 200 视为错误而非静默回退，理由：避免把兼容
   端点的降级掩盖成成功、也避免重复上屏。未来若引入显式非流式模式可复用该函数。
-- **stop() 语义局部收紧**：r113 的 `stop()` 完全建议性；r114 仅在"管线已由静默
-  定时器启动且 chat SSE 正在读"这一种情形复用 `AbortController` 中止读流，
-  STT / TTS 在途仍不取消。真机 barge-in（用户中途插话打断朗读）手感 deferred。
+- **stop() 语义局部收紧（r116 进一步收紧，见下）**：r113 的 `stop()` 完全建议性；
+  r114 仅在"管线已由静默定时器启动且 chat SSE 正在读"这一种情形复用
+  `AbortController` 中止读流，当时 STT / TTS 在途仍不取消。r116 起 TTS 在途同样
+  中止（已播段保留）。真机 barge-in（用户中途插话打断朗读）手感 deferred。
 - **行格式边界**：解析器覆盖空行分事件、`data:` 拼接、`:comment`、`\r\n` 与
   半行分片；未覆盖多字节 UTF-8 被截在分片边界的高级场景（`TextDecoder` 流式
   解码已按字节缓冲，正常情况安全），兼容端点的非标准 keepalive 帧 deferred。
@@ -1594,3 +1598,31 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `lume_frame.c` 字节级 harness + CLI 解析 + 构建/size 数字，不宣称板级验证。
 - **IRAM 仍在上限**：`IRAM 16384 / Remain 0` 与 r109 基线一致（未突破）；Flash Code
   2034220，较基线 2032588 +1632 B。
+
+## r116 — 按句流式 TTS（chat delta 切句 → 串行单在途合成 → 边合成边播；宿主假端点证据，无真机/无出网）
+
+- **无粘性连接 / 无跨句语调连续性**：每个完整句各自一次 `/audio/speech` POST
+  （`Connection: close`），不复用 HTTP keep-alive；兼容端点限流风险靠"串行单在途"
+  而非长连接压制。各句独立合成，句间韵律/音调不连续，可能有可听断句间隙；跨句
+  连贯（单请求边收边播 PCM）需端点支持流式 speech 响应，deferred。
+- **串行单在途**：同一时刻最多 1 个 `/audio/speech` 在途，句子队列 FIFO 消费。
+  取舍：对兼容端点最友好、音频顺序天然保证；代价是多句总时长 = 各句 RTT 之和，
+  未做并行预取。弱网下是否值得受限并发 deferred。
+- **线性插值重采样不变**：沿用 r113 的 `resample24kMonoTo16kStereo`（两点线性插值
+  + 四舍五入 + int16 clip，L=R 复制），只是从"整段一次"改为"按句多次"调用；
+  尾帧零填充到 3840 B 的口径不变。高保真重采样仍 deferred。
+- **句子边界是启发式**：`.!?。！？` + 闭合引号/括号容错 + 省略号/重复终止符合并；
+  缩写点（如 "Dr."）、无空格中英文混排、多字节 UTF-8 被截在分片边界等高级语言
+  现象未做 NLP 级处理；错切只影响 TTS 分句与上屏节奏，不丢文本、不改协议。
+- **单句失败跳过、不重试整轮**：429/5xx/超时对单句允许 1 次重试（复用 `_withRetry`），
+  仍失败则 log `openai.tts.skip` 并继续下一句；已播段保留。只有全部句子都失败才按
+  既有 `_fail` 映射。取舍：优先"尽量出声"，不为单句失败让整轮从头重来；代价是
+  用户可能听到缺句，真机容忍度 deferred。
+- **stop() 在途 TTS 与 chat 读流同等待遇**：abort 当前 TTS 请求 + 当前 chat SSE 读，
+  丢弃未开始句子，已播段保留，clean idle + close(1000)，无 error 帧；被中止请求
+  不重试。真机 barge-in（中途插话打断朗读）手感 deferred。
+- **chat SSE 中断音频补完**：已入队句子照常合成播完，final 带截断标记照旧（r114）；
+  因此 error 帧出现在全部音频之后，而不是中断瞬间。
+- **仍 open / 诚实口径**：无真机 / 无出网 / 无真实 key；全部证据来自本地假端点 +
+  host harness + 真 `cli.js` + device-sim 集成 smoke。首字时延收益有宿主时间序证据，
+  但不声称板级 playStream 实时性；固件零改动，**未跑 `idf.py build` / `idf.py size`**。

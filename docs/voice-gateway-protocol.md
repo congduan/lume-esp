@@ -202,7 +202,7 @@ stop()                    收口/中止本轮（幂等；不得回调 session.cl
 真实上游（小智 WS+Opus、ASR/LLM/TTS 三件直连）均为 TODO 桩，
 本轮不做实现，也不在协议或网关里臆测任何 API key / 凭据处理。
 
-## 8.1 上游适配器：OpenAI 兼容（r113 拍板，r114 chat 段流式化）
+## 8.1 上游适配器：OpenAI 兼容（r113 拍板，r114 chat 流式化，r116 按句流式 TTS）
 
 r113 拍板采用 **OpenAI 兼容路线** 作为首个真实上游，实现在
 `tools/gateway/upstream-openai.js`（CommonJS，零新 npm 依赖，Node 18+ 内置
@@ -239,12 +239,16 @@ OpenAI Audio API 的 `/audio/transcriptions`（Whisper 系）、`/chat/completio
    可选拼接设备 `text` 控制帧内容），并带 `stream:true` + `Accept: text/event-stream`。
    r114 起为 SSE 真流式：每个 chunk 的 `choices[0].delta.content` 即时经
    `sendTextDelta(content, false)` 下发并累计为完整回复（见 §8.1.6）。
-3. `POST {base}/audio/speech`：`body` = `model` / `input`=累计回复 / `voice` /
-   `response_format=pcm`；返回 24 kHz 16-bit mono PCM，线性插值重采样到 16 kHz
-   stereo s16le 后按 3840 B 帧序 `session.sendAudio(fmt, pcm)` 下行（帧头见 §5.2）。
-4. 文本 deltas 在第 2 步随 SSE chunk 逐段上屏，SSE 正常结束
-   （`data: [DONE]` 或 EOF）后由适配器发一条 `sendTextDelta('', true)` 收口；随后
-   TTS 音频帧下行、`state=idle`、`close(1000, done)`，不持上游长连接。
+3. `POST {base}/audio/speech`：**按句多次调用（r116）**。`body` = `model` /
+   `input`=**当前完整句**（而非累计全文）/ `voice` / `response_format=pcm`；句子由
+   §8.1.7 的切分器从 chat delta 流产出。每段返回的 24 kHz 16-bit mono PCM 立即
+   线性插值重采样到 16 kHz stereo s16le，并按 3840 B 帧序
+   `session.sendAudio(fmt, pcm)` 下行（帧头见 §5.2）；同一时刻最多 1 个在途请求，
+   串行保证音频顺序。细节见 §8.1.7。
+4. 文本 deltas 在第 2 步随 SSE chunk 逐段上屏；**第一句 TTS 完成即 `state=speaking`
+   并下行音频，不等待 chat 收口**（流式收益点）。SSE 正常结束（`data: [DONE]`
+   或 EOF）后由适配器发一条 `sendTextDelta('', true)` 收口；**全部句子播完 + chat
+   收口后**才 `state=idle`、`close(1000, done)`，不持上游长连接。
 
 `stop()` 是建议性收口（§8）：幂等、不取消已开始的响应、不调 `session.close()`；
 仅当会话仍 `isOpen()` 且已收到至少一帧音频时启动管线（设备主动 close / 致命错误
@@ -270,10 +274,13 @@ OpenAI Audio API 的 `/audio/transcriptions`（Whisper 系）、`/chat/completio
 
 ### 8.1.5 验证边界
 
-宿主 harness（`tests/gateway_upstream.js`，r114 共 20 case）用 `node:http` 本地假端点
-验证 WAV 头 / 下混、chat 请求体 + SSE 流式、重采样、delta 顺序 / 单次 final、
-split-line/`[DONE]`、断流收口、stop 中止与 401 / 超时 / 5xx 负向；集成 smoke 用
-真实 `cli.js --upstream openai` + 假 SSE 端点 + device-sim 跑通一轮。
+宿主 harness（`tests/gateway_upstream.js`，r116 共 27 case）用 `node:http` 本地假端点
+验证 WAV 头 / 下混、chat 请求体 + SSE 流式、按句 TTS 请求体与帧序、重采样、
+delta 顺序 / 单次 final、split-line/`[DONE]`、断流收口、stop 中止与 401 / 超时 /
+5xx 负向；其中 r116 新增 7 case 覆盖切句、首帧早于 chat 收口、多句串行顺序、
+单句失败跳过、chat 中断音频补完、stop abort 在途 TTS、chat 收口后 stop。集成 smoke 用
+真实 `cli.js --upstream openai` + 假 SSE 端点（慢速逐字）+ device-sim 跑通一轮，
+断言 TTS 命中 ≥2、首帧音频早于 chat SSE 结束。
 **不出网、不声称真机验证**；真机 WiFi / 时延 / 双 DMA deferred（见 KNOWN-SIMPLIFICATIONS）。
 
 ### 8.1.6 chat SSE 流式口径（r114）
@@ -294,11 +301,38 @@ split-line/`[DONE]`、断流收口、stop 中止与 401 / 超时 / 5xx 负向；
   `final=true`（文本可含截断标记）收口，按非 fatal `upstream_error` 处理
   （与 401 同类，`close(1000)`），且**不重试**——重试会重复已上屏 delta。头之前
   失败（非 200、Content-Type 不符、网络错）保持 r113 映射与 1 次重试。
-- **stop() 交互**：`stop()` 幂等；若它到达时 chat SSE 正在读（管线由静默定时器
-  先启动、`end` / 设备 close 后到），复用同一 `AbortController` 中止读流，不撤
-  已发 delta，最终 `idle` + `close(1000)`，无 error 帧。STT / TTS 在途时仍按
-  r113 建议性语义不取消。
-- **TTS**：仍为整段一次性 `/audio/speech`（输入为累计文本）；流式 TTS deferred。
+- **stop() 交互（r116 收紧）**：`stop()` 幂等；管线已启动时中止**两类**在途读流——
+  chat SSE 读与当前 TTS `/audio/speech` 请求，丢弃队列中未开始的句子，保留已播
+  音频；被中止的请求不重试（`_withRetry` 见 `_stopAborted` 即停）。不撤已发 delta，
+  最终 `idle` + `close(1000)`，无 error 帧。STT 仍按 r113 建议性语义不取消。
+- **TTS**：r114 为整段一次性 `/audio/speech`；r116 已翻案为按句流式流水线，见 §8.1.7。
+
+### 8.1.7 流式 TTS 时序（r116）
+
+- **切句**：纯 Node 状态机 `tools/gateway/sentence-splitter.js`。`feed(chunk)` 跨调用
+  缓冲，`seal()` 在 chat 收口时 flush 残留且幂等。边界为 `.!?。！？`；终止符后若紧接
+  闭合引号/括号（`"'")]}` 及 `」』）》`）或另一个终止符（`...` / `?!`），留在同一句；
+  其后遇到空白或普通字符即成句。发出的句子 trim 后作为 `input`。r113 的
+  `splitTextDeltas()` 伪切块不再参与此路径（保留为导出工具）。
+- **流水线**：chat SSE 的每个 delta 同步喂给切分器；每凑满一句即入队并触发串行消费。
+  同一时刻最多 1 个 `/audio/speech` 在途（避免兼容端点限流风暴、保证顺序）；每段
+  PCM 即刻 `resample24kMonoTo16kStereo` + `chunkPcm` 下行，不等后续句子。`speaking`
+  在第一帧前置位；`idle` + `close(1000)` 必须等 chat 已收口且队列清空。
+- **时序（文字图）**：
+  ```
+  STT(one-shot) -> chat SSE (逐字 delta) --feed--> splitter --sentence--> TTS queue
+                                                        --serial--> /audio/speech
+                        -> resample 24k->16k -> 3840B frames -> device
+        ^ first-sentence audio starts here, BEFORE chat [DONE] / final delta
+  ```
+- **并发与守卫**：Node 单线程事件循环下 chat 读与 TTS 消费并发；每段请求前、每帧
+  下行前均有 `alive()` 守卫；设备已关则停队列并中止在途请求。
+- **错误取舍**：某句 TTS 失败（429/5xx/超时，允许 1 次重试）→ 已播段保留、该句 log
+  跳过、继续后续句子；全部句子失败才按既有 `_fail` 映射。chat SSE 中断时已入队
+  句子照常合成播完，带截断标记的 final 照旧（r114 语义不变）。
+- **验证边界**：本地假端点 + host harness + 集成 smoke（慢速逐字 SSE）给出
+  "首帧音频早于 chat SSE 结束"的直接时间序证据；无真机 / 无出网 / 无真实 key，
+  真机时延与 barge-in 手感 deferred（见 KNOWN-SIMPLIFICATIONS r116）。
 
 ## 9. 版本兼容策略
 
