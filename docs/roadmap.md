@@ -1403,3 +1403,40 @@ firmware.yml 之后产的新固件全部没同步上网站。
 fw-sync 运行为准（其 firmware.yml 触发条件 workflow_run conclusion=success +
 每夜 21:00 UTC 兜底 cron 双通道，修复后首轮即可验证）。
 board-only 项不涉及（纯 CI YAML 改动，零固件/JS 变更）。
+
+### r113 result — 语音网关真实上游 OpenAI 兼容适配器（D 刀续；appended, milestone checkboxes untouched）
+
+上游二选一悬案拍板：**OpenAI 兼容路线**（合规——用户自备 key、env 注入、零 key 入
+git；生态——`/audio/transcriptions` + `/chat/completions` + `/audio/speech` 三段兼容
+端点一族通用）。落地 `tools/gateway/upstream-openai.js`：与 MockUpstream 同签名的
+`OpenAICompatibleUpstream`，CommonJS、零新 npm 依赖、Node 18 内置 fetch/FormData/
+Blob。PCM 先攒后发（v1 非流式 ASR），44 B WAV 头 + 立体声下混单声道，TTS 24k mono
+线性插值重采样到 16k stereo、3840 B 帧序下行，文本按句/定长 delta 上屏，idle 收口
+不持连接。每段 30 s 超时、单轮最多 1 次重试（1 s）、429/5xx/401/超时按 §7 映射、
+不挂死不重试风暴。`stop()` 时序先读码实证：server.js `end` 控制经 `_stopUpstream()`
+触发（协议 §4.6 即收口本轮），但设备 close / 致命错误也调 → 用 `isOpen()` + 音频帧
+计数 + 静默兜底定时器守卫；`stop()` 幂等、不取消在途响应、不调 `session.close()`。
+下行接口实证为 `session.sendAudio(fmt, pcm)`（无 `sendAudioOut`）。
+
+CLI 接线 `--upstream openai` + `OPENAI_*` env（BASE_URL / API_KEY / STT / CHAT / TTS /
+VOICE / 可选 CHAT_BASE_URL）；无 key 报清晰错误 exit 2，`mock` 默认不变。零新依赖、
+零固件/JS runtime 改动。docs 补协议 §8.1、KNOWN-SIMPLIFICATIONS 登记、示例 README
+同步。commits 拆分（upstream / test / docs），不推送（主控轮负责 push）。
+
+验证（原始输出见本轮会话）：
+- `node tests/gateway_upstream.js` 16/16 PASS（WAV 头/下混、chat 体、chat base 覆盖、
+  TTS 体、24k→16k 重采样、帧数、delta 顺序/final、idle 收口、401/5xx/超时负向、
+  429 恢复、零音频、stop 幂等）。
+- `node tests/gateway.js` 10/10、`node tests/va_ws.js` 6/6 不回归。
+- 全量 `for t in tests/*.js` 64 文件 0 FAIL（本地 `node_modules` 用已有安装软链，
+  未装依赖、未入 git）。
+- `npm test --prefix tools/lume` 46 tests / 0 fail（45 pass + 1 skipped）；
+  `lume check examples/voice_assistant --no-emu` 与 counter 哨兵 `--no-emu` 双 PASS。
+- 集成 smoke：真实 `cli.js --upstream openai` + 本地假端点 + device-sim 一轮全通
+  （hello → uplink×5 → end → delta×3 → audio×17 → idle → close 1000），假端点命中
+  stt=1/chat=1/tts=1，双方日志见本轮会话。
+
+诚实口径：无真机、不出网、无真实 API key / 端点；真机 WiFi、时延预算、双 DMA
+并发、barge-in 中断上游全部 deferred。宿主假端点证据为准。零固件改动，`lume check
+examples/counter` 全 emu 模式在本 worktree 报 emulator 120s timeout（与本轮改动无关，
+`--no-emu` 哨兵 PASS）。

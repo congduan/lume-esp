@@ -202,6 +202,76 @@ stop()                    收口/中止本轮（幂等；不得回调 session.cl
 真实上游（小智 WS+Opus、ASR/LLM/TTS 三件直连）均为 TODO 桩，
 本轮不做实现，也不在协议或网关里臆测任何 API key / 凭据处理。
 
+## 8.1 上游适配器：OpenAI 兼容（r113 拍板并落地）
+
+r113 拍板采用 **OpenAI 兼容路线** 作为首个真实上游，实现在
+`tools/gateway/upstream-openai.js`（CommonJS，零新 npm 依赖，Node 18+ 内置
+`fetch` / `FormData` / `Blob` / `AbortController`）。选型理由：①合规——不使用任何
+绕过/爬取手段，用户自备 API key、网关侧 env 注入，零 key 不进 git；②生态——
+OpenAI Audio API 的 `/audio/transcriptions`（Whisper 系）、`/chat/completions`、
+`/audio/speech` 三段有大量兼容端点（本地 faster-whisper / piper 服务、各类聚合网关
+都按此规范开放），一份适配器服务一族上游。小智协议上游仍留桩（`XiaozhiUpstream`
+`NOT_IMPLEMENTED`）。
+
+### 8.1.1 env 配置（CLI `--upstream openai`）
+
+| env | 默认值 | 说明 |
+|---|---|---|
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | 三段共用 base URL，兼容端点填这里。 |
+| `OPENAI_API_KEY` | （必填） | 缺失则 CLI 报清晰错误并 `exit 2`，与旧 stub 同风格；不进 git / docs 硬编码。 |
+| `OPENAI_STT_MODEL` | `whisper-1` | transcription 模型。 |
+| `OPENAI_CHAT_MODEL` | `gpt-4o-mini` | chat 模型。 |
+| `OPENAI_TTS_MODEL` | `tts-1` | speech 模型。 |
+| `OPENAI_TTS_VOICE` | `alloy` | speech voice。 |
+| `OPENAI_CHAT_BASE_URL` | （空） | 可选：独立覆盖 LLM 端点，仅 chat 段改打此处，stt/tts 仍走 `OPENAI_BASE_URL`。 |
+
+`--upstream mock` 仍是默认，行为不变（r107 canned 问答 + 合成 PCM）。
+
+### 8.1.2 三段映射与收口时序
+
+一轮内上行 60 ms PCM 帧（3840 B / 帧）**先攒后发**：`sendAudio()` 只累积，
+不做流式 ASR；`stop()`（由 `end` 控制帧经 `_stopUpstream()` 触发，见 §4.6）作为
+本轮收口信号启动一次三段 one-shot 管线：
+
+1. `POST {base}/audio/transcriptions`：multipart `file` = PCM 包的 44 B 头 WAV
+   （立体声下混单声道、16 kHz / 16-bit），`model` = STT 模型；取 `text` 为转写。
+2. `POST {chat_base}/chat/completions`：`messages` = system 提示词 + user（转写文本，
+   可选拼接设备 `text` 控制帧内容）；取 `choices[0].message.content` 为回复。
+3. `POST {base}/audio/speech`：`body` = `model` / `input`=回复 / `voice` /
+   `response_format=pcm`；返回 24 kHz 16-bit mono PCM，线性插值重采样到 16 kHz
+   stereo s16le 后按 3840 B 帧序 `session.sendAudio(fmt, pcm)` 下行（帧头见 §5.2）。
+4. 文本回复按句/定长切成 `sendTextDelta()` 逐段上屏，末段 `final=true`；随后
+   `state=idle`，一轮完成即 `close(1000, done)`，不持上游长连接。
+
+`stop()` 是建议性收口（§8）：幂等、不取消已开始的响应、不调 `session.close()`；
+仅当会话仍 `isOpen()` 且已收到至少一帧音频时启动管线（设备主动 close / 致命错误
+也调 `stop()`，此时不启动）。另设**静默兜底定时器**（默认 3000 ms，每帧重置）：
+设备只发音频但不发 `end` 时也能收口，避免轮悬空。
+
+### 8.1.3 24k → 16k 重采样口径（`resample24kMonoTo16kStereo`）
+
+- 输入 24 kHz mono s16le；输出 16 kHz stereo s16le（L=R 复制单声道）。
+- 输出样本数 `floor(inSamples × 16000/24000)`；输出第 `i` 点源位置 `i × 1.5`，
+  取 `floor` 与 `floor+1` 两点线性插值后四舍五入、clip 到 int16。
+- 下行按 3840 B（960 stereo 帧）切帧，尾帧零填充到 3840 B；帧头 format=1 /
+  rate=16000 / channels=2 / bits=16（§5.2），单帧负载 ≤4608 的固件上限满足。
+
+### 8.1.4 错误与超时映射（§7 口径）
+
+- 每段 30 s `AbortController` 超时；超时按 `upstream_closed`（fatal）处理。
+- HTTP 非 2xx：429 / 5xx 视为可重试瞬断，最多 **1 次重试**（间隔 1 s），仍失败按
+  `upstream_error`（fatal）上抛；401 等其它 4xx 不重试，按 `upstream_error`
+  （非 fatal）上抛。网络错按 `upstream_closed`（fatal）。
+- 任一段失败都回 `state=idle` + `error` 帧，不挂死、不重试风暴；fatal 由网关按
+  §6 关 1011，非 fatal 由适配器收尾 `close(1000, done)`。
+
+### 8.1.5 验证边界
+
+宿主 harness（`tests/gateway_upstream.js`）用 `node:http` 本地假端点验证 WAV 头 /
+下混、chat 请求体、重采样、delta 顺序、idle 收口与 401 / 超时 / 5xx 负向；
+集成 smoke 用真实 `cli.js --upstream openai` + 假端点 + device-sim 跑通一轮。
+**不出网、不声称真机验证**；真机 WiFi / 时延 / 双 DMA deferred（见 KNOWN-SIMPLIFICATIONS）。
+
 ## 9. 版本兼容策略
 
 - v1 为冻结基线；新增字段只能追加，旧字段语义不得改变。

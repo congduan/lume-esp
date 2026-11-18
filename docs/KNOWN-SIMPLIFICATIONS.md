@@ -1518,3 +1518,29 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   runner）不需要；未改任何 vendored/工程编译选项。
 - **仍 open**：三板真机验收全部 deferred；运行时切板不做；M5
   "Board abstraction" 的板级 HAL 收敛仍 open（本轮只闭环 CI 矩阵）。
+
+## r113 / OpenAI 兼容上游适配器（三段 one-shot；host 假端点证据，无真机/无出网）
+
+- **无流式 ASR / 无流式 TTS**：上行 60 ms 帧流在网关侧**先攒后发**——整轮音频收齐
+  （`stop()` 收口或静默兜底）后一次性 POST `/audio/transcriptions`；TTS 也是整段回复
+  一次性合成再下行，不是边合成边播。取舍：v1 协议无上行分片 ASR 语义，先攒后发实现
+  简单且对兼容端点要求最低；代价是首字时延 = 完整录音时长 + 三段串行 HTTP。真机
+  时延预算 deferred，宿主不声称实时性。
+- **无 barge-in 中断上游**：`stop()` 按 §8 是建议性收口——幂等、不取消已在途的三段
+  管线、不调 `session.close()`。设备中途说话/再次 `end` 不会打断已开始的上游请求；
+  一轮管线跑完才 idle + close。真机触摸 barge-in 手感 deferred。
+- **音频重采样为线性插值**：TTS 24 kHz mono → 16 kHz stereo 用两点线性插值 + 四舍五入
+  + int16 clip（工具函数 `resample24kMonoTo16kStereo` 独立可测），非高质量多相/窗函数
+  重采样；尾帧零填充到 3840 B。对语音频段足够，但不承诺音频保真度；高保真重采样
+  deferred。立体声下混为 L/R 均值（单声道），不保留声像。
+- **静默兜底定时器有取舍**：`stop()` 由 `end` 触发最准确，但设备只发音频不发 `end`
+  会悬空，故加默认 3000 ms 静默定时器（每帧重置）兜底收口。若设备说话中停顿 >3 s，
+  可能提前收口——v1 接受该风险；真机停顿分布未测。
+- **错误映射按协议 §7 简化**：429/5xx/超时/网络错为 fatal（`upstream_error` /
+  `upstream_closed`，关 1011），401 等 4xx 为非 fatal（适配器 `close(1000)`）；单段最多
+  1 次重试（1 s）。无指数退避、无熔断、无跨轮状态；聚合网关的差异化错误码未逐一适配。
+- **无真机 / 无出网 / 无真实 key**：全部证据来自 `node:http` 本地假 OpenAI 端点 +
+  `cli.js --upstream openai` + device-sim 集成 smoke。真实 API key、真实端点地址不进
+  git / docs 硬编码；真机 WiFi 稳定性、playStream 边收边播时延、双 DMA 并发全部
+  deferred。可选 `OPENAI_CHAT_BASE_URL` 只覆盖 LLM 端点，未验证所有兼容网关的
+  `/chat/completions` 差异。

@@ -22,6 +22,17 @@
    CLI 默认端口是 **8765**；app 顶部常量 `VA_GATEWAY_URL` 默认是
    `ws://192.168.1.50:18770/`（LAN 占位地址）。两者必须对齐。
 
+   要接真实上游（OpenAI 兼容，需用户自备 key）：
+
+   ```bash
+   OPENAI_API_KEY=... OPENAI_BASE_URL=https://api.openai.com/v1 \
+     node tools/gateway/cli.js --upstream openai --port 8765 --host 0.0.0.0
+   ```
+
+   可选 env：`OPENAI_STT_MODEL` / `OPENAI_CHAT_MODEL` / `OPENAI_TTS_MODEL` /
+   `OPENAI_TTS_VOICE` / `OPENAI_CHAT_BASE_URL`（独立覆盖 LLM 端点）。无
+   `OPENAI_API_KEY` 时选 `openai` 会报清晰错误并 exit 2；key 不进 git / docs。
+
 2. 在设备上设置网关 URL（KV 优先于顶部常量）：
 
    ```js
@@ -57,9 +68,10 @@
 
 ## 边界与取舍（诚实口径）
 
-- 网关当前只有 **mock 上游**（canned 问答 + 合成正弦/静音 PCM）。
-  真实 ASR/LLM/TTS（小智官方或三件直连）未接、选型未拍板；无 API key / TLS /
-  鉴权，沿用 trusted-LAN 信任模型。
+- 网关默认 **mock 上游**（canned 问答 + 合成正弦/静音 PCM），另可选
+  **OpenAI 兼容上游**（r113：`--upstream openai` + `OPENAI_*` env，三段
+  `/audio/transcriptions` + `/chat/completions` + `/audio/speech`，用户自备 key）；
+  小智官方协议上游仍留桩未接。无 TLS / 鉴权，沿用 trusted-LAN 信任模型。
 - host harness（`node tests/va_ws.js`）只证明**协议字段与 app 逻辑**正确；
   真机 WiFi 下 WS 稳定性、时延预算、双 DMA 并发、触摸 barge-in 手感一律
   deferred to board bring-up，**未声称真机验证**。
