@@ -200,6 +200,28 @@ so a broken install cannot brick the device. An unhandled BACK returns to home.
 `lume.ui.shell.Launcher` defaults its app list to `lume.apps.entries()` and its
 `onLaunch` to `lume.apps.launch(id)`; passing `apps` / `onLaunch` still wins.
 
+### Optional shell safe area
+
+After importing `runtime/shell.js`, `lume.ui.shell.safeInsets(shape, size)`
+returns `{top,right,bottom,left}` in logical pixels. `shape` is `square` or
+`round`; `size` is the logical screen side/diameter. Square returns zero
+insets. Round uses a centered inscribed square of side
+`floor(size / sqrt(2))`; for 466 the side is 329 with insets
+`{top:68,right:69,bottom:69,left:68}`.
+
+`lume.ui.shell.SafeArea({shape, size, parent?, children?})` returns a View
+whose children occupy that rectangle. Shape defaults to `square`; size defaults
+to the runtime screen width. The container has no padding or gap. A direct
+child View with a known numeric width/height and x/y exceeding the round
+bounds emits one `console.warn` per SafeArea call. Percent, auto and computed
+sizes, other node types, and nested descendants cannot be checked before
+layout; review those visually. A warning does not prevent rendering.
+
+Pass the size in **logical coordinates**. In the r88 playground the 480 logical
+canvas is scaled to a 466 round preview, so pass 480 there. On a native 466
+logical screen, pass 466. See `docs/r104-safearea-report.md` for a counter
+migration example.
+
 ### Command channel
 
 Management operations travel as `LUMC` command frames on the same USB/WiFi

@@ -194,6 +194,19 @@ declare namespace lume.ui {
 
 /** Optional JS bundle module: import runtime/shell.js before using these components. */
 declare namespace lume.ui.shell {
+  interface SafeInsets { top: number; right: number; bottom: number; left: number }
+  interface SafeAreaProps {
+    parent?: lume.ui.Node;
+    /** Defaults to square. Round uses the largest centered inscribed square. */
+    shape?: 'square' | 'round';
+    /** Screen diameter/side in logical pixels; defaults to the runtime screen width. */
+    size?: number;
+    children?: lume.ui.Node[];
+  }
+  /** Insets in logical pixels; supply the screen's shape and integer diameter/side. */
+  function safeInsets(shape: 'square' | 'round', size: number): SafeInsets;
+  /** Parents children in a centered safe rectangle; warns once for known oversized View children. */
+  function SafeArea(props?: SafeAreaProps): lume.ui.Node;
   /** Surface card with 12 px corners, 16 px padding and 12 px child gap. */
   function Card(props?: {parent?: lume.ui.Node; style?: lume.ui.Style;
     children?: lume.ui.Node[]; onPress?: () => void}): lume.ui.Node;
