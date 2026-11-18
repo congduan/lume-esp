@@ -80,8 +80,13 @@ reset is GPIO2 and audio MCLK is GPIO16. Unlike the 1.8 profile, this board
 uses direct GPIO resets with no IO expander. It has no TF slot, so the profile
 defines no `LUME_PIN_SD_*` pins; SD-backed MP3/file calls return the existing
 `-2` unavailable result. The CST9217 reuses the CST92xx touch path because
-that path has no hard chip-ID check. Panel column offset 0 and touch mapping
-are provisional until on-device acceptance. See `docs/r86-amoled-175c-report.md`.
+that path has no hard chip-ID check. The r86 review fix aligned the panel init
+sequence, the 6-column CASET offset (`00 06 01 D7`) and the `mirror_x/mirror_y`
+touch mapping with the vendor 1.75C BSP. These are compile-time/vendor-source
+facts, not on-device measurements: first light-up, column offset, touch
+orientation and feel, PMIC rails and audio remain pending board bring-up.
+See `docs/r86-amoled-175c-report.md` and `docs/r109-round16-report.md` (the
+latter records the freestanding static assertions that lock these macros).
 
 ## How the selection works (ESP-IDF v5.5.5 native mechanisms)
 

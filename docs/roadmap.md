@@ -1288,3 +1288,36 @@ text-delta 逐字上屏 → 下行音频 playStream → state/idle + close 全�
 ASR/LLM/TTS 未接、选型未拍板**，无 API key / TLS / 鉴权（LAN 信任模型）。真机 WiFi 下
 WS 稳定性、时延预算、双 DMA 并发、playStream 边收边播时延、触摸 barge-in 手感 deferred
 to board bring-up，**未声称硬件验证**。commits 拆分、未推送。
+
+### r109 result — 1.75" 圆屏板 profile 复核 + 顶栏等宽 + 宿主 harness（B1；appended, milestone checkboxes untouched）
+
+基线 `bccc073`。**实证纠偏**：简报假设"1.75c 只接了 Kconfig、驱动未补齐"已被读码推翻——
+r86（HEAD 祖先）已落地 1.75c 全量 profile、CO5300 vendor init + 6 列 CASET 偏移、
+CST9217 双轴镜像映射、无 TF 卡 SD 守卫、直接 GPIO 复位（无 TCA9554），且被
+`lume_display.c` / `lume_touch.c` 现有宏路径消费；`git log -20` 无 r110 B1 半成品。
+本轮不重做，只做增量：① profile 头注释与 boards README 的过时陈述纠正；② 新增
+freestanding C 静态断言 `tests/board_175c_profile.c` 锁定第 1 节三类差异的宏契约
+（pins/IC 型号宏/几何/SD 宏缺席/无 expander/映射）；③ 新增 `tests/statusbar_round.js`。
+
+StatusBar 纯 JS 修复：移除硬编码 `width:432/x,y:24`，按 `__lumeScreen` + r104
+`safeInsets(shape, size)` 派生几何；新增可选 `shape:'square'|'round'`。480 方屏仍是
+432/24/24（2.16/1.8 不回归），368 宽屏 clamp 到 320（修复溢出），466 圆屏 round
+模式宽 329、位于 (68,68)，与 r104 SafeArea View 等宽且不越过安全方块右边界 397；
+显式 x/y 仍优先，非法 shape 抛 TypeError；`runtime/types/lume.d.ts` 同步。
+
+验证原始输出全录见 `docs/r109-round16-report.md`，摘要：模型守卫 green；双板
+`idf.py build && idf.py size` 绿——默认 2.16 Flash Code **2,032,588**（简报 r106 基线
+2,032,860，−272 B，增量≈0）/ Flash Data 850,836 / DIRAM 247,291 / IRAM 16,384/16,384
+Remain 0 / Total 3,025,195；1.75C Flash Code 1,988,068 / Flash Data 839,916 / DIRAM
+246,855 / IRAM 16,384/16,384 Remain 0 / Total 2,969,407，配置证据
+`CONFIG_LUME_BOARD_..._1_75C=y` + 32 MB flash。两板首次编译窗口内 QuickJS 正常完成、
+未现 swap 停滞，第二次增量即刻 RC=0，**未用 `-g0`**；tracked `sdkconfig` 已还原，
+worktree 无脏配置。板级静态断言 harness 7 行 PASS（含 2 条编译期 `#error` 负向守卫）；
+`statusbar_round.js` 6 用例 PASS（含 2 条负向）；全量 `tests/*.js` 63 文件 0 FAIL
+（新增 statusbar_round；缺 esbuild 依赖用主仓已声明依赖符号链接接入，未装新依赖）；
+`npm test --prefix tools/lume` 45 pass / 0 fail / 1 skip；counter 哨兵 PASS。
+
+诚实口径：无真机，全部宿主证据；触摸方向、init 序列实机正确性、PMIC/音频/复位/
+持久化/bundle 推送 deferred to board bring-up，不声称硬件验收；不做运行时切板、
+多板 CI；M5 框仍 `[ ]`。KNOWN-SIMPLIFICATIONS r109 已登记三类差异来源与
+"未真机核对"状态。commits 拆分、未推送。

@@ -1459,3 +1459,41 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **板验 deferred**：esp32sim 不建模 WiFi；counter emu 烟测只证明未破坏启动/热替换
   链路。真 WiFi 关联、CHALLENGE/AUTH 真板往返、token 掉电持久性、实测时延/吞吐、
   多客户端串行行为一律 deferred to board bring-up，不声称硬件验收。
+
+## r109 / 1.75" 圆屏板 profile 三类差异复核（编译期 + 宿主证据，仍无真机验收）
+
+- **范围与纠偏**：简报假设"1.75c 只接了 Kconfig、驱动未补齐"被读码推翻——r86
+  （HEAD 祖先）已按 Waveshare 1.75C BSP 口径补齐 profile/驱动消费路径，本轮不重做，
+  只新增 freestanding 静态断言 `tests/board_175c_profile.c` 锁定宏契约。以下三类差异
+  的"来源"均为 **r86 review fix 已核过的 Waveshare 官方例程口径**（例程原文不在仓，
+  按 r45 先例 + 现有序列自查），**不是本轮新读到的例程原文，也未真机核对**。
+- **① 触摸 IC/协议**：1.75C 装的是 **CST9217**（`CST92xx` 族，地址 0x5A 为 r86
+  继承的待探测值），复用 16-bit 寄存器 / 10 字节帧的 CST9220 路径；**不是** 1.8 V2
+  的 CST820/CST816S（0x15）/ 8-bit / 6 字节帧路径。BSP `swap_xy=0,mirror_x=1,mirror_y=1`
+  → `px=465-tx, py=465-ty`。来源：r86 review fix 对
+  `bsp/esp32_s3_touch_amoled_1_75c/esp32_s3_touch_amoled_1_75c.c:bsp_display_start`
+  的对齐（详见 `docs/r86-amoled-175c-report.md`）。`lume_touch.c` 的项目 ID 读取仅诊断、
+  无硬芯片 ID 校验，故未新增驱动分叉。**未真机核对**：触摸方向/手感/INT 行为一律
+  deferred to board bring-up。
+- **② LCD 初始化**：CO5300 466×466，6 列 CASET 偏移（`00 06 01 D7`）/ RASET `01 D1`，
+  序列 `FE,19,1C,FE,C4,3A,35,53,51,63,2A,2B,11,29`（`2B`/`11` 后各 600ms，无 MADCTL），
+  QSPI 40MHz / cmd 32-bit / param 8-bit / mode 0。来源：r86 review fix 对齐同一 BSP 的
+  `lcd_init_cmds`。`LUME_LCD_COLUMN_OFFSET` 在 `lume_display.c:334` flush 路径生效
+  （r45 先例），init 表 CASET 保留物理列起点。**未真机核对**：点屏、色彩、gap 实机效果、
+  序列时序全部 deferred。
+- **③ 其他外设路由**：**无 TF 卡槽**（`LUME_PIN_SD_*` 全未定义，SD 调用返回既有 -2）；
+  ES8311 @0x18 + ES7210 @0x40 + AXP2101 @0x34 + QMI8658 @0x6B；屏/触摸复位为
+  **直接 GPIO**（GPIO1/GPIO2），**不经 TCA9554**（`LUME_HAS_IO_EXPANDER_RESET` 未定义，
+  与 1.8 的 r45 路径相反）。来源：r86 官方 1.75C Arduino `pin_config.h` / BSP 引脚表
+  与 `413a6af`。**未真机核对**：PMIC 轨电压/上电顺序、ES7210/ES8311 音频链路、
+  复位时序与电压 deferred。
+- **顶栏等宽（纯 JS）**：StatusBar 原硬编码 432/24/24，在 368 宽屏与 466 圆屏安全区
+  溢出；改为按 `__lumeScreen` + `safeInsets` 派生，圆屏与 r104 SafeArea 等宽。
+  480 方屏逐值不变；368 方屏从溢出 432 clamp 到 320（修复，非回归）；**触摸碰撞、
+  圆屏实际裁切/观感仍 deferred to board bring-up**，宿主断言只证明下发几何正确。
+- **默认板零 C 行为改动**：本轮固件相关改动仅 profile 头注释（不进二进制）、JS、
+  harness、docs；默认 Flash Code 2,032,588 vs 简报 r106 基线 2,032,860 = −272 B，
+  IRAM 16,384/16,384 Remain 0 不超。`sdkconfig` 由 `set-target` 追加的一行已还原。
+  与 r106 逐字节相同不作承诺（r96 OTA 合入改变过代码基线）；只如实记录差值。
+- **仍 open**：运行时切板、多板 CI、以及上述全部板级真机验收；`docs/roadmap.md` 的
+  M5 "Board abstraction for additional targets" 保持 `[ ]`。
