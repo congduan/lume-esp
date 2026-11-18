@@ -1568,3 +1568,29 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   解码已按字节缓冲，正常情况安全），兼容端点的非标准 keepalive 帧 deferred。
 - **仍 open**：无真机 / 无出网 / 无真实 key；真机 WiFi、SSE 长连接稳定性、流式
   TTS、barge-in 全部 deferred；固件零改动。
+
+## r115 — 设备 REPL（串口逐行 eval）
+
+- **输出 cap = 2048 B + 截断标记**：`lume_repl_clamp()` 按字节截取并置 `trunc=1`，
+  CLI 打印 `[output truncated]`。按字节截断可能把一个多字节 UTF-8 字符切成两半，
+  解码端会显示替换字符 U+FFFD；不尝试回退到字符边界（避免为调试通道增加复杂度）。
+  base64 以 240B 一块分 `R64` 行，沿用 SHOT 的成熟串口路径。
+- **无多行续行 / 括号补全 / 历史 / 语法高亮**：每次只把一行当一个完整表达式
+  `JS_Eval(..., JS_EVAL_TYPE_GLOBAL)`；跨行对象字面量、未闭合括号会直接报语法错。
+  REPL 是调试基建加分项，不是完整 JS IDE。
+- **单 REPL slot、last-wins**：引擎侧只有一个 staging slot，新请求覆盖未消费的旧
+  请求，旧 token 收到 `ok=false / "superseded"` 回执；channel 侧 `REPL_SLOTS=8`
+  有界表把 token 映射回 sink，表满时回 `repl-busy`。正常 CLI 串行请求不会触发。
+- **PAUS 语义**：`PAUS` 只调用 app 的 `__lume_pause` hook，引擎 inner loop 不停，
+  当前 app ctx 仍然存活，所以暂停态下 REPL 照常 eval（不会隐式 resume）。
+- **app 切换过渡窗口**：`LUME_EVT_REPL` 在普通 inner loop 处理；若帧恰好落在 app
+  切换的 crossfade/teardown 接管窗口，事件会被吞掉且无回执（CLI 超时），残留 slot
+  在下一个 REPL 请求时回收。窗口很短且 REPL 是人工调试操作，接受此取舍。
+- **鉴权不新增面**：USB 沿用串口信任模型；TCP 沿用既有 HMAC challenge-response
+  + token，`LUMR` 帧只在 `AUTH OK` 之后进入同一 frame parser。REPL 能摸到 app 全局
+  与 signals，等价于把串口调试权限视作设备本地信任。
+- **端到端 deferred to board**：无真机；`tools/gateway/device-sim.js` 是 WebSocket
+  gateway 模拟而非串口 REPL 设施，无可复用 REPL 收发设施。宿主证据为真实
+  `lume_frame.c` 字节级 harness + CLI 解析 + 构建/size 数字，不宣称板级验证。
+- **IRAM 仍在上限**：`IRAM 16384 / Remain 0` 与 r109 基线一致（未突破）；Flash Code
+  2034220，较基线 2032588 +1632 B。

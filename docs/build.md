@@ -134,8 +134,24 @@ The r96 WiFi-OTA auth handshake (`lume deploy --host <ip>`, legacy `--ota`) is `
 | `LQBC` 16-byte payload header (QJS version + BC_VERSION + body_len) | `lume_bytecode.h`, `lume_engine.c:eval_bytecode_buf()` | `protocol.js:bytecodePayload()/parseBytecodePayload()` |
 | `VER` -> `CMD OK ver <MAJOR.MINOR.PATCH>` | `lume_cmd.c` / `lume_engine_version()` | `bytecode.js:queryEngineVersion()/assertEngineVersion()` |
 | Screenshot reply (`SHOT <w> <h> <bytes> <crc>` + `S64<base64>` lines + `SHOT OK`) | `lume_hotreload.c:handle_shot()`, `lume_display.c` | `shot.js:decodeShot()` |
+| REPL magic `LUMR`, same 12-byte header + CRC (r115) | `LUME_FRAME_REPL_MAGIC`, `LUME_FRAME_EV_REPL`, `lume_frame_encode_repl()` | `protocol.js:MAGIC_REPL`, `replFrame()` |
+| REPL request = one UTF-8 JS expression | `lume_hotreload.c:on_frame_event()` -> `lume_engine_request_repl()` | `lume repl [--eval]`, `transport.js:repl()` |
+| REPL reply (`REPL OK/ERR <len> <trunc>` + `R64<base64>` lines + `REPL END`) | `lume_hotreload.c:repl_reply()` | `transport.js:consumeLine()`, `protocol.js:decodeReplLines()` |
+| REPL output bound (`LUME_REPL_OUT_CAP`=2048, truncation marker) | `lume_frame.h:lume_repl_clamp()` | `protocol.js:clampReplOutput()` |
 
-Three frame kinds share one byte stream: `LUME` payloads are evaluated as app source, `LUMC` payloads are management commands and are never evaluated, `LUMB` payloads (r43b) are a `LQBC` header plus a raw qjsc bytecode blob staged through the same reload slot (the engine dispatches on the payload header at eval time, so the source path is unchanged). A command frame is answered with `CMD OK …` / `CMD ERR <reason>`; `LAUNCH`/`HOME` are answered with the engine's `RELOAD OK/ERR` because the outcome is only known after the target app evaluated. `LIST` sends one `APP\t<id>\nMETA\t<id>\t<json>\n` block per app before `CMD OK list <n>`. Old firmware treats `LUMB` as a bad magic and re-syncs; it answers `VER` with `CMD ERR verb`, which the CLI surfaces as a "update firmware" hint before any bytecode is pushed.
+Four frame kinds share one byte stream: `LUME` payloads are evaluated as app source, `LUMC` payloads are management commands and are never evaluated, `LUMB` payloads (r43b) are a `LQBC` header plus a raw qjsc bytecode blob staged through the same reload slot (the engine dispatches on the payload header at eval time, so the source path is unchanged), and `LUMR` payloads (r115) are ONE JS expression evaluated synchronously on the **current app context** without recycling the runtime (so REPL sees app globals/signals). A command frame is answered with `CMD OK …` / `CMD ERR <reason>`; `LAUNCH`/`HOME` are answered with the engine's `RELOAD OK/ERR` because the outcome is only known after the target app evaluated. `LIST` sends one `APP\t<id>\nMETA\t<id>\t<json>\n` block per app before `CMD OK list <n>`. Old firmware treats `LUMB`/`LUMR` as a bad magic and re-syncs; it answers `VER` with `CMD ERR verb`, which the CLI surfaces as a "update firmware" hint before any bytecode is pushed.
+
+## Device REPL (`lume repl`)
+
+`lume repl` evaluates one JS expression per line **inside the running app's QuickJS context** over the same USB/TCP channel (same trust/auth model: USB serial, or WiFi TCP behind the existing HMAC handshake). No runtime recycle, no second port:
+
+```bash
+node tools/lume/lume.js repl --port /dev/ttyACM0          # interactive; Ctrl+C or "exit" quits
+node tools/lume/lume.js repl --eval "lume.battery()" --port /dev/ttyACM0   # one-shot, scriptable
+node tools/lume/lume.js repl --eval "1+2" --host 192.168.1.9 --token <32hex>
+```
+
+The device evals on the engine task at the inner event-loop dispatch point (never on the RX task, never from LVGL/touch), converts the result with `JS_ToString`, and returns it through the existing reply sink. A thrown exception is caught and returned as error text (no crash, no hang). Each result is clamped to `LUME_REPL_OUT_CAP` (2048 bytes) before base64-chunked reply lines; the CLI prints `[output truncated]` when the `trunc` flag is set. There is no multi-line continuation, bracket completion, or history — see [known simplifications](KNOWN-SIMPLIFICATIONS.md).
 
 ## Debug screenshot (`lume screenshot`)
 

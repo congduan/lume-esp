@@ -1475,3 +1475,42 @@ TTS / 空回复判断；正常收口恰好一条 `final=true`。错语义：SSE 
 
 诚实口径：无真机 / 无出网 / 无真实 key；真机 WiFi、SSE 长连接稳定性、流式 TTS、
 barge-in deferred。零固件改动，`lume check` 双 `--no-emu` 哨兵 PASS，未跑 `idf.py build`。
+
+### r115 result — 设备 REPL（串口逐行 eval，引擎调试基建 P4；appended, milestone checkboxes untouched）
+
+帧协议新增第 4 种 magic `LUMR`（与 `LUME`/`LUMC`/`LUMB` 共用 12B 头 + CRC-32，
+侵入最小：只加一个 magic 分支），payload = 一行 UTF-8 JS 表达式。固件侧 RX 任务
+解析到 REPL 帧后，把表达式复制到引擎自有 staging slot 并 post `LUME_EVT_REPL`；
+引擎在 inner event loop 的事件处理点、**当前 app 的 `s_ctx` 上同步 `JS_Eval`**
+（不回收 runtime、不在 RX/LVGL 任务上碰 QuickJS），`JS_ToString` 取结果，异常
+捕获回传错误文本。结果经既有 reply sink 回传为有界报文
+（`REPL OK/ERR <len> <trunc>` + `R64<base64>` 行 + `REPL END`），输出先经
+`lume_repl_clamp()` 截到 2048B 并置 trunc 标记；OTA 的 64B 回复契约未动。
+CLI 新增 `lume repl [--port] [--eval "..."]`，`--eval` 走一次发一条退出。
+鉴权沿用原通道（USB 信任 / TCP HMAC），未新增鉴权面。
+
+验证（原始输出摘录，详见 `artifacts/r115-build.log` 与本轮会话）：
+- 固件构建（`VIRTUAL_ENV` 剔除 / `IDF_PYTHON_ENV_PATH` 指向 py3.12 env，未触发
+  QuickJS 汇编 swap 卡死，无需 `-g0`）：`Built target lume.elf` / `Built target app`，
+  `idf.py size` → `Flash Code 2034220`（r109 基线 2032588，+1632 B）、
+  `IRAM 16384 100.0% Remain 0`（与基线一致，未突破）、
+  `Total image size: 3027147 bytes`，`lume.bin 0x2e3140`，
+  `Smallest app partition ... 0x35ced0 bytes (54%) free`。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 49 / # fail 0 /
+  # cancelled 0 / # skipped 1`（基线 46 tests / 45 pass / 0 fail / 1 skipped，
+  新增 4 条 REPL 协议单测：frame layout/CRC、parseFrame 负向、clamp 截断、R64 解码）。
+- `node tests/repl_protocol.js` → 7 行 `PASS: ...` +
+  `ALL REPL PROTOCOL CASES PASSED`（编译真实 `lume_frame.c`，字节级断言 + 坏 CRC /
+  空 payload / 超长 / 截断标记 / UTF-8 往返 + 源码常量交叉校验）。
+- 全量 `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo "FAIL $t"; done; echo done`
+  → 仅 `done`，0 FAIL。新增枚举触发 `tests/ota_protocol.c` 的 `-Werror=switch`
+  后已补 `LUME_FRAME_EV_REPL` 计数分支，`node tests/ota_auth.js` 复跑
+  `56 checks, 0 failures -> PASS`。
+- 哨兵：`node tools/lume/lume.js check examples/counter --no-emu` 与
+  `examples/voice_assistant --no-emu` 均 `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+
+诚实口径：无真机，未做板级 REPL 收发——`tools/gateway/device-sim.js` 是 WebSocket
+gateway 模拟而非串口 REPL 设施，无可复用的端到端 REPL 通道，故 **端到端 deferred
+to board**；宿主层证据为真实帧编解码 + 引擎 eval 路径的静态核对 + CLI 解析/smoke。
+PAUS 语义、app 切换过渡窗口丢弃、无多行续行/历史补全等取舍见
+`docs/KNOWN-SIMPLIFICATIONS.md`。commits 按 feat / test / docs 拆分，不推送。
