@@ -9,8 +9,11 @@
  *                       idempotent, MUST NOT cancel an in-flight response,
  *                       MUST NOT call session.close() (gateway owns the socket)
  *
- * Real upstreams are TODO stubs. Upstream selection is explicitly undecided
- * this round; no API keys, credentials, or guessed third-party endpoints here. */
+ * 'openai' is the OpenAI-compatible three-segment upstream (r113); xiaozhi and
+ * direct remain NOT_IMPLEMENTED stubs. No API keys or credentials live here:
+ * the gateway injects them from env (see upstream-openai.js / cli.js). */
+
+const { OpenAICompatibleUpstream } = require('./upstream-openai');
 
 const UPLINK_FRAMES = 960;       /* 60 ms at 16 kHz */
 const UPLINK_BYTES = UPLINK_FRAMES * 4; /* stereo s16le = 3840 */
@@ -100,6 +103,7 @@ class DirectStackUpstream {
 function createUpstream(name, opts = {}) {
   switch (name) {
     case 'mock': return new MockUpstream(opts);
+    case 'openai': return new OpenAICompatibleUpstream(opts);
     case 'xiaozhi': return new XiaozhiUpstream();
     case 'direct': return new DirectStackUpstream();
     default: throw new Error('unknown upstream: ' + name);
@@ -108,5 +112,5 @@ function createUpstream(name, opts = {}) {
 
 module.exports = {
   FORMAT, UPLINK_BYTES, synthPcm,
-  MockUpstream, XiaozhiUpstream, DirectStackUpstream, createUpstream
+  MockUpstream, XiaozhiUpstream, DirectStackUpstream, OpenAICompatibleUpstream, createUpstream
 };
