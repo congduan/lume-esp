@@ -1,0 +1,4 @@
+PASS motion bounds 6000 ticks, speed 2.55 -> 0.15 px/tick
+PASS palette lookup, IMU direction/fallback, idle wake and ripple expiry
+PASS real prelude: <=25 calls/frame (normal max 24; overlap+ripple 25), no-IMU fallback, gesture
+ALL PLASMA HARNESS CASES PASSED

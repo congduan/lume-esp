@@ -37,6 +37,7 @@
     ['raycast','◈','Raycast 3D','射线迷宫','Raycast maze shooter','第一人称射线迷宫射击'],
     ['fishtank','◉','Fishtank','电子鱼缸','Procedural aquarium with feeding','程序化鱼群 + 投喂互动'],
     ['particles','o','Fluid Particles','流体粒子','IMU gravity + touch velocity field','IMU 重力 + 触摸速度场'],
+    ['plasma','◉','Plasma','等离子屏保','Tilt the lava; tap to change theme','倾斜熔岩，点击切换主题'],
     ['voice_assistant','◎','Voice Assistant','语音助手','Push-to-talk walkie-talkie demo','按住说话对讲机演示'],
     ['spectrum_music','♫','Spectrum Music','频谱音乐盒','Radial live and demo spectrum','麦克风与演示径向频谱'],
 
