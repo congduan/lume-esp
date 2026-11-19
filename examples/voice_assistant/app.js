@@ -49,6 +49,10 @@ var vaTyping = signal(false);
 var vaCursor = signal(true);
 var vaLevel = signal(0.08);
 var vaRev = signal(0);
+/* r117 v1.1 transcript: only integer/one-piece signal writes in the WS
+ * callback; the bounded join happens at render time (typewriter OOM lesson). */
+var vaTxRev = signal(0);
+var vaTxFinal = signal('');
 
 var vaMode = 'DEMO';
 var vaFullText = '';
@@ -260,6 +264,16 @@ function vaWaveTick() {
   vaRev.set(vaRev() + 1);
 }
 function vaAnswerText() {
+  /* r117: time-share the single line. LISTEN/THINK shows "YOU:" + interim
+   * transcript; SPEAK shows the assistant's text-delta answer. They never
+   * overwrite each other because they live on different timeline phases. */
+  var st = vaState();
+  if (st === 'LISTEN' || st === 'THINK') {
+    vaTxRev();
+    var t = vaTxFinal() || vaTxParts.join('');
+    if (t.length > VA_TX_MAX_CHARS) t = t.substring(0, VA_TX_MAX_CHARS);
+    return t ? 'YOU: ' + t : '';
+  }
   var s = vaFullText.substring(0, vaTypingPos());
   return vaTyping() ? s + (vaCursor() ? '|' : ' ') : s;
 }
@@ -305,6 +319,9 @@ var vaStreamAcked = false, vaStreamEndSent = false, vaStreamFinal = false;
 var vaStreamFinished = false;
 var vaStreamConn = null, vaStreamDone = null, vaStreamPumpTimer = null;
 var vaStreamPendingAudio = null;
+var vaTxParts = [];                     /* bounded interim pieces, joined at render only */
+var vaStreamTxDeltas = 0;
+var VA_TX_MAX_PARTS = 24, VA_TX_MAX_PIECE = 128, VA_TX_MAX_CHARS = 512;
 
 function vaGatewayUrl() {
   var u = null;
@@ -312,7 +329,40 @@ function vaGatewayUrl() {
   return (typeof u === 'string' && u) ? u : VA_GATEWAY_URL;
 }
 
+/* ---- r117 transcript helpers: callbacks only bump an integer signal ------ */
+function vaTxReset() {
+  vaTxParts = [];
+  vaTxFinal.set('');
+  vaTxRev.set(vaTxRev() + 1);
+}
+function vaTxPush(text) {
+  if (typeof text !== 'string' || !text) return;
+  if (vaTxParts.length >= VA_TX_MAX_PARTS) vaTxParts.shift();
+  vaTxParts.push(text.substring(0, VA_TX_MAX_PIECE));
+  vaTxRev.set(vaTxRev() + 1);                    /* integer signal write only */
+}
+function vaTxSeal(text) {
+  var t = typeof text === 'string' ? text : '';
+  vaTxParts = [t.substring(0, VA_TX_MAX_CHARS)]; /* final = COMPLETE transcript */
+  vaTxFinal.set(vaTxParts[0]);
+  vaTxRev.set(vaTxRev() + 1);
+}
+function vaWSOnTranscript(msg) {
+  vaStreamTxDeltas++;
+  if (msg.final === true) {
+    vaTxSeal(msg.text);
+    lume.log('VA WS TRANSCRIPT FINAL n=' + vaStreamTxDeltas +
+      ' chars=' + (typeof msg.text === 'string' ? msg.text.length : 0));
+  } else {
+    vaTxPush(msg.text);
+    lume.log('VA WS TRANSCRIPT n=' + vaStreamTxDeltas +
+      ' chars=' + (typeof msg.text === 'string' ? msg.text.length : 0));
+  }
+}
+
 function vaWSReset() {
+  vaTxReset();
+  vaStreamTxDeltas = 0;
   vaStreamSession = null; vaStreamCarry = new ArrayBuffer(0); vaStreamQueue = [];
   vaStreamText = ''; vaStreamDeltas = 0; vaStreamAudioFrames = 0;
   vaStreamUplinkFrames = 0; vaStreamLastLogged = 0;
@@ -462,7 +512,7 @@ function vaTransportWS(prompt, done) {
       vaStreamConn = conn;
       var hello = { v: 1, type: 'hello',
         device: { model: 'lume', fw: 'r108', app: 'voice_assistant' },
-        caps: { audioFormats: ['pcm_s16le_16000_2ch'] } };
+        caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: true } };
       lume.log('VA WS HELLO');
       conn.send(JSON.stringify(hello));
       if (vaStreamPumpTimer === null) vaStreamPumpTimer = lume.system.setInterval(vaWSPump, 60);
@@ -478,6 +528,9 @@ function vaTransportWS(prompt, done) {
         lume.log('VA WS ACK fmt=' + (msg.audioFormat || '-'));
         vaWSFlushUplink();
       } else if (msg.type === 'text-delta') vaWSOnDelta(msg);
+      /* v1.1: consume transcript-delta; unknown downlink types continue to be
+       * logged and ignored (old devices simply ignore this new message). */
+      else if (msg.type === 'transcript-delta') vaWSOnTranscript(msg);
       else if (msg.type === 'state') {
         lume.log('VA WS STATE ' + msg.state);
         if (msg.state === 'idle') vaWSFinish(0);

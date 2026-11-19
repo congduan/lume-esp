@@ -1,12 +1,16 @@
 'use strict';
 /* Simulated device client for the end-to-end smoke run. Follows the
  * lume.net.ws callback shape (onOpen/onMessage/onClose/onError). Usage:
- *   node tools/gateway/device-sim.js [ws://127.0.0.1:8765/] */
+ *   node tools/gateway/device-sim.js [ws://127.0.0.1:8765/] [--legacy]
+ * `--legacy` omits the v1.1 streamTranscript cap and ignores transcript-delta,
+ * exercising the backward-compat "old device ignores unknown downlink" path. */
 
 const { connect, UPLINK_BYTES } = require('./index');
 
 const url = process.argv[2] || 'ws://127.0.0.1:8765/';
+const legacy = process.argv.indexOf('--legacy') >= 0;
 let ack = false, uplink = 0, deltas = 0, audioFrames = 0, text = '';
+let txDeltas = 0, txText = '';
 
 function stamp() {
   const d = new Date();
@@ -22,8 +26,8 @@ const client = connect(url, {
     log('open', { url });
     client.sendText(JSON.stringify({
       v: 1, type: 'hello',
-      device: { model: 'lume', fw: 'r107' },
-      caps: { audioFormats: ['pcm_s16le_16000_2ch'] }
+      device: { model: 'lume', fw: 'r117' },
+      caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: !legacy }
     }));
     log('send.hello', {});
   },
@@ -44,6 +48,15 @@ const client = connect(url, {
         deltas++;
         text += msg.text;
         log('recv.text-delta', { seq: msg.seq, chars: msg.text.length, final: msg.final });
+      } else if (msg.type === 'transcript-delta') {
+        /* v1.1: consume (new device) or ignore (--legacy old device). The final
+         * frame is the COMPLETE transcript, not another increment. */
+        if (legacy) { log('ignore.transcript-delta', { seq: msg.seq }); return; }
+        txDeltas++;
+        if (msg.final === true) txText = String(msg.text || '');
+        else txText += String(msg.text || '');
+        log('recv.transcript-delta', { seq: msg.seq, chars: String(msg.text || '').length,
+          final: msg.final, all: JSON.stringify(txText) });
       } else if (msg.type === 'state') {
         log('recv.state', { state: msg.state });
       } else if (msg.type === 'error') {
@@ -59,7 +72,8 @@ const client = connect(url, {
     }
   },
   onClose() {
-    log('close', { ack, uplink, deltas, audioFrames, text: JSON.stringify(text) });
+    log('close', { ack, uplink, deltas, audioFrames, text: JSON.stringify(text),
+      txDeltas, txText: JSON.stringify(txText), legacy });
   },
   onError(code) { log('error', { code }); }
 });

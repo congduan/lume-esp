@@ -8,7 +8,21 @@ const net = require('node:net');
 const crypto = require('node:crypto');
 const { computeAccept, encodeFrame, parseFrames } = require('./ws');
 
-function connect(url, callbacks = {}) {
+/* r117: optional `headers` are extra handshake headers (e.g. upstream ASR
+ * bearer auth). Names/values are restricted to ASCII to prevent header
+ * injection; callers must not put secrets in URLs or logs. */
+function extraHeaders(headers) {
+  let out = '';
+  for (const name of Object.keys(headers || {})) {
+    const value = String(headers[name]);
+    if (/^[A-Za-z0-9-]+$/.test(name) && /^[\x20-\x7e]*$/.test(value)) {
+      out += name + ': ' + value + '\r\n';
+    }
+  }
+  return out;
+}
+
+function connect(url, callbacks = {}, headers = {}) {
   const u = new URL(url);
   const port = Number(u.port || 80);
   const key = crypto.randomBytes(16).toString('base64');
@@ -40,7 +54,7 @@ function connect(url, callbacks = {}) {
       'Host: ' + u.host + '\r\n' +
       'Upgrade: websocket\r\nConnection: Upgrade\r\n' +
       'Sec-WebSocket-Key: ' + key + '\r\n' +
-      'Sec-WebSocket-Version: 13\r\n\r\n');
+      'Sec-WebSocket-Version: 13\r\n' + extraHeaders(headers) + '\r\n');
   });
   client.socket = socket;
   socket.setNoDelay(true);

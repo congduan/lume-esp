@@ -14,7 +14,13 @@
  * r116: those deltas also feed a stateful sentence splitter (see
  * sentence-splitter.js). Every completed sentence enters a TTS queue that is
  * drained serially, so audio for the first sentence goes downlink while chat
- * is still streaming. STT stays one-shot (see docs).
+ * is still streaming.
+ * r117: when configured AND the device opts in via hello.caps, the STT segment
+ * becomes a streaming transcription WS (see asr-stream.js): uplink frames are
+ * forwarded on arrival, interim results become transcript-delta(final=false),
+ * and the single finalized transcript is transcript-delta(final=true) BEFORE
+ * chat starts. Otherwise (no config / no caps / stream broken) the r113
+ * one-shot REST path is used unchanged.
  *
  * Turn收口 decision (evidence from server.js + protocol v1):
  *   - server.js calls stop() from _stopUpstream() on the `end` control frame
@@ -34,6 +40,7 @@
  * discards sentences that have not started, and keeps already-sent audio. */
 
 const { createSentenceSplitter } = require('./sentence-splitter');
+const { createAsrStream } = require('./asr-stream');
 
 const UPLINK_FRAMES = 960;                       /* 60 ms @ 16 kHz */
 const UPLINK_BYTES = UPLINK_FRAMES * 4;           /* stereo s16le = 3840 */
@@ -150,7 +157,15 @@ class OpenAICompatibleUpstream {
     this.silenceTimeoutMs = opts.silenceTimeoutMs == null ? 3000 : opts.silenceTimeoutMs;
     this.deltaMaxChars = opts.deltaMaxChars == null ? 24 : opts.deltaMaxChars; /* r113 helper; unused by SSE path */
 
+    /* r117 streaming ASR: BOTH gates must be on, else the r113 REST path runs.
+     * No real address or key is hardcoded here; cli.js injects from env. */
+    this.streamTranscript = !!opts.streamTranscript;          /* config gate */
+    this.asrWsUrl = opts.asrWsUrl || '';                      /* ws(s):// endpoint */
+    this.transcriptFinalTimeoutMs = opts.transcriptFinalTimeoutMs == null
+      ? 1500 : opts.transcriptFinalTimeoutMs;
+
     this.session = null;
+    this.deviceCaps = null;
     this.started = false;
     this.pipeStarted = false;
     this.stopped = false;
@@ -166,22 +181,34 @@ class OpenAICompatibleUpstream {
     this._ttsSplitter = null;
     this._pipeline = null;
     this._speaking = false;
+
+    this._asr = null;
+    this._asrInterim = '';              /* bounded accumulation for timeout fallback */
+    this._asrFinalText = null;          /* null = no final yet; '' is a valid final */
+    this._asrFailed = false;
+    this._asrResolveFinal = null;
+    this._transcriptFinalSent = false;  /* guard: exactly one final transcript */
   }
 
   /* ---- upstream interface ------------------------------------------------ */
   start(session) {
     this.session = session;
+    this.deviceCaps = session.caps || null;   /* server.js fills from hello.caps */
     this.started = true;
     session.sendState('thinking');
+    if (this._asrEnabled()) this._openAsr();
     this._armSilenceTimer();
   }
 
   sendAudio(pcm) {
     if (!this.started || this.pipeStarted) return;
     if (!Buffer.isBuffer(pcm) || pcm.length !== UPLINK_BYTES) return; /* gateway already validates */
-    this.parts.push(Buffer.from(pcm));
+    this.parts.push(Buffer.from(pcm));        /* kept for REST fallback / zero-copy */
     this.audioBytesIn += pcm.length;
     this.audioFramesIn++;
+    /* r117: forward on arrival, never wait for stop(). The adapter queues
+     * frames that land before the WS handshake completes and flushes on open. */
+    if (this._asr && !this._asrFailed && !this._stopAborted) this._asr.sendAudio(pcm);
     this._armSilenceTimer();
   }
 
@@ -197,8 +224,11 @@ class OpenAICompatibleUpstream {
        * the active chat SSE read and the in-flight TTS request. Sentences that
        * have not started are dropped; already-sent audio stays. Emitted deltas
        * are kept and sealed by _chatStream; _finalize does the clean收口.
-       * STT stays advisory (r113): never cancel it, never call close() here. */
+       * r117: the streaming transcription WS is also released here so a
+       * mid-stream stop() cannot leave the final-transcript wait hanging. */
       this._stopAborted = true;
+      if (this._asr) this._asr.abort();
+      if (this._asrResolveFinal) { const r = this._asrResolveFinal; this._asrResolveFinal = null; r(null); }
       if (this._chatStreaming && this._abort) {
         try { this._abort.abort(); } catch (_) { /* ignore */ }
       }
@@ -239,6 +269,100 @@ class OpenAICompatibleUpstream {
       clearTimeout(this.silenceTimer);
       this.silenceTimer = null;
     }
+  }
+
+  /* ---- r117 streaming transcription -------------------------------------- */
+  /* Both the gateway config gate and the device hello.caps gate must be on.
+   * No caps (old device) or no config -> the r113 REST path runs unchanged. */
+  _asrEnabled() {
+    return this.streamTranscript && !!this.asrWsUrl &&
+      !!(this.deviceCaps && this.deviceCaps.streamTranscript === true);
+  }
+
+  _openAsr() {
+    const self = this;
+    const asr = createAsrStream({
+      url: this.asrWsUrl,
+      headers: { Authorization: 'Bearer ' + this.apiKey },
+      onInterim(text) {
+        if (!text || self._stopAborted || !self._alive()) return;
+        /* Bounded accumulation + tiny signal on the device: never build a
+         * large string inside an audio/WS callback (typewriter OOM lesson). */
+        if (self._asrInterim.length < 2000) self._asrInterim += text;
+        self.session.sendTranscriptDelta(text, false);
+      },
+      onFinal(text) {
+        self._asrFinalText = String(text == null ? '' : text);
+        if (self._asrResolveFinal) {
+          const r = self._asrResolveFinal; self._asrResolveFinal = null;
+          r(self._asrFinalText);
+        }
+      },
+      onError(err) {
+        self._asrFailed = true;
+        self._log('openai.asr.error', ascii(err && err.message));
+        if (self._asrResolveFinal) {
+          const r = self._asrResolveFinal; self._asrResolveFinal = null;
+          r(null);                       /* null => REST fallback */
+        }
+      }
+    });
+    this._asr = asr;
+    /* Handshake failure (bad URL / refused) is a fallback trigger, not a
+     * fatal turn error: log it and let _awaitAsrTranscript take the REST path. */
+    asr.ready.catch((err) => {
+      self._asrFailed = true;
+      self._log('openai.asr.handshake', ascii(err && err.message));
+      if (self._asrResolveFinal) {
+        const r = self._asrResolveFinal; self._asrResolveFinal = null;
+        r(null);
+      }
+    });
+  }
+
+  /* Ask the upstream to close audio and wait for exactly one final result.
+   * Returns a string on success ('' is valid) or null on failure/abort, which
+   * the caller maps to the r113 REST fallback. */
+  _awaitAsrTranscript() {
+    const self = this;
+    if (!this._asr) return Promise.resolve(null);
+    if (this._asrFinalText !== null) {         /* upstream finalized early */
+      const t = this._asrFinalText; this._asr.close(); return Promise.resolve(t);
+    }
+    if (this._asrFailed || this._stopAborted) {
+      this._asr.close(); return Promise.resolve(null);
+    }
+    try { this._asr.commit(); }
+    catch (e) { this._log('openai.asr.commit.error', ascii(e && e.message)); }
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (value) => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        self._asrResolveFinal = null;
+        if (self._asr) self._asr.close();      /* release WS on every path */
+        resolve(value);
+      };
+      self._asrResolveFinal = finish;
+      const timer = setTimeout(() => {
+        self._log('openai.asr.final.timeout', 'using accumulated interim');
+        /* No duplicate: finalize once with what we heard, even if truncated. */
+        finish(self._asrInterim);
+      }, self.transcriptFinalTimeoutMs);
+      if (timer.unref) timer.unref();
+    });
+  }
+
+  /* Exactly one final transcript per negotiated turn. The final carries the
+   * COMPLETE text (not an increment) so device reassembly cannot duplicate. */
+  _emitTranscriptFinal(text) {
+    if (this._transcriptFinalSent) return false;
+    this._transcriptFinalSent = true;
+    const s = this.session;
+    if (!s || typeof s.sendTranscriptDelta !== 'function' || !this._alive()) return false;
+    s.sendTranscriptDelta(String(text == null ? '' : text), true);
+    return true;
   }
 
   /* ---- HTTP plumbing ----------------------------------------------------- */
@@ -528,12 +652,33 @@ class OpenAICompatibleUpstream {
     let fatalErr = null;
     let streamBreakErr = null;
     try {
-      const wav = pcm16StereoToWav(Buffer.concat(this.parts, this.audioBytesIn));
-      const transcript = await this._withRetry('stt', () => this._transcribe(wav));
-      if (this._alive()) {
-        /* chat and the TTS queue now run concurrently: _chatStream feeds the
-         * splitter, which starts _drainTts() as soon as a sentence completes. */
-        await this._withRetry('chat', () => this._chatStream(transcript, splitter));
+      const asrOn = this._asrEnabled();
+      let transcript = null;
+      if (asrOn) {
+        /* r117: interim deltas were already sent on arrival. The finalized
+         * transcript goes down exactly once, before the first chat delta. */
+        transcript = await this._awaitAsrTranscript();
+      }
+      if (this._stopAborted) {
+        stopped = true;                         /* barge-in mid ASR wait */
+      } else {
+        let sttErr = null;
+        if (transcript === null) {
+          /* r113 one-shot REST path: capability/config off, handshake failed,
+           * stream broke, or no final arrived. Behavior is byte-for-byte the
+           * pre-r117 path (one POST after stop, no transcript-delta). */
+          try {
+            const wav = pcm16StereoToWav(Buffer.concat(this.parts, this.audioBytesIn));
+            transcript = await this._withRetry('stt', () => this._transcribe(wav));
+          } catch (err) { sttErr = err; transcript = ''; }
+        }
+        if (asrOn) this._emitTranscriptFinal(transcript);
+        if (sttErr) throw sttErr;
+        if (this._alive()) {
+          /* chat and the TTS queue now run concurrently: _chatStream feeds the
+           * splitter, which starts _drainTts() as soon as a sentence completes. */
+          await this._withRetry('chat', () => this._chatStream(transcript || '', splitter));
+        }
       }
     } catch (err) {
       if (err && err.stoppedByUser) stopped = true;

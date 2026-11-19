@@ -36,9 +36,12 @@ class DeviceSession {
     this.audioFramesIn = 0;
     this.audioBytesIn = 0;
     this.textDeltasOut = 0;
+    this.transcriptDeltasOut = 0;       /* r117: independent from text-delta */
     this.audioFramesOut = 0;
     this.deltaSeq = -1;
+    this.transcriptSeq = -1;            /* r117: transcript-delta own seq */
     this.audioSeq = -1;
+    this.deviceCaps = null;             /* r117: hello.caps, read by upstream start() */
     this.closeCode = null;
     this.closeReason = null;
     gateway.sessions.push(this);
@@ -77,11 +80,21 @@ class DeviceSession {
     const self = this;
     this.api = {
       sessionId: this.sessionId,
+      get caps() { return self.deviceCaps; },   /* r117: hello caps for ASR negotiation */
       sendTextDelta(text, final = false) {
         if (self.conn.closeSent) return;
         self.deltaSeq = (self.deltaSeq + 1) & 0xffff;
         self.textDeltasOut++;
         self._ctrl({ type: 'text-delta', seq: self.deltaSeq, text: String(text), final: !!final });
+      },
+      /* r117 v1.1: user-speech transcript. seq is independent of text-delta /
+       * audio; final=true is the single finalized transcript (not an increment). */
+      sendTranscriptDelta(text, final = false) {
+        if (self.conn.closeSent) return;
+        self.transcriptSeq = (self.transcriptSeq + 1) & 0xffff;
+        self.transcriptDeltasOut++;
+        self._ctrl({ type: 'transcript-delta', seq: self.transcriptSeq,
+          text: String(text), final: !!final });
       },
       sendAudio(fmt, pcm) {
         if (self.conn.closeSent) return;
@@ -163,8 +176,11 @@ class DeviceSession {
       if (msg.type !== 'hello') { this._error('not_hello', 'first frame must be hello', true); return; }
       if (msg.v !== PROTOCOL_VERSION) { this._error('unsupported_version', 'v=' + String(msg.v), true); return; }
       this.phase = 'active';
+      this.deviceCaps = (msg.caps && typeof msg.caps === 'object' && !Array.isArray(msg.caps))
+        ? msg.caps : null;
       this._ctrl({ type: 'hello-ack', audioFormat: 'pcm_s16le_16000_2ch' });
-      this._log('hello', { device: msg.device ? ascii(JSON.stringify(msg.device)) : '-' });
+      this._log('hello', { device: msg.device ? ascii(JSON.stringify(msg.device)) : '-',
+        streamTranscript: !!(this.deviceCaps && this.deviceCaps.streamTranscript) });
       this._startUpstream();
       return;
     }

@@ -41,7 +41,11 @@ function main() {
       sttModel: process.env.OPENAI_STT_MODEL || 'whisper-1',
       chatModel: process.env.OPENAI_CHAT_MODEL || 'gpt-4o-mini',
       ttsModel: process.env.OPENAI_TTS_MODEL || 'tts-1',
-      voice: process.env.OPENAI_TTS_VOICE || 'alloy'
+      voice: process.env.OPENAI_TTS_VOICE || 'alloy',
+      /* r117: streaming ASR is opt-in and never points at a hardcoded address.
+       * Both this config gate and device hello.caps must be on to engage it. */
+      streamTranscript: process.env.OPENAI_STREAM_ASR === '1',
+      asrWsUrl: process.env.OPENAI_ASR_WS_URL || ''
     };
   } else if (upstreamName !== 'mock') {
     process.stderr.write('TODO(r107): upstream "' + upstreamName + '" is a stub; ' +
