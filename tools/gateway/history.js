@@ -72,6 +72,15 @@ class ConversationHistory {
   }
 
   clear() { this.messages.length = 0; }
+
+  /* r122: bounded copy used when a session closes. The gateway retires this
+   * snapshot into its resume store so a later `hello.resume` can rebind the
+   * history to a new connection; the live session still clears its own copy. */
+  clone() {
+    const c = new ConversationHistory({ limit: this.limit, charBudget: this.charBudget });
+    c.messages = this.snapshot();
+    return c;
+  }
 }
 
 module.exports = {

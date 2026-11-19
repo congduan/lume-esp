@@ -327,6 +327,10 @@ var vaStreamAcked = false, vaStreamEndSent = false, vaStreamFinal = false;
 var vaStreamFinished = false;
 var vaStreamConn = null, vaStreamDone = null, vaStreamPumpTimer = null;
 var vaStreamPendingAudio = null;
+/* r122: last gateway-assigned sessionId, retained only in multiturn mode so a
+ * reconnect can ask the gateway to rebind the history (hello.resume). Kept out
+ * of the non-multiturn path so its hello stays byte-for-byte r121. */
+var vaStreamSessionId = '';
 /* r121: per-turn keep-alive state. idle=true means the WS is parked after a
  * clean turn and the next push-to-talk turn may reuse it (no re-hello). */
 var vaStreamMulti = false, vaStreamIdle = false;
@@ -574,6 +578,12 @@ function vaTransportWS(prompt, done) {
         caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: true } };
       var token = vaGatewayToken();
       if (token) hello.auth = { token: token };   /* r119 §8.2: appended field */
+      /* r122: opt-in multiturn reconnect asks the gateway to rebind history.
+       * Old gateways ignore the unknown field (§3) and start a fresh session. */
+      if (multi && vaStreamSessionId) {
+        hello.resume = vaStreamSessionId;
+        lume.log('VA WS RESUME REQ');
+      }
       lume.log('VA WS HELLO' + (token ? ' AUTH' : ''));  /* never log token value */
       conn.send(JSON.stringify(hello));
       if (vaStreamPumpTimer === null) vaStreamPumpTimer = lume.system.setInterval(vaWSPump, 60);
@@ -586,6 +596,10 @@ function vaTransportWS(prompt, done) {
       if (!msg || typeof msg !== 'object') { lume.log('VA WS BAD JSON'); return; }
       if (msg.type === 'hello-ack') {
         vaStreamAcked = true;
+        /* r122: remember the NEW sessionId for the next reconnect's resume. */
+        if (vaStreamMulti && typeof msg.sessionId === 'string' && msg.sessionId) {
+          vaStreamSessionId = msg.sessionId;
+        }
         lume.log('VA WS ACK fmt=' + (msg.audioFormat || '-'));
         vaWSFlushUplink();
       } else if (msg.type === 'text-delta') vaWSOnDelta(msg);

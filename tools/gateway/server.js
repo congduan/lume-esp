@@ -13,6 +13,10 @@ const UPLINK_BYTES = 3840;            /* 60 ms, 16 kHz, s16le stereo */
 const AUDIO_FRAME_BYTES = 3840;       /* 8-byte header + 3840 payload = 3848 */
 const AUDIO_HEADER_LENGTH = 8;
 const MAX_PAYLOAD = 65536;
+/* r122: retired histories kept just long enough for a reconnect to rebind.
+ * Bounded in time and count so the store cannot grow without limit. */
+const RESUME_TTL_MS = 5 * 60 * 1000;
+const RESUME_MAX_ENTRIES = 64;
 
 const CLOSE_FOR_ERROR = {
   bad_json: 1002,
@@ -34,6 +38,34 @@ function tokenEqual(a, b) {
   if (ab.length !== bb.length) return false;
   try { return crypto.timingSafeEqual(ab, bb); }
   catch (e) { return false; }
+}
+
+/* r122: history/connection decoupling. A closing session retires a bounded
+ * snapshot under its sessionId; a later hello with an optional `resume` field
+ * adopts it once. Expired or unknown ids miss -> fresh conversation. The store
+ * is host-side memory only: gateway restart still forgets (see KS r122). */
+function retireHistory(gw, sessionId, history) {
+  if (!history || !history.enabled() || history.size() === 0) return;
+  const now = Date.now();
+  for (const [k, v] of gw.resumeStore) {
+    if (now - v.at > gw.resumeTtlMs) gw.resumeStore.delete(k);
+  }
+  gw.resumeStore.set(sessionId, { history, at: now });
+  while (gw.resumeStore.size > gw.resumeMaxEntries) {
+    gw.resumeStore.delete(gw.resumeStore.keys().next().value);
+  }
+}
+
+function takeHistory(gw, sessionId) {
+  if (typeof sessionId !== 'string' || !sessionId) return null;
+  const entry = gw.resumeStore.get(sessionId);
+  if (!entry) return null;
+  if (Date.now() - entry.at > gw.resumeTtlMs) {
+    gw.resumeStore.delete(sessionId);
+    return null;
+  }
+  gw.resumeStore.delete(sessionId);       /* single-use: no replay of a stale id */
+  return entry.history;
 }
 
 const ascii = (s) => String(s == null ? '' : s).replace(/[^\x20-\x7e]/g, '?');
@@ -72,8 +104,13 @@ class DeviceSession {
     conn.on('close', (code, reason) => {
       this.closeCode = code;
       this.closeReason = this.closeReason || reason || 'peer';
-      /* r120: clear on ANY close code. A new connection is a new conversation
-       * and must not inherit, or leak, a previous session's history. */
+      /* r120: clear on ANY close code; r122: retire a snapshot first so a
+       * reconnect carrying hello.resume can rebind it. Without `resume` a new
+       * connection is still a fresh conversation (r120 test unchanged). */
+      if (this.history.enabled() && this.history.size() > 0) {
+        this._log('history.retire', { count: this.history.size() });
+      }
+      retireHistory(this.gateway, this.sessionId, this.history.clone());
       this.history.clear();
       this._stopUpstream();
       this._log('session.close', { code });
@@ -235,6 +272,18 @@ class DeviceSession {
       this.phase = 'active';
       this.deviceCaps = (msg.caps && typeof msg.caps === 'object' && !Array.isArray(msg.caps))
         ? msg.caps : null;
+      /* r122: optional resume runs AFTER the token gate (so a wrong token
+       * restores nothing) and before hello-ack / upstream init. Additive field:
+       * old clients omit it and keep the r120/r121 fresh-session behaviour. */
+      if (typeof msg.resume === 'string' && msg.resume) {
+        const restored = takeHistory(this.gateway, msg.resume);
+        if (restored) {
+          this.history = restored;
+          this._log('history.resume', { from: msg.resume });
+        } else {
+          this._log('history.resume.miss', { from: msg.resume });
+        }
+      }
       this._ctrl({ type: 'hello-ack', audioFormat: 'pcm_s16le_16000_2ch' });
       this._log('hello', { device: msg.device ? ascii(JSON.stringify(msg.device)) : '-',
         streamTranscript: !!(this.deviceCaps && this.deviceCaps.streamTranscript) });
@@ -282,6 +331,13 @@ function createGateway(opts = {}) {
   const historyLimit = normalizeLimit(opts.historyLimit);
   const historyCharBudget = normalizeBudget(opts.historyCharBudget);
   const multiturn = !!opts.multiturn;
+  /* r122: bounded, TTL'd store of histories retired on close. Values are
+   * host-side and never serialized into a protocol frame or a log field. */
+  const resumeStore = new Map();
+  const resumeTtlMs = Number.isFinite(opts.resumeTtlMs) && opts.resumeTtlMs >= 0
+    ? opts.resumeTtlMs : RESUME_TTL_MS;
+  const resumeMaxEntries = Number.isFinite(opts.resumeMaxEntries) && opts.resumeMaxEntries >= 0
+    ? Math.floor(opts.resumeMaxEntries) : RESUME_MAX_ENTRIES;
   const sessions = [];
   const counter = { value: 0 };
 
@@ -295,7 +351,8 @@ function createGateway(opts = {}) {
     onConnection: (conn) => {
       new DeviceSession({
         counter, sessions, log, upstreamFactory, deviceToken,
-        historyLimit, historyCharBudget, multiturn
+        historyLimit, historyCharBudget, multiturn,
+        resumeStore, resumeTtlMs, resumeMaxEntries
       }, conn);
     }
   });
@@ -306,6 +363,8 @@ function createGateway(opts = {}) {
     upstreamFactory,
     log,
     counter,
+    /* r122: exposed for host-harness assertions only; no protocol exposure. */
+    resumeStore,
     start() {
       return new Promise((resolve, reject) => {
         httpServer.once('error', reject);
