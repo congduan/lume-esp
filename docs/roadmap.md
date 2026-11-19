@@ -2103,12 +2103,14 @@ I (10369) lume-engine: js: GOLF tick L1 phase=holed mode=demo
 
 ### r125 result — TF 卡（microSD）SPI 模式 `lume.storage.Sd`（固件刀收口；appended, milestone checkboxes untouched）
 
-上一轮派发（/tmp/lume-r125-run.log）立即撞 429 限流（重置 2026-11-20 18:23 UTC+8，
-engine_exit=0 零产出），但限流前引擎已在主仓工作树留下半成品（r124-va-ptt 派发链在
-429 窗口内仍完成了一部分，判定：无 worktree、改动全部落在主仓、build log 引用主仓
-build/）。主控接管收口：修唯一编译错误（ESP-IDF FATFS 无 POSIX `statvfs` → `f_getfree`，
-`ff.h`；`SS(fs)` → `fs->ssize`），补引擎漏做的 docs 同步（本节 + KNOWN-SIMPLIFICATIONS
-r125 节 + hardware-api.md storage 行与 r125 note）与 `gen_api_docs.py` 重生成。
+上一轮派发（/tmp/lume-r125-run.log）开场即打印 429 限流提示（窗口至 2026-11-20
+18:23 UTC+8），但引擎并未立即退出：未建 worktree、直接在主仓降级继续工作了约 20
+分钟（03:08-03:23，文件 mtime 与 /tmp/r125-idf-build.log 为证），完成固件/JS API/
+harness 主体后因 `statvfs` 编译错误中断退出（engine_exit=0），docs 同步与
+api.html 重生成未做。主控接管收口：修唯一编译错误（ESP-IDF FATFS 无 POSIX
+`statvfs` → `f_getfree`，`ff.h`；`SS(fs)` → `fs->ssize`），补引擎漏做的 docs 同步
+（本节 + KNOWN-SIMPLIFICATIONS r125 节 + hardware-api.md storage 行与 r125 note）
+与 `gen_api_docs.py` 重生成。
 
 **实现**（引擎半成品 + 主控收口）：
 - `firmware/components/lume-storage/lume_sd.{c,h}`：SDSPI 挂载（SPI3，2.16 profile
