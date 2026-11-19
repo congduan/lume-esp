@@ -6,6 +6,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const { attachWsServer, encodeFrame } = require('./ws');
 const { MockUpstream } = require('./upstream');
+const { ConversationHistory, normalizeLimit, normalizeBudget } = require('./history');
 
 const PROTOCOL_VERSION = 1;
 const UPLINK_BYTES = 3840;            /* 60 ms, 16 kHz, s16le stereo */
@@ -56,6 +57,14 @@ class DeviceSession {
     this.transcriptSeq = -1;            /* r117: transcript-delta own seq */
     this.audioSeq = -1;
     this.deviceCaps = null;             /* r117: hello.caps, read by upstream start() */
+    /* r120: per-session conversation state. One instance per DeviceSession,
+     * so history is isolated by sessionId and dies with the connection. */
+    this.history = new ConversationHistory({
+      limit: gateway.historyLimit,
+      charBudget: gateway.historyCharBudget
+    });
+    this.multiturn = !!gateway.multiturn; /* opt-in keep-alive for >1 turn/conn */
+    this.turnEnded = false;               /* 'end' seen for the current turn */
     this.closeCode = null;
     this.closeReason = null;
     gateway.sessions.push(this);
@@ -63,6 +72,9 @@ class DeviceSession {
     conn.on('close', (code, reason) => {
       this.closeCode = code;
       this.closeReason = this.closeReason || reason || 'peer';
+      /* r120: clear on ANY close code. A new connection is a new conversation
+       * and must not inherit, or leak, a previous session's history. */
+      this.history.clear();
       this._stopUpstream();
       this._log('session.close', { code });
     });
@@ -131,7 +143,25 @@ class DeviceSession {
       sendState(state) { self._ctrl({ type: 'state', state: String(state) }); },
       sendError(code, message, fatal) { self._error(code, message, !!fatal); },
       isOpen() { return !self.conn.closeSent && !self.conn.closed; },
+      /* r120: conversation history facade used by the upstream adapters.
+       * Feature-detected: an upstream that does not call these keeps the
+       * r119 single-turn behaviour byte-for-byte. */
+      historyEnabled() { return self.history.enabled(); },
+      historyMessages() { return self.history.snapshot(); },
+      recordTurn(user, assistant) { self.history.record(user, assistant); },
       close(code = 1000, reason = 'done') {
+        /* r120 opt-in keep-alive: a CLEAN turn end (adapter close(1000,'done')
+         * after an 'end' frame) re-arms a fresh adapter on the SAME session,
+         * so the next turn reuses this session's history. Default (multiturn
+         * off) closes exactly as in r119. Device-initiated close, fatal paths
+         * and non-'done' reasons still close the socket. */
+        if (self.multiturn && code === 1000 && reason === 'done' &&
+            self.turnEnded && !self.conn.closeSent) {
+          self.turnEnded = false;
+          self.upstreamStopped = false;
+          self._startUpstream();
+          return;
+        }
         self._stopUpstream();
         if (!self.conn.closeSent) {
           self.conn.close(code, ascii(reason));
@@ -224,6 +254,7 @@ class DeviceSession {
         break;
       case 'end':
         this._log('turn.end', {});
+        if (this.multiturn) this.turnEnded = true;
         this._stopUpstream();
         break;
       case 'ping':
@@ -244,6 +275,13 @@ function createGateway(opts = {}) {
    * local (not a field on the public gateway object) so it cannot be logged
    * by a stray JSON.stringify(gateway). */
   const deviceToken = typeof opts.deviceToken === 'string' ? opts.deviceToken : '';
+  /* r120: session-history window + character budget, normalized once here so
+   * every DeviceSession sees the same bounds. limit=0 disables history with
+   * byte-for-byte r119 behaviour. multiturn is an opt-in keep-alive that lets
+   * one connection carry several turns (default off = unchanged close). */
+  const historyLimit = normalizeLimit(opts.historyLimit);
+  const historyCharBudget = normalizeBudget(opts.historyCharBudget);
+  const multiturn = !!opts.multiturn;
   const sessions = [];
   const counter = { value: 0 };
 
@@ -254,7 +292,12 @@ function createGateway(opts = {}) {
   const manager = attachWsServer(httpServer, {
     maxPayload: MAX_PAYLOAD,
     log,
-    onConnection: (conn) => { new DeviceSession({ counter, sessions, log, upstreamFactory, deviceToken }, conn); }
+    onConnection: (conn) => {
+      new DeviceSession({
+        counter, sessions, log, upstreamFactory, deviceToken,
+        historyLimit, historyCharBudget, multiturn
+      }, conn);
+    }
   });
 
   const gateway = {

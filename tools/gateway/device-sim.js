@@ -2,10 +2,13 @@
 /* Simulated device client for the end-to-end smoke run. Follows the
  * lume.net.ws callback shape (onOpen/onMessage/onClose/onError). Usage:
  *   node tools/gateway/device-sim.js [ws://127.0.0.1:8765/] [--legacy] [--device-token TOKEN]
+ *                                   [--turns N]
  * `--legacy` omits the v1.1 streamTranscript cap and ignores transcript-delta,
  * exercising the backward-compat "old device ignores unknown downlink" path.
  * r119: --device-token (fallback GATEWAY_DEVICE_TOKEN env) adds hello.auth.token
- * for the gateway's locked mode; token value is never logged. */
+ * for the gateway's locked mode; token value is never logged.
+ * r120: --turns N (default 1 = unchanged) drives N consecutive turns on one
+ * connection; requires a gateway started with --multiturn so history carries. */
 
 const { connect, UPLINK_BYTES } = require('./index');
 
@@ -20,6 +23,8 @@ function arg(name, fallback) {
 const url = process.argv[2] || 'ws://127.0.0.1:8765/';
 const legacy = process.argv.indexOf('--legacy') >= 0;
 const deviceToken = arg('device-token', process.env.GATEWAY_DEVICE_TOKEN || '');
+const turns = Math.max(1, Number(arg('turns', '1')) || 1);
+let turn = 0;
 let ack = false, uplink = 0, deltas = 0, audioFrames = 0, text = '';
 let txDeltas = 0, txText = '';
 
@@ -30,6 +35,26 @@ function stamp() {
 function log(event, fields = {}) {
   const parts = Object.keys(fields).map(k => k + '=' + fields[k]).join(' ');
   process.stdout.write('[device  ' + stamp() + '] ' + event + (parts ? ' ' + parts : '') + '\n');
+}
+
+/* r120: one uplink turn. The optional text control frame is folded into the
+ * chat user message by the upstream; the fake STT endpoint varies its result
+ * per turn so consecutive turns are distinguishable in the request body. */
+function sendTurn(withText) {
+  turn++;
+  for (let i = 0; i < 5; i++) {
+    const seed = withText ? (turn * 16 + i) : i;
+    client.sendBinary(Buffer.alloc(UPLINK_BYTES, seed & 0xff));
+    uplink++;
+  }
+  log('send.uplink', { frames: uplink, bytesEach: UPLINK_BYTES,
+    totalBytes: uplink * UPLINK_BYTES, turn });
+  if (withText) {
+    client.sendText(JSON.stringify({ v: 1, type: 'text', text: 'TURN ' + turn + ' USER UTTERANCE' }));
+    log('send.text', { turn });
+  }
+  client.sendText(JSON.stringify({ v: 1, type: 'end' }));
+  log('send.end', { turn });
 }
 
 const client = connect(url, {
@@ -48,13 +73,17 @@ const client = connect(url, {
       if (msg.type === 'hello-ack') {
         ack = true;
         log('recv.hello-ack', { sessionId: msg.sessionId, audioFormat: msg.audioFormat });
-        for (let i = 0; i < 5; i++) {
-          client.sendBinary(Buffer.alloc(UPLINK_BYTES, i & 0xff));
-          uplink++;
+        if (turns > 1) {
+          sendTurn(true);
+        } else {
+          for (let i = 0; i < 5; i++) {
+            client.sendBinary(Buffer.alloc(UPLINK_BYTES, i & 0xff));
+            uplink++;
+          }
+          log('send.uplink', { frames: uplink, bytesEach: UPLINK_BYTES, totalBytes: uplink * UPLINK_BYTES });
+          client.sendText(JSON.stringify({ v: 1, type: 'end' }));
+          log('send.end', {});
         }
-        log('send.uplink', { frames: uplink, bytesEach: UPLINK_BYTES, totalBytes: uplink * UPLINK_BYTES });
-        client.sendText(JSON.stringify({ v: 1, type: 'end' }));
-        log('send.end', {});
       } else if (msg.type === 'text-delta') {
         deltas++;
         text += msg.text;
@@ -70,6 +99,14 @@ const client = connect(url, {
           final: msg.final, all: JSON.stringify(txText) });
       } else if (msg.type === 'state') {
         log('recv.state', { state: msg.state });
+        /* r120: 'idle' after a turn means the gateway re-armed a fresh adapter
+         * on the same session. Drive the next turn, or close after the last. */
+        if (msg.state === 'idle' && turns > 1) {
+          setTimeout(() => {
+            if (turn < turns) sendTurn(true);
+            else if (!client.closed) client.close();
+          }, 10);
+        }
       } else if (msg.type === 'error') {
         log('recv.error', { code: msg.code, fatal: msg.fatal, message: msg.message });
       }

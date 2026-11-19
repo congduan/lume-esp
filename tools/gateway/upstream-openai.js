@@ -181,6 +181,7 @@ class OpenAICompatibleUpstream {
     this._ttsSplitter = null;
     this._pipeline = null;
     this._speaking = false;
+    this._turnUserContent = '';    /* r120: user text of the current turn, for history */
 
     this._asr = null;
     this._asrInterim = '';              /* bounded accumulation for timeout fallback */
@@ -448,19 +449,30 @@ class OpenAICompatibleUpstream {
     const parts = [];
     if (transcript) parts.push(transcript);
     if (this.deviceText) parts.push(this.deviceText);
+    const userContent = parts.join('\n') || '(no input)';
+    this._turnUserContent = userContent;
+    const session = this.session;
+    const messages = [{ role: 'system', content: this.systemPrompt }];
+    /* r120: inject this session's bounded history BEFORE the current user turn.
+     * Feature-detected: an r119-style session without history Methods stays
+     * single-turn, so the request body is byte-for-byte unchanged. */
+    if (session && typeof session.historyEnabled === 'function' &&
+        session.historyEnabled() && typeof session.historyMessages === 'function') {
+      const prior = session.historyMessages();
+      if (Array.isArray(prior)) {
+        for (const m of prior) messages.push(m);
+      }
+    }
+    messages.push({ role: 'user', content: userContent });
     const body = {
       model: this.chatModel,
-      messages: [
-        { role: 'system', content: this.systemPrompt },
-        { role: 'user', content: parts.join('\n') || '(no input)' }
-      ],
+      messages,
       stream: true
     };
     const base = this.chatBaseUrl || this.baseUrl;
     const ctrl = new AbortController();
     this._abort = ctrl;
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
-    const session = this.session;
     const alive = () => !!(session &&
       (typeof session.isOpen !== 'function' || session.isOpen()));
     let text = '';
@@ -651,6 +663,7 @@ class OpenAICompatibleUpstream {
     let stopped = false;
     let fatalErr = null;
     let streamBreakErr = null;
+    let assistantReply = null;          /* r120: final delta-aggregated text */
     try {
       const asrOn = this._asrEnabled();
       let transcript = null;
@@ -676,8 +689,10 @@ class OpenAICompatibleUpstream {
         if (sttErr) throw sttErr;
         if (this._alive()) {
           /* chat and the TTS queue now run concurrently: _chatStream feeds the
-           * splitter, which starts _drainTts() as soon as a sentence completes. */
-          await this._withRetry('chat', () => this._chatStream(transcript || '', splitter));
+           * splitter, which starts _drainTts() as soon as a sentence completes.
+           * r120: keep the aggregated reply so history can be recorded once
+           * the turn closes cleanly. */
+          assistantReply = await this._withRetry('chat', () => this._chatStream(transcript || '', splitter));
         }
       }
     } catch (err) {
@@ -694,6 +709,17 @@ class OpenAICompatibleUpstream {
     /* join point: the turn ends only when chat is sealed AND every sentence
      * has been synthesized or skipped. */
     await p.promise;
+
+    /* r120: append this turn's user text + the final assistant text to the
+     * session history. Only reached when _chatStream returned a reply (a
+     * stop/stream-break/error throws before this point), and record() is a
+     * no-op when history is disabled. The system prompt is never stored. */
+    if (assistantReply != null && this.session &&
+        typeof this.session.historyEnabled === 'function' &&
+        this.session.historyEnabled() &&
+        typeof this.session.recordTurn === 'function') {
+      this.session.recordTurn(this._turnUserContent, assistantReply);
+    }
 
     /* stoppedByUser covers stop() during the chat read; _stopAborted also
      * covers stop() landing after chat sealed but while a TTS segment is

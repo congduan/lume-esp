@@ -71,6 +71,13 @@ class MockUpstream {
       session.sendAudio(FORMAT, synthPcm(f, f % 2 === 0 ? 'sine' : 'silence'));
     }
     session.sendTextDelta('', true);
+    /* r120: mirror the real upstream's history semantics. The canned answer
+     * is unchanged (baseline assertions hold); the session records the turn
+     * so two turns on one session accumulate user+assistant pairs. */
+    if (typeof session.historyEnabled === 'function' &&
+        session.historyEnabled() && typeof session.recordTurn === 'function') {
+      session.recordTurn(this.textIn || '(no input)', this.answer);
+    }
     session.sendState('idle');
     session.close(1000, 'done');
   }
