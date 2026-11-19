@@ -2100,3 +2100,42 @@ I (10369) lume-engine: js: GOLF tick L1 phase=holed mode=demo
 `STROKES 1 PAR 1 BEST 0` / `HOLED IN 1 PRESS NEXT`，球白点落在黄环洞心，球道与障碍/
 洞轮廓无黑边残影，四个按钮在位；emu 日志无 crash。截图/产物只留最终证据。
 真机挥杆手感 / 触屏力度 / 帧率 / 掉电持久性 deferred，未声称真机验证。
+
+### r125 result — TF 卡（microSD）SPI 模式 `lume.storage.Sd`（固件刀收口；appended, milestone checkboxes untouched）
+
+上一轮派发（/tmp/lume-r125-run.log）立即撞 429 限流（重置 2026-11-20 18:23 UTC+8，
+engine_exit=0 零产出），但限流前引擎已在主仓工作树留下半成品（r124-va-ptt 派发链在
+429 窗口内仍完成了一部分，判定：无 worktree、改动全部落在主仓、build log 引用主仓
+build/）。主控接管收口：修唯一编译错误（ESP-IDF FATFS 无 POSIX `statvfs` → `f_getfree`，
+`ff.h`；`SS(fs)` → `fs->ssize`），补引擎漏做的 docs 同步（本节 + KNOWN-SIMPLIFICATIONS
+r125 节 + hardware-api.md storage 行与 r125 note）与 `gen_api_docs.py` 重生成。
+
+**实现**（引擎半成品 + 主控收口）：
+- `firmware/components/lume-storage/lume_sd.{c,h}`：SDSPI 挂载（SPI3，2.16 profile
+  GPIO1/2/3/41，`lume_board_profile.h:49-52`），lazy one-shot 非致命 mount，
+  `format_if_mount_failed=false`（绝不毁卡上数据），无卡/无槽全部 API 返 -3；
+  write/read/readBinary/append/list/mkdir/remove/exists/statvfs，错误码与 Fs 对齐
+  （0/-1/-2/-3，detect 无 CD 脚返 -4）；statvfs 用 FATFS `f_getfree`（csize*ssize*n_fatent，
+  JS_NewInt64 精确整数）。
+- `lume_engine.c`：`lume.storage.Sd` natives 自注册（Kv/Fs 先例），prelude 零改动。
+- `runtime/types/lume.d.ts`：Sd 契约块（契约注释风格对齐 Fs）；`scripts/gen_api_docs.py`
+  重生成（150 entries，freshness --check 过）。
+- `sdkconfig.defaults` +1 行：`CONFIG_FATFS_API_ENCODING_UTF_8=y`。
+- `tests/sdcard.js`：wiring/never-format+lazy-mount 政策锁定/错误码对齐/prelude 未动
+  四类静态断言。
+
+**验证**（全部原始输出摘录；调度轮口径=编译绿+size+host harness，真机插卡验收留接板轮）：
+- `idf.py build && idf.py size` exit=0：Flash Code 2,037,888（r124 基线 ~2.02x,xxx，
+  增量 ~16 KB = sdmmc/sdspi/fatfs 驱动栈）；IRAM .text 15,356 / 16,384（上限不超）；
+  DIRAM 72.4%。log: /tmp/r125-idf-build3.log
+- `node tests/sdcard.js`：`ALL SD HARNESS CASES PASSED`（4 PASS）
+- `for t in tests/*.js`：0 FAIL
+- `npm test --prefix tools/lume`：pass 50 / fail 0（r125 简报基线 49 pass +1 skip；
+  本轮 skip 项消失为绿，无回归）
+- `python3 scripts/check_website.py`：API missing/invented/duplicates 均 none
+- `node tools/lume/lume.js check examples/counter --no-emu`：`RESULT: PASS (4 steps, 0 failed)`
+
+**取舍与未验项**：真机插卡 mount/读写/容量/掉电持久性/CD 全部 deferred；10 MHz 默认
+速度档起步；1.8 profile 的同名引脚实为 SDMMC（SPI 口径只对 2.16 声称有效，1.75c 无槽
+返 -3）。详见 docs/KNOWN-SIMPLIFICATIONS.md r125 节。roadmap M2 的 TF 卡行本轮不勾
+（留真机验收后再勾）。

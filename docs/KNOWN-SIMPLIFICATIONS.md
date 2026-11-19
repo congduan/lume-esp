@@ -1,5 +1,32 @@
 # Known Simplifications / Deferred Acceptance (M1)
 
+## r125 — TF 卡（microSD）SPI 模式 `lume.storage.Sd`（固件刀；无真机/无插卡）
+
+- **纯模拟侧验收**：证据 = `idf.py build` 绿 + size 达标（Flash Code 2,037,888，较 r124
+  基线 ~2.02x,xxx 增量 ~16 KB，为 sdmmc/sdspi/fatfs 驱动栈传递链接；IRAM .text 15,356 < 16,384
+  上限不变）+ 宿主 harness `tests/sdcard.js` 4 例全绿 + 全量宿主回归 0 FAIL +
+  `npm test --prefix tools/lume` 50 pass / 0 fail + `check_website.py`
+  missing/invented/duplicates 均 none。**无真机插卡验证**：真实 mount、读卡容量、读写/
+  掉电持久性、CD 行为全部 deferred to board-connected round。
+- **引脚出处**：2.16 profile `LUME_PIN_SD_MOSI/CLK/MISO/CS = GPIO1/2/3/41`
+  （`firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/lume_board_profile.h:49-52`，
+  沿用 mp3_decoder SDSPI 先例的 SPI3 + 板级引脚）。1.8 profile 同名引脚实为 SDMMC
+  CMD/CLK/D0（profile 内已有注释），1.75c 无卡槽（`LUME_PIN_SD_*` 故意不定义 → 编译期
+  `LUME_SD_HAS_SLOT=0`，全部 API 返 -3）——SPI 口径只对 2.16 声称有效。
+- **CD 脚策略**：三块板 profile 均无 `LUME_PIN_SD_CD`，`detect()` 统一返 -4
+  （`LUME_SD_ERR_NO_CD`），`mounted()` 以 mount 结果为准（简报允许的两种取舍之一）。
+- **绝不自动格式化**：`format_if_mount_failed=false`（与 Fs 首挂自动格式化相反——卡里可能
+  有用户数据）；mount 失败非致命、lazy one-shot（`s_tried` 锁定，失败后本轮 boot 所有 API
+  返 -3，不重试风暴）；mount 失败路径 `spi_bus_free` 释放总线。
+- **statvfs 实现**：ESP-IDF FATFS 无 POSIX `statvfs`（引擎首版编译失败已证），改用
+  `f_getfree`（`ff.h`），容量 = `csize * ssize * n_fatent`；数值经 `JS_NewInt64` 全量
+  返回（FAT32 最大 2 TiB << 2^53，JS 安全整数内，无精度取舍）。
+- **LFN/编码配置**：`CONFIG_FATFS_LFN_STACK=y + MAX_LFN=128` 本已在 sdkconfig.defaults
+  （r12 Fs 轮引入），本轮只新增 `CONFIG_FATFS_API_ENCODING_UTF_8=y` 一行（diff 已贴于
+  commit），使 VFS 路径 UTF-8 往返与 Fs/Kv 口径一致。
+- **速度档**：SDSPI 10 MHz 默认档起步（Waveshare demo 同档），`max_transfer_sz 4096`
+  对齐 mp3_decoder 先例；更高速度档留真机实测后再调。
+
 ## r107 / 语音网关 D 刀（协议先行 + mock 上游；host 证据，无真机/无真实上游）
 
 - **上游未拍板、只做适配器接口**：网关↔上游选型（①小智官方 WS+Opus 60 ms 帧翻译；

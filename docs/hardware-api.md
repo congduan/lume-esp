@@ -27,7 +27,7 @@ lume/imu        QMI8658 accel + gyro: read() polled; motion / data-ready INT
                 deferred until an INT pin is defined in lume_pins.h (r9)
 lume/net        Wifi, Http
 lume/ble        Ble (NimBLE GATT peripheral: advertise, RX write / TX notify)
-lume/storage    Kv (NVS), Fs (LittleFS partition)
+lume/storage    Kv (NVS), Fs (LittleFS partition), Sd (TF card, SPI mode)
 lume/system     sleep, reboot, time, timers, log
 lume/ui         App, View, Text, Button, Image, List, ... (declarative)
 ```
@@ -322,3 +322,21 @@ the native decoder). The result can be fed to `lume.imgscale.scale` or to
 `ctx.retainImage(slot, w, h, pixels)`; `examples/image_gallery` uses the latter
 for 96x96 TF-card thumbnails. Memory/quality caveats are recorded in
 `KNOWN-SIMPLIFICATIONS.md`.
+
+r125 implementation note — **TF card** (`lume.storage.Sd`): the third member of
+the `lume/storage` row, over SDSPI (SPI3, board-profile pins
+`LUME_PIN_SD_MOSI/CLK/MISO/CS` = GPIO1/2/3/41 on the 2.16 profile; see
+`firmware/boards/*/lume_board_profile.h`). New `lume_sd.c/.h` in `lume-storage`
+(natives self-register under `lume.storage.Sd` in `lume_engine.c`; prelude
+unchanged, same self-registration precedent as Kv/Fs). Mount is lazy (first Sd
+call), one-shot per boot, and nonfatal; `format_if_mount_failed=false` — the
+card is NEVER formatted (may hold user data, opposite of Fs's internal
+partition). All APIs return -3 when unmounted / no card / board has no slot
+pins; path rules, 64 KiB read cap, and error codes mirror `lume.storage.Fs`
+(0 / -1 arg / -2 IO / -3 unmounted, plus -4 for `detect()` with no CD pin — no
+board profile defines `LUME_PIN_SD_CD`, so detect() is -4 today and mounted()
+reflects the mount result). `statvfs()` returns `{total, free}` as exact
+int64-backed numbers via FATFS `f_getfree` (ESP-IDF FATFS has no POSIX
+statvfs). Real card insert/mount/read/write is **not** verified this round
+(compile + size + host harness only); on-device acceptance is deferred to a
+board-connected round.
