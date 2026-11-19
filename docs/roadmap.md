@@ -1514,3 +1514,65 @@ gateway 模拟而非串口 REPL 设施，无可复用的端到端 REPL 通道，
 to board**；宿主层证据为真实帧编解码 + 引擎 eval 路径的静态核对 + CLI 解析/smoke。
 PAUS 语义、app 切换过渡窗口丢弃、无多行续行/历史补全等取舍见
 `docs/KNOWN-SIMPLIFICATIONS.md`。commits 按 feat / test / docs 拆分，不推送。
+
+### r117 result — 流式 ASR（上行帧到即转写；翻案 r113「先攒后发」；appended, milestone checkboxes untouched）
+
+协议 v1.1 追加下行 `transcript-delta`（`v/type/seq/text/final`，seq 与 text-delta/audio
+各自独立；`final=true` 是**完整定稿全文**而非增量，先于 chat 首 delta，恰好一条）。
+线上 `v` 仍为 1，旧设备忽略未知下行 type。网关侧新增可插拔转写 WS 适配
+（`tools/gateway/asr-stream.js` + `upstream-openai.js`）：`sendAudio()` 帧到达即转发，
+握手未完成时 PCM 与 end-of-audio commit 一起排队 flush；interim 即时
+`transcript-delta(final=false)`，收口一条定稿；配置 `OPENAI_STREAM_ASR=1` +
+非空 `OPENAI_ASR_WS_URL` + 设备 `hello.caps.streamTranscript` 双门未满足则回退 r113
+一次性 REST（不产生 transcript-delta）。转写流错误选"回退 REST"，不引入新错误码、
+不重复定稿。设备 app 用整数/单片 signal 驱动，LISTEN/THINK 显示 `YOU: <转写>`、
+SPEAK 显示助手文本，分时互不覆盖；device-sim `--legacy` 覆盖旧设备忽略路径。
+固件零改动。
+
+验证（原始输出摘录）：
+- `node tests/gateway_upstream.js` → `ALL GATEWAY UPSTREAM CASES PASSED (34 cases)`
+  （r116 的 27 case 全绿 + r117 新增 7 case：interim seq / 单条定稿早于 chat /
+  帧到即转时间戳 / 双门回退 REST / stop 中止转写流 / 流错降级 / 握手前 end 的 commit 排队）。
+- `node tests/gateway.js` → `ALL GATEWAY HARNESS CASES PASSED (11 cases)`
+  （新 case 用真会话验证 transcript seq 0/1/2 与 text seq 0/1 独立）；
+  `node tests/va_ws.js` → `ALL VA WS HARNESS CASES PASSED (7 cases)`（新 case 验证
+  app 消费 3 帧转写、答案未被覆盖、定稿日志早于首条 chat delta）。
+- 全量 `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo "FAIL $t"; done; echo done`
+  → 仅 `done`，0 FAIL（软链 `/home/ubuntu/lume/tools/lume/node_modules` 以补齐 esbuild，
+  未装依赖、未入 git）。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 49 / # fail 0 / # cancelled 0 / # skipped 1`。
+- 哨兵：`node tools/lume/lume.js check examples/voice_assistant --no-emu` 与
+  `examples/counter --no-emu` 均 `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- 集成 smoke（假转写 WS + 假 chat SSE 慢速逐字 + 假 TTS + 真
+  `cli.js --upstream openai --port 18870` + device-sim；原始日志见
+  `artifacts/r117-smoke.log`）：
+  ```
+  [gateway 18:36:17.597] hello sessionId=s1 device={"model":"lume","fw":"r117"} streamTranscript=true
+  [device  18:36:17.599] send.uplink frames=5 bytesEach=3840 totalBytes=19200
+  [device  18:36:17.599] send.end
+  [FAKE-ASR 18:36:17.606] open path=/asr auth=Bearer smoke-key-not-real
+  [FAKE-ASR 18:36:17.608] recv.audio n=1 bytes=3840
+  [FAKE-ASR 18:36:17.608] send.interim text=HELLO
+  [FAKE-ASR 18:36:17.609] recv.audio n=2 bytes=3840
+  [FAKE-ASR 18:36:17.609] send.interim text=LUME
+  [FAKE-ASR 18:36:17.609] recv.commit -> send.final
+  [device  18:36:17.609] recv.transcript-delta seq=0 chars=6 final=false all="HELLO "
+  [device  18:36:17.609] recv.transcript-delta seq=1 chars=4 final=false all="HELLO LUME"
+  [device  18:36:17.611] recv.transcript-delta seq=2 chars=10 final=true all="HELLO LUME"
+  [device  18:36:17.749] recv.text-delta seq=0 chars=7 final=false
+  [device  18:36:17.773] recv.state state=speaking
+  [device  18:36:17.774] recv.audio seq=0 bytes=3848 ... rate=16000 channels=2 bits=16
+  [device  18:36:17.926] recv.text-delta seq=2 chars=0 final=true
+  [device  18:36:17.926] recv.state state=idle
+  [device  18:36:17.927] close ack=true uplink=5 deltas=3 audioFrames=34 text="HELLO. THIS IS THE ANSWER. " txDeltas=3 txText="HELLO LUME" legacy=false
+  [gateway 18:36:17.927] session.close sessionId=s1 code=1000
+  ```
+  定稿转写 @17.611 早于 chat 首 delta @17.749（138 ms），中间转写与 5 帧上行
+  时间戳一一对应；假端点 REST `/audio/transcriptions` 未命中，TTS 命中 2 次
+  （两句各 17 帧，共 34 帧）。全链路顺序：转写 interim → 定稿 → chat delta →
+  音频 → idle → close(1000)，`SMOKE PASS`。
+
+诚实口径：无真机 / 无出网 / 无真实 key；上游转写事件形状为适配性假设（单点收口
+`asr-stream.js`，可在接真实端点时替换），真机 ASR 时延 / barge-in / 旧设备实际行为
+全部 deferred。固件零改动，未跑 `idf.py build`（--no-emu 哨兵足够）。commits 按
+feat / test / docs 拆分，不推送（主控轮负责 push）。

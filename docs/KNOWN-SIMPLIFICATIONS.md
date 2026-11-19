@@ -1521,11 +1521,22 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 
 ## r113 / OpenAI 兼容上游适配器（三段 one-shot；host 假端点证据，无真机/无出网）
 
-- **无流式 ASR / 无流式 TTS**：上行 60 ms 帧流在网关侧**先攒后发**——整轮音频收齐
+- **无流式 ASR / 无流式 TTS（ASR 半边 r117 已翻案；TTS 半边 r116 已翻案）**：
+  r113 时上行 60 ms 帧流在网关侧**先攒后发**——整轮音频收齐
   （`stop()` 收口或静默兜底）后一次性 POST `/audio/transcriptions`；TTS 也是整段回复
   一次性合成再下行，不是边合成边播。取舍：v1 协议无上行分片 ASR 语义，先攒后发实现
   简单且对兼容端点要求最低；代价是首字时延 = 完整录音时长 + 三段串行 HTTP。真机
   时延预算 deferred，宿主不声称实时性。
+  - **TTS 翻案（r116）**：见 r116 条目与 `docs/voice-gateway-protocol.md` §8.1.7。
+  - **ASR 翻案（r117）**：协议 v1.1 追加 `transcript-delta`（独立 seq、单条定稿、
+    先于 chat 首 delta）；配置 + `hello.caps` 双门启用 WS 流式转写，帧到达即转发，
+    中间结果即时下行；未协商/失败回退 r113 REST，行为不变。**翻案依据**：
+    `tests/gateway_upstream.js` r117 case 28-34（interim seq / 单条定稿 / 帧到即转
+    的时间戳 / 双门回退 / stop 中止 / 流错降级 / 握手前 end 的 commit 排队）+
+    `tests/gateway.js` case 11（真会话 seq 独立）+ `tests/va_ws.js` case 7（app 消费）+
+    集成 smoke 实测 `recv.transcript-delta final=true @18:36:17.611` 早于
+    `recv.text-delta seq=0 @18:36:17.749`（原始日志 `artifacts/r117-smoke.log`）。
+    上游转写协议仍为适配性假设，真机时延 deferred（见下方 r117 条目）。
 - **无 barge-in 中断上游**：`stop()` 按 §8 是建议性收口——幂等、不取消已在途的三段
   管线、不调 `session.close()`。设备中途说话/再次 `end` 不会打断已开始的上游请求；
   一轮管线跑完才 idle + close。真机触摸 barge-in 手感 deferred。
@@ -1626,3 +1637,36 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **仍 open / 诚实口径**：无真机 / 无出网 / 无真实 key；全部证据来自本地假端点 +
   host harness + 真 `cli.js` + device-sim 集成 smoke。首字时延收益有宿主时间序证据，
   但不声称板级 playStream 实时性；固件零改动，**未跑 `idf.py build` / `idf.py size`**。
+
+## r117 — 流式 ASR（上行帧到即转写；协议 v1.1 `transcript-delta`；宿主假端点证据，无真机/无出网）
+
+- **上游转写协议是适配性假设**：本轮无真实 key / 不出网，转写 WS 的事件形状
+  （`transcript.delta` / `input_audio_transcription.delta` / `transcript.done` /
+  `input_audio_transcription.completed` / `{text,final:true}`）按 OpenAI Realtime
+  转写风格**假设**实现，单点收口在 `tools/gateway/asr-stream.js`，可在接真实端点时
+  一处替换。不声称已验证任何真实服务的流式转写契约。
+- **默认关闭 + 双门协商**：`OPENAI_STREAM_ASR=1` + 非空 `OPENAI_ASR_WS_URL` +
+  设备 `hello.caps.streamTranscript===true` 三者缺一即回退 r113 一次性 REST，
+  不产生 `transcript-delta`。取舍：对存量设备/端点零回归，代价是默认拿不到流式收益；
+  配置/协商任一遗漏会静默降级（有 `openai.asr.handshake` 日志可查）。
+- **转写流中断选"回退 REST"而非升级错误码**：握手失败/流断/读错 → 记日志 →
+  走 r113 REST，成功后发一条定稿（REST 全文**替换**中间转写），chat/TTS 不中断；
+  REST 也失败仍先发一条定稿（可空）再按 §7 `_fail` 既有映射收口。取舍：优先整轮
+  可用性、不引入新错误码/不重复定稿；代价是用户可能在中间转写后短暂看到文本被
+  REST 全文替换（真机观感未测）。
+- **定稿语义是"替换"不是"再拼一段"**：`final=true` 携带完整转写全文，恰好一条，
+  先于 chat 首 delta；设备 app 用它覆盖中间转写缓冲。若上游中途无 final，
+  `transcriptFinalTimeoutMs`（默认 1500 ms）超时用已累积 interim 兜底定稿，
+  可能截断——取舍是宁可早定稿进 chat，也不让整轮悬挂。
+- **设备端分时展示 + 有界 signal**：中间/定稿转写只写整数 `vaTxRev` 与单片
+  `vaTxFinal` signal，片段入有界数组（≤24×128 字符），render 时才 join；
+  LISTEN/THINK 显示 `YOU: <转写>`，SPEAK 显示助手 `text-delta`（无前缀），两路
+  永不互相覆盖。取舍：SPEAK 阶段看不到"你说的"全文（分时而非同屏），规避
+  typewriter OOM 教训；真机可读性 deferred。
+- **旧设备忽略规则**：v1.1 是追加式扩展、线上 `v` 仍为 1；未声明 caps 的旧设备
+  收到 `transcript-delta` 仅记日志忽略，不报错/不断连。device-sim `--legacy` 模拟
+  该路径；未在真机旧固件上实测。
+- **仍 open / 诚实口径**：无真机 / 无出网 / 无真实 key；全部证据来自本地假转写 WS
+  + 假 chat SSE + 假 TTS + host harness + 真 `cli.js` + device-sim 集成 smoke
+  （`artifacts/r117-smoke.log`）。首条转写早于 chat 的时间序有宿主直接证据，但不声称
+  板级 ASR 时延 / 麦克风 barge-in 手感；固件零改动，**未跑 `idf.py build` / `idf.py size`**。

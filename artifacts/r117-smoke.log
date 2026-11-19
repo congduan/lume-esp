@@ -1,0 +1,85 @@
+[SMOKE 18:36:17.479] fake upstream port=45849 gateway port=18870
+[gateway 18:36:17.536] gateway.listen host=127.0.0.1 port=18870
+[gateway 18:36:17.537] ready url=ws://127.0.0.1:18870/
+[device  18:36:17.595] open url=ws://127.0.0.1:18870/
+[device  18:36:17.596] send.hello
+[gateway 18:36:17.597] hello sessionId=s1 device={"model":"lume","fw":"r117"} streamTranscript=true
+[device  18:36:17.597] recv.hello-ack sessionId=s1 audioFormat=pcm_s16le_16000_2ch
+[device  18:36:17.599] send.uplink frames=5 bytesEach=3840 totalBytes=19200
+[device  18:36:17.599] send.end
+[device  18:36:17.600] recv.state state=thinking
+[gateway 18:36:17.602] uplink.pcm sessionId=s1 bytes=3840 frames=1
+[gateway 18:36:17.602] uplink.pcm sessionId=s1 bytes=3840 frames=2
+[gateway 18:36:17.602] uplink.pcm sessionId=s1 bytes=3840 frames=3
+[gateway 18:36:17.603] uplink.pcm sessionId=s1 bytes=3840 frames=4
+[gateway 18:36:17.603] uplink.pcm sessionId=s1 bytes=3840 frames=5
+[gateway 18:36:17.603] turn.end sessionId=s1
+[FAKE-ASR 18:36:17.606] open path=/asr auth=Bearer smoke-key-not-real
+[FAKE-ASR 18:36:17.608] recv.audio n=1 bytes=3840
+[FAKE-ASR 18:36:17.608] send.interim text=HELLO
+[FAKE-ASR 18:36:17.609] recv.audio n=2 bytes=3840
+[FAKE-ASR 18:36:17.609] send.interim text=LUME
+[FAKE-ASR 18:36:17.609] recv.audio n=3 bytes=3840
+[FAKE-ASR 18:36:17.609] recv.audio n=4 bytes=3840
+[FAKE-ASR 18:36:17.609] recv.audio n=5 bytes=3840
+[FAKE-ASR 18:36:17.609] recv.commit -> send.final
+[device  18:36:17.609] recv.transcript-delta seq=0 chars=6 final=false all="HELLO "
+[device  18:36:17.609] recv.transcript-delta seq=1 chars=4 final=false all="HELLO LUME"
+[FAKE-ASR 18:36:17.610] close
+[device  18:36:17.611] recv.transcript-delta seq=2 chars=10 final=true all="HELLO LUME"
+[device  18:36:17.749] recv.text-delta seq=0 chars=7 final=false
+[device  18:36:17.773] recv.state state=speaking
+[device  18:36:17.774] recv.audio seq=0 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.775] recv.audio seq=1 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=2 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=3 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=4 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=5 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=6 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=7 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=8 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=9 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=10 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=11 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=12 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=13 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=14 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=15 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.776] recv.audio seq=16 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.833] recv.text-delta seq=1 chars=20 final=false
+[device  18:36:17.842] recv.audio seq=17 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=18 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=19 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=20 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=21 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=22 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=23 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=24 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=25 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=26 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=27 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=28 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=29 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=30 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=31 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.842] recv.audio seq=32 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.843] recv.audio seq=33 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  18:36:17.926] recv.text-delta seq=2 chars=0 final=true
+[device  18:36:17.926] recv.state state=idle
+[device  18:36:17.927] close ack=true uplink=5 deltas=3 audioFrames=34 text="HELLO. THIS IS THE ANSWER. " txDeltas=3 txText="HELLO LUME" legacy=false
+[gateway 18:36:17.927] session.close sessionId=s1 code=1000
+[gateway 18:36:17.996] gateway.closed
+
+--- SMOKE ASSERTIONS ---
+OK   3 transcript-delta frames received (2 interim + final)
+OK   a final=true transcript frame exists
+OK   final transcript arrived BEFORE first chat delta ([device  18:36:17.611] vs [device  18:36:17.749])
+OK   chat final delta received
+OK   34 downlink audio frames received (2 sentences x 17)
+OK   one-shot REST transcription endpoint NOT hit
+OK   2 TTS requests (two chat sentences)
+OK   chat SSE completed
+OK   device reassembled full final transcript
+OK   device reassembled chat answer
+OK   no gateway error log
+SMOKE PASS

@@ -1,9 +1,14 @@
-# Lume 语音网关协议 v1（设备 ↔ 网关）
+# Lume 语音网关协议 v1 / v1.1（设备 ↔ 网关）
 
 本文定案 Lume 设备与语音网关之间的 WebSocket 线协议。设计边界：设备端只做薄 WS
 客户端（文本控制帧 + 二进制双流），Opus 翻译、ASR/LLM/TTS 等重活全部在网关侧。
 本轮只定设备↔网关这一段；网关↔上游（小智官方协议或 ASR/LLM/TTS 三件直连）的选型
 未拍板，不在本协议范围内。
+
+**v1.1（r117）是 v1 的追加式扩展**：只新增一种下行消息 `transcript-delta`，线上
+`v` 仍固定 `1`，不改动任何 v1 字段语义（§9 的 v1 冻结基线保持成立）。未实现 v1.1
+的旧设备 MUST 把未知的下行 `type` 当"忽略"（记日志即可），不得因此报错、断连或
+进入错误处理；网关也必须容忍设备不认识该消息。
 
 措辞约定：MUST / MUST NOT / SHOULD / MAY 按工程语义使用。`v` 字段为未来兼容留位，
 所有 JSON 控制帧与下行二进制帧头都必须携带。
@@ -23,10 +28,18 @@
 ```
 设备 connect() ──onOpen──> hello ──hello-ack──> [上行 PCM 帧 / text / end]
                                                       |
+             (v1.1) transcript-delta*  ← 上行帧到达即转写，先于 chat
+                                                      |
                         text-delta* + audio* + state ───┘
                                                       |
                                      state=idle + close(1000, done)
 ```
+
+一轮内的严格顺序（v1.1 流式转写已协商时）：
+`transcript-delta(final=false)*` → `transcript-delta(final=true)` → `text-delta*`
+（含 chat 的 `final=true`）→ `audio*` → `state=idle` → `close(1000, done)`。
+`text-delta` 的首帧 MUST NOT 早于定稿转写帧；音频仍按 r116 按句流式，
+首句音频可早于 chat SSE 收口（§8.1.7），但不会早于定稿转写帧。
 
 1. 设备建连后 MUST 第一帧发 `hello`。在此之前收到任何其它帧（文本或二进制）均为
    `not_hello` 致命错误，网关发 `error` 后关闭（1008）。
@@ -46,7 +59,7 @@
 | `v` | number | 是 | 协议版本，v1 固定 `1`。未知版本 → `unsupported_version` + 1008。 |
 | `type` | string | 是 | 消息类型，见 §4。 |
 | `sessionId` | string | 否 | 网关侧会话标识；hello-ack 起下行帧可带。设备侧忽略也可。 |
-| `seq` | number | 否 | 下行流式序号（text-delta 与 audio 各自从 0 递增，溢出回绕）。 |
+| `seq` | number | 否 | 下行流式序号（text-delta、transcript-delta 与 audio **各自独立**从 0 递增，溢出回绕）。 |
 
 未知字段 MUST 被忽略（向前兼容）。未知 `type` 为非致命 `unknown_type` 错误。
 
@@ -82,6 +95,31 @@
 
 设备把各段 `text` 顺序拼接；逐字上屏由 app 的 typewriter 效果完成（协议只保证
 增量的顺序与完整性）。
+
+### 4.3.1 `transcript-delta`（网关 → 设备，用户语音转写；v1.1 新增）
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `v` / `type` | 1 / "transcript-delta" | 固定值；线上 `v` 仍为 1（追加式扩展）。 |
+| `seq` | number | 从 0 递增，**与 text-delta / audio 的 seq 独立**，设备可用于丢包检测。 |
+| `text` | string | `final=false`：本段转写增量；`final=true`：**完整定稿转写全文**。 |
+| `final` | boolean | 最后一条为 `true`，表示转写定稿；每轮**恰好一条**。 |
+
+语义要点：
+
+1. `final=false` 是增量，设备把各段 `text` 顺序拼接得到当前"你说的"文本；
+   `final=true` 携带的是**完整定稿文本而非又一段增量**，设备 MUST 用它**替换**
+   已累积的中间转写，不得再次拼接（否则定稿文本会重复上屏）。
+2. 定稿帧 MUST 在 chat 的任意 `text-delta` 之前到达设备；即"先定稿你说的，
+   再开始播助手答的"。`final=true` 的 `text` 可为空（上游未识别到语音）。
+3. **能力协商**：设备在 `hello.caps` 中带 `streamTranscript: true` 表示认识该消息；
+   网关还需配置启用流式转写（§8.1.1 的 `OPENAI_STREAM_ASR` + `OPENAI_ASR_WS_URL`）。
+   两者缺一，网关 MUST NOT 发 `transcript-delta`，并回退 r113 的一次性 REST ASR。
+4. **向后兼容 / 忽略规则**：未实现 v1.1 的旧设备收到未知下行 `type` 时 MUST 忽略
+   （仅记日志），不得回 `error`、不得断连、不得把整轮当失败；未知字段同样忽略。
+   新设备与 device-sim 均实现"消费 / 忽略"两路（见 §8.1.8）。
+5. 该消息不改变 `state` 机与关闭语义；一轮正常完成仍以 `state=idle` +
+   `close(1000, done)` 收口。
 
 ### 4.4 `text`（设备 → 网关，可选）
 
@@ -198,7 +236,9 @@ stop()                    收口/中止本轮（幂等；不得回调 session.cl
 
 `session` 暴露 `sendTextDelta(text, final)` / `sendAudio(header, pcm)` /
 `sendState(state)` / `sendError(code, message, fatal)` / `close(code, reason)` /
-`sessionId` / `isOpen()` / `log()`。`stop()` 是建议性的资源释放，不取消已开始的响应。
+`sessionId` / `isOpen()` / `log()`；v1.1 追加 `sendTranscriptDelta(text, final)`
+（seq 独立，§4.3.1）与只读 `caps`（hello 协商用）。`stop()` 是建议性的资源释放，
+不取消已开始的响应（r117 的转写 WS 中止是管线已启动时的例外，见 §8.1.8）。
 真实上游（小智 WS+Opus、ASR/LLM/TTS 三件直连）均为 TODO 桩，
 本轮不做实现，也不在协议或网关里臆测任何 API key / 凭据处理。
 
@@ -224,17 +264,30 @@ OpenAI Audio API 的 `/audio/transcriptions`（Whisper 系）、`/chat/completio
 | `OPENAI_TTS_MODEL` | `tts-1` | speech 模型。 |
 | `OPENAI_TTS_VOICE` | `alloy` | speech voice。 |
 | `OPENAI_CHAT_BASE_URL` | （空） | 可选：独立覆盖 LLM 端点，仅 chat 段改打此处，stt/tts 仍走 `OPENAI_BASE_URL`。 |
+| `OPENAI_STREAM_ASR` | （空=关闭） | v1.1 流式转写配置开关；仅当值为 `1` 时开启。 |
+| `OPENAI_ASR_WS_URL` | （空） | 流式转写 WS 端点（如本地假端点 `ws://127.0.0.1:<port>/asr`）；不硬编码真实地址，必须显式配置。 |
 
-`--upstream mock` 仍是默认，行为不变（r107 canned 问答 + 合成 PCM）。
+`--upstream mock` 仍是默认，行为不变（r107 canned 问答 + 合成 PCM）。流式转写需要
+**配置开关 + 设备 `hello.caps.streamTranscript` + 非空 WS URL** 三者同时满足，
+否则一律走 r113 一次性 REST（§8.1.2），行为与 r113 完全一致。
 
 ### 8.1.2 三段映射与收口时序
 
-一轮内上行 60 ms PCM 帧（3840 B / 帧）**先攒后发**：`sendAudio()` 只累积，
-不做流式 ASR；`stop()`（由 `end` 控制帧经 `_stopUpstream()` 触发，见 §4.6）作为
-本轮收口信号启动一次三段 one-shot 管线：
+上行 60 ms PCM 帧（3840 B / 帧）的 STT 段有两条路径（r117 翻案 r113 的"先攒后发"）：
 
-1. `POST {base}/audio/transcriptions`：multipart `file` = PCM 包的 44 B 头 WAV
-   （立体声下混单声道、16 kHz / 16-bit），`model` = STT 模型；取 `text` 为转写。
+- **流式（v1.1 已协商）**：`sendAudio()` 收到帧即转发给转写 WS（握手未完成时先排队、
+  连上后连 PCM 带 end-of-audio commit 一起 flush），中间结果即刻
+  `transcript-delta(final=false)`；`stop()` 只负责 commit 并等待**一条**定稿
+  `transcript-delta(final=true)`，然后才进 chat。细节与错误语义见 §8.1.8。
+- **一次性 REST（默认 / 降级）**：与 r113 完全一致——`sendAudio()` 只累积，
+  `stop()`（由 `end` 控制帧经 `_stopUpstream()` 触发，见 §4.6）作为本轮收口信号
+  启动三段 one-shot 管线，不产生任何 `transcript-delta`。
+
+三段管线（r116 起 chat 真流式、TTS 按句流式）收口时序：
+
+1. `POST {base}/audio/transcriptions`（REST 路径）：multipart `file` = PCM 包的
+   44 B 头 WAV（立体声下混单声道、16 kHz / 16-bit），`model` = STT 模型；取 `text`
+   为转写。流式路径的等价结果是 §8.1.8 的定稿转写文本，两者都作为 chat 的 user 消息。
 2. `POST {chat_base}/chat/completions`：`messages` = system 提示词 + user（转写文本，
    可选拼接设备 `text` 控制帧内容），并带 `stream:true` + `Accept: text/event-stream`。
    r114 起为 SSE 真流式：每个 chunk 的 `choices[0].delta.content` 即时经
@@ -274,13 +327,16 @@ OpenAI Audio API 的 `/audio/transcriptions`（Whisper 系）、`/chat/completio
 
 ### 8.1.5 验证边界
 
-宿主 harness（`tests/gateway_upstream.js`，r116 共 27 case）用 `node:http` 本地假端点
-验证 WAV 头 / 下混、chat 请求体 + SSE 流式、按句 TTS 请求体与帧序、重采样、
-delta 顺序 / 单次 final、split-line/`[DONE]`、断流收口、stop 中止与 401 / 超时 /
-5xx 负向；其中 r116 新增 7 case 覆盖切句、首帧早于 chat 收口、多句串行顺序、
-单句失败跳过、chat 中断音频补完、stop abort 在途 TTS、chat 收口后 stop。集成 smoke 用
-真实 `cli.js --upstream openai` + 假 SSE 端点（慢速逐字）+ device-sim 跑通一轮，
-断言 TTS 命中 ≥2、首帧音频早于 chat SSE 结束。
+宿主 harness（`tests/gateway_upstream.js`，r117 共 **34 case**）用 `node:http` +
+`attachWsServer` 本地假端点验证 WAV 头 / 下混、chat 请求体 + SSE 流式、按句 TTS
+请求体与帧序、重采样、delta 顺序 / 单次 final、split-line/`[DONE]`、断流收口、
+stop 中止与 401 / 超时 / 5xx 负向；r116 的 7 case 覆盖切句 / 首帧早于 chat 收口 /
+多句串行顺序 / 单句失败跳过 / 中断补播 / stop abort / chat 收口后 stop；r117 新增
+7 case 覆盖 interim seq 递增与单条定稿、定稿早于 chat 首 delta、帧到达即转发的时间戳、
+无 caps / 配置关闭回退 REST、stop 中途中止转写流、转写流错误降级 REST、end 早于握手
+时 commit 排队。`tests/gateway.js`（11 case）用真会话验证 transcript seq 独立。集成
+smoke 用真实 `cli.js --upstream openai` + 假转写 WS + 假 SSE + 假 TTS + device-sim
+跑通一轮，断言定稿转写早于 chat 首 delta、REST 未命中、34 帧音频、全链路顺序。
 **不出网、不声称真机验证**；真机 WiFi / 时延 / 双 DMA deferred（见 KNOWN-SIMPLIFICATIONS）。
 
 ### 8.1.6 chat SSE 流式口径（r114）
@@ -304,7 +360,8 @@ delta 顺序 / 单次 final、split-line/`[DONE]`、断流收口、stop 中止�
 - **stop() 交互（r116 收紧）**：`stop()` 幂等；管线已启动时中止**两类**在途读流——
   chat SSE 读与当前 TTS `/audio/speech` 请求，丢弃队列中未开始的句子，保留已播
   音频；被中止的请求不重试（`_withRetry` 见 `_stopAborted` 即停）。不撤已发 delta，
-  最终 `idle` + `close(1000)`，无 error 帧。STT 仍按 r113 建议性语义不取消。
+  最终 `idle` + `close(1000)`，无 error 帧。r117 起若流式转写已协商，`stop()` 在管线
+  已启动时还会 abort 转写 WS（§8.1.8）；REST 路径的 STT 仍按 r113 建议性语义不取消。
 - **TTS**：r114 为整段一次性 `/audio/speech`；r116 已翻案为按句流式流水线，见 §8.1.7。
 
 ### 8.1.7 流式 TTS 时序（r116）
@@ -333,6 +390,38 @@ delta 顺序 / 单次 final、split-line/`[DONE]`、断流收口、stop 中止�
 - **验证边界**：本地假端点 + host harness + 集成 smoke（慢速逐字 SSE）给出
   "首帧音频早于 chat SSE 结束"的直接时间序证据；无真机 / 无出网 / 无真实 key，
   真机时延与 barge-in 手感 deferred（见 KNOWN-SIMPLIFICATIONS r116）。
+
+### 8.1.8 流式转写适配（r117；上游协议为适配性假设，非真机实证）
+
+- **启用条件**：`OPENAI_STREAM_ASR=1` + 非空 `OPENAI_ASR_WS_URL` + 设备
+  `hello.caps.streamTranscript === true`，三者缺一即走 r113 REST。真实 key / 真实
+  端点地址不进 git；WS 握手只带 `Authorization: Bearer <apiKey>`（由 env 注入，
+  ws-client 对额外头做 ASCII/名字白名单，防注入），不把 key 放 URL 或日志。
+- **上游事件形状（假设，可在 `asr-stream.js` 单点替换）**：面向 OpenAI Realtime
+  转写风格端点；interim 接受 `{"type":"transcript.delta","text":...}` 或
+  `{"type":"input_audio_transcription.delta","delta":...}`；定稿接受
+  `{"type":"transcript.done","text":...}` 或
+  `{"type":"input_audio_transcription.completed","transcript":...}`，以及本地假端点
+  常用的 `{"text":...,"final":true}`。其它事件忽略，绝不臆造定稿。
+- **上行与收口**：每帧 3840 B PCM 以二进制帧到达即转发；握手未完成时帧与
+  end-of-audio commit 一起排队，连上后按"先 PCM 后 commit"顺序 flush（真 device-sim
+  的 `end` 早于 WS 握手，此路径有专门 case 34）。收口等待定稿有界
+  （`transcriptFinalTimeoutMs`，默认 1500 ms），超时用已累积 interim 兜底发**一条**
+  定稿，不悬挂、不重复。
+- **错误取舍（选"回退 REST"）**：握手失败 / 流中断 / 读错 → 记
+  `openai.asr.error` / `openai.asr.handshake` 日志，改走 r113 一次性 REST；
+  成功后再发一条定稿转写（内容为 REST 全文，替换 interim），chat / TTS 不中断。
+  若 REST 也失败，仍先发一条定稿（可为空文本）再按 §7 既有 `_fail` 映射收口。
+  理由：优先保住整轮可用性，且 r113 路径已被 27 case 实证；不把流中断升级为
+  新错误码、不另发重复定稿。代价见 KNOWN-SIMPLIFICATIONS r117。
+- **幂等与中止**：`_emitTranscriptFinal()` 由 `_transcriptFinalSent` 守卫，一轮
+  至多一条 `final=true`；`stop()` 在管线已启动时同时 abort 转写 WS 与在途 chat/TTS，
+  被中止的等待立即以 `null` 解阻，不产生定稿、不发 error 帧。
+- **兼容两路**：新 app / device-sim 消费 `transcript-delta`（device-sim `--legacy`
+  模拟旧设备：不声明 caps 且忽略该消息）；旧设备收到未知下行 type 仅记日志忽略（§4.3.1）。
+- **验证边界**：全部证据来自本地假端点 + host harness + 真 `cli.js` + device-sim
+  集成 smoke；无真机 / 无出网 / 无真实 key，上游转写协议是适配性假设而非已验证的
+  真实端点契约（见 KNOWN-SIMPLIFICATIONS r117）。
 
 ## 9. 版本兼容策略
 
