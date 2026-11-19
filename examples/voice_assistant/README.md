@@ -16,8 +16,14 @@
 1. 启动网关（零依赖，Node ≥18）：
 
    ```bash
-   node tools/gateway/cli.js --port 8765 --host 0.0.0.0
+   node tools/gateway/cli.js --port 8765 --host 0.0.0.0 --device-token MY_SHARED_TOKEN
    ```
+
+   `--device-token` 优先于 env `GATEWAY_DEVICE_TOKEN`；两者都留空即**开放 LAN 模式**
+   （r119 之前的行为，零鉴权，便于本地开发）。非空即**锁定模式**：设备 hello 必须
+   带匹配 token，否则网关回 `error{code:"unauthorized",fatal:true}` + close 1008，
+   不建上游会话。token 不进日志（只记 `deviceAuth=on/off`）、不进 git。
+   完整安全模型见 `docs/voice-gateway-protocol.md` §8.2。
 
    CLI 默认端口是 **8765**；app 顶部常量 `VA_GATEWAY_URL` 默认是
    `ws://192.168.1.50:18770/`（LAN 占位地址）。两者必须对齐。
@@ -42,7 +48,17 @@
    也可以直接改 app 顶部 `VA_GATEWAY_URL` 常量后重新部署。URL 必须是
    `ws://` 或 `wss://`，预留最长 2048 字节。
 
-3. 重启 app：boot 时 `vaDetectMode()` 看到 URL + `GOT_IP` → `MODE GATEWAY`，
+3. 网关处于锁定模式时，在设备上写入**同一个** token（KV 优先于顶部常量）：
+
+   ```js
+   lume.storage.kv.set('voice_gateway_token', 'MY_SHARED_TOKEN');
+   ```
+
+   app 顶部对应常量是 `VA_GATEWAY_TOKEN`（默认 `''`）。留空 = 开放模式，hello
+   不带 `auth` 字段；非空 = hello 追加 `auth.token`（协议 §4.1/§8.2 的追加字段）。
+   也可用 deploy 前 meta 预置该 KV。token 值不会写进任何日志行。
+
+4. 重启 app：boot 时 `vaDetectMode()` 看到 URL + `GOT_IP` → `MODE GATEWAY`，
    自动把 `vaTransportWS` 注入 `vaSetTransport()`。无需改状态机。
 
 `vaSetTransport(fn)` 的约定不变：`fn(prompt, done)`，`done(text, err)`。
@@ -53,8 +69,9 @@
 
 详见 `docs/voice-gateway-protocol.md` v1。设备侧实现要点：
 
-- 建连第一帧必须是 `hello`（含 `v:1`、`device`、`caps.audioFormats`）；
-  收到 `hello-ack` 前不发音频。
+- 建连第一帧必须是 `hello`（含 `v:1`、`device`、`caps.audioFormats`；锁定模式
+  追加 `auth.token`）；收到 `hello-ack` 前不发音频。token 校验失败 →
+  `error{code:"unauthorized"}` + close 1008，设备回 IDLE 不挂死。
 - 上行：`lume.audio.recordStream({chunkSamples:1024})` 产出 4096 B 原生块，
   app 重组为 **60 ms = 3840 B** 裸 s16le 立体声帧（16 kHz / 16-bit / 2ch），
   流满 `VA_STREAM_FRAMES`(3) 帧后停流并发 `{"v":1,"type":"end"}`；
@@ -71,7 +88,10 @@
 - 网关默认 **mock 上游**（canned 问答 + 合成正弦/静音 PCM），另可选
   **OpenAI 兼容上游**（r113：`--upstream openai` + `OPENAI_*` env，三段
   `/audio/transcriptions` + `/chat/completions` + `/audio/speech`，用户自备 key）；
-  小智官方协议上游仍留桩未接。无 TLS / 鉴权，沿用 trusted-LAN 信任模型。
+  小智官方协议上游仍留桩未接。r119 起支持**可选共享 token 设备鉴权**
+  （网关 `GATEWAY_DEVICE_TOKEN` / `--device-token` + 设备 KV `voice_gateway_token`），
+  但 `ws://` 无 TLS，token 明文传输，只挡住未授权客户端、不防局域网抓包；
+  边界与取舍见协议 §8.2 与 `docs/KNOWN-SIMPLIFICATIONS.md` r119 节。
 - host harness（`node tests/va_ws.js`）只证明**协议字段与 app 逻辑**正确；
   真机 WiFi 下 WS 稳定性、时延预算、双 DMA 并发、触摸 barge-in 手感一律
   deferred to board bring-up，**未声称真机验证**。

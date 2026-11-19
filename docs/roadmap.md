@@ -1613,3 +1613,84 @@ ALL tests/wordring.js PASSED
 - emu：主仓与 worktree 均无 build 三件套（bootloader.bin / partition-table.bin / lume.bin），且本轮零固件改动按纪律不跑 `idf.py build`，故 emu 不可用；`--no-emu` 哨兵足够。
 
 诚实口径：真机环形交互手感、触摸命中半径、帧率 deferred to board；无词典校验、无每日一题、随机抽词等取舍见 `docs/KNOWN-SIMPLIFICATIONS.md` r118 节。commits 按 feat / test / docs 拆分，不推送（主控轮负责 push）。
+
+### r119 result — 语音网关设备鉴权：hello token 门（D 刀续；appended, milestone checkboxes untouched）
+
+D 刀最后一个产品化缺口收口：`tools/gateway` 此前对设备侧零鉴权，任意能连上 WS 端口的
+客户端发一个 `hello` 即可触发真实上游（chat/TTS/ASR 配额）并收下行音频。本轮新增
+**可选共享 token 门**（env `GATEWAY_DEVICE_TOKEN`，CLI `--device-token` 覆盖）：未配置
+= 开放 LAN 模式（向后兼容，零行为变化）；已配置 = 锁定模式，hello 必须带追加字段
+`auth.token`，校验插在 `v` 校验之后、上游适配器初始化之前，失败即 `error(unauthorized)`
++ close 1008，不回 hello-ack、不建上游会话、不发任何上游请求。等长比较用
+`node:crypto.timingSafeEqual`。设备侧 app 新增 KV `voice_gateway_token`（默认 `''`，
+空则不带 auth 字段），`device-sim` 加 `--device-token` 两路可切换。**零固件 / runtime
+改动**。协议 §2/§4.1/§6/§7/§8.2/§10 已登记，取舍见 KNOWN-SIMPLIFICATIONS r119 节。
+
+实证纠偏：读码确认 `vaTransportWS` 内 hello 原组装点、`server.js` 的
+`not_hello → unsupported_version → hello-ack → _startUpstream` 顺序、§8.1.1 的
+`PREFIX_SETTING` env 风格均与简报假设一致，无需纠偏；唯一补充是 §10 原文需保留后再
+追加 r119 验证口径。
+
+验证（原始输出摘录）：
+
+```
+$ node tests/gateway.js
+PASS r119: open mode + hello without auth -> full round unchanged
+PASS r119: locked + hello without token -> unauthorized + 1008 + zero upstream calls
+PASS r119: locked + wrong token -> unauthorized + 1008 + zero upstream calls
+PASS r119: locked + correct token -> full round, upstream engaged
+PASS r119: locked + audio before hello -> not_hello wins over token gate
+ALL GATEWAY HARNESS CASES PASSED (16 cases)        # 基线 11 -> +5，无回归
+
+$ node tests/gateway_upstream.js
+ALL GATEWAY UPSTREAM CASES PASSED (34 cases)       # 基线 34，无回归（不经过 createGateway）
+
+$ node tests/va_ws.js
+PASS r119: device KV token -> hello.auth -> locked gateway full round
+PASS r119: app token mismatch -> fatal error -> IDLE, no upstream, not hung
+ALL VA WS HARNESS CASES PASSED (9 cases)           # 基线 7 -> +2，无回归
+
+$ for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo "FAIL $t"; done; echo done
+done                                               # 0 FAIL
+
+$ npm test --prefix tools/lume
+# tests 50 / # pass 49 / # fail 0 / # cancelled 0 / # skipped 1
+
+$ node tools/lume/lume.js check examples/voice_assistant --no-emu
+RESULT: PASS (4 steps, 0 failed; exit 0)           # bundle 11321 bytes
+$ node tools/lume/lume.js check examples/counter --no-emu
+RESULT: PASS (4 steps, 0 failed; exit 0)           # bundle 2160 bytes
+```
+
+集成 smoke（真 `cli.js --upstream openai --device-token` + 本地假 STT/chat/TTS +
+真 `device-sim`，两端原始日志见 `artifacts/r119-smoke.log`）：
+
+```
+[SMOKE] fake upstream port=38123 gateway port=45481 mode=locked (token value withheld from log)
+[gateway] ready url=ws://127.0.0.1:45481/ deviceAuth=on
+--- PASS A: locked gateway + WRONG device token ---
+[device ] send.hello auth=on
+[gateway] protocol.error sessionId=s1 code=unauthorized message=device token mismatch fatal=true
+[device ] recv.error code=unauthorized fatal=true message=device token mismatch
+[device ] close ack=false uplink=0 deltas=0 audioFrames=0 auth=on
+[gateway] session.close sessionId=s1 code=1008
+[SMOKE] PASS A: unauthorized + 1008, upstream requests=0
+--- PASS B: locked gateway + CORRECT device token ---
+[device ] recv.hello-ack sessionId=s2 audioFormat=pcm_s16le_16000_2ch
+[device ] send.uplink frames=5 bytesEach=3840 totalBytes=19200
+[FAKE-UP] POST /audio/transcriptions bodyBytes=9909
+[FAKE-UP] POST /chat/completions stream=true bodyBytes=196
+[device ] recv.text-delta seq=0 chars=7 final=false
+[FAKE-UP] POST /audio/speech pcmBytes=48000
+[device ] recv.audio seq=0 bytes=3848 ... rate=16000 channels=2 bits=16
+[device ] close ack=true uplink=5 deltas=3 audioFrames=17 text="LOCKED MODE OK." auth=on
+[gateway] session.close sessionId=s2 code=1000
+[SMOKE] PASS B: full round, upstream requests=3 stt=1 chat=1 tts=1
+```
+
+`npm run build:playground --prefix tools/lume` → `PASS bundle voice_assistant 11321 bytes` /
+`PASS esbuild-wasm assets and 43 editable sources` / `PASS prelude 67016 bytes; 43 apps`；
+`python3 scripts/check_website.py` → `API missing/invented/duplicates: none`。
+worktree 原缺 gitignored 的 `tools/lume/node_modules`，已软链主仓安装使测试可跑（不入 git）。
+固件零改动，按纪律不跑 `idf.py build` / `idf.py size`。commits 按 feat / test / docs 拆分，
+不推送（主控轮负责 push）。

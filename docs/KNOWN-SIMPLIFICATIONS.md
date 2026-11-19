@@ -1679,3 +1679,27 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **词表是近似而非权威词库**：743 个纯 ASCII 小写 5 字母常用词，不是任何商标词库；原创判定文案与配色，不复刻商标 UI / 素材。
 - **KV 记录语义有限**：`wr.streak`（连胜，失败清零）与 `wr.best`（最少尝试，严格更少才覆盖）两个 <=15 字符 NVS key；无历史战绩榜、无跨局答案记录。
 - **仍 open / 诚实口径**：无真机；主仓与 worktree 均无 build 三件套，且本轮零固件改动按纪律不跑 `idf.py build` / `idf.py size`；全部证据来自 host harness（真 prelude 手势/绘制流）与 `--no-emu` 哨兵。真机视觉、触摸、性能 deferred to board。
+
+## r119 — 语音网关设备 token 门（共享 token 非 HMAC；宿主/假端点证据，无真机/无出网）
+
+- **共享 token 而非逐设备身份 / HMAC 挑战-响应**：一把 token 供所有设备共用，
+  无法撤销单台、无法防已持 token 的客户端重放。`lume.crypto.hmacSha256`（r91）
+  虽可用，但 `ws://` 明文信道上 HMAC 只防重放、不防窃听，增益有限、复杂度不值，
+  本轮取共享 token 相等比较（`timingSafeEqual` 等长常数时间）。取舍：挡住"连上
+  WS 端口就能烧真实 API 配额"的任意进程；代价是 token 一旦泄露即全网通用。
+- **LAN 信任模型边界**：token 门把"同网段任意进程可信"收窄为"知道 token 的客户端
+  可信"，**不等于网络隔离**，不替代 VLAN / 防火墙 / 端口 ACL。真正逐设备身份、
+  可撤销凭据与 TLS 留部署轮。
+- **`ws://` 明文传输 token**：无 TLS，token 随 hello JSON 明文过 LAN，被动抓包即可
+  复制。已登记为已知取舍；不声称抗抓包/抗重放。错误 message 与所有日志均不含
+  token 值（网关只记 `deviceAuth=on|off`，app 只记 `VA WS HELLO AUTH`）。
+- **开放模式默认**：网关未配置 token 时完全跳过校验，行为与 r118 逐字节一致。
+  取舍：存量 LAN 部署零回归；代价是默认仍无设备鉴权，需显式配置才锁死。
+- **校验顺序固定**：`not_hello` → `unsupported_version` → `unauthorized` → 建上游。
+  "先发音频帧再 hello" 在锁定模式仍优先 `not_hello`，顺序语义不回归；拒绝时
+  不回 hello-ack、不创建上游适配器、不发任何上游请求（宿主 harness 直接断言
+  工厂零调用，集成 smoke 断言假上游 HTTP 请求数为 0）。
+- **仍 open / 诚实口径**：无真机 / 无出网 / 无真实 key；证据来自 host harness
+  （`tests/gateway.js` 16 case、`tests/va_ws.js` 9 case）、真 `cli.js` + 本地假
+  上游 + device-sim 两路 smoke（`artifacts/r119-smoke.log`）。固件与 runtime
+  零改动，按纪律不跑 `idf.py build` / `idf.py size`。

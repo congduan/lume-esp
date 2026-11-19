@@ -35,6 +35,10 @@
                                      state=idle + close(1000, done)
 ```
 
+锁定模式（§8.2）下，`hello` 的 token 校验插在 `v` 校验与 `hello-ack` 之间；
+失败分支直接 `error{code:"unauthorized",fatal:true}` → `close(1008)`，不进入
+下列任何会话阶段、不回 `hello-ack`、不初始化上游适配器。
+
 一轮内的严格顺序（v1.1 流式转写已协商时）：
 `transcript-delta(final=false)*` → `transcript-delta(final=true)` → `text-delta*`
 （含 chat 的 `final=true`）→ `audio*` → `state=idle` → `close(1000, done)`。
@@ -43,7 +47,11 @@
 
 1. 设备建连后 MUST 第一帧发 `hello`。在此之前收到任何其它帧（文本或二进制）均为
    `not_hello` 致命错误，网关发 `error` 后关闭（1008）。
-2. 网关校验 `hello.v`，回 `hello-ack`。收到 ack 前设备 SHOULD NOT 发音频帧。
+2. 网关校验 `hello.v`；若网关处于锁定模式（§8.2），再校验 `hello.auth.token`。
+   两者都通过才回 `hello-ack`。收到 ack 前设备 SHOULD NOT 发音频帧。token
+   校验失败即 `error{code:"unauthorized",fatal:true}` + close(1008)，**不回
+   hello-ack、不建上游会话、不发任何上游请求**。校验顺序固定为
+   `not_hello`（首帧类型）→ `unsupported_version`（`v`）→ `unauthorized`（token）。
 3. 会话活跃期：设备持续上行 60 ms PCM 帧；网关流式下行文本 delta 与音频帧。
    `type=text` 与 `type=end` 为可选控制帧（见 §4.4 / §4.6）。
 4. 一轮完成：网关发 `final=true` 的 text-delta（若上游有文本）、`state=idle`，
@@ -73,8 +81,12 @@
 | `type` | "hello" | 是 | 固定值。 |
 | `device` | object | 否 | `{model, fw, app}` 自描述字符串，仅日志用，不影响路由。 |
 | `caps` | object | 否 | `{audioFormats: string[]}`；v1 仅识别 `"pcm_s16le_16000_2ch"`。缺省按该值处理。 |
+| `auth` | object | 否（锁定模式必填） | `{token: string}`，r119 追加字段（§9 只追加）。开放模式 MUST 忽略该字段；锁定模式缺失/类型错/不匹配均 → `unauthorized` + 1008。 |
 
-示例（ASCII 负载）：`{"v":1,"type":"hello","device":{"model":"lume","fw":"r106"},"caps":{"audioFormats":["pcm_s16le_16000_2ch"]}}`
+示例（ASCII 负载）：
+`{"v":1,"type":"hello","device":{"model":"lume","fw":"r106"},"caps":{"audioFormats":["pcm_s16le_16000_2ch"]}}`
+锁定模式追加（token 仅示意，真实值由设备 KV / env 注入，不进代码库）：
+`{"v":1,"type":"hello",...,"auth":{"token":"SHARED_TOKEN"}}`
 
 ### 4.2 `hello-ack`（网关 → 设备）
 
@@ -198,6 +210,7 @@ v1 上行二进制帧 = **裸 PCM，无头**。格式由协议常量固定，并
 | 一轮正常完成 | 1000 | `done` | `text-delta(final=true)`? + `state=idle` |
 | 设备主动关闭 | 1000（回显） | 设备给的值 | 无 |
 | 未 hello 先发数据 / hello 非法 | 1008 | `not-hello` / `bad-hello` | `error{fatal:true}` |
+| 设备 token 缺失 / 不匹配（锁定模式） | 1008 | `unauthorized` | `error{fatal:true}`，无 `hello-ack`、无上游请求 |
 | JSON 解析失败 | 1002 | `bad-json` | `error{fatal:true}` |
 | 未知消息类型（非致命） | — | — | `error{fatal:false}`，连接继续 |
 | 上行音频帧长度错误 | 1009 | `bad-audio-frame` | `error{fatal:true}` |
@@ -215,6 +228,7 @@ v1 上行二进制帧 = **裸 PCM，无头**。格式由协议常量固定，并
 | `not_hello` | 是 | 首帧不是 `hello`（含首帧即为二进制）。 |
 | `bad_hello` | 是 | `hello.v` 缺失/非 1，`type` 不符。 |
 | `unsupported_version` | 是 | `v` 不是 1。 |
+| `unauthorized` | 是 | 锁定模式下 `hello.auth.token` 缺失、非字符串或与网关配置不等（§8.2）；校验在 `v` 之后、建上游之前。message 为固定 ASCII 文案，不回显正确 token。 |
 | `bad_audio_frame` | 是 | 上行二进制帧长度 ≠ 3840。 |
 | `unknown_type` | 否 | 控制帧 `type` 未定义。 |
 | `unsupported_text_input` | 否 | 上游未实现 `sendText?` 却收到 `text`。 |
@@ -423,6 +437,44 @@ smoke 用真实 `cli.js --upstream openai` + 假转写 WS + 假 SSE + 假 TTS + 
   集成 smoke；无真机 / 无出网 / 无真实 key，上游转写协议是适配性假设而非已验证的
   真实端点契约（见 KNOWN-SIMPLIFICATIONS r117）。
 
+## 8.2 设备鉴权：共享 token 门（r119；非 HMAC）
+
+### 8.2.1 模式判定与配置
+
+| 模式 | 判定 | 行为 |
+|---|---|---|
+| 开放 LAN 模式 | 网关未配置 token（env 为空且无 CLI 覆盖） | `hello` 无 `auth` 也接受；行为与 r118 完全一致（向后兼容，不回归）。 |
+| 锁定模式 | 网关配置了非空 token | `hello` 必须带 `auth.token` 且相等；否则 `unauthorized` + 1008。 |
+
+配置来源与优先级：CLI `--device-token TOKEN` > env `GATEWAY_DEVICE_TOKEN` >
+空。命名沿用 §8.1.1 的「前缀 + 配置项」env 风格。设备侧对应 KV
+`voice_gateway_token`（app 顶部常量 `VA_GATEWAY_TOKEN` 默认 `''`）：空则 hello
+不带 `auth` 字段，非空则追加 `auth: {token}`。token 值不进任何日志（网关 `ready`
+只记 `deviceAuth=on|off`，app 只记 `VA WS HELLO AUTH`）、不进错误 message、
+不进 git；用 `node:crypto.timingSafeEqual` 做等长常数时间比较。
+
+### 8.2.2 校验位置与失败语义
+
+固定顺序（实证见 `tools/gateway/server.js` 的 `DeviceSession._onMessage`）：
+① 首帧类型 `not_hello` → ② `hello.v` 的 `unsupported_version` → ③ token 的
+`unauthorized` → ④ `phase=active` + `hello-ack` + `upstreamFactory()`。
+第 ③ 步失败时**只发 `error{code:"unauthorized",fatal:true}` 再 close(1008)**，
+不回 `hello-ack`、不创建上游适配器、不发任何上游请求（真实 key 的 chat/TTS/ASR
+配额不会被烧）。"先发音频帧再 hello" 仍命中 ① 的 `not_hello`，顺序语义不回归。
+
+### 8.2.3 安全模型边界与已知取舍
+
+- 这是**单一共享 token**，不是逐设备身份：所有设备共用一把，无法撤销单台、
+  无法防同一 LAN 内已拿到 token 的客户端重放。它只把"能连上 WS 端口的任意进程"
+  收窄为"知道 token 的客户端"，**不等于网络隔离**，不替代 VLAN / 防火墙。
+- `ws://` **无 TLS**，token 随明文 hello 帧在 LAN 上传输，被动抓包即可复制。
+  因此本轮选择共享 token 相等比较而非 HMAC 挑战-响应（`lume.crypto.hmacSha256`
+  r91 已可用）：在明文信道上 HMAC 只能防重放、不能防窃听，增益有限、复杂度不值。
+  该取舍登记于 `docs/KNOWN-SIMPLIFICATIONS.md` r119 节；`wss://` 与真正的
+  挑战-响应留待部署轮。
+- 字段名 `auth` / `auth.token` 是 §9 允许的**追加字段**：旧设备不发送、开放模式
+  网关忽略；旧网关收到未知字段按 §3 忽略，均不构成协议破坏。
+
 ## 9. 版本兼容策略
 
 - v1 为冻结基线；新增字段只能追加，旧字段语义不得改变。
@@ -437,3 +489,9 @@ smoke 用真实 `cli.js --upstream openai` + 假转写 WS + 假 SSE + 假 TTS + 
 分帧长度、流式序号、关闭与错误语义、未 hello/坏帧/上游断连负向路径。
 **不声称真机验证、不声称已接真实 ASR/LLM/TTS 上游**；真实上游接入、真机
 `playStream` 边收边播时延与双 DMA 并发留接板轮。
+
+r119 追加：开放模式无 `auth` 全轮不回归；锁定模式缺 token / 错 token →
+`unauthorized` + 1008 + **上游适配器工厂零调用**（宿主 harness 直接断言）；对 token
+全轮跑通；锁定模式 `not_hello` 仍优先；设备 app KV 注入 token 与"token 不进日志"
+断言（`tests/va_ws.js`）；真 `cli.js` + 本地假上游 + device-sim 的两路集成 smoke
+（两端原始日志见 `artifacts/r119-smoke.log`）。不声称抗 LAN 抓包或抗重放。
