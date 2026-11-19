@@ -53,6 +53,9 @@ var vaRev = signal(0);
  * callback; the bounded join happens at render time (typewriter OOM lesson). */
 var vaTxRev = signal(0);
 var vaTxFinal = signal('');
+/* r121: completed-turn count + retained last reply (multiturn context card). */
+var vaTurnCount = signal(0);
+var vaLastReply = signal('');
 
 var vaMode = 'DEMO';
 var vaFullText = '';
@@ -307,6 +310,9 @@ var VA_GATEWAY_KEY = 'voice_gateway_url';
 var VA_GATEWAY_URL = 'ws://192.168.1.50:18770/';   /* edit here or set the KV key */
 var VA_GATEWAY_TOKEN_KEY = 'voice_gateway_token';  /* r119: shared device token */
 var VA_GATEWAY_TOKEN = '';                         /* empty = open LAN mode */
+/* r121: opt-in gateway keep-alive. Off (default) = per-turn close, r119 bytes. */
+var VA_GATEWAY_MULTITURN_KEY = 'voice_gateway_multiturn';
+var VA_GATEWAY_MULTITURN = false;
 var VA_UPLINK_BYTES = 3840;                        /* 60 ms, 16 kHz, s16le stereo */
 var VA_STREAM_FRAMES = 3;                          /* push-to-talk window before end */
 var VA_PLAY_OPTS = { sampleRate: 16000, channels: 2, bits: 16 };
@@ -321,6 +327,9 @@ var vaStreamAcked = false, vaStreamEndSent = false, vaStreamFinal = false;
 var vaStreamFinished = false;
 var vaStreamConn = null, vaStreamDone = null, vaStreamPumpTimer = null;
 var vaStreamPendingAudio = null;
+/* r121: per-turn keep-alive state. idle=true means the WS is parked after a
+ * clean turn and the next push-to-talk turn may reuse it (no re-hello). */
+var vaStreamMulti = false, vaStreamIdle = false;
 var vaTxParts = [];                     /* bounded interim pieces, joined at render only */
 var vaStreamTxDeltas = 0;
 var VA_TX_MAX_PARTS = 24, VA_TX_MAX_PIECE = 128, VA_TX_MAX_CHARS = 512;
@@ -337,6 +346,16 @@ function vaGatewayToken() {
   var t = null;
   try { t = lume.storage.kv.get(VA_GATEWAY_TOKEN_KEY); } catch (e) { t = null; }
   return (typeof t === 'string' && t) ? t : VA_GATEWAY_TOKEN;
+}
+
+/* r121: optional gateway keep-alive. KV wins over the constant; accepts the
+ * same truthy spellings as the gateway CLI/env so one KV toggles both sides. */
+function vaGatewayMultiturn() {
+  var v = null;
+  try { v = lume.storage.kv.get(VA_GATEWAY_MULTITURN_KEY); } catch (e) { v = null; }
+  if (v === true || v === 1 || v === '1' || v === 'true') return true;
+  if (v === false || v === 0 || v === '0' || v === 'false') return false;
+  return VA_GATEWAY_MULTITURN;
 }
 
 /* ---- r117 transcript helpers: callbacks only bump an integer signal ------ */
@@ -370,15 +389,18 @@ function vaWSOnTranscript(msg) {
   }
 }
 
-function vaWSReset() {
+function vaWSReset(reuse) {
   vaTxReset();
   vaStreamTxDeltas = 0;
   vaStreamSession = null; vaStreamCarry = new ArrayBuffer(0); vaStreamQueue = [];
   vaStreamText = ''; vaStreamDeltas = 0; vaStreamAudioFrames = 0;
   vaStreamUplinkFrames = 0; vaStreamLastLogged = 0;
-  vaStreamAcked = false; vaStreamEndSent = false; vaStreamFinal = false;
-  vaStreamFinished = false; vaStreamConn = null; vaStreamDone = null;
+  vaStreamEndSent = false; vaStreamFinal = false;
+  vaStreamFinished = false; vaStreamIdle = false;
   vaStreamPendingAudio = null;
+  /* r121: a parked multiturn connection keeps its ack + handle across turns
+   * (the gateway re-arms its adapter on the same session, no re-hello). */
+  if (!reuse) { vaStreamAcked = false; vaStreamConn = null; }
   if (vaStreamPumpTimer !== null) {
     lume.system.clearInterval(vaStreamPumpTimer); vaStreamPumpTimer = null;
   }
@@ -459,7 +481,7 @@ function vaWSPump() {
 
 /* Barge-in: stop capture, deliver end, close socket; do not fire done(). */
 function vaWSAbort() {
-  vaStreamFinished = true; vaStreamDone = null;   /* before close(): onClose is sync */
+  vaStreamFinished = true; vaStreamIdle = false; vaStreamDone = null;   /* before close(): onClose is sync */
   vaWSMicStop();
   if (vaStreamConn) { try { vaStreamConn.close(); } catch (e) {} vaStreamConn = null; }
   if (vaStreamPumpTimer !== null) {
@@ -476,7 +498,20 @@ function vaWSFinish(err) {
   if (vaStreamPumpTimer !== null) {
     lume.system.clearInterval(vaStreamPumpTimer); vaStreamPumpTimer = null;
   }
-  if (vaStreamConn) { try { vaStreamConn.close(); } catch (e) {} vaStreamConn = null; }
+  if (vaStreamMulti) {
+    /* r121: park the WS; the gateway keeps the session alive across turns.
+     * Next vaTransportWS reuses it, so no re-hello and the token (already
+     * accepted on this connection) is not resent. A later remote close clears
+     * the park and the next turn falls back to a fresh hello + token. */
+    vaStreamIdle = true;
+    lume.log('VA WS KEEP session');
+  } else {
+    if (vaStreamConn) { try { vaStreamConn.close(); } catch (e) {} vaStreamConn = null; }
+  }
+  if (!err && vaStreamMulti) {
+    vaTurnCount.set(vaTurnCount() + 1);
+    vaLastReply.set(vaStreamText);
+  }
   var done = vaStreamDone; vaStreamDone = null;
   if (done) done(err ? null : vaStreamText, err || 0);
 }
@@ -513,10 +548,24 @@ function vaWSOnAudio(ab) {
 }
 
 function vaTransportWS(prompt, done) {
-  vaWSReset();
+  /* r121: in opt-in multiturn mode reuse the parked WS for the next turn: no
+   * new connect, no re-hello (empirically: gateway keeps one session across
+   * turns and re-arms its adapter). Any remote close / abort clears the park,
+   * so the next turn takes the fresh-connect path below and re-sends hello
+   * (with the KV token), which re-applies the gateway token gate. */
+  var multi = vaGatewayMultiturn();
+  var reuse = multi && vaStreamIdle && !!vaStreamConn;
+  vaStreamMulti = multi;
+  vaWSReset(reuse);
   vaStreamDone = done;
+  if (reuse) {
+    lume.log('VA WS REUSE turn=' + (vaTurnCount() + 1));
+    if (vaStreamPumpTimer === null) vaStreamPumpTimer = lume.system.setInterval(vaWSPump, 60);
+    vaWSStartMic();
+    return;
+  }
   var url = vaGatewayUrl();
-  lume.log('VA WS CONNECT ' + url);
+  lume.log('VA WS CONNECT ' + url + (multi ? ' MT' : ''));
   lume.net.ws.connect(url, {
     onOpen: function (conn) {
       vaStreamConn = conn;
@@ -554,8 +603,16 @@ function vaTransportWS(prompt, done) {
     },
     onClose: function () {
       lume.log('VA WS CLOSE');
-      if (!vaStreamFinal && !vaStreamFinished) vaSet('IDLE');
-      vaWSFinish(vaStreamFinal ? 0 : -3);
+      /* r121: a close (local or remote) invalidates any parked reuse handle so
+       * the next turn reconnects. In non-multiturn mode wasParked is always
+       * false and this path is byte-identical to r119. */
+      var wasParked = vaStreamIdle;
+      vaStreamIdle = false;
+      vaStreamConn = null;
+      if (!wasParked) {
+        if (!vaStreamFinal && !vaStreamFinished) vaSet('IDLE');
+        vaWSFinish(vaStreamFinal ? 0 : -3);
+      }
     },
     onError: function (code) {
       lume.log('VA WS ERR ' + code);
@@ -572,6 +629,14 @@ Text({ parent: vaRoot, text: 'LUME VOICE', style: { position: 'absolute', x: 0, 
 Text({ parent: vaRoot, text: function () { return 'MODE ' + vaModeLabel(); },
   style: { position: 'absolute', x: 0, y: 72, width: 480, height: 24,
     fontSize: 14, color: '#9EB3C6', textAlign: 'center' } });
+/* r121: honest conversation context line (only shown in keep-alive mode). */
+Text({ parent: vaRoot, text: function () {
+  if (!vaStreamMulti) return '';
+  var p = vaLastReply();
+  if (p.length > 16) p = p.substring(0, 16) + '..';
+  return 'TURN ' + vaTurnCount() + (p ? '  PREV: ' + p : '');
+}, style: { position: 'absolute', x: 0, y: 94, width: 480, height: 16,
+  fontSize: 11, color: '#9EB3C6', textAlign: 'center' } });
 Text({ parent: vaRoot, text: vaState, style: { position: 'absolute', x: 0, y: 110,
   width: 480, height: 58, fontSize: 40, color: '#40D8B0', textAlign: 'center' } });
 var vaCanvas = Canvas({ width: VA_CW, height: VA_CH, parent: vaRoot,
@@ -591,6 +656,7 @@ lume.gesture.on(vaCanvas, 'longpress', vaLongPress);
 
 /* ---- boot -------------------------------------------------------------- */
 vaSetMode(vaDetectMode());
+vaStreamMulti = vaGatewayMultiturn();     /* r121: show context badge from boot */
 vaCursorTimer = lume.system.setInterval(function () { vaCursor.set(!vaCursor()); }, CURSOR_MS);
 var vaWaveTimer = lume.system.setInterval(vaWaveTick, 80);
 lume.log('VA READY mode=' + vaMode + ' canned=' + VA_CANNED.length + ' canvas=' + (VA_CW * VA_CH));
