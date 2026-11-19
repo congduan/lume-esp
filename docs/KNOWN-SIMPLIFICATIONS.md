@@ -1824,3 +1824,42 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `touch 240 380 1 / ... / touch 240 288 0` + `HIT` 后串口实证 `GOLF SHOT L1 strokes=1
   speed=268` → `GOLF HOLE L1 strokes=1`。真机挥杆手感、触摸力度、帧率、掉电持久性 deferred。
   固件/runtime 源码零改动；emu 镜像为本地编译产物，未据此声称固件改动或真机验收。
+
+## r124 — voice_assistant 真 push-to-talk（纯 app 层；零固件 / 零协议帧改动，无真机）
+
+把 GATEWAY 模式录音触发从 tap-to-talk 定窗改成真按住说话。状态机
+`IDLE→LISTEN→THINK→SPEAK` 迁移表不变，只改进出 LISTEN 的触发与时长。
+
+- **触发与窗口**：`panstart` 起 `recordStream`（复用 `chunkSamples=1024` → 3840 B
+  carry 重组），`panend` 才停流并发 `end` 帧。`VA_PTT_MIN_MS=400`（<400 ms 误触：
+  停流但**不发 end**、直接回 IDLE）、`VA_PTT_MAX_MS=15000`（15 s 看门狗强制收窗，
+  防手滑长按烧流量/内存）。按住期间卡片显示 ASCII 提示 `HOLDING - RELEASE TO SEND`，
+  平时 `HOLD & DRAG TO TALK - RELEASE TO SEND`。DEMO/LIVE 保留 tap 流程与 canned
+  应答，`vaDetectMode()` 分叉未改；`tests/voice_assistant.js` 有 demo 模式回归用例。
+- **panend 与全局 swipe-up 不冲突（实证，否决按钮兜底）**：读码 `lume_scripts.c`
+  `__gestureStep`（DOWN/MOVE/UP → tap/swipe/longpress/panstart/pan/panend 纯状态机）
+  与 `lume_ui_bridge.c` `gesture_obj_cb` 证实：全局上滑回家手势挂在**节点 0**、有独立
+  手势状态（`__gestureStates[0]`），且只在按下点落入底部边缘区（`y>=480-60`）才 arm，
+  只过滤 `dir==='up'`；app 的 pan 处理器在 vaRoot（节点 1）/canvas，状态互相独立，
+  **不共享、不吞事件**。UP 时 `__gestureStep` 先 push `panend` 再 push `swipe`，所以
+  即便上滑也会先送 end 帧。host harness 双重实证（drivers 在节点 1 注入完整
+  DOWN/MOVE/UP）：向下/斜向 40 px 拖拽 → `panstart,pan,pan,panend`（无 swipe，干净提交）；
+  向上 60 px 快拖 → `panstart,pan,pan,panend,swipe:up`（panend 仍在 swipe 之前）。
+  因此**不需要** r123 minigolf 那种「拖拽定方向 + HIT 按钮二次确认」兜底；用户只需
+  向下/斜向轻拖即可干净松手提交（向上滑虽也能送 end，但同时触发回家，属已知边界）。
+- **协议零变化**：`end` 仍是 `{"v":1,"type":"end"}`，只补充“设备侧在松手时刻触发”的
+  口径（协议 §4.6），不新增字段。多轮复用 / resume 语义不变：按住—松手—再按住的
+  第二轮仍复用同一 WS、不重发 hello（`VA WS REUSE turn=2`）；r122 resume 不受影响。
+- **保留的取舍 / 仍 open**：① legacy GATEWAY tap 路径仍保留 `VA_STREAM_FRAMES=3`
+  定窗，仅为让 r108-r122 的 `va_ws.js` 13-case harness 不经改动继续通过；PTT 路径
+  由 `vaPTTActive` 在 `vaWSPump` 中屏蔽该定窗。② <400 ms 误触只停流、不发 end，
+  网关侧本轮会话可能等待到超时（非多轮模式）或被下一轮复用（多轮模式）——这是
+  「不发 end」口径的直接代价，未额外发 abort/close 帧（协议零变化优先）。③ panstart
+  要求手指移动 >12 px（`GESTURE.panMinPx`），静止按住不会产生 panstart；交互上按
+  README 指引轻拖触发，未在固件/runtime 做任何手势阈值改动。
+- **验证 / 诚实口径**：`node tests/voice_assistant.js` 18 case 全绿（新增 panstart→panend
+  开窗、最短窗丢弃、看门狗上限、swipe-up 不吞 panend、双按住无第二 hello、demo 回归），
+  全量 `for t in tests/*.js` 0 FAIL、`npm test --prefix tools/lume` 不回归、`check_website.py`
+  missing/invented/duplicates 均 none、两个 `--no-emu` 哨兵 PASS、playground 生成物随提交。
+  **真机按住手感 / 时延 / 双 DMA 并发 deferred to board，未声称真机验证。固件 / runtime
+  源码零改动**（实证过程未触及需改固件的边界，故未构建 / 未贴 size）。

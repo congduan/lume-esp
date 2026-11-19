@@ -158,6 +158,12 @@ IDLE/LISTEN/THINK/SPEAK 状态机，不强制同步。
 `{"v":1,"type":"end"}`：设备说话结束，网关调用上游 `stop()` 收口本轮（不关闭 WS；
 文本/音频下行可继续，直到网关发 idle + close）。设备直接 close 也等效收口。
 
+**设备侧触发口径（r124，协议帧零变化）**：`end` 的语义仍是「本轮上行结束」，与
+设备如何判定「说话结束」无关。voice_assistant app 在 GATEWAY 模式用真 push-to-talk：
+`panstart`（按住）起 `recordStream`，`panend`（松手）时刻才发本帧；按住 <400 ms 视为
+误触（停流但不发 `end`），>15 s 由看门狗强制收窗补发。旧 tap 路径在流满 3 帧时发本帧
+仅为兼容既有 harness。网关侧无需感知上述差异 —— 本帧字段与时序契约不变，不新增字段。
+
 ### 4.7 `error`（双向，网关主动发为主）
 
 | 字段 | 类型 | 说明 |

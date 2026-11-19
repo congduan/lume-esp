@@ -11,6 +11,17 @@
 
 `MODE GATEWAY` / `MODE LIVE` / `MODE DEMO` 徽章如实显示当前模式。
 
+**操作入口按模式分叉（r124）**：
+
+- `GATEWAY`（有网关 + `GOT_IP`）：**按住说话、松手发送**。在卡片上按住并轻拖
+  （任意方向 >12 px 触发 panstart）开始录音，松手（panend）即停流并送网关；
+  按住期间卡片提示 `HOLDING - RELEASE TO SEND`，平时提示
+  `HOLD & DRAG TO TALK - RELEASE TO SEND`。向下 / 斜向拖拽最干净（不会触发上滑
+  回家）；即便上滑，`panend` 仍先于 `swipe:up` 发出、end 帧照常送出。
+- `LIVE` / `DEMO`（无网关）：**仍为 tap-to-talk**（点 TALK 进入 LISTEN，再点发送，
+  SPEAK 时点打断），canned 问答与同步 `lume.ai.chat` 逻辑不变 —— 无网关时
+  push-to-talk 无意义。`vaDetectMode()` 分叉未改。
+
 ## WS 模式用法
 
 1. 启动网关（零依赖，Node ≥18）：
@@ -73,9 +84,11 @@
   追加 `auth.token`）；收到 `hello-ack` 前不发音频。token 校验失败 →
   `error{code:"unauthorized"}` + close 1008，设备回 IDLE 不挂死。
 - 上行：`lume.audio.recordStream({chunkSamples:1024})` 产出 4096 B 原生块，
-  app 重组为 **60 ms = 3840 B** 裸 s16le 立体声帧（16 kHz / 16-bit / 2ch），
-  流满 `VA_STREAM_FRAMES`(3) 帧后停流并发 `{"v":1,"type":"end"}`；
-  barge-in 也会停流并补发 end。
+  app 重组为 **60 ms = 3840 B** 裸 s16le 立体声帧（16 kHz / 16-bit / 2ch）。
+  **GATEWAY 模式 r124 起是真 push-to-talk**：panstart 起流、panend 停流并发
+  `{"v":1,"type":"end"}`；按住时长即窗口（<400 ms 误触丢弃、15 s 看门狗封顶）。
+  旧的 `VA_STREAM_FRAMES`(3) 定窗只在 legacy tap 路径保留（见下节与
+  `docs/KNOWN-SIMPLIFICATIONS.md` r124）。barge-in 也会停流并补发 end。
 - 下行：文本 `text-delta{seq,text,final}` 逐字写信号上屏；二进制帧先解
   8 字节头 `{version,type,format,rate:u16,channels,bits,seq}`，再把 payload
   直接喂 `lume.audio.playStream(pcm,{sampleRate,channels,bits})`，边收边播；
@@ -148,3 +161,23 @@ Host 验证：`node tests/va_ws.js` 现 13 case（9 基线 + 3 r121 + 1 r122：b
   r122 case，以及 `cli.js --upstream openai` + 假 STT/chat/TTS + 真
   `device-sim --turns 2 --drop-after 1` 设备主导 close(4000) 强断续传 smoke
   （`artifacts/r122-smoke.log`）。
+
+## r124 真 push-to-talk（纯 app 层；零固件 / 零协议帧改动）
+
+把 GATEWAY 模式的录音触发从 tap-to-talk 定窗改为真按住说话：`panstart` 起
+`recordStream`（复用 `chunkSamples=1024` → 3840 B carry 重组），`panend` 才停流
+并发 `end` 帧。**状态机 `IDLE→LISTEN→THINK→SPEAK` 迁移表不变**，只改进出
+LISTEN 的触发与时长：
+
+- 按住时长即录音窗；`VA_PTT_MIN_MS = 400`（<400 ms 视为误触，停流但**不发 end**、
+  直接回 IDLE）、`VA_PTT_MAX_MS = 15000`（15 s 看门狗强制收窗，防手滑长按烧流量 / 内存）。
+- 协议帧零变化：`end` 仍是 `{"v":1,"type":"end"}`，仅在「松手时刻」由设备侧触发；
+  协议 §4.6 补了一句设备侧触发口径。
+- 多轮复用 / resume 语义不变：按住—松手—再按住的第二轮仍复用同一 WS、不重发
+  hello（`VA WS REUSE turn=2`）；`tests/voice_assistant.js` 新增用例证明。
+- 取舍与实证：`panend` 与节点 0 全局上滑回家手势**不共享手势状态**，读码 + host
+  harness 双重实证 `panend` 先于 `swipe:up` 发出、不会被吞，故无需 minigolf 式
+  「按钮二次确认」兜底；legacy tap 的 3 帧定窗仅为兼容既有 r108-r122 harness
+  保留。详见 `docs/KNOWN-SIMPLIFICATIONS.md` r124 节。
+- 验证：`node tests/voice_assistant.js`（18 case）全绿；真机按住手感 / 时延 /
+  双 DMA 并发 deferred to board，未声称真机验证。
