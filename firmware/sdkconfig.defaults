@@ -28,6 +28,7 @@ CONFIG_LUME_OTA_PORT=8765
 # TF card (SPI mode) support
 CONFIG_FATFS_LFN_STACK=y
 CONFIG_FATFS_MAX_LFN=128
+CONFIG_FATFS_API_ENCODING_UTF_8=y
 
 # WiFi station IRAM mitigation (r11): the 16 KB IRAM is 100% full at the r10
 # baseline (16384/16384, Remain 0). esp_wifi's IRAM_OPT/RX_IRAM_OPT place the

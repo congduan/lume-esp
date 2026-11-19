@@ -636,6 +636,47 @@ declare namespace lume.storage.Fs {
   function exists(path: string): boolean | number;
 }
 
+/** TF/microSD card over SPI (r125). Paths are root-relative and may
+ * start with '/'. Path rules mirror lume.storage.Fs: empty, '.', '..',
+ * repeated slash, embedded NUL, and paths longer than 240 bytes are
+ * rejected with -1; a trailing '/' is normalized. No automatic
+ * parent-directory creation; mkdir creates one level. Files are limited
+ * to 64 KiB per read. write/append accept UTF-8 strings or ArrayBuffers.
+ * read decodes UTF-8 text; readBinary returns exact bytes. Missing file
+ * on read/list is -2; remove of a missing path is 0. All semantic
+ * failures return -1 invalid argument, -2 card/IO failure, -3 card not
+ * mounted (also every call when the board has no TF slot or no card is
+ * inserted), or -4 detect() with no CD pin on this board. Too few
+ * arguments throw TypeError; runtime allocation failures propagate a
+ * JS exception.
+ *
+ * The mount is lazy (first Sd call), one-shot per boot, nonfatal, and
+ * NEVER formats the card: a card that fails to mount leaves every API
+ * returning -3 until reboot, and contents are never destroyed (opposite
+ * of Fs, whose first mount may format the internal partition). No board
+ * profile currently defines a CD pin, so detect() returns -4;
+ * mounted() reflects the mount result.
+ */
+declare namespace lume.storage.Sd {
+  /** true once the card VFS is mounted; false after a failed or not-yet
+   * attempted mount. The first call triggers the mount attempt. */
+  function mounted(): boolean;
+  /** Card-detect pin state (1 = present, 0 = absent), or -4 when this
+   * board has no CD pin. Independent of the mount state. */
+  function detect(): number;
+  /** Card capacity and free bytes, or a negative error code (as a
+   * number) on failure. Exact integers (FAT32 max 2 TiB << 2^53). */
+  function statvfs(): { total: number; free: number } | number;
+  function write(path: string, data: string | ArrayBuffer): number;
+  function append(path: string, data: string | ArrayBuffer): number;
+  function read(path: string): string | number;
+  function readBinary(path: string): ArrayBuffer | number;
+  function remove(path: string): number;
+  function mkdir(path: string): number;
+  function list(dirPath: string): string[] | number;
+  function exists(path: string): boolean | number;
+}
+
 /**
  * Multi-app store + single-live-app switching (r30).
  *

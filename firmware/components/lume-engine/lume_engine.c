@@ -35,6 +35,7 @@
 #include "lume_imu_hw.h"
 #include "lume_kv.h"
 #include "lume_fs.h"
+#include "lume_sd.h"
 #include "lume_apps.h"
 #include "lume_net.h"
 #include "lume_webserv.h"
@@ -1925,6 +1926,146 @@ static JSValue js_fs_list(JSContext *ctx, JSValueConst this_val, int argc, JSVal
 static JSValue js_fs_mounted(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
 { (void)v; (void)n; (void)a; return JS_NewBool(ctx, lume_fs_mounted()); }
 
+/* ---- r125 TF card natives (lume.storage.Sd) ----
+ * Same shape and error convention as the Fs block above; hw lives in
+ * lume-storage (lume_sd.c). The card mount is lazy: the first Sd call
+ * runs lume_sd_init(), so a board without a card stays healthy. Byte
+ * counts go out as int64 (JS_NewInt64), exact for any card size FAT32
+ * can address (2 TiB << 2^53). */
+static const char *sd_path_arg(JSContext *ctx, JSValueConst v, bool *valid)
+{
+    size_t n = 0;
+    *valid = true;
+    const char *p = JS_ToCStringLen(ctx, &n, v);
+    if (!p) return NULL;
+    if (memchr(p, '\0', n)) { *valid = false; JS_FreeCString(ctx, p); return NULL; }
+    return p;
+}
+
+static JSValue js_sd_mounted(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{
+    (void)v; (void)n; (void)a;
+    int r = lume_sd_init();
+    return JS_NewBool(ctx, r == LUME_SD_OK && lume_sd_mounted());
+}
+
+static JSValue js_sd_detect(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{
+    (void)v; (void)n; (void)a;
+    if (!lume_sd_has_cd()) return JS_NewInt32(ctx, LUME_SD_ERR_NO_CD);
+    return JS_NewInt32(ctx, lume_sd_detect());
+}
+
+static JSValue js_sd_statvfs(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{
+    (void)v; (void)n; (void)a;
+    uint64_t total = 0, free_b = 0;
+    int r = lume_sd_init() == LUME_SD_OK ? lume_sd_statvfs(&total, &free_b)
+                                         : LUME_SD_ERR_STATE;
+    if (r < 0) return JS_NewInt32(ctx, r);
+    JSValue obj = JS_NewObject(ctx);
+    if (JS_IsException(obj)) return JS_EXCEPTION;
+    bool failed =
+        JS_SetPropertyStr(ctx, obj, "total",
+                          JS_NewInt64(ctx, (int64_t)total)) < 0 ||
+        JS_SetPropertyStr(ctx, obj, "free",
+                          JS_NewInt64(ctx, (int64_t)free_b)) < 0;
+    if (failed) return JS_EXCEPTION;   /* obj freed with the exception */
+    return obj;
+}
+
+static JSValue js_sd_write_common(JSContext *ctx, int argc,
+                                  JSValueConst *argv, bool append)
+{
+    if (argc < 2) return JS_ThrowTypeError(ctx, "Sd.write/append: expected path and data");
+    bool valid;
+    const char *path = sd_path_arg(ctx, argv[0], &valid);
+    if (!path) return valid ? JS_EXCEPTION : JS_NewInt32(ctx, LUME_SD_ERR_ARG);
+    const uint8_t *data = NULL;
+    const char *str = NULL;
+    size_t len = 0;
+    if (JS_IsString(argv[1])) {
+        str = JS_ToCStringLen(ctx, &len, argv[1]);
+        if (!str) { JS_FreeCString(ctx, path); return JS_EXCEPTION; }
+        data = (const uint8_t *)str;
+    } else if (JS_IsArrayBuffer(argv[1])) {
+        data = JS_GetArrayBuffer(ctx, &len, argv[1]);
+    } else {
+        JS_FreeCString(ctx, path);
+        return JS_NewInt32(ctx, LUME_SD_ERR_ARG);
+    }
+    int r = data ? lume_sd_write(path, data, len, append) : LUME_SD_ERR_ARG;
+    if (str) JS_FreeCString(ctx, str);
+    JS_FreeCString(ctx, path);
+    return JS_NewInt32(ctx, r);
+}
+static JSValue js_sd_write(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{ (void)this_val; return js_sd_write_common(ctx, argc, argv, false); }
+static JSValue js_sd_append(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{ (void)this_val; return js_sd_write_common(ctx, argc, argv, true); }
+
+static JSValue js_sd_read_common(JSContext *ctx, int argc, JSValueConst *argv, bool binary)
+{
+    if (argc < 1) return JS_ThrowTypeError(ctx, "Sd.read: expected path");
+    bool valid;
+    const char *path = sd_path_arg(ctx, argv[0], &valid);
+    if (!path) return valid ? JS_EXCEPTION : JS_NewInt32(ctx, LUME_SD_ERR_ARG);
+    uint8_t *data = NULL;
+    size_t len = 0;
+    int r = lume_sd_read(path, &data, &len);
+    JS_FreeCString(ctx, path);
+    if (r < 0) return JS_NewInt32(ctx, r);
+    JSValue result = binary ? JS_NewArrayBufferCopy(ctx, data, len)
+                            : JS_NewStringLen(ctx, (const char *)data, len);
+    free(data);
+    return result;
+}
+static JSValue js_sd_read(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{ (void)this_val; return js_sd_read_common(ctx, argc, argv, false); }
+static JSValue js_sd_read_binary(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{ (void)this_val; return js_sd_read_common(ctx, argc, argv, true); }
+
+static JSValue js_sd_path_action(JSContext *ctx, int argc, JSValueConst *argv, int op)
+{
+    if (argc < 1) return JS_ThrowTypeError(ctx, "Sd: expected path");
+    bool valid;
+    const char *path = sd_path_arg(ctx, argv[0], &valid);
+    if (!path) return valid ? JS_EXCEPTION : JS_NewInt32(ctx, LUME_SD_ERR_ARG);
+    bool exists = false;
+    int r = op == 0 ? lume_sd_remove(path) :
+            op == 1 ? lume_sd_mkdir(path) : lume_sd_exists(path, &exists);
+    JS_FreeCString(ctx, path);
+    if (r < 0 || op != 2) return JS_NewInt32(ctx, r);
+    return JS_NewBool(ctx, exists);
+}
+static JSValue js_sd_remove(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{ (void)v; return js_sd_path_action(ctx, n, a, 0); }
+static JSValue js_sd_mkdir(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{ (void)v; return js_sd_path_action(ctx, n, a, 1); }
+static JSValue js_sd_exists(JSContext *ctx, JSValueConst v, int n, JSValueConst *a)
+{ (void)v; return js_sd_path_action(ctx, n, a, 2); }
+
+static void sd_list_emit(void *arg, const char *name)
+{ kv_keys_emit(arg, name); }
+static JSValue js_sd_list(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv)
+{
+    (void)this_val;
+    if (argc < 1) return JS_ThrowTypeError(ctx, "Sd.list: expected directory path");
+    bool valid;
+    const char *path = sd_path_arg(ctx, argv[0], &valid);
+    if (!path) return valid ? JS_EXCEPTION : JS_NewInt32(ctx, LUME_SD_ERR_ARG);
+    kv_keys_ctx_t c = { ctx, JS_NewArray(ctx), 0, false };
+    if (JS_IsException(c.arr)) { JS_FreeCString(ctx, path); return JS_EXCEPTION; }
+    int r = lume_sd_list(path, sd_list_emit, &c);
+    JS_FreeCString(ctx, path);
+    if (r < 0 || c.failed) {
+        JS_FreeValue(ctx, c.arr);
+        return c.failed ? JS_EXCEPTION : JS_NewInt32(ctx, r);
+    }
+    return c.arr;
+}
+
+
 /* ---- r30 multi-app natives (lume.apps.*) ----
  * The store and the "which app is live" decision both run on the engine task.
  * launch()/home() only POST a switch request: the CURRENT runtime must keep
@@ -2983,6 +3124,24 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, fs, "list", JS_NewCFunction(ctx, js_fs_list, "list", 1));
     JS_SetPropertyStr(ctx, fs, "mounted", JS_NewCFunction(ctx, js_fs_mounted, "mounted", 0));
     JS_SetPropertyStr(ctx, storage, "Fs", fs);
+    /* lume.storage.Sd (r125): TF card over SDSPI, hw in lume-storage.
+     * Natives self-register, so the prelude needs no change. The mount is
+     * lazy (first Sd call), one-shot and NEVER formats the card: with no
+     * card, no slot pins, or a failed mount every API returns -3 and
+     * mounted() stays false until reboot. */
+    JSValue sd = JS_NewObject(ctx);
+    JS_SetPropertyStr(ctx, sd, "mounted", JS_NewCFunction(ctx, js_sd_mounted, "mounted", 0));
+    JS_SetPropertyStr(ctx, sd, "detect", JS_NewCFunction(ctx, js_sd_detect, "detect", 0));
+    JS_SetPropertyStr(ctx, sd, "statvfs", JS_NewCFunction(ctx, js_sd_statvfs, "statvfs", 0));
+    JS_SetPropertyStr(ctx, sd, "write", JS_NewCFunction(ctx, js_sd_write, "write", 2));
+    JS_SetPropertyStr(ctx, sd, "append", JS_NewCFunction(ctx, js_sd_append, "append", 2));
+    JS_SetPropertyStr(ctx, sd, "read", JS_NewCFunction(ctx, js_sd_read, "read", 1));
+    JS_SetPropertyStr(ctx, sd, "readBinary", JS_NewCFunction(ctx, js_sd_read_binary, "readBinary", 1));
+    JS_SetPropertyStr(ctx, sd, "remove", JS_NewCFunction(ctx, js_sd_remove, "remove", 1));
+    JS_SetPropertyStr(ctx, sd, "mkdir", JS_NewCFunction(ctx, js_sd_mkdir, "mkdir", 1));
+    JS_SetPropertyStr(ctx, sd, "exists", JS_NewCFunction(ctx, js_sd_exists, "exists", 1));
+    JS_SetPropertyStr(ctx, sd, "list", JS_NewCFunction(ctx, js_sd_list, "list", 1));
+    JS_SetPropertyStr(ctx, storage, "Sd", sd);
     JS_SetPropertyStr(ctx, lume, "storage", storage);
     /* lume.apps (r30): multi-app store + launch. Mounts LittleFS through
      * lume_apps_init(); an unmounted store makes list() return -3 and keeps
