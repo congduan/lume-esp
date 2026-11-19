@@ -269,5 +269,42 @@ const HELLO = { v: 1, type: 'hello', device: { model: 'lume', fw: 'r107' },
       await untilClosed(st);
     });
 
+  /* ---- 8. r117: real session emits transcript-delta with its own seq ---- */
+  class TranscriptUpstream {
+    start(session) {
+      session.sendTranscriptDelta('YOU ', false);
+      session.sendTranscriptDelta('SAID', false);
+      session.sendTranscriptDelta('YOU SAID', true);  /* final = complete text */
+      session.sendTextDelta('HI.', false);
+      session.sendTextDelta('', true);
+      session.sendState('idle');
+      session.close(1000, 'done');
+    }
+    sendAudio() {}
+    stop() {}
+  }
+  await runCase('r117: transcript seq independent of text/audio, single final',
+    () => new TranscriptUpstream(), async ({ gw, url }) => {
+      const st = device(url);
+      await untilOpen(st);
+      const hello = Object.assign({}, HELLO, {
+        caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: true }
+      });
+      st.client.sendText(JSON.stringify(hello));
+      await untilClosed(st);
+      const tx = st.msgs.filter(hasType('transcript-delta')).map(ctrl);
+      const dl = st.msgs.filter(hasType('text-delta')).map(ctrl);
+      assert.equal(tx.length, 3, '2 interim + 1 final');
+      assert.deepEqual(tx.map((m) => m.seq), [0, 1, 2], 'transcript seq 0..N-1');
+      assert.deepEqual(dl.map((m) => m.seq), [0, 1], 'text seq independent');
+      assert.equal(tx.filter((m) => m.final === true).length, 1, 'exactly one final transcript');
+      assert.equal(tx[2].text, 'YOU SAID', 'final carries complete transcript');
+      assert.deepEqual(tx.map((m) => m.v), [1, 1, 1], 'v=1 on every control frame');
+      const s = gw.sessions[0];
+      assert.equal(s.transcriptDeltasOut, 3);
+      assert.equal(s.textDeltasOut, 2);
+      assert.equal(s.closeCode, 1000);
+    });
+
   console.log(`ALL GATEWAY HARNESS CASES PASSED (${checks} cases)`);
 })().catch((e) => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });

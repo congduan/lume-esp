@@ -171,7 +171,8 @@ function smoke(b, gwLog, answer) {
       assert.deepEqual(b.bridge.stats.text[0], {
         v: 1, type: 'hello',
         device: { model: 'lume', fw: 'r108', app: 'voice_assistant' },
-        caps: { audioFormats: ['pcm_s16le_16000_2ch'] }
+        /* r117: device opts in to the v1.1 transcript-delta downlink. */
+        caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: true }
       });
       await waitFor(() => b.c.vaStreamAcked, 'hello-ack');
 
@@ -296,6 +297,40 @@ function smoke(b, gwLog, answer) {
   assert.equal(fb.c.vaState(), 'SPEAK');
   assert.ok(CANNED.indexOf(fb.c.vaFullText) >= 0, 'non-function falls back to legacy');
   pass('fallback: no gateway -> legacy canned; vaSetTransport(non-fn) restores legacy');
+
+  /* ---- 7. r117: transcript-delta consumed, answer not overwritten ------- */
+  class TranscriptUpstream {
+    constructor() { this.stopped = false; }
+    start(session) {
+      session.sendTranscriptDelta('HELLO ', false);
+      session.sendTranscriptDelta('LUME', false);
+      session.sendTranscriptDelta('HELLO LUME', true);   /* complete, not increment */
+      session.sendTextDelta('HI.', false);
+      session.sendTextDelta('', true);
+      session.sendState('idle');
+      session.close(1000, 'done');
+    }
+    sendAudio() {}
+    stop() { this.stopped = true; }
+  }
+  const gwLog7 = [];
+  await withGw(() => new TranscriptUpstream(), gwLog7, async (gw, url) => {
+    const b = boot(url);
+    drive(b.c);
+    await waitFor(() => b.c.vaStreamFinished, 'turn finished');
+    assert.equal(b.c.vaStreamTxDeltas, 3, '3 transcript frames consumed');
+    assert.equal(b.c.vaTxFinal(), 'HELLO LUME', 'final transcript sealed in signal');
+    assert.equal(b.c.vaFullText, 'HI.', 'chat answer kept separate from transcript');
+    assert.ok(b.logs.some((l) => l === 'VA WS TRANSCRIPT n=1 chars=6'));
+    assert.ok(b.logs.some((l) => l === 'VA WS TRANSCRIPT n=2 chars=4'));
+    assert.ok(b.logs.some((l) => l === 'VA WS TRANSCRIPT FINAL n=3 chars=10'));
+    const txFinalIdx = b.logs.findIndex((l) => l.indexOf('TRANSCRIPT FINAL') >= 0);
+    const firstDeltaIdx = b.logs.findIndex((l) => l.indexOf('VA WS DELTA') >= 0);
+    assert.ok(txFinalIdx >= 0 && firstDeltaIdx > txFinalIdx,
+      'final transcript logged before the first chat delta');
+    assert.equal(b.bridge.stats.dispatchErrors.length, 0, 'no dispatch errors');
+    pass('r117: transcript consumed into signal, answer intact, final before chat delta');
+  });
 
   console.log(`ALL VA WS HARNESS CASES PASSED (${checks} cases)`);
 })().catch(e => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });

@@ -1,10 +1,13 @@
-/* r113 + r114 gateway upstream harness - real HTTP against a local fake
- * OpenAI-compatible endpoint (three routes). No network egress, no API key,
- * no new npm deps. Covers: multipart/WAV header + stereo->mono downmix, chat
- * body fields + SSE stream:true deltas, independent chat base URL, TTS request
- * body, 24k->16k resampling, frame count, delta order/final, idle收口,
- * 401/5xx/timeout negatives (no hangs), SSE split-line chunking, [DONE]
- * termination, mid-stream disconnect收口 and stop()-abort.
+/* r113 + r114 + r117 gateway upstream harness - real HTTP/WS against local
+ * fake OpenAI-compatible endpoints (STT REST + chat SSE + TTS REST, plus the
+ * streaming transcription WS). No network egress, no API key, no new npm deps.
+ * Covers: multipart/WAV header + stereo->mono downmix, chat body + SSE deltas,
+ * independent chat base URL, TTS body, 24k->16k resampling, frame count,
+ * delta order/final, idle收口, 401/5xx/timeout negatives, SSE split-line,
+ * [DONE], mid-stream disconnect and stop()-abort. r117 adds: interim
+ * transcript timing + seq, single final before chat, audio forwarded on
+ * arrival, capability/config fallback to the r113 REST path, stop mid-ASR
+ * abort, and ASR-stream failure -> REST + one final.
  * Run: node tests/gateway_upstream.js */
 'use strict';
 const assert = require('node:assert/strict');
@@ -14,6 +17,7 @@ const {
   pcm16StereoToWav, resample24kMonoTo16kStereo, chunkPcm, splitTextDeltas, joinUrl
 } = require('../tools/gateway/upstream-openai');
 const { createSentenceSplitter } = require('../tools/gateway/sentence-splitter');
+const { attachWsServer } = require('../tools/gateway/ws');
 
 let checks = 0;
 const pass = (label) => { checks++; console.log('PASS ' + label); };
@@ -132,15 +136,73 @@ function makeUp(fake, extra = {}) {
   }, extra));
 }
 
+/* ---- fake streaming transcription WS endpoint (r117) ---------------------
+ * Speaks the documented adaptation-assumption event shape. onFrame(n, conn)
+ * may push interim deltas; onCommit(conn) may send the final. Records frame
+ * arrival timestamps so "forward on arrival, not after stop" is provable. */
+function makeFakeAsr(opts = {}) {
+  const state = {
+    port: 0, frames: [], control: [], conns: [], auth: [], commitAt: 0, closedAt: 0
+  };
+  state.server = http.createServer((req, res) => { res.writeHead(404); res.end('not found\n'); });
+  const mgr = attachWsServer(state.server, {
+    onConnection: (conn, req) => {
+      state.auth.push(req.headers.authorization || '');
+      state.conns.push(conn);
+      conn.on('message', (m) => {
+        if (m.binary) {
+          const rec = { at: Date.now(), bytes: m.data.length };
+          state.frames.push(rec);
+          if (typeof opts.onFrame === 'function') opts.onFrame(state.frames.length, conn, state);
+        } else {
+          let msg = null;
+          try { msg = JSON.parse(m.data); } catch (_) { /* ignore */ }
+          if (msg && /commit/.test(String(msg.type))) {
+            state.commitAt = Date.now();
+            state.control.push({ at: state.commitAt, type: msg.type });
+            if (typeof opts.onCommit === 'function') opts.onCommit(conn, state);
+          }
+        }
+      });
+      conn.on('close', () => { state.closedAt = Date.now(); });
+    }
+  });
+  return {
+    state,
+    start() {
+      return new Promise((resolve) => state.server.listen(0, '127.0.0.1', () => {
+        state.port = state.server.address().port; resolve();
+      }));
+    },
+    close() {
+      mgr.closeAll(1001, 'test-done');
+      return new Promise((resolve) => state.server.close(() => resolve()));
+    }
+  };
+}
+
+async function withFakeAsr(opts, fn) {
+  const asr = makeFakeAsr(opts);
+  await asr.start();
+  try { return await fn(asr); }
+  finally { await asr.close(); }
+}
+const asrUrl = (asr) => 'ws://127.0.0.1:' + asr.state.port + '/asr';
+
 /* ---- fake session capturing everything the adapter emits ---------------- */
-function makeSession() {
+/* `caps` mirrors server.js hello.caps; r117 cases pass {streamTranscript:true}
+ * to engage the streaming path, others omit it to exercise r113 fallback. */
+function makeSession(caps = null) {
   const st = { open: true, calls: [] };
   const rec = (o) => { o.ts = Date.now(); st.calls.push(o); };
+  let txSeq = -1;                      /* mirrors server.js transcriptSeq */
   const api = {
     st,
+    caps,
     sessionId: 's-test',
     sendState(v) { rec({ k: 'state', v }); },
     sendTextDelta(t, f) { rec({ k: 'delta', t, f: !!f }); },
+    sendTranscriptDelta(t, f) { rec({ k: 'tx', t, f: !!f, seq: ++txSeq }); },
     sendAudio(fmt, pcm) { rec({ k: 'audio', fmt, pcm: Buffer.from(pcm) }); },
     sendError(c, m, f) { rec({ k: 'error', c, m, f: !!f }); },
     close(c, r) { st.open = false; rec({ k: 'close', c, r }); },
@@ -760,6 +822,187 @@ function parseMultipart(buf, contentType) {
     assert.deepEqual(states(st), ['thinking', 'idle'], 'clean state progression');
     assert.equal(ofKind(st, 'close')[0].c, 1000, 'close(1000)');
     pass('streaming: stop after chat sealed aborts TTS -> clean close, no error');
+  });
+
+  /* ---- r117 streaming ASR cases --------------------------------------- */
+
+  /* 28. interim deltas on arrival, independent seq, single final before chat */
+  await withFakeAsr({
+    onFrame(n, conn) {
+      if (n === 1) conn.sendText(JSON.stringify({ type: 'transcript.delta', text: 'HELLO ' }));
+      if (n === 2) conn.sendText(JSON.stringify({ type: 'input_audio_transcription.delta', delta: 'LUME' }));
+    },
+    onCommit(conn) {
+      conn.sendText(JSON.stringify({ type: 'transcript.done', text: 'HELLO LUME' }));
+    }
+  }, async (asr) => {
+    await withFake(defaultHandlers(), async (fake) => {
+      const up = makeUp(fake, {
+        streamTranscript: true, asrWsUrl: asrUrl(asr), transcriptFinalTimeoutMs: 600
+      });
+      const st = makeSession({ streamTranscript: true });
+      up.start(st);
+      for (let i = 0; i < 3; i++) up.sendAudio(makeFrame(i));
+      up.stop();
+      await waitIdle(st);
+      const tx = ofKind(st, 'tx');
+      assert.equal(tx.length, 3, '2 interim + 1 final');
+      assert.deepEqual(tx.map((t) => t.seq), [0, 1, 2], 'transcript seq increments independently');
+      assert.equal(tx.filter((t) => t.f).length, 1, 'exactly one final transcript');
+      assert.equal(tx[tx.length - 1].f, true, 'final is last');
+      assert.equal(tx.slice(0, -1).map((t) => t.t).join(''), 'HELLO LUME', 'interim pieces concatenate');
+      assert.equal(tx[tx.length - 1].t, 'HELLO LUME', 'final carries COMPLETE text (no duplicate)');
+      const firstDelta = ofKind(st, 'delta')[0];
+      assert.ok(tx[2].ts < firstDelta.ts, 'final transcript precedes the first chat delta');
+      assert.equal(asr.state.auth[0], 'Bearer test-key', 'bearer auth on ASR handshake');
+      assert.equal(fake.state.requests.filter((r) => r.route === 'stt').length, 0,
+        'no one-shot REST when streaming succeeded');
+      pass('asr: interim deltas + independent seq + single final before chat');
+    });
+  });
+
+  /* 29. audio frames are forwarded on arrival (timestamps), not after stop */
+  await withFakeAsr({}, async (asr) => {
+    await withFake(defaultHandlers(), async (fake) => {
+      const up = makeUp(fake, {
+        streamTranscript: true, asrWsUrl: asrUrl(asr), transcriptFinalTimeoutMs: 600
+      });
+      const st = makeSession({ streamTranscript: true });
+      const sendAt = [];
+      up.start(st);
+      for (let i = 0; i < 3; i++) { sendAt.push(Date.now()); up.sendAudio(makeFrame(i)); }
+      await waitFor(() => asr.state.frames.length === 3, 'all frames forwarded before stop', 2000, st);
+      const beforeStop = Date.now();
+      up.stop();
+      await waitIdle(st);
+      assert.equal(asr.state.frames.length, 3, 'three binary frames reached upstream');
+      for (let i = 0; i < 3; i++) {
+        assert.equal(asr.state.frames[i].bytes, 3840, 'frame ' + i + ' is a 60 ms wire frame');
+        assert.ok(asr.state.frames[i].at >= sendAt[i], 'frame ' + i + ' forwarded no earlier than sendAudio');
+      }
+      assert.ok(asr.state.frames[2].at < beforeStop, 'last frame arrived before stop() was called');
+      assert.ok(asr.state.commitAt >= asr.state.frames[2].at, 'end-of-audio commit follows the frames');
+      pass('asr: 3x3840B frames forwarded on arrival, before stop + commit');
+    });
+  });
+
+  /* 30. capability gate: no device hello.caps -> r113 REST, no transcript */
+  await withFakeAsr({}, async (asr) => {
+    await withFake(defaultHandlers(), async (fake) => {
+      const up = makeUp(fake, { streamTranscript: true, asrWsUrl: asrUrl(asr) });
+      const st = makeSession();                    /* no streamTranscript cap */
+      await drive(up, st);
+      assert.equal(asr.state.conns.length, 0, 'no ASR WS opened without caps');
+      assert.equal(fake.state.requests.filter((r) => r.route === 'stt').length, 1, 'r113 one-shot REST used');
+      assert.equal(ofKind(st, 'tx').length, 0, 'no transcript-delta emitted');
+      assert.equal(ofKind(st, 'delta').filter((d) => d.f).length, 1, 'single chat final');
+      assert.deepEqual(states(st), ['thinking', 'speaking', 'idle'], 'r113 state sequence intact');
+      pass('fallback: no hello.caps -> one-shot REST, no transcript (r113 intact)');
+    });
+  });
+
+  /* 31. config gate: streaming disabled -> byte-identical r113 behavior */
+  await withFakeAsr({}, async (asr) => {
+    await withFake(defaultHandlers(), async (fake) => {
+      const up = makeUp(fake, { streamTranscript: false, asrWsUrl: asrUrl(asr) });
+      const st = makeSession({ streamTranscript: true });
+      await drive(up, st);
+      assert.equal(asr.state.conns.length, 0, 'config off: no ASR WS');
+      assert.equal(fake.state.requests.filter((r) => r.route === 'stt').length, 1, 'one REST STT');
+      assert.equal(ofKind(st, 'tx').length, 0, 'no transcript-delta');
+      assert.equal(ofKind(st, 'delta').slice(0, -1).map((d) => d.t).join(''), REPLY, 'chat unchanged');
+      assert.equal(ofKind(st, 'audio').length, 34, 'TTS unchanged');
+      assert.deepEqual(states(st), ['thinking', 'speaking', 'idle']);
+      pass('fallback: config off -> r113 REST + chat + TTS unchanged');
+    });
+  });
+
+  /* 32. stop() mid-ASR wait aborts the WS, no duplicate final, clean close */
+  await withFakeAsr({}, async (asr) => {
+    await withFake(defaultHandlers(), async (fake) => {
+      const up = makeUp(fake, {
+        streamTranscript: true, asrWsUrl: asrUrl(asr),
+        silenceTimeoutMs: 15, transcriptFinalTimeoutMs: 2000
+      });
+      const st = makeSession({ streamTranscript: true });
+      up.start(st);
+      up.sendAudio(makeFrame(0));                   /* silence timer starts pipe */
+      await waitFor(() => asr.state.frames.length >= 1, 'ASR frame forwarded', 2000, st);
+      /* Let the silence timer start the pipe and open the final-transcript
+       * wait first; only then does a device `end` land mid-ASR (barge-in). */
+      await waitFor(() => up.pipeStarted && !!up._asrResolveFinal, 'ASR final wait active', 2000, st);
+      const stopAt = Date.now();
+      up.stop();                                    /* device end lands mid-ASR wait */
+      up.stop();                                    /* idempotent */
+      await waitIdle(st);
+      assert.ok(asr.state.closedAt >= stopAt, 'ASR WS released on stop');
+      assert.ok(Date.now() - stopAt < 1000, 'stop unblocks the final wait (no 2s timeout)');
+      assert.equal(ofKind(st, 'tx').filter((t) => t.f).length, 0, 'no final transcript on abort');
+      assert.equal(fake.state.requests.filter((r) => r.route === 'chat').length, 0, 'chat not started');
+      assert.equal(ofKind(st, 'error').length, 0, 'user stop is not an error');
+      assert.deepEqual(states(st), ['thinking', 'idle'], 'clean close without speaking');
+      assert.equal(ofKind(st, 'close')[0].c, 1000);
+      pass('asr: stop mid-stream aborts WS, no duplicate final, clean close');
+    });
+  });
+
+  /* 33. ASR stream error -> REST fallback, exactly one final, no regression */
+  await withFakeAsr({
+    onFrame(n, conn) {
+      if (n === 1) conn.sendText(JSON.stringify({ type: 'transcript.delta', text: 'PART ' }));
+      if (n === 2) conn.sendClose(1011, 'asr-boom');    /* abrupt stream failure */
+    }
+  }, async (asr) => {
+    await withFake({
+      stt: () => json({ text: 'FULL REST TRANSCRIPT' }),
+      chat: defaultChat, tts: defaultTts
+    }, async (fake) => {
+      const up = makeUp(fake, {
+        streamTranscript: true, asrWsUrl: asrUrl(asr), transcriptFinalTimeoutMs: 600
+      });
+      const st = makeSession({ streamTranscript: true });
+      up.start(st);
+      for (let i = 0; i < 3; i++) up.sendAudio(makeFrame(i));
+      up.stop();
+      await waitIdle(st);
+      assert.ok(asr.state.closedAt > 0, 'failed ASR WS closed');
+      assert.equal(fake.state.requests.filter((r) => r.route === 'stt').length, 1, 'REST fallback once');
+      const tx = ofKind(st, 'tx');
+      assert.equal(tx.filter((t) => t.f).length, 1, 'exactly one final despite stream break');
+      assert.equal(tx[tx.length - 1].t, 'FULL REST TRANSCRIPT', 'final replaced interim with REST text');
+      assert.equal(tx[0].t, 'PART ', 'interim from failed stream kept');
+      assert.equal(ofKind(st, 'error').length, 0, 'fallback succeeded -> no error frame');
+      assert.equal(ofKind(st, 'delta').slice(0, -1).map((d) => d.t).join(''), REPLY, 'chat intact');
+      assert.equal(ofKind(st, 'audio').length, 34, 'TTS intact');
+      assert.deepEqual(states(st), ['thinking', 'speaking', 'idle']);
+      pass('asr: stream error -> REST fallback + one final, chat/TTS intact');
+    });
+  });
+
+  /* 34. device `end` can beat the ASR handshake: commit is queued and flushed
+   * after the buffered PCM, so the final arrives without hitting the timeout. */
+  await withFakeAsr({
+    onCommit(conn) {
+      conn.sendText(JSON.stringify({ type: 'transcript.done', text: 'EARLY END' }));
+    }
+  }, async (asr) => {
+    await withFake(defaultHandlers(), async (fake) => {
+      const up = makeUp(fake, {
+        streamTranscript: true, asrWsUrl: asrUrl(asr), transcriptFinalTimeoutMs: 3000
+      });
+      const st = makeSession({ streamTranscript: true });
+      up.start(st);
+      up.sendAudio(makeFrame(0));
+      up.stop();                                    /* before the WS is open */
+      const t0 = Date.now();
+      await waitIdle(st);
+      assert.ok(Date.now() - t0 < 1500, 'final obtained without waiting the 3s timeout');
+      const tx = ofKind(st, 'tx');
+      assert.equal(tx.filter((t) => t.f).length, 1, 'exactly one final');
+      assert.equal(tx[tx.length - 1].t, 'EARLY END', 'queued commit produced the upstream final');
+      assert.equal(fake.state.requests.filter((r) => r.route === 'stt').length, 0, 'no REST fallback');
+      pass('asr: end before handshake queues commit, final without timeout');
+    });
   });
 
   console.log('ALL GATEWAY UPSTREAM CASES PASSED (' + checks + ' cases)');
