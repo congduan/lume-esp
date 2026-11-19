@@ -1,0 +1,53 @@
+[SMOKE 20:14:23.424] fake upstream port=38123 gateway port=45481 mode=locked (token value withheld from log)
+[gateway 20:14:23.483] gateway.listen host=127.0.0.1 port=45481
+[gateway 20:14:23.484] ready url=ws://127.0.0.1:45481/ deviceAuth=on
+--- PASS A: locked gateway + WRONG device token ---
+[device  20:14:23.554] open url=ws://127.0.0.1:45481/
+[device  20:14:23.555] send.hello auth=on
+[gateway 20:14:23.556] protocol.error sessionId=s1 code=unauthorized message=device token mismatch fatal=true
+[device  20:14:23.557] recv.error code=unauthorized fatal=true message=device token mismatch
+[device  20:14:23.557] close ack=false uplink=0 deltas=0 audioFrames=0 text="" txDeltas=0 txText="" legacy=false auth=on
+[gateway 20:14:23.558] session.close sessionId=s1 code=1008
+[SMOKE 20:14:23.567] PASS A: unauthorized + 1008, upstream requests=0
+--- PASS B: locked gateway + CORRECT device token ---
+[device  20:14:23.626] open url=ws://127.0.0.1:45481/
+[device  20:14:23.627] send.hello auth=on
+[device  20:14:23.628] recv.hello-ack sessionId=s2 audioFormat=pcm_s16le_16000_2ch
+[gateway 20:14:23.628] hello sessionId=s2 device={"model":"lume","fw":"r117"} streamTranscript=true
+[device  20:14:23.631] send.uplink frames=5 bytesEach=3840 totalBytes=19200
+[device  20:14:23.631] send.end
+[device  20:14:23.631] recv.state state=thinking
+[gateway 20:14:23.632] uplink.pcm sessionId=s2 bytes=3840 frames=1
+[gateway 20:14:23.632] uplink.pcm sessionId=s2 bytes=3840 frames=2
+[gateway 20:14:23.632] uplink.pcm sessionId=s2 bytes=3840 frames=3
+[gateway 20:14:23.632] uplink.pcm sessionId=s2 bytes=3840 frames=4
+[gateway 20:14:23.632] uplink.pcm sessionId=s2 bytes=3840 frames=5
+[gateway 20:14:23.633] turn.end sessionId=s2
+[FAKE-UP 20:14:23.682] POST /audio/transcriptions bodyBytes=9909
+[FAKE-UP 20:14:23.694] POST /chat/completions stream=true bodyBytes=196
+[device  20:14:23.696] recv.text-delta seq=0 chars=7 final=false
+[device  20:14:23.697] recv.text-delta seq=1 chars=8 final=false
+[device  20:14:23.698] recv.text-delta seq=2 chars=0 final=true
+[FAKE-UP 20:14:23.710] POST /audio/speech pcmBytes=48000
+[device  20:14:23.730] recv.state state=speaking
+[device  20:14:23.730] recv.audio seq=0 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=1 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=2 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=3 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=4 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=5 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=6 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=7 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=8 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=9 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.730] recv.audio seq=10 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.731] recv.audio seq=11 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.731] recv.audio seq=12 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.731] recv.audio seq=13 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.731] recv.audio seq=14 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.731] recv.audio seq=15 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.731] recv.audio seq=16 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:14:23.731] recv.state state=idle
+[gateway 20:14:23.732] session.close sessionId=s2 code=1000
+[device  20:14:23.732] close ack=true uplink=5 deltas=3 audioFrames=17 text="LOCKED MODE OK." txDeltas=0 txText="" legacy=false auth=on
+[SMOKE 20:14:23.738] PASS B: full round, upstream requests=3 stt=1 chat=1 tts=1

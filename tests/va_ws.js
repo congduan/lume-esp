@@ -115,8 +115,9 @@ async function waitFor(pred, label, timeout = 3000) {
   }
 }
 
-async function withGw(factory, logs, fn) {
-  const gw = createGateway({ port: 0, log: (e, f) => logs.push({ e, f }), upstreamFactory: factory });
+async function withGw(factory, logs, fn, opts = {}) {
+  const gw = createGateway({ port: 0, deviceToken: opts.deviceToken || '',
+    log: (e, f) => logs.push({ e, f }), upstreamFactory: factory });
   await gw.start();
   const url = 'ws://127.0.0.1:' + gw.address().port + '/';
   try { await fn(gw, url); } finally { await gw.close(); }
@@ -331,6 +332,47 @@ function smoke(b, gwLog, answer) {
     assert.equal(b.bridge.stats.dispatchErrors.length, 0, 'no dispatch errors');
     pass('r117: transcript consumed into signal, answer intact, final before chat delta');
   });
+
+  /* ---- 8/9. r119: app-side shared token -------------------------------- */
+  const APP_TOKEN = 'APP-TOKEN-r119-NOT-REAL';
+  const gwLog8 = [];
+  let adapter8;
+  await withGw(() => { adapter8 = new MockUpstream({ answer: 'LOCKED OK', audioFrames: 2, delayMs: 40 }); return adapter8; },
+    gwLog8, async (gw, url) => {
+      const b = boot(url, { keys: { voice_gateway_token: APP_TOKEN } });
+      drive(b.c);
+      await waitFor(() => b.bridge.stats.text.some(m => m.type === 'hello'), 'hello sent');
+      assert.equal(b.bridge.stats.text[0].auth && b.bridge.stats.text[0].auth.token, APP_TOKEN);
+      assert.ok(b.logs.includes('VA WS HELLO AUTH'), 'app logs auth flag (never the token value)');
+      assert.equal(b.logs.some(l => l.indexOf(APP_TOKEN) >= 0), false, 'token absent from device logs');
+      await waitFor(() => b.c.vaStreamFinished, 'turn finished');
+      assert.equal(b.c.vaFullText, 'LOCKED OK');
+      assert.equal(gw.sessions[0].closeCode, 1000);
+      assert.equal(adapter8.started, true, 'locked gateway engaged upstream');
+      assert.equal(gwLog8.some(l => JSON.stringify(l).includes(APP_TOKEN)), false,
+        'token absent from gateway logs');
+      assert.equal(b.bridge.stats.dispatchErrors.length, 0);
+      pass('r119: device KV token -> hello.auth -> locked gateway full round');
+    }, { deviceToken: APP_TOKEN });
+
+  const gwLog9 = [];
+  let deniedCalls = 0;
+  await withGw(() => { deniedCalls++; return new MockUpstream(); }, gwLog9, async (gw, url) => {
+    const b = boot(url, { keys: { voice_gateway_token: APP_TOKEN } });
+    drive(b.c);
+    await waitFor(() => b.logs.some(l => l.indexOf('VA WS FRAME ERROR unauthorized') >= 0),
+      'device sees unauthorized fatal frame');
+    await waitFor(() => b.c.vaState() === 'IDLE' && b.c.vaStreamFinished, 'app settles after denial');
+    assert.equal(deniedCalls, 0, 'no upstream adapter created on denied hello');
+    assert.equal(gw.sessions[0].closeCode, 1008);
+    assert.equal(gw.sessions[0].phase, 'await-hello');
+    assert.equal(b.logs.some(l => l.indexOf(APP_TOKEN) >= 0), false, 'token absent from device logs');
+    assert.equal(gwLog9.some(l => JSON.stringify(l).includes(APP_TOKEN)), false,
+      'token absent from gateway logs');
+    b.c.vaActivate();                          /* not hung: can wake again */
+    assert.equal(b.c.vaState(), 'LISTEN');
+    pass('r119: app token mismatch -> fatal error -> IDLE, no upstream, not hung');
+  }, { deviceToken: 'DIFFERENT-TOKEN-r119' });
 
   console.log(`ALL VA WS HARNESS CASES PASSED (${checks} cases)`);
 })().catch(e => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });
