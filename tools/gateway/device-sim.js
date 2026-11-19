@@ -1,14 +1,25 @@
 'use strict';
 /* Simulated device client for the end-to-end smoke run. Follows the
  * lume.net.ws callback shape (onOpen/onMessage/onClose/onError). Usage:
- *   node tools/gateway/device-sim.js [ws://127.0.0.1:8765/] [--legacy]
+ *   node tools/gateway/device-sim.js [ws://127.0.0.1:8765/] [--legacy] [--device-token TOKEN]
  * `--legacy` omits the v1.1 streamTranscript cap and ignores transcript-delta,
- * exercising the backward-compat "old device ignores unknown downlink" path. */
+ * exercising the backward-compat "old device ignores unknown downlink" path.
+ * r119: --device-token (fallback GATEWAY_DEVICE_TOKEN env) adds hello.auth.token
+ * for the gateway's locked mode; token value is never logged. */
 
 const { connect, UPLINK_BYTES } = require('./index');
 
+function arg(name, fallback) {
+  const i = process.argv.indexOf('--' + name);
+  if (i < 0) return fallback;
+  const v = process.argv[i + 1];
+  if (v == null || v.startsWith('--')) return fallback;
+  return v;
+}
+
 const url = process.argv[2] || 'ws://127.0.0.1:8765/';
 const legacy = process.argv.indexOf('--legacy') >= 0;
+const deviceToken = arg('device-token', process.env.GATEWAY_DEVICE_TOKEN || '');
 let ack = false, uplink = 0, deltas = 0, audioFrames = 0, text = '';
 let txDeltas = 0, txText = '';
 
@@ -24,12 +35,12 @@ function log(event, fields = {}) {
 const client = connect(url, {
   onOpen() {
     log('open', { url });
-    client.sendText(JSON.stringify({
+    client.sendText(JSON.stringify(Object.assign({
       v: 1, type: 'hello',
       device: { model: 'lume', fw: 'r117' },
       caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: !legacy }
-    }));
-    log('send.hello', {});
+    }, deviceToken ? { auth: { token: deviceToken } } : {})));
+    log('send.hello', { auth: deviceToken ? 'on' : 'off' });
   },
   onMessage(data) {
     if (typeof data === 'string') {
@@ -73,7 +84,7 @@ const client = connect(url, {
   },
   onClose() {
     log('close', { ack, uplink, deltas, audioFrames, text: JSON.stringify(text),
-      txDeltas, txText: JSON.stringify(txText), legacy });
+      txDeltas, txText: JSON.stringify(txText), legacy, auth: deviceToken ? 'on' : 'off' });
   },
   onError(code) { log('error', { code }); }
 });

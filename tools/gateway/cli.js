@@ -2,8 +2,11 @@
 /* Start the voice gateway. Usage:
  *   node tools/gateway/cli.js [--port 8765] [--host 127.0.0.1]
  *                             [--answer "TEXT"] [--upstream mock|openai]
+ *                             [--device-token TOKEN]
  * `--upstream openai` needs OPENAI_API_KEY (plus optional OPENAI_* env);
- * no key -> clear error and exit 2. xiaozhi/direct remain TODO stubs. */
+ * no key -> clear error and exit 2. xiaozhi/direct remain TODO stubs.
+ * r119: --device-token overrides GATEWAY_DEVICE_TOKEN env; empty = open LAN
+ * mode (legacy behaviour). Token is never logged (only auth=on/off). */
 
 const { createGateway } = require('./server');
 const { createUpstream } = require('./upstream');
@@ -26,6 +29,8 @@ function main() {
   const host = arg('host', '127.0.0.1');
   const answer = arg('answer', 'HELLO FROM THE MOCK GATEWAY.');
   const upstreamName = arg('upstream', 'mock');
+  /* r119: CLI flag wins over env; neither is ever printed verbatim. */
+  const deviceToken = arg('device-token', process.env.GATEWAY_DEVICE_TOKEN || '');
   let upstreamOpts = { answer };
   if (upstreamName === 'openai') {
     const key = process.env.OPENAI_API_KEY || '';
@@ -58,11 +63,13 @@ function main() {
   };
   const gw = createGateway({
     port, host,
+    deviceToken,
     log,
     upstreamFactory: () => createUpstream(upstreamName, upstreamOpts)
   });
   gw.start().then(() => {
-    log('ready', { url: 'ws://' + host + ':' + port + '/' });
+    log('ready', { url: 'ws://' + host + ':' + port + '/',
+      deviceAuth: deviceToken ? 'on' : 'off' });
   }).catch((e) => {
     process.stderr.write('gateway listen failed: ' + e.message + '\n');
     process.exit(1);

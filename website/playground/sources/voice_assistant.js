@@ -305,6 +305,8 @@ function vaDraw(ctx) {
  * {v,type=1,format=1,rate:u16,ch=2,bits=16,seq:u8} + <=4608 B PCM. */
 var VA_GATEWAY_KEY = 'voice_gateway_url';
 var VA_GATEWAY_URL = 'ws://192.168.1.50:18770/';   /* edit here or set the KV key */
+var VA_GATEWAY_TOKEN_KEY = 'voice_gateway_token';  /* r119: shared device token */
+var VA_GATEWAY_TOKEN = '';                         /* empty = open LAN mode */
 var VA_UPLINK_BYTES = 3840;                        /* 60 ms, 16 kHz, s16le stereo */
 var VA_STREAM_FRAMES = 3;                          /* push-to-talk window before end */
 var VA_PLAY_OPTS = { sampleRate: 16000, channels: 2, bits: 16 };
@@ -327,6 +329,14 @@ function vaGatewayUrl() {
   var u = null;
   try { u = lume.storage.kv.get(VA_GATEWAY_KEY); } catch (e) { u = null; }
   return (typeof u === 'string' && u) ? u : VA_GATEWAY_URL;
+}
+
+/* r119: optional shared token. Empty KV/constant -> no auth field in hello,
+ * which keeps the gateway's open LAN mode fully backward compatible. */
+function vaGatewayToken() {
+  var t = null;
+  try { t = lume.storage.kv.get(VA_GATEWAY_TOKEN_KEY); } catch (e) { t = null; }
+  return (typeof t === 'string' && t) ? t : VA_GATEWAY_TOKEN;
 }
 
 /* ---- r117 transcript helpers: callbacks only bump an integer signal ------ */
@@ -513,7 +523,9 @@ function vaTransportWS(prompt, done) {
       var hello = { v: 1, type: 'hello',
         device: { model: 'lume', fw: 'r108', app: 'voice_assistant' },
         caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: true } };
-      lume.log('VA WS HELLO');
+      var token = vaGatewayToken();
+      if (token) hello.auth = { token: token };   /* r119 §8.2: appended field */
+      lume.log('VA WS HELLO' + (token ? ' AUTH' : ''));  /* never log token value */
       conn.send(JSON.stringify(hello));
       if (vaStreamPumpTimer === null) vaStreamPumpTimer = lume.system.setInterval(vaWSPump, 60);
       vaWSStartMic();

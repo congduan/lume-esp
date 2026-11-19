@@ -3,6 +3,7 @@
  * Zero runtime dependencies (vendored ws.js). See docs/voice-gateway-protocol.md. */
 
 const http = require('node:http');
+const crypto = require('node:crypto');
 const { attachWsServer, encodeFrame } = require('./ws');
 const { MockUpstream } = require('./upstream');
 
@@ -17,10 +18,22 @@ const CLOSE_FOR_ERROR = {
   not_hello: 1008,
   bad_hello: 1008,
   unsupported_version: 1008,
+  unauthorized: 1008,          /* r119: device shared-token gate (§8.2) */
   bad_audio_frame: 1009,
   upstream_closed: 1011,
   upstream_error: 1011
 };
+
+/* r119: constant-time compare for the shared device token. Both inputs are
+ * non-empty strings at the call site; length mismatch short-circuits before
+ * timingSafeEqual (which throws on unequal lengths). */
+function tokenEqual(a, b) {
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  try { return crypto.timingSafeEqual(ab, bb); }
+  catch (e) { return false; }
+}
 
 const ascii = (s) => String(s == null ? '' : s).replace(/[^\x20-\x7e]/g, '?');
 
@@ -28,6 +41,7 @@ class DeviceSession {
   constructor(gateway, conn) {
     this.gateway = gateway;
     this.conn = conn;
+    this.deviceToken = gateway.deviceToken || '';   /* r119: '' = open LAN mode */
     this.sessionId = 's' + (++gateway.counter.value);
     this.phase = 'await-hello';
     this.upstream = null;
@@ -175,6 +189,19 @@ class DeviceSession {
     if (this.phase === 'await-hello') {
       if (msg.type !== 'hello') { this._error('not_hello', 'first frame must be hello', true); return; }
       if (msg.v !== PROTOCOL_VERSION) { this._error('unsupported_version', 'v=' + String(msg.v), true); return; }
+      /* r119 §8.2: device token gate runs AFTER version validation and BEFORE
+       * hello-ack / phase flip / upstream adapter init. No configured token
+       * skips the check, so open LAN mode is byte-for-byte unchanged. */
+      if (this.deviceToken) {
+        const auth = (msg.auth && typeof msg.auth === 'object' && !Array.isArray(msg.auth))
+          ? msg.auth : null;
+        const supplied = auth && typeof auth.token === 'string' ? auth.token : '';
+        if (!supplied || !tokenEqual(supplied, this.deviceToken)) {
+          this._error('unauthorized',
+            supplied ? 'device token mismatch' : 'device token required', true);
+          return;
+        }
+      }
       this.phase = 'active';
       this.deviceCaps = (msg.caps && typeof msg.caps === 'object' && !Array.isArray(msg.caps))
         ? msg.caps : null;
@@ -213,6 +240,10 @@ function createGateway(opts = {}) {
   const host = opts.host || '127.0.0.1';
   const log = opts.log || (() => {});
   const upstreamFactory = opts.upstreamFactory || ((session) => new MockUpstream());
+  /* r119: only a non-empty string engages the device token gate. Kept as a
+   * local (not a field on the public gateway object) so it cannot be logged
+   * by a stray JSON.stringify(gateway). */
+  const deviceToken = typeof opts.deviceToken === 'string' ? opts.deviceToken : '';
   const sessions = [];
   const counter = { value: 0 };
 
@@ -223,7 +254,7 @@ function createGateway(opts = {}) {
   const manager = attachWsServer(httpServer, {
     maxPayload: MAX_PAYLOAD,
     log,
-    onConnection: (conn) => { new DeviceSession({ counter, sessions, log, upstreamFactory }, conn); }
+    onConnection: (conn) => { new DeviceSession({ counter, sessions, log, upstreamFactory, deviceToken }, conn); }
   });
 
   const gateway = {
