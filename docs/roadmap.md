@@ -928,7 +928,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 | **流体粒子沙盒**（IMU 晃动 + 触摸扰动） | 宣传效果天花板：圆屏 AMOLED 上粒子随重力流转 | ⚠️ 参考社区同款实证需降级到 200-300 粒子（JS 单线程无 SIMD）；粒子间作用用简化近似（网格邻域）；IMU 单位是 m/s² 非 g |
 | **双八度触屏钢琴**（已落地 r67，见 `docs/r67-piano-compass-report.md`） | 经典乐器品类，单点触摸 + pan 滑奏天然适配；演示 play/playStream 混合音频合成与 in-place 键位高亮 | `examples/piano/app.js`：14×34 px 白键一行 + 10 黑键压缝，24 音两八度 + 三档八度移调；基频+2 泛音+指数包络的立体声 PCM，attack ≤48 ms 走 play、release 5×1152 帧走 playStream，包络函数连续避免切换爆音；Demo 曲内置小星星；纯 app 层 |
 | **惯性方位角仪表**（已落地 r67，同上战报） | 手表/仪表品类；retained paths 静态刻度环 + 每帧指针脏区 + 常正数字；演示 demo / IMU 双模式 | `examples/compass/app.js`：36 段 retainSegments + 2 条 retainPath 一次上传；demo 18°/s 平滑旋转并可拖动，IMU 模式积分陀螺 Z 得**相对**航向并加 DRIFT 徽章；**无磁力计，不承诺地理北**；浏览器无 IMU 自动降级 demo；纯 app 层 |
-| **体感挥杆迷你高尔夫**（程序化关卡） | IMU 挥杆速度触发击球——手表形态差异化王牌（手机做不了）；关卡程序化生成无素材依赖 | 挥杆检测用 QMI8658 加速度峰值阈值（gravity_ball impactSpeed 先例）；物理简化为 2D 坡度+摩擦；纯 app 层 |
+| **体感挥杆迷你高尔夫**（已落地 r123，见本节 r123 result；`examples/minigolf/`） | IMU 挥杆速度触发击球——手表形态差异化王牌（手机做不了）；关卡程序化生成无素材依赖 | `examples/minigolf/app.js`：demo 拖拽瞄准+HIT / IMU 峰值挥杆双模式（无 IMU 自动降级，compass 先例）；6 关确定性生成、par=1 由 harness 72×14 网格搜索证明一杆可解；Coulomb 摩擦+坡度+环障回弹；单 480x480 canvas=230,400 px，静态层每关一条 retainSegments（6 条）、球/瞄准线脏区重画；KV `hisc.golf`（9 字符）存全场最少总杆；12-case harness + emu 触摸注入实证一杆进洞；纯 app 层，真机手感 deferred |
 | **街机风格射击**（已落地 r68，见 `docs/r68-retro-report.md`；5×11 三档编队 + pan 炮台/tap 射击） | 复古合集首刀；编队整体脏区 ≈26% 全帧、两帧腿部动画同盒重画、UFO 加分 + 波次提速；像素造型为原创近似 | `examples/invaders/app.js`：mario 式 spans 预计算精灵；Game Boy 三档绿；KV key 由 `hiscore.invaders`（16 字符）因 NVS 15 字符上限收敛为 `hisc.invaders`（13 字符）；20ms emu tick 无掉帧日志；纯 app 层 |
 | **公路河道穿越**（已落地 r68，同上战报；13 行网格：5 车 + 4 河 + 2 安全 + 中线 + 窝） | 复古合集同批；tap 相对青蛙中心判四向、车辆撞死/浮木承载/落水死/5 窝过关提速；行带独立脏区 | `examples/frogger/app.js`：车/木/蛙全 spans 预计算；NES 灰底低饱和彩块；跳跃简化为瞬移+高亮（登记取舍）；KV `hisc.frogger`；纯 app 层 |
 | **推箱子**（已落地 r69，见 `docs/r69-retro2-report.md`） | 益智品类补齐复古合集；标准推箱规则 + 10 关内嵌 + par 最少步 + 过关解锁；swipe 四向推箱为主、tap 相邻格为辅；角位死锁 QoL | `examples/sokoban/app.js`：10 关 11×7 ASCII 表（≤13×10），BFS 解算器在 harness 证明每关可解且 par = 最优步数；墙/地板/目标/双态箱/玩家全 spans 硬边；瞬移+高亮（r68 同款简化）；KV `hisc.soko_pg`（`hisc.soko_progress` 18 字符超 NVS 15 字符上限，已收敛）；纯 app 层 |
@@ -1944,3 +1944,159 @@ vendored WS 服务端对裸 TCP destroy 要到下次写才察觉，会与重连�
 后历史续上。取舍见 `docs/KNOWN-SIMPLIFICATIONS.md` r122（进程重启仍丢、sessionId
 可预测、TTL 过期仍丢、只恢复已完成轮等）与 `docs/voice-gateway-protocol.md`
 §4.1 / §8.1.9.1 / §10。真机时延 / barge-in 手感 / 双 DMA deferred，未声称真机验证。
+
+### r123 result — 体感挥杆迷你高尔夫 `examples/minigolf`（复刻生态 P1 候选；appended, milestone checkboxes untouched）
+
+基线 HEAD `8219a8a`；分支 `r123-minigolf`；`git worktree add /tmp/lume-r123-wt` 后
+`git log --oneline -1` 确认为基线。开工 `lume_model_guard.sh` 确认 `model=hy4flash-free`。
+**纯 app 层，零固件 / runtime 改动**，按纪律不跑 `idf.py build` / `idf.py size`。
+commits 拆分 feat / test / docs，不推送（主控轮负责 push）。
+
+先实证再动码（读码结论，均带行号，先于实现写入本节）：
+
+- IMU 双模式口径沿用 `examples/compass/app.js:57`（`compassMode(s)` 以
+  `typeof s.gz === 'number'` 判 imu/demo）、`:68-71`（`imuRead()` try/catch，无样本返回
+  null）、`:80-95`（`setMode('imu')` 无样本即降级 demo 并记日志）。浏览器/emu 无 IMU 自动
+  演示模式是既有先例，不是本轮发明。
+- IMU 读数单位 = m/s²（非 g）：`examples/gravity_ball/app.js:7` 明示
+  "read() returns m/s^2 (QMI8658 +/-4g)"；采样路径为 `lume.imu.read()` 在 `tick()` 内
+  调用（`:49`），`tick` 由 `lume.system.setInterval(tick, 50)` 驱动（`lume_scripts.c:464-466`，
+  20 ms 引擎队列量化）。阈值先例同文件 `:12-14`：`DEAD_ZONE = 0.5` m/s²、`GAIN = 55`
+  px/s² per m/s²、`MAX_SPEED = 420`；`:29-32` 的 `impactSpeed` 为撞墙速度峰值事件口径。
+  故本轮挥杆阈值以 m/s² 计，不拍脑袋写成 g。
+- 验证模式沿用 `tests/sokoban.js:16-22`（app 在 `/* GAME UI */` 处切逻辑/UI，逻辑进裸
+  vm）、`:94-139`（BFS 解算器证明每关可解且 par = 最优步数）、`tests/flapdot.js:20-29`
+  （UI 字符串 ASCII-only 断言，r64 字体坑）、`:245-272`（脏区预算 + 画布像素预算
+  `total <= 230400`）、`tests/sokoban.js:141-161`（KV key ≤15 + 优雅失败）。
+- NVS 键长上限实证：`firmware/components/lume-storage/lume_kv.c:42` 与
+  `include/lume_kv.h:78` 均为 15 字符（`NVS_KEY_NAME_MAX_SIZE(16) - 1 NUL`）。
+  故 hiscore 键取 `hisc.golf`（9 字符）。
+- retained paths 上限实证：`lume_scripts.c:1115-1151`（`retainPath`/`retainSegments`
+  每条 ≤240 点/段，单 canvas 最多 8 条 path）、`:1152-1158`（`drawPath` 回放）；
+  画布像素账 `:1068`（`w*h*2` 字节，受 `SW*SH*2` = 480×480 约束）；脏区校验
+  `:1199-1209`（1..8 个矩形、`x+rw<=w && y+rh<=h`）；`ctx.text` 仅 14px（`:1192-1194`），
+  HUD 一律用原生 Text 节点。手势 kind 0/1/2/3 = DOWN/MOVE/UP/SWIPEDIR（`:1240-1241`），
+  全局 swipe-up 回家挂在节点 0（`:1365-1372`），拖拽交互须避免与之冲突。
+
+设计拍板（写码前定稿）：
+
+1. **挥杆检测窗口**：IMU 模式 50 ms 轮询，取水平加速度幅值
+   `mag = hypot(ax, ay)`（轴向符号映射沿用 gravity_ball `SIGN_X=-1`，手表近水平持握时
+   静止幅值≈0）。`mag > SWING_THRESHOLD(6 m/s²)` 为一次挥杆候选；连续超限取窗口内峰值
+   `peak`，峰值回落或 160 ms 窗口结束即结算一次击球。击球仅在球静止（速度 < 8 px/s）
+   且不在冷却（240 ms）时受理，过弱挥杆 `peak <= 阈值` 不触发（负向用例）。demo 模式无
+   IMU，走 `panstart`/`pan` 拖拽定方向+力度、`panend` 定稿，`HIT` 按钮提交击球，避免与
+   全局 swipe-up 回家手势抢同一释放动作（compass 双模式 + sokoban 单手势目标先例）。
+2. **击球力度映射**：`frac = clamp((peak - 6) / (30 - 6), 0, 1)`（m/s²；30 接近 ±4g 上限），
+   `speed = 90 + frac * (380 - 90)` px/s；低于阈值直接不击球，杜绝误触。demo 拖拽距离
+   `dist` 用同一 `frac = clamp(dist / 140, 0, 1)` 映射到同区间，两条路径共用 `shotSpeed()`。
+3. **球物理（简化 2D 坡度+摩擦）**：固定子步 `h <= 0.01 s`（gravity_ball `:21-22` 同款），
+   `v = (v + slope*h) * (1 - FRICTION*h)`，`slope` 为每关常向量（px/s²，坡度越大越难），
+   `FRICTION = 1.1 /s`，`RESTITUTION = 0.6`；球道四壁回弹，圆形障碍法向反射；障碍取
+   outline-only 环（便于脏区重画精确复原）。洞为半径 12 px 圆：`dist < 12 且 speed < 120`
+   px/s 即入洞，过快则 lip-out 越洞而过。沙坑/水域 hazard 矩形为惩罚区：入区即回到上一
+   静止点并 +1 罚杆。数值发散或离开球道矩形视为出界，同样罚杆复位（负向用例）。
+4. **关卡程序化生成**：`golfLevel(i)` 由关卡序号确定性生成（不内嵌素材、不手抄地图），
+   球道矩形随屏固定，坡度幅值/方向、圆形障碍个数与半径、洞位、hazard 随 `i` 渐增/变换；
+   共 6 关（≥5）。难度维度：L1 无障低速直洞 → L2 加坡度 → L3 单障碍 → L4 双障碍+偏移洞
+   → L5 三障碍+hazard → L6 全要素高坡度。每关 par 由 harness 的角度×力度网格搜索解算器
+   实证可解（sokoban "数据 bug 在断言处暴露" 纪律）；搜索从发球点枚举 36 方向 × 8 档力度，
+   模拟至静止或入洞，≤2 杆内找到解即判可解，否则视为关卡数据错误。
+5. **回合与洞流程**：`ready → rolling → holed/penalty → next`。击球杆数 +1（hazard 另 +1）；
+   入洞后按本关杆数记最少杆纪录 `hisc.golf`（严格更少才覆盖，等值保留），`NEXT` 按钮推进
+   关卡，`RESET` 重开本关；6 关通关后显示完成态。杆数/HUD 为原生 Text，无装饰 Unicode，
+   仅 ASCII + 中文。
+6. **渲染**：单个 480×480 canvas = 230,400 px 恰满预算（harness 断言）。球道边界、障碍环、
+   洞环、hazard 边框为静态层，`retainPath`/`retainSegments` 一次上传（≤8 path），每帧
+   `drawPath` 回放；球、瞄准线、洞心为动态层，按 gravity_ball 的 `snapBox(union(old,new))`
+   脏区重画（含瞄准线包围盒与洞心盒），首帧全画布。稳态脏区远小于全帧，budget 在 harness
+   用 `invalidate` 消息断言。
+7. **取舍登记**：真机 IMU 持握姿态、挥杆阈值舒适度、触屏拖拽力度手感 deferred to board；
+   验收口径 = 编译/宿主/emu 全绿 + 逻辑自洽，不声称真机验证。写入 KNOWN-SIMPLIFICATIONS。
+
+验证（原始输出摘录；全部在 `/tmp/lume-r123-wt` 执行）：
+
+```
+$ node tests/minigolf.js
+PASS minigolf UI strings ASCII-only (r64 font rule)
+PASS minigolf power mapping (threshold/dead-zone/clamp, shared curve)
+PASS minigolf turn flow + shot gating (rolling/rejected putt)
+PASS minigolf physics (friction stop, slope deflection, OOB clamp, guard bounce)
+PASS minigolf cup capture / lip-out / hazard penalty reset
+EVIDENCE L1 OPEN PUTT solvable@par hole-in-one {"angle":90,"power":8,"speed":268}
+EVIDENCE L2 SLOPE solvable@par hole-in-one {"angle":90,"power":7,"speed":246}
+EVIDENCE L3 ONE GUARD solvable@par hole-in-one {"angle":75,"power":8,"speed":268}
+EVIDENCE L4 TWO GUARDS solvable@par hole-in-one {"angle":75,"power":9,"speed":291}
+EVIDENCE L5 BUNKERS solvable@par hole-in-one {"angle":70,"power":8,"speed":268}
+EVIDENCE L6 GAUNTLET solvable@par hole-in-one {"angle":105,"power":11,"speed":335}
+PASS minigolf all 6 procedural holes solvable at par (angle x power search)
+PASS minigolf hiscore KV (9-char key, strict-min, graceful failure)
+PASS minigolf boot + retained paths + first paint + canvas budget
+PASS minigolf demo/imu degradation + stationary no-putt
+PASS minigolf IMU swing threshold + one-putt debounce + weak-swing negative
+PASS minigolf drag -> aim -> HIT + dirty budget (max inc 9044 px) + pathDraw replay
+PASS minigolf RESET/NEXT navigation + 1800-tick finite smoke
+ALL MINIGOLF HARNESS CASES PASSED (12 cases)                 # 12/12 绿
+
+$ for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo "FAIL $t"; done; echo done
+done                                                          # 0 FAIL
+
+$ npm test --prefix tools/lume
+1..50
+# tests 50
+# pass 49
+# fail 0
+# skipped 1
+
+$ python3 scripts/check_website.py
+API missing: none
+API invented: none
+API duplicates: none
+API signatures not found in lume.d.ts: none
+
+$ node tools/lume/lume.js check examples/minigolf --no-emu
+RESULT: PASS (4 steps, 0 failed; exit 0)
+$ node tools/lume/lume.js check examples/counter --no-emu
+RESULT: PASS (4 steps, 0 failed; exit 0)
+```
+
+emu smoke（真固件 esp32sim；worktree 的 `tools/lume/node_modules` 用主仓软链，
+`EMU_BIN` 指向主仓 `tools/emu/.cache/bin/esp32sim`）：主仓 `firmware/build/` 三件套当时
+不存在，`website/wasm/fw/` 是 amoled18（368×448）镜像且使 480×480 canvas 在
+`__canvasInt` 处抛 `canvas coordinate out of range`（非 app 逻辑错，板型不匹配）。
+故按仓库默认 sdkconfig（amoled216 480×480）本地 `idf.py build` 生成 emu 镜像——这是
+**环境准备，不是固件源码改动**；固件/runtime 源码本轮零改动，故未按「被迫改动」口径
+贴 size 对比。`EMU_SKIP_BUILD=1 tools/emu/run.sh examples/minigolf` 原始输出：
+
+```
+I (1737) lume-engine: engine task up (pinned core 1), PSRAM free=5436368 bytes
+I (1809) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1939) lume-engine: app eval ok; entering event loop
+I (2692) lume-engine: engine recv RELOAD -> recycle runtime
+I (2923) lume-engine: runtime up; eval app '<embedded-demo>' (9614 bytes)
+I (3007) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted -- ... emulated 10.000s (2400000000 cycles)
+TFT: /tmp/lume-r123-emu-final/tft.png
+serial: /tmp/lume-r123-emu-final/serial.log
+```
+
+`grep -E "JS exception|eval failed|RELOAD ERR|E \(.*lume-|assert|panic" serial.log` 0 行。
+`run.sh` 会覆写 `$EMU_OUTPUT_DIR/actions.txt`，故触摸注入写到独立
+`/tmp/lume-r123-emu-touch/actions.txt` 并直接调 esp32sim（r64/r65 先例）：
+`2.5 serial-file ...` → `4.0 touch 240 380 1` → `4.1/4.2/4.3 touch 240 <344/310/288> 1`
+→ `4.45 touch 240 288 0` → `5.0 touch 182 452 1` / `5.15 touch 182 452 0`（HIT）。
+原始串口证据：
+
+```
+[script] t=4.000s Touch(240, 380, true)
+[script] t=4.450s Touch(240, 288, false)
+[script] t=5.000s Touch(182, 452, true)
+I (5340) lume-engine: js: GOLF SHOT L1 strokes=1 speed=268
+I (9468) lume-engine: js: GOLF HOLE L1 strokes=1
+I (10369) lume-engine: js: GOLF tick L1 phase=holed mode=demo
+```
+
+最终截图 `/tmp/lume-r123-emu-touch/tft-clean.png`：HUD `L1/6 OPEN PUTT DEMO` /
+`STROKES 1 PAR 1 BEST 0` / `HOLED IN 1 PRESS NEXT`，球白点落在黄环洞心，球道与障碍/
+洞轮廓无黑边残影，四个按钮在位；emu 日志无 crash。截图/产物只留最终证据。
+真机挥杆手感 / 触屏力度 / 帧率 / 掉电持久性 deferred，未声称真机验证。

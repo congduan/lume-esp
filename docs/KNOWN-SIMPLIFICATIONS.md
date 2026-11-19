@@ -1790,3 +1790,37 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   （`artifacts/r122-smoke.log`，第二轮 chat 请求体含第一轮 user+assistant）。真机时延 /
   barge-in 手感 / 双 DMA deferred。固件与 runtime 零改动，按纪律不跑 `idf.py build` /
   `idf.py size`。
+
+## r123 — 体感挥杆迷你高尔夫 `examples/minigolf`（纯 app 层；无真机）
+
+- **物理简化**：2D 球道用 Coulomb 常量摩擦（`FRICTION_DECEL = 150 px/s²`）+ 每关常向量坡度 +
+  壁/环 `RESTITUTION = 0.6` 回弹，取代真实滚动/滚动摩擦/坡面能量守恒。Coulomb 模型保证球
+  在有限时间停稳（黏性摩擦 + 常坡度会让球永远达不到静止阈值）；代价是速度-距离关系是
+  二次而非指数，果岭手感靠 `FRICTION_DECEL` / `SHOT_MIN` / `SHOT_MAX` 手调。洞以
+  `dist <= 16 px 且 speed <= 140 px/s` 判定，快球 lip-out 越洞——不做真实杯沿动力学。
+- **挥杆检测是幅值阈值而非手势识别**：取 `hypot(ax, ay)` 超 6 m/s² 为候选、窗口内峰值定
+  力度、峰值回落 160 ms 结算、240 ms 冷却。不识别挥杆轨迹形状，也不做重力方向补偿；
+  手册假设手表近水平持握（静止时水平幅值近零）。`SIGN_X = -1` 沿用 gravity_ball 本板
+  实测的轴向反转；`SIGN_Y = 1` 未在板上核对。真机持握姿态、阈值舒适度、方向直觉全部
+  deferred to board，不声称真机验证。
+- **demo 触摸交互**：拖拽定方向/力度 + `HIT` 按钮提交，分两步而非拖拽释放即击球。
+  这是为规避 prelude 挂在节点 0 的全局 swipe-up 回家手势与向上拖拽释放抢同一 UP 事件
+  （`lume_scripts.c:1365-1372`）；代价是 demo 击球多一次按键。compass 双模式自动降级
+  先例保留：无 IMU 样本时 `MODE -> IMU` 回落 demo 并记日志。
+- **渲染取舍**：单个 480×480 canvas = 230,400 px 恰满预算，球道/障碍/洞/沙坑边框为静态层，
+  每关一条 `retainSegments`（6 条 ≤ 8 上限，最坏 78 段 ≤ 240），每帧 `drawPath` 从 C 回放；
+  球/瞄准线/洞心走 `snapBox(union(old,new))` 脏区重画，首次整块画布。障碍取 outline-only
+  环（无填充），以便脏区用球道底色擦除后回放轮廓即可精确复原；不做障碍阴影或洞深。
+- **关卡可解性口径**：6 关由关号确定性生成（四张参数表），par 全为 1。harness 用 72 方向
+  × 14 力度的确定性网格搜索证明每关一杆可进洞（sokoban BFS 纪律的数据断言同款），
+  不是真机试打；搜索只覆盖离散角度/力度，不能证明连续控制空间里的最优性。
+- **hiscore 语义**：`hisc.golf`（9 字符，NVS 上限 15，实证 `lume_kv.c:42`）存**全场通关总
+  杆数**的最少值，不是逐关纪录；未通关时 HUD 显示 `BEST 0`。KV 失败时本局仍可玩，纪录
+  仅本进程有效。
+- **仍 open / 诚实口径**：证据来自 12-case host harness（含 6 关可解性搜索、IMU 降级/弱挥杆
+  负向、脏区预算）、全量宿主回归 0 FAIL、`npm test --prefix tools/lume` 49/50 pass（1 skip）、
+  `check_website.py` missing/invented/duplicates 均 none、两个 `--no-emu` 哨兵 PASS，以及
+  esp32sim 真固件 emu：启动 eval ok、无 crash 日志、独立 /tmp 脚本注入触摸
+  `touch 240 380 1 / ... / touch 240 288 0` + `HIT` 后串口实证 `GOLF SHOT L1 strokes=1
+  speed=268` → `GOLF HOLE L1 strokes=1`。真机挥杆手感、触摸力度、帧率、掉电持久性 deferred。
+  固件/runtime 源码零改动；emu 镜像为本地编译产物，未据此声称固件改动或真机验收。
