@@ -1730,3 +1730,29 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `tests/va_ws.js` 9 case）、真 `cli.js` + 本地假上游 + device-sim `--turns 2`
   两轮连续对话 smoke（`artifacts/r120-smoke.log`）。固件与 runtime 零改动，
   按纪律不跑 `idf.py build` / `idf.py size`。
+
+## r121 — voice_assistant 设备侧多轮记忆适配（纯 app + Node 层，无真机/无出网）
+
+- **app 不本地存历史，只靠网关窗口**：设备侧不缓存 user/assistant 文本，也不按帧
+  重建上下文；历史完全依赖 r120 网关会话的有界窗口（N=12 / 8KB 字符预算）。轮间
+  UI 的 `PREV` 只显示上一轮 app 自己已上屏的回复，不参与下一次 chat 请求。取舍：
+  设备内存零增长、协议帧零变化；代价是网关重启 / 连接一断历史即失，app 无离线记忆。
+- **多轮是连接复用，不是新帧型**：设备开启后 `state=idle` 时 park WS，下一轮原连接
+  直接上行 PCM + `end`，不重发 hello。实证两轮仅 1 次 hello / 1 次 ack / 同一 sessionId，
+  §8.1.10 逐帧记录。取舍：零协议破坏、默认关闭逐字节等价 r119；代价是设备与网关
+  必须**两侧都开**（`voice_gateway_multiturn` KV + `--multiturn`），单边开等于每轮新连接、
+  历史读不到。
+- **连接生命周期由 app 手动维护**：`onClose` / 致命 `error` / `onError` / barge-in
+  都清掉 park 迫使下一轮全新连接并重新发带 KV token 的 hello。取舍：token 门在重连后
+  照常拦截（r121 case 12 断言零上游工厂调用），不引入会话恢复/续传；代价是从 SPEAK
+  中途 barge-in 后会丢掉本会话已积累的历史（重连即新对话），未做「先 commit 再断连」。
+- **上下文 UI 是展示性、非权威**：`TURN n` 统计本 app 完成轮次，`PREV` 截断到 16 字符，
+  只求如实提示「记忆开且已积累几轮」，不是网关历史的镜像（网关超窗淘汰后 UI 不回退）。
+  取舍：信号驱动、零新控件复杂度；代价是计数与网关实际窗口条数可能不一致。
+- **仍 open / 诚实口径**：无真机 / 无出网 / 无真实 key；证据来自宿主 harness
+  （`tests/va_ws.js` 12 case = 9 基线 + 3 r121，`tests/gateway.js` 19，
+  `tests/gateway_upstream.js` 36）、`npm test --prefix tools/lume` 50 tests、
+  `check_website.py` 无缺失、真 `cli.js --upstream openai` + 本地假 STT/chat/TTS +
+  真 `device-sim --turns 2` 两轮 smoke（`artifacts/r121-smoke.log`，第二轮 chat 请求体含
+  第一轮 user+assistant 且两轮仅 1 次 hello）。真机时延 / barge-in 手感 / 双 DMA deferred。
+  固件与 runtime 零改动，按纪律不跑 `idf.py build` / `idf.py size`。

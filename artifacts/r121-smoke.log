@@ -1,0 +1,67 @@
+[SMOKE 23:09:14.406] fake upstream port=39077 gateway port=41453 mode=locked (token value withheld from log) persona=custom limit=12 multiturn=on
+[gateway 23:09:14.554] gateway.listen host=127.0.0.1 port=41453
+[gateway 23:09:14.555] ready url=ws://127.0.0.1:41453/ deviceAuth=on systemPrompt=custom historyLimit=12 multiturn=on
+[SMOKE 23:09:14.561] --- PASS A: locked gateway + WRONG device token ---
+[device  23:09:14.614] open url=ws://127.0.0.1:41453/
+[device  23:09:14.615] send.hello auth=on
+[gateway 23:09:14.617] protocol.error sessionId=s1 code=unauthorized message=device token mismatch fatal=true
+[device  23:09:14.617] recv.error code=unauthorized fatal=true message=device token mismatch
+[device  23:09:14.618] close ack=false uplink=0 deltas=0 audioFrames=0 text="" txDeltas=0 txText="" legacy=false auth=on
+[gateway 23:09:14.618] session.close sessionId=s1 code=1008
+[SMOKE 23:09:14.626] PASS A: unauthorized + 1008, upstream requests=0
+[SMOKE 23:09:14.627] --- PASS B: locked gateway + CORRECT token + two turns ---
+[device  23:09:14.681] open url=ws://127.0.0.1:41453/
+[device  23:09:14.682] send.hello auth=on
+[device  23:09:14.684] recv.hello-ack sessionId=s2 audioFormat=pcm_s16le_16000_2ch
+[gateway 23:09:14.682] hello sessionId=s2 device={"model":"lume","fw":"r117"} streamTranscript=true
+[device  23:09:14.686] send.uplink frames=5 bytesEach=3840 totalBytes=19200 turn=1
+[device  23:09:14.686] send.text turn=1
+[device  23:09:14.686] send.end turn=1
+[device  23:09:14.687] recv.state state=thinking
+[gateway 23:09:14.687] uplink.pcm sessionId=s2 bytes=3840 frames=1
+[gateway 23:09:14.688] uplink.pcm sessionId=s2 bytes=3840 frames=2
+[gateway 23:09:14.688] uplink.pcm sessionId=s2 bytes=3840 frames=3
+[gateway 23:09:14.688] uplink.pcm sessionId=s2 bytes=3840 frames=4
+[gateway 23:09:14.688] uplink.pcm sessionId=s2 bytes=3840 frames=5
+[gateway 23:09:14.688] turn.end sessionId=s2
+[FAKE-UP 23:09:14.743] POST /v1/audio/transcriptions role=stt bodyBytes=9909
+[FAKE-UP 23:09:14.745] stt.text=STT_TRANSCRIPT_1
+[FAKE-UP 23:09:14.755] POST /v1/chat/completions role=chat bodyBytes=198
+[FAKE-UP 23:09:14.756] chat.messages=system,user count=2 stream=true
+[FAKE-UP 23:09:14.757] chat.reply="REPLY_1. "
+[device  23:09:14.760] recv.text-delta seq=0 chars=9 final=false
+[device  23:09:14.762] recv.text-delta seq=1 chars=0 final=true
+[FAKE-UP 23:09:14.764] POST /v1/audio/speech role=tts bodyBytes=76
+[device  23:09:14.776] recv.state state=speaking
+[device  23:09:14.776] recv.audio seq=0 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  23:09:14.776] recv.audio seq=1 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  23:09:14.776] recv.state state=idle
+[device  23:09:14.778] recv.state state=thinking
+[gateway 23:09:14.788] uplink.pcm sessionId=s2 bytes=3840 frames=6
+[gateway 23:09:14.790] uplink.pcm sessionId=s2 bytes=3840 frames=7
+[device  23:09:14.791] send.uplink frames=10 bytesEach=3840 totalBytes=38400 turn=2
+[device  23:09:14.792] send.text turn=2
+[device  23:09:14.792] send.end turn=2
+[gateway 23:09:14.793] uplink.pcm sessionId=s2 bytes=3840 frames=8
+[gateway 23:09:14.793] uplink.pcm sessionId=s2 bytes=3840 frames=9
+[gateway 23:09:14.793] uplink.pcm sessionId=s2 bytes=3840 frames=10
+[gateway 23:09:14.793] turn.end sessionId=s2
+[FAKE-UP 23:09:14.806] POST /v1/audio/transcriptions role=stt bodyBytes=9909
+[FAKE-UP 23:09:14.807] stt.text=STT_TRANSCRIPT_2
+[FAKE-UP 23:09:14.818] POST /v1/chat/completions role=chat bodyBytes=309
+[FAKE-UP 23:09:14.818] chat.messages=system,user,assistant,user count=4 stream=true
+[FAKE-UP 23:09:14.819] chat.reply="REPLY_2. "
+[device  23:09:14.825] recv.text-delta seq=2 chars=9 final=false
+[device  23:09:14.826] recv.text-delta seq=3 chars=0 final=true
+[FAKE-UP 23:09:14.828] POST /v1/audio/speech role=tts bodyBytes=76
+[device  23:09:14.832] recv.state state=speaking
+[device  23:09:14.832] recv.audio seq=2 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  23:09:14.832] recv.audio seq=3 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  23:09:14.832] recv.state state=idle
+[device  23:09:14.832] recv.state state=thinking
+[gateway 23:09:14.844] session.close sessionId=s2 code=1000
+[device  23:09:14.845] close ack=true uplink=10 deltas=4 audioFrames=4 text="REPLY_1. REPLY_2. " txDeltas=0 txText="" legacy=false auth=on
+[SMOKE 23:09:14.857] PASS B: two turns, chat requests=2, turn2 messages=system,user,assistant,user (history=2), device hellos=1
+[SMOKE 23:09:14.857] PASS B detail: turn1.user="STT_TRANSCRIPT_1\nTURN 1 USER UTTERANCE" turn1.assistant="REPLY_1. " turn2.user="STT_TRANSCRIPT_2\nTURN 2 USER UTTERANCE"
+[gateway 23:09:14.859] gateway.closed
+[SMOKE 23:09:14.865] DONE: all r121 smoke assertions passed

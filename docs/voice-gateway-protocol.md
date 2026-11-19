@@ -466,6 +466,33 @@ r120 为每路 `DeviceSession` 增加一份有界对话历史（`[{role, content
 - **mock 上游**：`MockUpstream` 镜像同样的历史语义（记录 canned 答复与设备
   `text`），但 canned 答复与音频不变，设备侧 harness 不回归。
 
+### 8.1.10 设备侧多轮适配（r121；设备协议帧零变化）
+
+r120 的 `--multiturn` 只改变网关侧关闭时机；r121 让设备 app 复用同一 WS 连接，
+把多轮记忆真正用起来。**本节是设备实现约定，不新增任何控制帧 / 字段 / 序号 / 关闭码；
+§1-§7 的 v1 冻结基线保持成立。** 实证（`tools/gateway/device-sim.js --turns 2`
+对真 `cli.js --upstream openai --multiturn`，原始日志 `artifacts/r121-smoke.log`）：
+
+1. **第二轮如何开始**：复用连接后设备直接上行 3840 B PCM 帧 + 可选 `text` + `end`，
+   **不重发 `hello`**。实证计数：两轮 `send.hello` 恰好 1 次、`hello-ack` 恰好 1 次，
+   sessionId 两轮同为 `s2`。
+2. **网关 close 时机**：非多轮时每轮 `state=idle` + `close(1000, done)`；多轮时适配器
+   的 clean close 被网关截获为「re-arm 同 session 的新适配器」（下发 `state=idle` 后紧接
+   `state=thinking`），**轮间不关 WS**。socket 只在设备主动 close、致命错误或非 `done`
+   reason 时关闭；最后一轮是设备决定收口后 close，网关 `session.close code=1000`。
+   逐帧顺序：`end` → `turn.end` → `text-delta*` → `state=idle` → `state=thinking`（re-arm）
+   → 下一轮上行；`end` 始终先于本轮全部下行。
+3. **设备配置**：app 新增 KV `voice_gateway_multiturn`（或顶部常量 `VA_GATEWAY_MULTITURN`，
+   默认 `false`，接受 `true`/`1`/`'1'`/`'true'`），与网关 `--multiturn` 需**两侧都开**。
+   关 = 每轮新连接 + 新 hello，与 r119 逐字节等价；开 = `state=idle` 后 park 连接，
+   下一轮原连接复用。
+4. **token 门在重连仍生效**：复用连接内 token 只在首轮 hello 发送一次（该连接已通过门）；
+   一旦 park 的连接被网关关闭 / 致命错误 / barge-in 中止，设备清掉 park，下一轮走
+   新连接并重新发 `hello.auth.token`，网关 token 门照常校验（失败 → `unauthorized` + 1008，
+   上游工厂零调用）。host harness 对此有专门断言（`tests/va_ws.js` r121 case 11/12）。
+5. **历史归属**：历史仍只在网关会话窗口内，app 不本地存历史、不消费历史帧；`close`
+   （任意 code）即清空，重连 = 新对话（见 KNOWN-SIMPLIFICATIONS r121）。
+
 ## 8.2 设备鉴权：共享 token 门（r119；非 HMAC）
 
 ### 8.2.1 模式判定与配置
@@ -538,3 +565,14 @@ OpenAI 适配器两轮注入）、`tests/va_ws.js` 9 case；`npm test --prefix t
 user+assistant，原始日志 `artifacts/r120-smoke.log`）。`--multiturn` 为可选会话
 保活，默认关闭保持每轮 close 语义。不声称真机 / 出网 / 真实 key；固件与 runtime
 零改动，按纪律不跑 `idf.py build` / `idf.py size`。
+
+r121 追加（设备侧适配，**协议帧零变化**）：设备 app 新增 KV `voice_gateway_multiturn` /
+常量 `VA_GATEWAY_MULTITURN`（默认关），开启后在 `state=idle` 后 park WS、下一轮原连接
+复用不重发 hello，网关保活同 session 的历史（§8.1.10 的实证轮次语义）；关 = r119
+逐字节等价。UI 以信号驱动如实呈现 `TURN n / PREV` 上下文。验证口径：`tests/va_ws.js`
+12 case（9 基线 + 3 r121：跨轮保活 / 无重 hello / close 重连历史清零 + token 门复拦）、
+`tests/gateway.js` 19 case、`tests/gateway_upstream.js` 36 case、`npm test --prefix tools/lume`
+50 tests、`check_website.py` 无缺失；真 `cli.js --upstream openai` + 本地假 STT/chat/TTS
++ 真 `device-sim --turns 2` 集成 smoke（锁定模式 + 双轮，第二轮 chat 请求体含第一轮
+user+assistant，设备两轮仅 1 次 hello，原始日志 `artifacts/r121-smoke.log`）。不声称真机；
+固件 / runtime 零改动，按纪律不跑 `idf.py build` / `idf.py size`。

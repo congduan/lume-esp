@@ -97,3 +97,32 @@
   deferred to board bring-up，**未声称真机验证**。
 - 固件零改动：契约已由 `runtime/types/lume.d.ts` 的 `namespace ws` / `audio`
   与 `firmware/components/lume-net/lume_ws.c` 覆盖，本轮不需要改 C。
+
+## r121 多轮记忆（设备侧连接复用；零固件 / 零协议帧改动）
+
+r120 给网关加了有界会话历史与可选 `--multiturn` 会话保活；r121 让本 app 真正
+用上它。**设备协议帧零变化**：多轮不是新帧型，而是同一 WS 连接被连续多轮复用。
+
+开启方式（KV 优先于顶部常量，与网关 URL / token 同风格）：
+
+```js
+lume.storage.kv.set('voice_gateway_multiturn', '1');   // 或 true / 'true'
+```
+
+- 顶部常量 `VA_GATEWAY_MULTITURN` 默认 `false`；网关侧必须同时开
+  `--multiturn` / `GATEWAY_MULTITURN=1`，否则网关每轮仍 close，设备下一轮自动
+  回退到新连接（历史随之清零）。
+- **开**：第一轮 `hello`（锁定模式带 `auth.token`）→ 流式回复 → `state=idle`
+  后 app **不关 WS**，把它 park；再次 TALK 直接在该连接上发 3840 B 上行帧 +
+  `end`，**不重发 hello**，token 也不重发（该连接已通过门）。`MODE` 行下方新增
+  信号驱动的上下文行：`TURN n  PREV: <上一轮回复>`。
+- **关**（默认）：每轮行为与 r108/r119 逐字节等价 —— `state=idle` 即 close，
+  下一轮新连接、新 hello；不显示上下文行。
+- 连接被网关关闭、致命 `error`、`onError` 或 barge-in 中止都会清掉 park；下一次
+  TALK 走全新连接并重新发送带 KV token 的 hello，网关 token 门**照常拦截**。
+  历史只活在网关侧窗口内，app 不本地存历史；重连即遗忘（见 KNOWN-SIMPLIFICATIONS r121）。
+
+Host 验证：`node tests/va_ws.js` 现 12 case（9 基线 + 3 r121：跨轮保活 / 无重 hello /
+close 重连历史清零 + token 门复拦）；真 `device-sim --turns 2` + 锁定网关 +
+`--multiturn` 的两轮 smoke 见 `artifacts/r121-smoke.log`。真机时延 / barge-in 手感
+deferred to board，未声称真机验证。

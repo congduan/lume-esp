@@ -1760,3 +1760,87 @@ token 门开、两轮连续对话；两端原始日志见 `artifacts/r120-smoke.
 只记录来源，不回显内容；上游实际请求体含 system 全文，但假端点日志只记角色序列。
 playground 生成物未受影响，未重生成；`python3 scripts/check_website.py` 通过。
 取舍见 `docs/KNOWN-SIMPLIFICATIONS.md` r120 与 `docs/voice-gateway-protocol.md` §8.1.9 / §10。
+
+### r121 result — voice_assistant 设备侧多轮记忆适配（E 刀收口续；appended, milestone checkboxes untouched）
+
+基线 HEAD `91a1e25`；分支 `r121-va-multiturn`。commits：feat / test / docs 分开提交，
+不推送（主控轮负责 push）。**纯 app + Node 层，零固件 / runtime 改动**，按纪律未跑
+`idf.py build` / `idf.py size`。
+
+先实证再动码（`tools/gateway/device-sim.js --turns 2` 对真 `cli.js --multiturn`，
+mock 上游；逐帧原始输出见本轮 probe）：`send.hello=1`、`recv.hello-ack=1`、
+sessionId 两轮同为 `s1`、`recv.state idle=2`（每轮一次）、`send.end=2`、
+`gateway turn.end=2`，网关 `session.close code=1000` 只在**最后一轮设备收口后**出现，
+轮间无 close。结论：第二轮直接上行 PCM（**不重发 hello**），网关把 clean close 截获为
+同 session re-arm（`state=idle` 后紧接 `state=thinking`）。写入协议 §8.1.10。
+
+实现：`examples/voice_assistant/app.js` 新增 KV `voice_gateway_multiturn` /
+常量 `VA_GATEWAY_MULTITURN`（默认 `false`）；开启时 `state=idle` 后 park WS，下一轮原连接
+复用（无新 connect / 无 re-hello），token 仅在首轮 hello 发送；关闭时逐字节等价 r119。
+`onClose` / 致命 `error` / `onError` / barge-in 清 park，下一轮新连接重发带 token 的 hello
+使网关 token 门复拦。UI 新增信号驱动的 `TURN n / PREV: <上一轮回复>` 上下文行。协议帧
+零变化（无新控制帧/字段/关闭码）。
+
+验证（原始输出摘录）：
+
+```
+$ node tests/va_ws.js
+PASS r121: 2 turns / 1 connection / 1 hello, history carries, no close
+PASS r121: close clears history, reconnect re-hello carries token, no log leak
+PASS r121: wrong token blocked on initial + reconnect, upstream never created
+ALL VA WS HARNESS CASES PASSED (12 cases)          # 9 基线 + 3 r121
+
+$ node tests/gateway.js
+ALL GATEWAY HARNESS CASES PASSED (19 cases)
+
+$ node tests/gateway_upstream.js
+ALL GATEWAY UPSTREAM CASES PASSED (36 cases)
+
+$ for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo "FAIL $t"; done; echo done
+done                                                  # 0 FAIL
+
+$ npm test --prefix tools/lume
+# tests 50 / # pass 49 / # fail 0 / # skipped 1
+
+$ python3 scripts/check_website.py
+API missing: none / API invented: none / API duplicates: none
+
+$ node tools/lume/lume.js check examples/voice_assistant --no-emu
+PASS
+
+$ node tools/lume/lume.js check examples/counter --no-emu
+PASS
+
+$ npm run build:playground --prefix tools/lume    # app.js 改动 → 重生成 playground
+PASS bundle voice_assistant 12063 bytes
+PASS prelude 67016 bytes; 43 apps
+（生成物 website/playground/{apps,sources}/voice_assistant.js + sources.js 随本轮提交）
+```
+
+集成 smoke（真 `cli.js --upstream openai` + 本地假 STT/chat/TTS + 真 `device-sim --turns 2`，
+锁定模式 + `--multiturn`，两端原始日志 `artifacts/r121-smoke.log`）：
+
+```
+[SMOKE] fake upstream port=... gateway port=... mode=locked ... limit=12 multiturn=on
+[gateway] ready url=ws://127.0.0.1:.../ deviceAuth=on systemPrompt=custom historyLimit=12 multiturn=on
+--- PASS A: locked gateway + WRONG device token ---
+[gateway] protocol.error sessionId=s1 code=unauthorized message=device token mismatch fatal=true
+[gateway] session.close sessionId=s1 code=1008
+[SMOKE] PASS A: unauthorized + 1008, upstream requests=0
+--- PASS B: locked gateway + CORRECT token + two turns ---
+[device] send.hello auth=on
+[device] recv.hello-ack sessionId=s2 audioFormat=pcm_s16le_16000_2ch
+[FAKE-UP] chat.messages=system,user count=2 stream=true
+[device] recv.state state=idle
+[device] recv.state state=thinking
+[device] send.uplink frames=10 ... turn=2          # 同连接，无第二次 hello
+[FAKE-UP] chat.messages=system,user,assistant,user count=4 stream=true
+[SMOKE] PASS B: two turns, chat requests=2, turn2 messages=system,user,assistant,user (history=2), device hellos=1
+[SMOKE] PASS B detail: turn1.user="STT_TRANSCRIPT_1\nTURN 1 USER UTTERANCE" turn1.assistant="REPLY_1. " turn2.user="STT_TRANSCRIPT_2\nTURN 2 USER UTTERANCE"
+[SMOKE] DONE: all r121 smoke assertions passed
+```
+
+设备 token / system 全文未出现在任何日志（smoke 直接断言）。设备两轮仅 1 次 hello、
+网关仅 1 次 hello-ack（同一 session），与协议 §8.1.10 实证一致。取舍见
+`docs/KNOWN-SIMPLIFICATIONS.md` r121 与 `docs/voice-gateway-protocol.md` §8.1.10 / §10。
+真机时延 / barge-in 手感 / 双 DMA deferred to board，未声称真机验证。
