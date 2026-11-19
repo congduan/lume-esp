@@ -171,6 +171,7 @@ function vaSend() {
 function vaListenTimeout() {
   if (vaState() !== 'LISTEN') return false;
   if (vaWatchTimer !== null) { lume.system.clearTimeout(vaWatchTimer); vaWatchTimer = null; }
+  vaPTTClear();
   lume.log('VA LISTEN TIMEOUT -> IDLE');
   return vaSet('IDLE');
 }
@@ -183,9 +184,10 @@ function vaAsk(prompt) {
   vaSendTimer = lume.system.setTimeout(vaDeferredSend, 0);
   return true;
 }
-function vaDeferredSend() {
+function vaDeferredSend(expect) {
+  var want = expect || 'THINK';                 /* PTT opens the transport in LISTEN */
   if (vaSendTimer !== null) { lume.system.clearTimeout(vaSendTimer); vaSendTimer = null; }
-  if (vaState() !== 'THINK') return;
+  if (vaState() !== want) return;
   var fn = vaTransport || vaTransportLegacy;
   var stream = (fn === vaTransportWS);   /* WS streaming uses its own completion */
   vaTransportCalls++;
@@ -237,6 +239,7 @@ function vaFail(code) {
 }
 function vaBargeIn() {
   if (vaState() !== 'SPEAK') { lume.log('VA BARGE NOOP'); return false; }
+  vaPTTClear();
   if (vaTypeTimer !== null) { lume.system.clearInterval(vaTypeTimer); vaTypeTimer = null; }
   if (vaSpeakTimer !== null) { lume.system.clearTimeout(vaSpeakTimer); vaSpeakTimer = null; }
   if (lume.audio && typeof lume.audio.stop === 'function') lume.audio.stop();
@@ -281,6 +284,59 @@ function vaAnswerText() {
   return vaTyping() ? s + (vaCursor() ? '|' : ' ') : s;
 }
 
+/* ---- r124 push-to-talk (GATEWAY only) -----------------------------------
+ * panstart opens the uplink window (IDLE -> LISTEN, WS + mic start on the next
+ * frame); panend closes it (LISTEN -> THINK + end frame). Hold duration is the
+ * window: <400 ms is a mis-touch (discard, no end); 15 s watchdog caps a stuck
+ * finger. The state-machine edges are unchanged -- PTT only changes WHAT
+ * enters/exits LISTEN and how long LISTEN lasts. DEMO/LIVE keep their tap
+ * flow; vaDetectMode() is untouched. */
+function vaPTTClear() {
+  vaPTTActive = false;
+  if (vaPTTWatchTimer !== null) { lume.system.clearTimeout(vaPTTWatchTimer); vaPTTWatchTimer = null; }
+}
+function vaPTTStart() {
+  if (vaMode !== 'GATEWAY') return false;            /* demo/live: tap flow unchanged */
+  if (vaState() !== 'IDLE') { lume.log('VA PTT START NOOP ' + vaState()); return false; }
+  if (!vaStartListen()) return false;                /* IDLE -> LISTEN */
+  vaPTTActive = true;
+  vaPTTStartMs = lume._nowMs();
+  /* LISTEN's 4 s tap watchdog must not cut a held turn short. */
+  if (vaWatchTimer !== null) { lume.system.clearTimeout(vaWatchTimer); vaWatchTimer = null; }
+  /* Open WS + mic on the next frame so the LISTEN card renders first. */
+  if (vaSendTimer !== null) { lume.system.clearTimeout(vaSendTimer); vaSendTimer = null; }
+  vaSendTimer = lume.system.setTimeout(function () { vaDeferredSend('LISTEN'); }, 0);
+  if (vaPTTWatchTimer !== null) { lume.system.clearTimeout(vaPTTWatchTimer); vaPTTWatchTimer = null; }
+  vaPTTWatchTimer = lume.system.setTimeout(vaPTTWatchdog, VA_PTT_MAX_MS);
+  lume.log('VA PTT START');
+  return true;
+}
+function vaPTTEnd(force) {
+  if (!vaPTTActive || vaState() !== 'LISTEN') return false;
+  var held = lume._nowMs() - vaPTTStartMs;
+  vaPTTClear();
+  if (vaWatchTimer !== null) { lume.system.clearTimeout(vaWatchTimer); vaWatchTimer = null; }
+  if (!force && held < VA_PTT_MIN_MS) {
+    /* Mis-touch: stop mic WITHOUT an end frame, back to IDLE (no send). */
+    vaWSMicStop(false);
+    lume.log('VA PTT DISCARD ' + held + 'ms');
+    return vaSet('IDLE');
+  }
+  /* Valid hold: close the uplink window, then LISTEN -> THINK. The transport
+   * was already opened at panstart, so do NOT re-run vaAsk/deferredSend here. */
+  if (!vaSet('THINK')) return false;
+  vaWSMicStop();
+  lume.log('VA PTT END ' + Math.min(held, VA_PTT_MAX_MS) + 'ms');
+  return true;
+}
+function vaPTTWatchdog() {
+  if (!vaPTTActive || vaState() !== 'LISTEN') return false;
+  lume.log('VA PTT WATCHDOG ' + VA_PTT_MAX_MS + 'ms');
+  return vaPTTEnd(true);                         /* cap: send what we have, never hang */
+}
+function vaPTTOnPanStart() { if (vaMode === 'GATEWAY') vaPTTStart(); }
+function vaPTTOnPanEnd()   { if (vaMode === 'GATEWAY') vaPTTEnd(); }
+
 /* ---- UI ---------------------------------------------------------------- */
 function vaDraw(ctx) {
   vaRev(); vaLevel();                  /* subscribe to animation signals */
@@ -314,7 +370,14 @@ var VA_GATEWAY_TOKEN = '';                         /* empty = open LAN mode */
 var VA_GATEWAY_MULTITURN_KEY = 'voice_gateway_multiturn';
 var VA_GATEWAY_MULTITURN = false;
 var VA_UPLINK_BYTES = 3840;                        /* 60 ms, 16 kHz, s16le stereo */
-var VA_STREAM_FRAMES = 3;                          /* push-to-talk window before end */
+/* r124: GATEWAY mode is true push-to-talk (panstart = hold to record, panend =
+ * release to send). The window is the HOLD DURATION, not a frame count. The
+ * old 3-frame auto-end below is kept ONLY for the legacy tap GATEWAY path so
+ * the r108-r122 host harnesses stay green; the PTT path bypasses it (guarded
+ * by vaPTTActive in vaWSPump). */
+var VA_STREAM_FRAMES = 3;                          /* legacy TAP window only (compat) */
+var VA_PTT_MIN_MS = 400;                           /* <400 ms hold = mis-touch: discard, no end */
+var VA_PTT_MAX_MS = 15000;                         /* 15 s watchdog cap: long hold burns data/mem */
 var VA_PLAY_OPTS = { sampleRate: 16000, channels: 2, bits: 16 };
 
 var vaStreamSession = null;      /* active recordStream session {active,...} */
@@ -334,6 +397,10 @@ var vaStreamSessionId = '';
 /* r121: per-turn keep-alive state. idle=true means the WS is parked after a
  * clean turn and the next push-to-talk turn may reuse it (no re-hello). */
 var vaStreamMulti = false, vaStreamIdle = false;
+/* r124 push-to-talk: hold window state. vaPTTActive=true means the current
+ * LISTEN turn was opened by panstart, so the window ends on panend / watchdog
+ * (never on the legacy VA_STREAM_FRAMES auto-end). */
+var vaPTTActive = false, vaPTTStartMs = 0, vaPTTWatchTimer = null;
 var vaTxParts = [];                     /* bounded interim pieces, joined at render only */
 var vaStreamTxDeltas = 0;
 var VA_TX_MAX_PARTS = 24, VA_TX_MAX_PIECE = 128, VA_TX_MAX_CHARS = 512;
@@ -457,21 +524,23 @@ function vaWSFlushUplink() {
   }
 }
 
-function vaWSMicStop() {
+function vaWSMicStop(sendEnd) {
   if (vaStreamSession && vaStreamSession.active) {
     if (lume.audio && typeof lume.audio.stopStream === 'function') lume.audio.stopStream();
     vaStreamSession.active = false;
     lume.log('VA WS MIC STOP');
   }
-  if (vaStreamConn && vaStreamAcked && !vaStreamEndSent) {
+  /* r124: a <400 ms mis-touch stops the mic but must NOT deliver an end frame. */
+  if (sendEnd !== false && vaStreamConn && vaStreamAcked && !vaStreamEndSent) {
     vaStreamEndSent = true;
     var rc = vaStreamConn.send(JSON.stringify({ v: 1, type: 'end' }));
     lume.log(rc === 0 ? 'VA WS SEND END' : 'VA WS END ERR ' + rc);
   }
 }
 
-/* Timer/host-driven pump: flush uplink, retry a full playStream queue, and
- * close the push-to-talk window after a deterministic frame count. */
+/* Timer/host-driven pump: flush uplink, retry a full playStream queue. The
+ * legacy 3-frame auto-end applies ONLY to the tap path (r108-r122 harnesses);
+ * a PTT window is closed by panend / watchdog instead (r124). */
 function vaWSPump() {
   vaWSFlushUplink();
   if (vaStreamPendingAudio) {
@@ -479,13 +548,14 @@ function vaWSPump() {
     if (rc === 0) { vaStreamAudioFrames++; vaStreamPendingAudio = null; }
     else if (rc !== -3) { lume.log('VA WS PLAY RETRY ERR ' + rc); vaStreamPendingAudio = null; }
   }
-  if (vaStreamSession && vaStreamSession.active &&
+  if (vaStreamSession && vaStreamSession.active && !vaPTTActive &&
       !vaStreamEndSent && vaStreamUplinkFrames >= VA_STREAM_FRAMES) vaWSMicStop();
 }
 
 /* Barge-in: stop capture, deliver end, close socket; do not fire done(). */
 function vaWSAbort() {
   vaStreamFinished = true; vaStreamIdle = false; vaStreamDone = null;   /* before close(): onClose is sync */
+  vaPTTClear();
   vaWSMicStop();
   if (vaStreamConn) { try { vaStreamConn.close(); } catch (e) {} vaStreamConn = null; }
   if (vaStreamPumpTimer !== null) {
@@ -498,6 +568,7 @@ function vaWSAbort() {
 function vaWSFinish(err) {
   if (vaStreamFinished) return;
   vaStreamFinished = true;
+  vaPTTClear();
   vaWSMicStop();
   if (vaStreamPumpTimer !== null) {
     lume.system.clearInterval(vaStreamPumpTimer); vaStreamPumpTimer = null;
@@ -657,9 +728,17 @@ var vaCanvas = Canvas({ width: VA_CW, height: VA_CH, parent: vaRoot,
   style: { position: 'absolute', x: 80, y: 176 }, onDraw: vaDraw });
 Text({ parent: vaRoot, text: vaAnswerText, style: { position: 'absolute', x: 40, y: 344,
   width: 400, height: 62, fontSize: 16, color: '#F2F7FB', textAlign: 'center', longMode: 'wrap' } });
-Text({ parent: vaRoot, text: 'TAP TALK / TAP SEND / TAP INTERRUPT',
-  style: { position: 'absolute', x: 0, y: 412, width: 480, height: 22,
-    fontSize: 12, color: '#9EB3C6', textAlign: 'center' } });
+Text({ parent: vaRoot, text: function () {
+  /* Read signals (not the plain vaMode var) so this binding re-renders when
+   * the mode or state changes: vaModeLabel() at boot, vaState() on panstart. */
+  if (vaModeLabel() === 'GATEWAY') {
+    /* r124: in GATEWAY mode the hint reflects the push-to-talk hold state. */
+    return vaState() === 'LISTEN' ? 'HOLDING - RELEASE TO SEND'
+                                  : 'HOLD & DRAG TO TALK - RELEASE TO SEND';
+  }
+  return 'TAP TALK / TAP SEND / TAP INTERRUPT';
+}, style: { position: 'absolute', x: 0, y: 412, width: 480, height: 22,
+  fontSize: 12, color: '#9EB3C6', textAlign: 'center' } });
 Button({ parent: vaRoot, title: 'TALK', onPress: vaActivate,
   style: { position: 'absolute', x: 170, y: 436, width: 140, height: 40,
     background: '#1C3449', borderRadius: 999, fontSize: 18 } });
@@ -667,6 +746,14 @@ lume.gesture.on(vaRoot, 'tap', vaActivate);
 lume.gesture.on(vaCanvas, 'tap', vaActivate);
 lume.gesture.on(vaRoot, 'longpress', vaLongPress);
 lume.gesture.on(vaCanvas, 'longpress', vaLongPress);
+/* r124: panstart/panend = push-to-talk in GATEWAY mode only (no-op elsewhere).
+ * Empirically the panend fires on this node's own gesture state and is emitted
+ * BEFORE any node-0 swipe-up (read-code + host harness), so a downward/diagonal
+ * drag commits cleanly and even an upward swipe cannot swallow the end frame. */
+lume.gesture.on(vaRoot, 'panstart', vaPTTOnPanStart);
+lume.gesture.on(vaCanvas, 'panstart', vaPTTOnPanStart);
+lume.gesture.on(vaRoot, 'panend', vaPTTOnPanEnd);
+lume.gesture.on(vaCanvas, 'panend', vaPTTOnPanEnd);
 
 /* ---- boot -------------------------------------------------------------- */
 vaSetMode(vaDetectMode());
