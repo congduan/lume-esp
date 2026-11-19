@@ -1576,3 +1576,40 @@ SPEAK 显示助手文本，分时互不覆盖；device-sim `--legacy` 覆盖旧�
 `asr-stream.js`，可在接真实端点时替换），真机 ASR 时延 / barge-in / 旧设备实际行为
 全部 deferred。固件零改动，未跑 `idf.py build`（--no-emu 哨兵足够）。commits 按
 feat / test / docs 拆分，不推送（主控轮负责 push）。
+
+### r118 result — 字母环猜词 Wordle 变体（纯 app 层；appended, milestone checkboxes untouched）
+
+P2 表登记的猜词游戏此前 🔴 blocked 于键盘硬件缺口；本轮落地其**变体路线「字母环选字」**，绕开键盘 / swipe，全程单手 tap。新建 `examples/wordring/app.js` + `tests/wordring.js`，并重新生成 playground（43 apps，纳入 wordring）。固件零改动，不动 P2 候选表与任何 milestone checkbox。
+
+玩法：5 字母英文词、6 次机会。屏幕下方 A-Z 26 字母排成椭圆环；tap 左弧旋转回退、tap 右弧旋转前进、tap 环心把选中字母放进当前槽（大号选中字母显示在环心补偿小字形可读性）。DEL 退格、ENTER 提交；不足 5 字母或重复猜测均被拒绝且不扣次数，游戏结束后所有操作锁定。判定绿=位置对 / 黄=词中有位置错 / 灰=词中无，重复字母用「先数词内计数、再从左到右扣减」两遍算法。答案表内嵌 743 个 5 字母常用词（纯 ASCII 小写）随机抽词；KV `wr.streak` / `wr.best`（9/7 字符 < 15）记连胜与最少尝试。HUD / 6x5 猜测网格 / 字母环分区，单 canvas 480x430 = 206,400 px < 230,400 预算；5x7 A-Z 像素字形预计算成 run-length spans（28 键 = 26 字母 + 2 箭头）。全部文案 ASCII（r64）。
+
+验证（原始输出摘录）：
+
+```
+$ node tests/wordring.js
+PASS wordring UI strings ASCII-only (r64 font rule)
+PASS wordring dictionary: 743 unique five-letter ASCII words, all self-green
+PASS wordring glyphs: 28 five-by-seven glyphs decoded to valid spans
+PASS wordring verdict: green/yellow/grey + input immutability
+PASS wordring duplicate letters: two-pass count, no over-awarding
+PASS wordring new game + rotation: wrap 0..25 both directions
+PASS wordring confirm/backspace: lowercase slots, full guard
+PASS wordring submit guards: short + duplicate rejected, no attempt spent
+PASS wordring win: verdict all green, streak + best persisted
+PASS wordring loss: 6 tries, streak reset, board fully locked
+PASS wordring best: fewer overwrites / worse and equal keep
+PASS wordring KV: keys <= 15 chars, storage failures non-fatal
+PASS wordring canvas budget: 206400/230400 px, grid and ring in bounds
+PASS wordring prelude boot: full paint, HUD attrs, span draw stream
+PASS wordring tap pipeline: rotate/confirm, DEL/ENTER/NEW, KV write
+PASS wordring ~60 s smoke (taps=120, submits=39, restarts=14, draws=90779, paints=187)
+ALL tests/wordring.js PASSED
+```
+
+- 全量 `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo "FAIL $t"; done; echo done` → 仅 `done`，0 FAIL。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 49 / # fail 0 / # cancelled 0 / # skipped 1`。
+- 哨兵：`node tools/lume/lume.js check examples/wordring --no-emu` 与 `node tools/lume/lume.js check examples/counter --no-emu` 均 `RESULT: PASS (4 steps, 0 failed; exit 0)`（bundle 分别 13656 / 2160 bytes）。
+- playground 重生成：`PASS bundle wordring 13656 bytes` / `PASS esbuild-wasm assets and 43 editable sources` / `PASS prelude 67016 bytes; 43 apps`；顺带同步了此前遗留的 voice_assistant 生成物（r108/r117 改动未重生成）。
+- emu：主仓与 worktree 均无 build 三件套（bootloader.bin / partition-table.bin / lume.bin），且本轮零固件改动按纪律不跑 `idf.py build`，故 emu 不可用；`--no-emu` 哨兵足够。
+
+诚实口径：真机环形交互手感、触摸命中半径、帧率 deferred to board；无词典校验、无每日一题、随机抽词等取舍见 `docs/KNOWN-SIMPLIFICATIONS.md` r118 节。commits 按 feat / test / docs 拆分，不推送（主控轮负责 push）。

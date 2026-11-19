@@ -1670,3 +1670,12 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   + 假 chat SSE + 假 TTS + host harness + 真 `cli.js` + device-sim 集成 smoke
   （`artifacts/r117-smoke.log`）。首条转写早于 chat 的时间序有宿主直接证据，但不声称
   板级 ASR 时延 / 麦克风 barge-in 手感；固件零改动，**未跑 `idf.py build` / `idf.py size`**。
+
+## r118 — 字母环猜词 Wordle 变体（纯 app 层；host harness + --no-emu 哨兵，无真机）
+
+- **合法猜测简化为「任意 5 字母组合」**：答案从内嵌表随机抽，提交只做判定、不查猜测词典。取舍：绕开键盘缺口的同时不内嵌第二份大词典、不做词法校验；代价是乱敲的 5 字母也算一次尝试，没有「非词拒绝」提示。
+- **无每日一题**：板子无 RTC 持久保证，答案用 `Math.random()` 抽取；不承诺同一天跨设备/重启一致，每日粘性叙事不成立。
+- **环形交互手感 pending board**：tap 左弧/右弧旋转、tap 环心确认，纯 tap 单手设计（无键盘、无 swipe 依赖）。26 个小字形环在 480x430 上字高仅 7px，靠环心大号选中字母补偿可读性；命中半径、连续旋转速度、帧率、误触率全部待接板验收。harness 只验证 host 手势管线与绘制流（含 ~60s smoke），不代表真机手感。
+- **词表是近似而非权威词库**：743 个纯 ASCII 小写 5 字母常用词，不是任何商标词库；原创判定文案与配色，不复刻商标 UI / 素材。
+- **KV 记录语义有限**：`wr.streak`（连胜，失败清零）与 `wr.best`（最少尝试，严格更少才覆盖）两个 <=15 字符 NVS key；无历史战绩榜、无跨局答案记录。
+- **仍 open / 诚实口径**：无真机；主仓与 worktree 均无 build 三件套，且本轮零固件改动按纪律不跑 `idf.py build` / `idf.py size`；全部证据来自 host harness（真 prelude 手势/绘制流）与 `--no-emu` 哨兵。真机视觉、触摸、性能 deferred to board。
