@@ -117,6 +117,8 @@ async function waitFor(pred, label, timeout = 3000) {
 
 async function withGw(factory, logs, fn, opts = {}) {
   const gw = createGateway({ port: 0, deviceToken: opts.deviceToken || '',
+    /* r121: opt-in keep-alive; default off keeps all baseline cases unchanged. */
+    multiturn: !!opts.multiturn,
     log: (e, f) => logs.push({ e, f }), upstreamFactory: factory });
   await gw.start();
   const url = 'ws://127.0.0.1:' + gw.address().port + '/';
@@ -135,6 +137,42 @@ class SlowUpstream {
   start(session) { session.sendTextDelta('W', false); session.sendTextDelta('A', false); }
   sendAudio() {}
   stop() { this.stopped = true; }
+}
+
+/* r121: deterministic keep-alive upstream. Unlike MockUpstream it does NOT
+ * auto-respond on a timer; it responds only on stop() (the device 'end' frame),
+ * matching the real adapter. It also snapshots historyMessages() at start() so
+ * the harness can prove cross-turn accumulation and post-reconnect clearing. */
+function makeMTFactory(captured, answers) {
+  let n = 0;
+  return () => {
+    const answer = answers[n++] || 'REPLY';
+    return {
+      answer, stopped: false, textIn: null, fired: false, session: null,
+      start(session) {
+        this.session = session;
+        captured.push(typeof session.historyMessages === 'function'
+          ? session.historyMessages() : []);
+        session.sendState('thinking');
+      },
+      sendAudio() {},
+      sendText(t) { this.textIn = String(t); },
+      stop() {
+        if (this.fired) return;
+        this.fired = true; this.stopped = true;
+        const s = this.session;
+        if (!s) return;
+        for (const ch of Array.from(this.answer)) s.sendTextDelta(ch, false);
+        s.sendTextDelta('', true);
+        if (typeof s.historyEnabled === 'function' && s.historyEnabled() &&
+            typeof s.recordTurn === 'function') {
+          s.recordTurn(this.textIn || '(no input)', this.answer);
+        }
+        s.sendState('idle');
+        s.close(1000, 'done');
+      }
+    };
+  };
 }
 
 function smoke(b, gwLog, answer) {
@@ -373,6 +411,125 @@ function smoke(b, gwLog, answer) {
     assert.equal(b.c.vaState(), 'LISTEN');
     pass('r119: app token mismatch -> fatal error -> IDLE, no upstream, not hung');
   }, { deviceToken: 'DIFFERENT-TOKEN-r119' });
+
+  /* ---- 10. r121: keepalive, 2 turns on ONE connection, no re-hello ------ */
+  const gwLog10 = [], mtSeen10 = [];
+  const ANSWERS10 = ['FIRST-REPLY', 'SECOND-REPLY'];
+  await withGw(makeMTFactory(mtSeen10, ANSWERS10), gwLog10, async (gw, url) => {
+    const b = boot(url, { keys: { voice_gateway_multiturn: '1' } });
+    assert.equal(b.c.vaGatewayMultiturn(), true, 'KV toggles device multiturn');
+    drive(b.c);                                     /* turn 1 */
+    await waitFor(() => b.c.vaStreamAcked, 'turn1 ack');
+    feedChunk(b.ui); feedChunk(b.ui); feedChunk(b.ui);
+    b.c.vaWSPump();
+    await waitFor(() => b.c.vaStreamFinished, 'turn1 finish');
+    assert.equal(b.bridge.stats.connects, 1);
+    assert.equal(b.bridge.stats.text.filter(m => m.type === 'hello').length, 1);
+    assert.equal(b.bridge.stats.closes, 0, 'no gateway/app close between turns');
+    assert.equal(b.c.vaStreamIdle, true, 'connection parked for reuse');
+    assert.ok(b.c.vaStreamConn, 'WS handle retained across turns');
+    assert.ok(b.logs.includes('VA WS KEEP session'));
+    assert.equal(b.c.vaTurnCount(), 1);
+    assert.equal(b.c.vaLastReply(), ANSWERS10[0]);
+    /* The clean turn-1 close re-arms a fresh adapter on the SAME session
+     * synchronously, so its start() snapshot already carries turn 1 history. */
+    assert.equal(mtSeen10.length, 2, 'turn1 adapter + re-armed adapter');
+    assert.equal(mtSeen10[0].length, 0, 'turn 1 sees empty history');
+    assert.deepEqual(mtSeen10[1].map(m => m.role), ['user', 'assistant'],
+      're-armed adapter sees turn 1 user + assistant');
+    b.c.vaSpeakDone();
+    assert.equal(b.c.vaState(), 'IDLE');
+
+    drive(b.c);                                     /* turn 2, same connection */
+    assert.equal(b.bridge.stats.connects, 1, 'turn 2 opens no new WS');
+    assert.equal(b.bridge.stats.text.filter(m => m.type === 'hello').length, 1,
+      'turn 2 sends no second hello');
+    await waitFor(() => b.c.vaStreamSession && b.c.vaStreamSession.active, 'turn2 mic');
+    feedChunk(b.ui); feedChunk(b.ui); feedChunk(b.ui);
+    b.c.vaWSPump();
+    await waitFor(() => b.c.vaStreamText === ANSWERS10[1], 'turn2 answer', 5000);
+    await waitFor(() => b.c.vaTurnCount() === 2, 'turn2 finish', 5000);
+    assert.equal(b.bridge.stats.text.filter(m => m.type === 'end').length, 2,
+      'one end frame per turn');
+    assert.equal(b.bridge.stats.closes, 0, 'connection still open after turn 2');
+    assert.equal(gw.sessions.length, 1, 'one gateway session across both turns');
+    assert.equal(gw.sessions[0].closeCode, null, 'gateway has not closed');
+    assert.equal(mtSeen10.length, 3, 'turn2 re-armed a third adapter');
+    assert.deepEqual(mtSeen10[2].map(m => m.role),
+      ['user', 'assistant', 'user', 'assistant'],
+      'turn 2 adapter sees both turns in history');
+    assert.equal(gwLog10.filter(l => l.e === 'turn.end').length, 2);
+    assert.equal(b.bridge.stats.dispatchErrors.length, 0);
+    pass('r121: 2 turns / 1 connection / 1 hello, history carries, no close');
+  }, { multiturn: true });
+
+  /* ---- 11. r121: remote close clears history; reconnect re-sends token -- */
+  const GW_TOKEN11 = 'MT-TOKEN-r121-NOT-REAL';
+  const gwLog11 = [], mtSeen11 = [];
+  await withGw(makeMTFactory(mtSeen11, ['A1', 'A2']), gwLog11, async (gw, url) => {
+    const b = boot(url, { keys: {
+      voice_gateway_multiturn: '1', voice_gateway_token: GW_TOKEN11
+    } });
+    drive(b.c);                                     /* turn 1 */
+    await waitFor(() => b.c.vaStreamAcked, 'turn1 ack');
+    feedChunk(b.ui); feedChunk(b.ui); feedChunk(b.ui); b.c.vaWSPump();
+    await waitFor(() => b.c.vaStreamFinished, 'turn1 finish');
+    const hellos1 = b.bridge.stats.text.filter(m => m.type === 'hello');
+    assert.equal(hellos1.length, 1);
+    assert.equal(hellos1[0].auth.token, GW_TOKEN11, 'turn 1 hello carries token');
+    assert.equal(b.logs.some(l => l.indexOf(GW_TOKEN11) >= 0), false, 'token never logged');
+    assert.equal(mtSeen11.length, 2, 'turn1 adapter + re-armed adapter on old session');
+    assert.deepEqual(mtSeen11[1].map(m => m.role), ['user', 'assistant'],
+      'old session carried history before close');
+
+    /* gateway closes the parked connection: history must die with the session */
+    b.c.vaStreamConn.close();
+    assert.equal(b.c.vaStreamConn, null, 'parked handle cleared on close');
+    assert.equal(b.c.vaStreamIdle, false);
+    await waitFor(() => gw.sessions[0].closeCode === 1000, 'gateway observed close');
+    b.c.vaSpeakDone();
+
+    drive(b.c);                                     /* turn 2, fresh connection */
+    await waitFor(() => b.c.vaStreamAcked && b.bridge.stats.connects === 2, 'turn2 reconnect');
+    const hellos2 = b.bridge.stats.text.filter(m => m.type === 'hello');
+    assert.equal(hellos2.length, 2, 'reconnect sends a fresh hello');
+    assert.equal(hellos2[1].auth.token, GW_TOKEN11, 'token re-applied on reconnect');
+    assert.equal(gw.sessions.length, 2, 'new gateway session after close');
+    assert.equal(mtSeen11.length, 3, 'reconnect started a fresh adapter');
+    assert.equal(mtSeen11[2].length, 0, 'history cleared on reconnect');
+    assert.equal(mtSeen11[2] === mtSeen11[1], false, 'not the old history array');
+    assert.ok(b.logs.includes('VA WS HELLO AUTH'));
+    assert.equal(gwLog11.some(l => JSON.stringify(l).indexOf(GW_TOKEN11) >= 0), false);
+    assert.equal(b.bridge.stats.dispatchErrors.length, 0);
+    pass('r121: close clears history, reconnect re-hello carries token, no log leak');
+  }, { multiturn: true, deviceToken: GW_TOKEN11 });
+
+  /* ---- 12. r121: token gate still blocks after a multiturn reconnect ---- */
+  const gwLog12 = [];
+  let deniedUpstreams12 = 0;
+  await withGw(() => { deniedUpstreams12++; return makeMTFactory([], [])(); }, gwLog12,
+    async (gw, url) => {
+      const b = boot(url, { keys: {
+        voice_gateway_multiturn: '1', voice_gateway_token: 'WRONG-TOKEN'
+      } });
+      drive(b.c);
+      await waitFor(() => b.logs.some(l => l.indexOf('VA WS FRAME ERROR unauthorized') >= 0),
+        'turn1 denied');
+      await waitFor(() => b.c.vaState() === 'IDLE', 'turn1 settles');
+      drive(b.c);                                   /* reconnect attempt */
+      await waitFor(() => b.logs.filter(l => l.indexOf('VA WS FRAME ERROR unauthorized') >= 0).length >= 2,
+        'turn2 denied again');
+      await waitFor(() => b.c.vaState() === 'IDLE', 'turn2 settles');
+      assert.equal(b.bridge.stats.connects, 2, 'second attempt reconnected');
+      assert.equal(b.bridge.stats.text.filter(m => m.type === 'hello').length, 2,
+        'both attempts sent tokened hello');
+      assert.equal(deniedUpstreams12, 0, 'zero upstream adapters created');
+      assert.equal(gw.sessions.length, 2);
+      assert.equal(gw.sessions[0].closeCode, 1008);
+      assert.equal(gw.sessions[1].closeCode, 1008);
+      assert.equal(b.bridge.stats.dispatchErrors.length, 0);
+      pass('r121: wrong token blocked on initial + reconnect, upstream never created');
+    }, { multiturn: true, deviceToken: 'RIGHT-TOKEN' });
 
   console.log(`ALL VA WS HARNESS CASES PASSED (${checks} cases)`);
 })().catch(e => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });
