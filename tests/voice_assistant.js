@@ -4,6 +4,7 @@
  * no ASR/TTS, no hardware acceptance. Run: node tests/voice_assistant.js */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 const { runApp } = require('./lib/prelude_runner');
 
 const source = fs.readFileSync('examples/voice_assistant/app.js', 'utf8');
@@ -197,5 +198,167 @@ c.vaStartListen();
 for (let i = 0; i < 120; i++) { c.vaWaveTick(); assert.ok(c.vaLevel() >= 0 && c.vaLevel() <= 1); }
 assert.equal(c.vaListenTimeout(), true);
 console.log('PASS waveform level bounded [0,1] in IDLE and LISTEN over 240 ticks');
+
+/* ---- r124 push-to-talk (GATEWAY only) ---------------------------------- */
+/* Minimal stub WS: records text frames; tests fire open/message explicitly so
+ * the whole PTT turn is deterministic (no real network, no wall-clock). */
+function bootGW(opts = {}) {
+  const sends = { text: [], binary: [] };
+  let peer = null, nextId = 1;
+  const ws = {
+    _connect() { peer = nextId++; return peer; },
+    _send(id, data) {
+      if (typeof data === 'string') sends.text.push(JSON.parse(data));
+      else sends.binary.push(data.byteLength);
+      return 0;
+    },
+    _close() { return 0; }
+  };
+  const logs = [];
+  const ui = runApp(source, {
+    onLog: (...a) => logs.push(a.join(' ')),
+    kv: { get: k => k === 'voice_gateway_url' ? 'ws://stub/' : ((opts.keys && opts.keys[k]) || null) },
+    net: { GOT_IP: 3, status: () => ({ state: 3, ip: '1.2.3.4' }), ws },
+    audio: { _recordStream: () => 0, _stopStream: () => 0, playStream: () => 0, streamFinished: () => true }
+  });
+  const c = ui.ctx;
+  let now = 100000;
+  ui.lume._nowMs = () => now;
+  const fire = (kind, ref) => vm.runInContext(
+    `__lume_dispatchWS(${peer},${kind}${ref ? ',' + ref : ''})`, c);
+  const sendMsg = obj => { c.__wsMsg = JSON.stringify(obj); fire(2, '__wsMsg'); };
+  const rootId = ui.messages.find(m => m[0] === 'create')[1];
+  return {
+    ui, c, logs, sends, rootId,
+    setNow: v => { now = v; },
+    open: () => fire(1),
+    ack: () => sendMsg({ v: 1, type: 'hello-ack', audioFormat: 'pcm_s16le_16000_2ch', sessionId: 'SID-1' }),
+    finish: () => sendMsg({ v: 1, type: 'state', state: 'idle' }),
+    openMic: () => c.vaDeferredSend('LISTEN'),  /* deferred frame: WS + mic */
+    panDown: () => { ui.gesture(rootId, 0, 240, 240, now);
+                     ui.gesture(rootId, 1, 240, 260, now);
+                     ui.gesture(rootId, 1, 240, 280, now); },
+    panUp: () => ui.gesture(rootId, 2, 240, 280, now),
+    endCount: () => sends.text.filter(m => m.type === 'end').length,
+    helloCount: () => sends.text.filter(m => m.type === 'hello').length
+  };
+}
+
+/* 13. panstart -> panend drives the LISTEN window (downward drag: no swipe). */
+{
+  const g = bootGW();
+  assert.equal(g.c.vaMode, 'GATEWAY');
+  g.panDown();
+  assert.equal(g.c.vaState(), 'LISTEN', 'panstart enters LISTEN');
+  assert.equal(g.c.vaPTTActive, true);
+  assert.ok(g.logs.includes('VA PTT START'), g.logs.join('\n'));
+  assert.ok(g.ui.messages.some(m => m[0] === 'attr' && m[2] === 0 &&
+    m[3] === 'HOLDING - RELEASE TO SEND'), 'hold hint visible during LISTEN');
+  g.openMic(); g.open(); g.ack();
+  assert.ok(g.helloCount() >= 1, 'WS opened on panstart');
+  assert.equal(g.c.vaStreamSession.active, true, 'mic live while held');
+  g.setNow(100500);                                  /* 500 ms valid hold */
+  g.panUp();
+  assert.equal(g.c.vaState(), 'THINK', 'panend sends -> THINK');
+  assert.equal(g.c.vaPTTActive, false);
+  assert.equal(g.endCount(), 1, 'one end frame on release');
+  assert.equal(g.c.vaStreamSession.active, false, 'mic stopped on release');
+  assert.ok(g.logs.includes('VA PTT END 500ms'), g.logs.join('\n'));
+  g.finish();
+  assert.equal(g.c.vaState(), 'SPEAK');
+  console.log('PASS r124: panstart opens LISTEN+mic, panend sends end -> THINK/SPEAK');
+}
+
+/* 14. shortest window: <400 ms hold is a mis-touch -> IDLE, no end frame. */
+{
+  const g = bootGW();
+  g.panDown(); g.openMic(); g.open(); g.ack();
+  g.setNow(100150);                                  /* 150 ms < 400 */
+  g.panUp();
+  assert.equal(g.c.vaState(), 'IDLE', 'mis-touch back to IDLE');
+  assert.equal(g.c.vaPTTActive, false);
+  assert.equal(g.endCount(), 0, 'no end frame on mis-touch');
+  assert.equal(g.c.vaStreamSession.active, false, 'mic still stopped');
+  assert.ok(g.logs.includes('VA PTT DISCARD 150ms'), g.logs.join('\n'));
+  console.log('PASS r124: <400 ms hold discarded -> IDLE, no end, mic stopped');
+}
+
+/* 15. watchdog cap: a 15 s stuck hold is force-sent, never hangs. */
+{
+  const g = bootGW();
+  g.panDown(); g.openMic(); g.open(); g.ack();
+  g.setNow(115000);                                  /* +15 s */
+  g.c.vaPTTWatchdog();
+  assert.equal(g.c.vaState(), 'THINK');
+  assert.equal(g.endCount(), 1);
+  assert.ok(g.logs.includes('VA PTT WATCHDOG 15000ms'), g.logs.join('\n'));
+  assert.ok(g.logs.includes('VA PTT END 15000ms'), g.logs.join('\n'));
+  console.log('PASS r124: 15 s watchdog force-sends (end frame) instead of hanging');
+}
+
+/* 16. negative: panend is NOT swallowed by an upward swipe. Read-code +
+ * harness proof: on UP __gestureStep emits panend BEFORE swipe:up, so the end
+ * frame is queued even if the same node also reports an upward swipe. */
+{
+  const g = bootGW();
+  const ev = [];
+  ['panstart', 'pan', 'panend', 'swipe'].forEach(k =>
+    g.c.lume.gesture.on(g.rootId, k, e => ev.push(k + (e.dir ? ':' + e.dir : ''))));
+  g.panDown(); g.openMic(); g.open(); g.ack();
+  g.setNow(100500);
+  g.ui.gesture(g.rootId, 2, 240, 180, 100500);      /* UP 60 px above start -> swipe:up */
+  assert.ok(ev.includes('panend'), 'panend still fired: ' + JSON.stringify(ev));
+  assert.ok(ev.includes('swipe:up'), 'swipe:up co-fired: ' + JSON.stringify(ev));
+  assert.ok(ev.indexOf('panend') < ev.indexOf('swipe:up'),
+    'panend precedes swipe:up -> end frame not swallowed: ' + JSON.stringify(ev));
+  assert.equal(g.endCount(), 1, 'end frame delivered despite swipe-up');
+  /* Downward drag produces panend with NO swipe at all (clean commit path). */
+  const d = bootGW();
+  const dev = [];
+  d.c.lume.gesture.on(d.rootId, 'swipe', e => dev.push(e.dir));
+  d.c.lume.gesture.on(d.rootId, 'panend', () => dev.push('panend'));
+  d.panDown(); d.openMic(); d.open(); d.ack(); d.setNow(100500); d.panUp();
+  assert.deepEqual(dev, ['panend'], 'downward drag: panend only, no swipe-up');
+  console.log('PASS r124: panend fires before swipe:up (not swallowed); down drag = panend only');
+}
+
+/* 17. multi-turn: two holds on one connection, no second hello. */
+{
+  const g = bootGW({ keys: { voice_gateway_multiturn: '1' } });
+  assert.equal(g.c.vaGatewayMultiturn(), true);
+  g.panDown(); g.openMic(); g.open(); g.ack();        /* turn 1 */
+  g.setNow(100500); g.panUp();
+  g.finish();
+  assert.equal(g.helloCount(), 1);
+  assert.equal(g.endCount(), 1);
+  assert.equal(g.c.vaStreamIdle, true, 'connection parked for reuse');
+  g.c.vaSpeakDone();
+  assert.equal(g.c.vaState(), 'IDLE');
+
+  g.setNow(200000);
+  g.panDown(); g.openMic();                            /* turn 2: reuse, no connect/hello */
+  assert.equal(g.helloCount(), 1, 'second hold sends NO second hello');
+  assert.ok(g.logs.some(l => l === 'VA WS REUSE turn=2'), g.logs.join('\n'));
+  assert.equal(g.c.vaStreamAcked, true, 'ack retained across hold');
+  assert.equal(g.c.vaStreamSession.active, true, 'mic live on second hold');
+  g.setNow(200500); g.panUp();
+  assert.equal(g.endCount(), 2, 'one end frame per hold');
+  console.log('PASS r124: two holds / one connection / one hello, mic reopens on hold 2');
+}
+
+/* 18. demo mode: pan gestures are a no-op, tap flow unchanged. */
+{
+  const dlogs = [];
+  const d = runApp(source, { onLog: (...a) => dlogs.push(a.join(' ')) });
+  const dc = d.ctx;
+  d.gesture(1, 0, 240, 240, 1000);
+  d.gesture(1, 1, 240, 280, 1020);
+  d.gesture(1, 2, 240, 280, 1050);
+  assert.equal(dc.vaState(), 'IDLE', 'pan does nothing in DEMO mode');
+  dc.vaActivate(); dc.vaActivate(); dc.vaDeferredSend();
+  assert.equal(dc.vaState(), 'SPEAK');
+  assert.ok(canned.indexOf(dc.vaFullText) >= 0, 'tap still yields canned reply in DEMO');
+  console.log('PASS r124: DEMO mode unaffected (pan no-op, tap still works)');
+}
 
 console.log('ALL VOICE ASSISTANT HARNESS CASES PASSED');
