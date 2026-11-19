@@ -1703,3 +1703,30 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   （`tests/gateway.js` 16 case、`tests/va_ws.js` 9 case）、真 `cli.js` + 本地假
   上游 + device-sim 两路 smoke（`artifacts/r119-smoke.log`）。固件与 runtime
   零改动，按纪律不跑 `idf.py build` / `idf.py size`。
+
+## r120 — 语音网关多轮记忆与可配置人设（宿主/假端点证据，无真机/无出网）
+
+- **滑动窗口而非摘要压缩**：历史按最近 N 条（默认 12）与 8KB 字符预算截断，
+  淘汰最旧 user+assistant 对；不做 token 计数、摘要压缩或相关性检索。取舍：
+  实现简单、内存有上界；代价是长对话早期事实被无声丢弃，模型无法 recall N 轮
+  之前的内容。
+- **无跨会话持久化**：历史只存进程内存、按 sessionId 隔离，`session.close`
+  （任意 code）即清空；新连接 = 新对话。取舍：满足会话隔离与"不跨连接泄漏"；
+  代价是进程重启 / 设备重连即遗忘，无 KV / 磁盘落盘、无跨设备同步。
+- **token 与 system 全文不落盘 / 不入历史**：历史只存 user/assistant 文本，
+  不存 API key、设备 token 或 system 全文；日志与 error message 只记
+  `systemPrompt=custom|default`。取舍：避免敏感配置被日志或后续请求回显；
+  代价是诊断人设问题只能靠本地配置核对。
+- **会话保活是可选开关**：协议默认在每轮 `state=idle` 后 `close(1000, done)`；
+  多轮记忆只在 `--multiturn` / `GATEWAY_MULTITURN=1` 下才在同一连接复用会话。
+  取舍：默认零回归 + 设备帧格式零变化；代价是未开启时历史虽写入，但下一轮新
+  连接读不到，多轮能力需显式启用。
+- **limit 的字符口径是粗算**：N 计 user+assistant 条数（system 之外）；字符预算
+  按 JS 字符串长度（UTF-16 code unit）估算，不引入 tokenizer；单条消息超预算时
+  整对丢弃。取舍：零新依赖；代价是中文等字符的"字符数"与真实 token 数不等，
+  预算只是内存上界而非精确上下文窗口控制。
+- **仍 open / 诚实口径**：无真机 / 无出网 / 无真实 key；证据来自宿主 harness
+  （`tests/gateway.js` 19 case、`tests/gateway_upstream.js` 36 case、
+  `tests/va_ws.js` 9 case）、真 `cli.js` + 本地假上游 + device-sim `--turns 2`
+  两轮连续对话 smoke（`artifacts/r120-smoke.log`）。固件与 runtime 零改动，
+  按纪律不跑 `idf.py build` / `idf.py size`。

@@ -1694,3 +1694,69 @@ RESULT: PASS (4 steps, 0 failed; exit 0)           # bundle 2160 bytes
 worktree 原缺 gitignored 的 `tools/lume/node_modules`，已软链主仓安装使测试可跑（不入 git）。
 固件零改动，按纪律不跑 `idf.py build` / `idf.py size`。commits 按 feat / test / docs 拆分，
 不推送（主控轮负责 push）。
+
+### r120 result — 语音网关多轮记忆与可配置人设（D 刀续；appended, milestone checkboxes untouched）
+
+基线 HEAD `270a715`；分支 `r120-gw-memory`。commits：`773a84d` feat / `50962c5` test /
+docs（本条）。不推送。零固件 / runtime 改动，按纪律未跑 `idf.py build` / `idf.py size`。
+
+实现：`DeviceSession` 持有有界 `ConversationHistory`（默认 N=12 / 8192 字符预算，env
+`GATEWAY_HISTORY_LIMIT` / CLI `--history-limit`，`0` = r119 逐字节等价）；OpenAI 上游在
+chat `messages` 的 system 与 user 之间注入历史，`_finalize()` 在 `await p.promise` 后把
+final 文本汇总追加为 assistant；`GATEWAY_SYSTEM_PROMPT` / `--system-prompt` 覆盖默认人设，
+日志仅记 `systemPrompt=custom|default`；`session.close`（任意 code）清空历史；可选
+`--multiturn` 会话保活使同连接多轮可读历史，默认关闭保持每轮 close 语义。**设备协议帧
+零变化**（历史是网关内部状态，不进帧；无新增控制帧）。
+
+验证（原始输出摘录）：
+
+```
+$ node tests/gateway.js
+PASS r120: two turns carry user+assistant history; close clears; reconnect fresh
+PASS r120: history-limit=0 degrades to single-turn (r119 body)
+PASS r120: window keeps only the most recent N pairs (oldest dropped first)
+ALL GATEWAY HARNESS CASES PASSED (19 cases)          # 16 基线 + 3 r120
+
+$ node tests/gateway_upstream.js
+PASS r120: two turns on one session inject prior user+assistant into chat body
+PASS r120: history-limit=0 keeps r119 single-turn body (real adapter)
+ALL GATEWAY UPSTREAM CASES PASSED (36 cases)         # 34 基线 + 2 r120
+
+$ node tests/va_ws.js
+ALL VA WS HARNESS CASES PASSED (9 cases)             # 设备侧协议帧零变化自证
+
+$ for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo "FAIL $t"; done; echo done
+done                                                  # 0 FAIL
+
+$ npm test --prefix tools/lume
+1..50
+# tests 50 / # pass 49 / # fail 0 / # skipped 1
+
+$ python3 scripts/check_website.py
+API: 139 catalog entries, 139 type declarations, 33 function namespaces
+API missing: none / API invented: none / API duplicates: none
+```
+
+集成 smoke（真 `cli.js --upstream openai` + 本地假 STT/chat/TTS + 真 `device-sim --turns 2`，
+token 门开、两轮连续对话；两端原始日志见 `artifacts/r120-smoke.log`）：
+
+```
+[SMOKE] fake upstream port=37529 gateway port=41749 mode=locked (token value withheld from log) persona=custom limit=12 multiturn=on
+[gateway] ready url=ws://127.0.0.1:41749/ deviceAuth=on systemPrompt=custom historyLimit=12 multiturn=on
+--- PASS A: locked gateway + WRONG device token ---
+[gateway] protocol.error sessionId=s1 code=unauthorized message=device token mismatch fatal=true
+[gateway] session.close sessionId=s1 code=1008
+[SMOKE] PASS A: unauthorized + 1008, upstream requests=0
+--- PASS B: locked gateway + CORRECT token + two turns ---
+[FAKE-UP] POST /v1/chat/completions role=chat bodyBytes=198
+[FAKE-UP] chat.messages=system,user count=2 stream=true
+[FAKE-UP] POST /v1/chat/completions role=chat bodyBytes=309
+[FAKE-UP] chat.messages=system,user,assistant,user count=4 stream=true
+[SMOKE] PASS B: two turns, chat requests=2, turn2 messages=system,user,assistant,user (history=2)
+[SMOKE] PASS B detail: turn1.user="STT_TRANSCRIPT_1\nTURN 1 USER UTTERANCE" turn1.assistant="REPLY_1. " turn2.user="STT_TRANSCRIPT_2\nTURN 2 USER UTTERANCE"
+```
+
+人设全文与设备 token 均未出现在任何网关 / 设备日志中（smoke 直接断言）。`systemPrompt=custom`
+只记录来源，不回显内容；上游实际请求体含 system 全文，但假端点日志只记角色序列。
+playground 生成物未受影响，未重生成；`python3 scripts/check_website.py` 通过。
+取舍见 `docs/KNOWN-SIMPLIFICATIONS.md` r120 与 `docs/voice-gateway-protocol.md` §8.1.9 / §10。

@@ -437,6 +437,35 @@ smoke 用真实 `cli.js --upstream openai` + 假转写 WS + 假 SSE + 假 TTS + 
   集成 smoke；无真机 / 无出网 / 无真实 key，上游转写协议是适配性假设而非已验证的
   真实端点契约（见 KNOWN-SIMPLIFICATIONS r117）。
 
+### 8.1.9 多轮记忆与可配置人设（r120；网关内部行为）
+
+r120 为每路 `DeviceSession` 增加一份有界对话历史（`[{role, content}]`，system
+提示词不入历史）。OpenAI 兼容上游每轮构造 chat 请求时，把该会话历史插在 system
+消息与本轮 user 消息之间；助手文本在轮收口后追加为 `assistant` 消息。历史是
+**网关内部状态，不进任何设备协议帧**：§1-§7 的帧类型、字段、序号与关闭码零变化，
+设备侧无需改动，也不消费历史。
+
+| env | CLI | 默认值 | 说明 |
+|---|---|---|---|
+| `GATEWAY_HISTORY_LIMIT` | `--history-limit N` | `12` | 每会话保留最近 N 条（user+assistant，system 之外），超出从最旧丢起；`0` = 关闭记忆，chat 请求体与 r119 逐字节一致。非整数/负数按默认处理。 |
+| `GATEWAY_SYSTEM_PROMPT` | `--system-prompt TEXT` | （空） | 非空即覆盖适配器内置默认 system 提示词；为空保持默认 fallback。日志只记 `systemPrompt=custom\|default`，不回显全文。 |
+| `GATEWAY_MULTITURN` | `--multiturn` | （关） | 会话保活：一轮正常收口后不关 WS，复用同一 session 建新适配器，使下一轮读到历史。默认关闭 = r119 每轮 `close(1000, done)` 不变。 |
+
+- **会话隔离与清理**：历史实例归 `DeviceSession` 所有（按 sessionId 天然隔离）；
+  `conn.on('close')` 在**任意关闭码**下调 `history.clear()`，新连接 = 新对话，
+  不跨连接泄漏。
+- **字符预算**：每会话另有 `historyCharBudget`（默认 8192 字符）上限，与条数上限
+  同时生效，按最旧 user+assistant 成对淘汰，防止长对话无界增长；取舍见
+  KNOWN-SIMPLIFICATIONS r120。
+- **收口点实证**：r116 的 final 文本汇总发生在 `_chatStream()` 的 `text` 累加
+  （`dispatch()` 内 `text += content`），clean end 时该方法返回全文；`_finalize()`
+  原本丢弃返回值，r120 改为接收并在 `await p.promise` 之后一次性 `recordTurn()`。
+  被 stop / 流中断 / 错误提前抛出的轮不写历史。
+- **配置优先级**：CLI flag 优先于 env；env 在 `cli.js` 启动时读取，直接调用
+  `createGateway()` 的调用方可传 `historyLimit` / `historyCharBudget` / `multiturn`。
+- **mock 上游**：`MockUpstream` 镜像同样的历史语义（记录 canned 答复与设备
+  `text`），但 canned 答复与音频不变，设备侧 harness 不回归。
+
 ## 8.2 设备鉴权：共享 token 门（r119；非 HMAC）
 
 ### 8.2.1 模式判定与配置
@@ -495,3 +524,17 @@ r119 追加：开放模式无 `auth` 全轮不回归；锁定模式缺 token / �
 全轮跑通；锁定模式 `not_hello` 仍优先；设备 app KV 注入 token 与"token 不进日志"
 断言（`tests/va_ws.js`）；真 `cli.js` + 本地假上游 + device-sim 的两路集成 smoke
 （两端原始日志见 `artifacts/r119-smoke.log`）。不声称抗 LAN 抓包或抗重放。
+
+r120 追加：每会话有界对话历史（默认 N=12 / 8KB 字符预算，`GATEWAY_HISTORY_LIMIT`
+或 `--history-limit` 可配，`0` = r119 逐字节等价）；助手 final delta 汇总文本在轮
+收口后追加为 assistant 消息；`GATEWAY_SYSTEM_PROMPT` / `--system-prompt` 覆盖默认
+人设且日志只记 `custom|default`；历史在 `session.close`（任意 code）清空、新连接
+零残留。**设备协议帧零变化**（历史是网关内部状态，不进帧；`--multiturn` 仅改变
+网关侧关闭时机，不新增控制帧）。验证口径：宿主 harness `tests/gateway.js` 19 case
+（16 基线 + 3 r120）、`tests/gateway_upstream.js` 36 case（34 基线 + 2 r120，真
+OpenAI 适配器两轮注入）、`tests/va_ws.js` 9 case；`npm test --prefix tools/lume`
+50 tests；真 `cli.js --upstream openai` + 本地假 STT/chat/TTS + device-sim
+`--turns 2` 集成 smoke（token 门开、两轮连续对话；第二轮 chat 请求体含第一轮
+user+assistant，原始日志 `artifacts/r120-smoke.log`）。`--multiturn` 为可选会话
+保活，默认关闭保持每轮 close 语义。不声称真机 / 出网 / 真实 key；固件与 runtime
+零改动，按纪律不跑 `idf.py build` / `idf.py size`。
