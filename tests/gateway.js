@@ -23,7 +23,10 @@ async function runCase(label, factory, fn, opts = {}) {
     /* r120: pass session-history / keep-alive config through to the gateway. */
     historyLimit: opts.historyLimit,
     historyCharBudget: opts.historyCharBudget,
-    multiturn: opts.multiturn
+    multiturn: opts.multiturn,
+    /* r122: bounded resume store (small TTL in the expiry case). */
+    resumeTtlMs: opts.resumeTtlMs,
+    resumeMaxEntries: opts.resumeMaxEntries
   });
   await gw.start();
   const url = 'ws://127.0.0.1:' + gw.address().port + '/';
@@ -150,6 +153,9 @@ const ctrl = (d) => JSON.parse(d);
 const HELLO = { v: 1, type: 'hello', device: { model: 'lume', fw: 'r107' },
   caps: { audioFormats: ['pcm_s16le_16000_2ch'] } };
 const HELLO_AUTH = (token) => Object.assign({}, HELLO, { auth: { token } });
+/* r122: optional resume field (additive; old clients omit it). */
+const HELLO_RESUME = (id, token) => Object.assign({}, HELLO, token
+  ? { resume: id, auth: { token } } : { resume: id });
 function assertNoTokenLeak(logs, token) {
   assert.equal(JSON.stringify(logs).includes(token), false,
     'device token must never appear in gateway logs');
@@ -569,6 +575,133 @@ function assertNoTokenLeak(logs, token) {
       await untilClosed(st);
     },
     { multiturn: true, historyLimit: 4 });
+
+  /* ---- r122: disconnect-safe history via optional hello.resume ---------- */
+  const rec4 = { bodies: [] };
+  await runCase('r122: close retires history; reconnect with resume restores it',
+    () => new (historyRecorder(rec4))(),
+    async ({ gw, url, logs }) => {
+      const st = device(url);
+      await untilOpen(st);
+      st.client.sendText(JSON.stringify(HELLO));
+      const ack = ctrl(await until(st, hasType('hello-ack'), 'hello-ack'));
+      const sid = ack.sessionId;
+      await driveTurn(st, 'REMEMBER ME', 1);
+      assert.equal(gw.sessions[0].history.size(), 2);
+      st.client.close(1000, 'bye');
+      await untilClosed(st);
+      await untilHistoryCleared(gw.sessions[0]);
+      assert.equal(gw.sessions[0].history.size(), 0, 'live session still clears on close');
+      assert.equal(gw.resumeStore.has(sid), true, 'snapshot retired under sessionId');
+
+      const st2 = device(url);
+      await untilOpen(st2);
+      st2.client.sendText(JSON.stringify(HELLO_RESUME(sid)));
+      await until(st2, hasType('hello-ack'), 'hello-ack #2');
+      assert.equal(gw.resumeStore.has(sid), false, 'resume consumes the snapshot once');
+      assert.ok(logs.some(l => l.event === 'history.resume' && l.fields.from === sid),
+        'history.resume logged with source sessionId');
+      await driveTurn(st2, 'DO YOU REMEMBER', 1);
+      assert.deepEqual(rec4.bodies[0], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'REMEMBER ME' }
+      ]);
+      assert.deepEqual(rec4.bodies[1], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'REMEMBER ME' },
+        { role: 'assistant', content: 'A1' },
+        { role: 'user', content: 'DO YOU REMEMBER' }
+      ], 'turn 2 after resume injects turn-1 user+assistant before current user');
+      assert.equal(gw.sessions[1].history.size(), 4);
+      st2.client.close(1000, 'bye');
+      await untilClosed(st2);
+    },
+    { multiturn: true, historyLimit: 12 });
+
+  const rec5 = { bodies: [] };
+  await runCase('r122: unknown resume id degrades to a fresh session',
+    () => new (historyRecorder(rec5))(),
+    async ({ gw, url, logs }) => {
+      const st = device(url);
+      await untilOpen(st);
+      st.client.sendText(JSON.stringify(HELLO_RESUME('s-NOT-REAL')));
+      await until(st, hasType('hello-ack'), 'hello-ack');
+      assert.equal(gw.sessions[0].history.size(), 0, 'no history adopted on miss');
+      assert.ok(logs.some(l => l.event === 'history.resume.miss'));
+      await driveTurn(st, 'FRESH', 1);
+      assert.deepEqual(rec5.bodies[0], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'FRESH' }
+      ], 'miss behaves exactly like a new conversation');
+      st.client.close(1000, 'bye');
+      await untilClosed(st);
+    },
+    { multiturn: true });
+
+  const RESUME_TOKEN = 'SMOKE-TOKEN-r122-NOT-REAL';
+  const rec6 = { bodies: [] };
+  let wrongResumeCalls = 0, armed = false;
+  await runCase('r122: locked + wrong token + resume -> unauthorized, zero restore, zero upstream',
+    () => { if (armed) wrongResumeCalls++; return new (historyRecorder(rec6))(); },
+    async ({ gw, url, logs }) => {
+      const st = device(url);
+      await untilOpen(st);
+      st.client.sendText(JSON.stringify(HELLO_AUTH(RESUME_TOKEN)));
+      await until(st, hasType('hello-ack'), 'seed ack');
+      await driveTurn(st, 'SEED', 1);
+      const sid = gw.sessions[0].sessionId;
+      st.client.close(1000, 'bye');
+      await untilClosed(st);
+      await untilHistoryCleared(gw.sessions[0]);
+      assert.equal(gw.resumeStore.has(sid), true, 'seed retired with history');
+      armed = true;
+
+      const st2 = device(url);
+      await untilOpen(st2);
+      st2.client.sendText(JSON.stringify(HELLO_RESUME(sid, 'WRONG-TOKEN')));
+      const err = ctrl(await until(st2, hasType('error'), 'error frame'));
+      assert.equal(err.code, 'unauthorized');
+      assert.equal(err.fatal, true);
+      assert.match(err.message, /^device token /);
+      await untilClosed(st2);
+      assert.equal(gw.sessions[1].phase, 'await-hello');
+      assert.equal(gw.sessions[1].upstream, null, 'no adapter on denied hello');
+      assert.equal(gw.resumeStore.has(sid), true,
+        'wrong token did not consume or restore the retired history');
+      assert.equal(wrongResumeCalls, 0, 'upstream factory never invoked on denied hello');
+      assertNoTokenLeak(logs, RESUME_TOKEN);
+    },
+    { deviceToken: RESUME_TOKEN, multiturn: true });
+
+  const rec7 = { bodies: [] };
+  await runCase('r122: expired resume snapshot degrades to a fresh session',
+    () => new (historyRecorder(rec7))(),
+    async ({ gw, url, logs }) => {
+      const st = device(url);
+      await untilOpen(st);
+      st.client.sendText(JSON.stringify(HELLO));
+      await until(st, hasType('hello-ack'), 'hello-ack');
+      await driveTurn(st, 'OLD', 1);
+      const sid = gw.sessions[0].sessionId;
+      st.client.close(1000, 'bye');
+      await untilClosed(st);
+      await untilHistoryCleared(gw.sessions[0]);
+      await new Promise(r => setTimeout(r, 30));
+      const st2 = device(url);
+      await untilOpen(st2);
+      st2.client.sendText(JSON.stringify(HELLO_RESUME(sid)));
+      await until(st2, hasType('hello-ack'), 'hello-ack #2');
+      assert.ok(logs.some(l => l.event === 'history.resume.miss' && l.fields.from === sid));
+      assert.equal(gw.resumeStore.has(sid), false, 'expired entry evicted');
+      await driveTurn(st2, 'FRESH', 1);
+      assert.deepEqual(rec7.bodies[1], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'FRESH' }
+      ], 'TTL expiry starts a new conversation');
+      st2.client.close(1000, 'bye');
+      await untilClosed(st2);
+    },
+    { multiturn: true, resumeTtlMs: 10 });
 
   console.log(`ALL GATEWAY HARNESS CASES PASSED (${checks} cases)`);
 })().catch((e) => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });

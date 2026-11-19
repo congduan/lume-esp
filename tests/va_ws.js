@@ -463,7 +463,7 @@ function smoke(b, gwLog, answer) {
     pass('r121: 2 turns / 1 connection / 1 hello, history carries, no close');
   }, { multiturn: true });
 
-  /* ---- 11. r121: remote close clears history; reconnect re-sends token -- */
+  /* ---- 11. r122: remote close retires history; reconnect resumes it ------ */
   const GW_TOKEN11 = 'MT-TOKEN-r121-NOT-REAL';
   const gwLog11 = [], mtSeen11 = [];
   await withGw(makeMTFactory(mtSeen11, ['A1', 'A2']), gwLog11, async (gw, url) => {
@@ -482,11 +482,13 @@ function smoke(b, gwLog, answer) {
     assert.deepEqual(mtSeen11[1].map(m => m.role), ['user', 'assistant'],
       'old session carried history before close');
 
-    /* gateway closes the parked connection: history must die with the session */
+    /* gateway closes the parked connection: history is retired, not destroyed */
+    const oldSid = b.c.vaStreamSessionId;
     b.c.vaStreamConn.close();
     assert.equal(b.c.vaStreamConn, null, 'parked handle cleared on close');
     assert.equal(b.c.vaStreamIdle, false);
     await waitFor(() => gw.sessions[0].closeCode === 1000, 'gateway observed close');
+    assert.ok(gwLog11.some(l => l.e === 'history.retire'), 'retire logged on close');
     b.c.vaSpeakDone();
 
     drive(b.c);                                     /* turn 2, fresh connection */
@@ -494,14 +496,18 @@ function smoke(b, gwLog, answer) {
     const hellos2 = b.bridge.stats.text.filter(m => m.type === 'hello');
     assert.equal(hellos2.length, 2, 'reconnect sends a fresh hello');
     assert.equal(hellos2[1].auth.token, GW_TOKEN11, 'token re-applied on reconnect');
+    assert.equal(hellos2[1].resume, oldSid, 'reconnect hello carries the last sessionId');
+    assert.ok(b.logs.includes('VA WS RESUME REQ'), 'app logs resume request');
     assert.equal(gw.sessions.length, 2, 'new gateway session after close');
     assert.equal(mtSeen11.length, 3, 'reconnect started a fresh adapter');
-    assert.equal(mtSeen11[2].length, 0, 'history cleared on reconnect');
-    assert.equal(mtSeen11[2] === mtSeen11[1], false, 'not the old history array');
+    assert.deepEqual(mtSeen11[2].map(m => m.role), ['user', 'assistant'],
+      'new session resumed turn-1 history instead of starting fresh');
+    assert.equal(mtSeen11[2] === mtSeen11[1], false, 'adopted copy, not the old live array');
+    assert.ok(gwLog11.some(l => l.e === 'history.resume'));
     assert.ok(b.logs.includes('VA WS HELLO AUTH'));
     assert.equal(gwLog11.some(l => JSON.stringify(l).indexOf(GW_TOKEN11) >= 0), false);
     assert.equal(b.bridge.stats.dispatchErrors.length, 0);
-    pass('r121: close clears history, reconnect re-hello carries token, no log leak');
+    pass('r122: close retires history, reconnect resumes it + re-sends token, no log leak');
   }, { multiturn: true, deviceToken: GW_TOKEN11 });
 
   /* ---- 12. r121: token gate still blocks after a multiturn reconnect ---- */
@@ -530,6 +536,46 @@ function smoke(b, gwLog, answer) {
       assert.equal(b.bridge.stats.dispatchErrors.length, 0);
       pass('r121: wrong token blocked on initial + reconnect, upstream never created');
     }, { multiturn: true, deviceToken: 'RIGHT-TOKEN' });
+
+  /* ---- 13. r122: barge-in mid-SPEAK closes WS; reconnect resumes history -- */
+  const gwLog13 = [], mtSeen13 = [];
+  await withGw(makeMTFactory(mtSeen13, ['B1', 'B2', 'B3']), gwLog13, async (gw, url) => {
+    const b = boot(url, { keys: { voice_gateway_multiturn: '1' } });
+    drive(b.c);                                     /* turn 1 */
+    await waitFor(() => b.c.vaStreamAcked, 'turn1 ack');
+    feedChunk(b.ui); feedChunk(b.ui); feedChunk(b.ui); b.c.vaWSPump();
+    await waitFor(() => b.c.vaStreamFinished, 'turn1 finish');
+    b.c.vaSpeakDone();
+    assert.equal(b.c.vaStreamIdle, true, 'parked after turn 1');
+
+    drive(b.c);                                     /* turn 2, reused connection */
+    await waitFor(() => b.c.vaStreamSession && b.c.vaStreamSession.active, 'turn2 mic');
+    feedChunk(b.ui); feedChunk(b.ui); feedChunk(b.ui); b.c.vaWSPump();
+    await waitFor(() => b.c.vaStreamFinished && b.c.vaState() === 'SPEAK', 'turn2 SPEAK');
+    assert.equal(b.bridge.stats.connects, 1, 'still one connection before barge-in');
+
+    /* Interrupt during SPEAK: vaWSAbort closes the WS, gateway retires the
+     * two completed turns instead of dropping them on the floor. */
+    const oldSid = b.c.vaStreamSessionId;
+    assert.equal(b.c.vaBargeIn(), true);
+    assert.ok(b.logs.includes('VA WS ABORT'));
+    assert.equal(b.c.vaStreamIdle, false, 'park cleared on barge-in');
+    await waitFor(() => gw.sessions[0].closeCode === 1000, 'gateway observed barge-in close');
+    assert.ok(gwLog13.some(l => l.e === 'history.retire' && l.f.count === 4),
+      'all four accumulated messages retired');
+
+    drive(b.c);                                     /* turn 3, fresh connection */
+    await waitFor(() => b.c.vaStreamAcked && b.bridge.stats.connects === 2, 'turn3 reconnect');
+    const hellos = b.bridge.stats.text.filter(m => m.type === 'hello');
+    assert.equal(hellos.length, 2, 'one hello per connection');
+    assert.equal(hellos[1].resume, oldSid, 'reconnect hello resumes the closed session');
+    assert.equal(mtSeen13[mtSeen13.length - 1].length, 4,
+      'resumed adapter sees both completed turns in history');
+    feedChunk(b.ui); feedChunk(b.ui); feedChunk(b.ui); b.c.vaWSPump();
+    await waitFor(() => b.c.vaTurnCount() === 3, 'turn3 finish', 5000);
+    assert.equal(b.bridge.stats.dispatchErrors.length, 0);
+    pass('r122: barge-in close -> reconnect with resume -> history of prior turns still continues');
+  }, { multiturn: true });
 
   console.log(`ALL VA WS HARNESS CASES PASSED (${checks} cases)`);
 })().catch(e => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });

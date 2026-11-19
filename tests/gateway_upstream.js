@@ -219,10 +219,18 @@ const states = (session) => ofKind(session, 'state').map((c) => c.v);
 /* r120: a session that stays open across turns (the adapter's close() is a
  * no-op for liveness) and exposes the history facade. Two fresh upstream
  * instances driven on THIS session simulate two turns of one conversation. */
-function makePersistentSession(limit = 12) {
+function makePersistentSession(limit = 12, seed = null) {
   const st = { open: true, calls: [] };
   const rec = (o) => { o.ts = Date.now(); st.calls.push(o); };
   const history = new ConversationHistory({ limit });
+  /* r122: a resumed session starts from the retired snapshot, reproducing the
+   * gateway's hello.resume binding with a fresh DeviceSession. */
+  if (Array.isArray(seed)) {
+    for (const m of seed) {
+      if (m && m.role === 'user') history.record(m.content, null);
+      else if (m && m.role === 'assistant') history.record(null, m.content);
+    }
+  }
   const api = {
     st, caps: null, sessionId: 's-multi',
     sendState(v) { rec({ k: 'state', v }); },
@@ -1093,6 +1101,51 @@ function parseMultipart(buf, contentType) {
     ], 'limit=0 keeps the r119 single-turn body');
     assert.equal(st.historySize(), 0, 'no history stored when disabled');
     pass('r120: history-limit=0 keeps r119 single-turn body (real adapter)');
+  });
+
+  /* ---- r122: real OpenAI adapter, two turns across a forced disconnect --- */
+  let crossIdx = 0;
+  await withFake({
+    stt: () => json({ text: TURNS[crossIdx].user }),
+    chat: () => sseChat([TURNS[crossIdx].reply]),
+    tts: defaultTts
+  }, async (fake) => {
+    /* Turn 1 on session A, closed by the device (history retired by r122). */
+    crossIdx = 0;
+    const s1 = makePersistentSession(12);
+    let up = makeUp(fake);
+    up.start(s1);
+    for (let i = 0; i < 3; i++) up.sendAudio(makeFrame(i));
+    up.stop();
+    await waitFor(() => ofKind(s1, 'close').length >= 1, 'turn1 close', 3000, s1);
+    const retired = s1.historyMessages();
+    assert.equal(retired.length, 2, 'turn 1 retired one user+assistant pair');
+
+    /* Turn 2 on a fresh session that adopted the snapshot via hello.resume. */
+    const s2 = makePersistentSession(12, retired);
+    assert.equal(s2.historySize(), 2, 'fresh session adopted the retired history');
+    crossIdx = 1;
+    up = makeUp(fake);
+    up.start(s2);
+    for (let i = 0; i < 3; i++) up.sendAudio(makeFrame(i));
+    up.stop();
+    await waitFor(() => ofKind(s2, 'close').length >= 1, 'turn2 close', 3000, s2);
+
+    const bodies = fake.state.requests.filter((r) => r.route === 'chat')
+      .map((r) => JSON.parse(r.body.toString()).messages);
+    assert.equal(bodies.length, 2, 'two chat requests across the disconnect');
+    assert.deepEqual(bodies[0], [
+      { role: 'system', content: DEFAULT_SYSTEM },
+      { role: 'user', content: TURNS[0].user }
+    ], 'turn 1 body unchanged');
+    assert.deepEqual(bodies[1], [
+      { role: 'system', content: DEFAULT_SYSTEM },
+      { role: 'user', content: TURNS[0].user },
+      { role: 'assistant', content: TURNS[0].reply },
+      { role: 'user', content: TURNS[1].user }
+    ], 'turn 2 body carries turn-1 user+assistant after reconnect');
+    assert.equal(s2.historySize(), 4, 'resumed session accumulates the second pair');
+    pass('r122: real adapter injects resumed user+assistant across disconnect');
   });
 
   console.log('ALL GATEWAY UPSTREAM CASES PASSED (' + checks + ' cases)');
