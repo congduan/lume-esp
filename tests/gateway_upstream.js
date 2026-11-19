@@ -18,6 +18,7 @@ const {
 } = require('../tools/gateway/upstream-openai');
 const { createSentenceSplitter } = require('../tools/gateway/sentence-splitter');
 const { attachWsServer } = require('../tools/gateway/ws');
+const { ConversationHistory } = require('../tools/gateway/history');
 
 let checks = 0;
 const pass = (label) => { checks++; console.log('PASS ' + label); };
@@ -214,6 +215,31 @@ function makeSession(caps = null) {
 
 const ofKind = (session, k) => session.st.calls.filter((c) => c.k === k);
 const states = (session) => ofKind(session, 'state').map((c) => c.v);
+
+/* r120: a session that stays open across turns (the adapter's close() is a
+ * no-op for liveness) and exposes the history facade. Two fresh upstream
+ * instances driven on THIS session simulate two turns of one conversation. */
+function makePersistentSession(limit = 12) {
+  const st = { open: true, calls: [] };
+  const rec = (o) => { o.ts = Date.now(); st.calls.push(o); };
+  const history = new ConversationHistory({ limit });
+  const api = {
+    st, caps: null, sessionId: 's-multi',
+    sendState(v) { rec({ k: 'state', v }); },
+    sendTextDelta(t, f) { rec({ k: 'delta', t, f: !!f }); },
+    sendTranscriptDelta(t, f) { rec({ k: 'tx', t, f: !!f }); },
+    sendAudio(fmt, pcm) { rec({ k: 'audio', fmt, pcm: Buffer.from(pcm) }); },
+    sendError(c, m, f) { rec({ k: 'error', c, m, f: !!f }); },
+    close(c, r) { rec({ k: 'close', c, r }); },      /* keep open */
+    log(...a) { rec({ k: 'log', v: a.map(String).join(' ') }); },
+    isOpen() { return st.open; },
+    historyEnabled() { return history.enabled(); },
+    historyMessages() { return history.snapshot(); },
+    recordTurn(u, a) { history.record(u, a); },
+    historySize() { return history.size(); }
+  };
+  return api;
+}
 
 async function waitFor(pred, label, timeout = 3000, st = null) {
   const t0 = Date.now();
@@ -1003,6 +1029,70 @@ function parseMultipart(buf, contentType) {
       assert.equal(fake.state.requests.filter((r) => r.route === 'stt').length, 0, 'no REST fallback');
       pass('asr: end before handshake queues commit, final without timeout');
     });
+  });
+
+  /* ---- r120: per-session multi-turn history on the real OpenAI adapter -- */
+  const TURNS = [
+    { user: 'FIRST USER UTTERANCE', reply: 'FIRST REPLY. ' },
+    { user: 'SECOND USER UTTERANCE', reply: 'SECOND REPLY. ' }
+  ];
+  const DEFAULT_SYSTEM = 'You are a concise voice assistant. Answer in short plain sentences.';
+  let turnIdx = 0;
+  await withFake({
+    stt: () => json({ text: TURNS[turnIdx].user }),
+    chat: () => sseChat([TURNS[turnIdx].reply]),
+    tts: defaultTts
+  }, async (fake) => {
+    const st = makePersistentSession(12);
+    for (let t = 0; t < 2; t++) {
+      turnIdx = t;
+      const up = makeUp(fake);
+      up.start(st);
+      for (let i = 0; i < 3; i++) up.sendAudio(makeFrame(i));
+      up.stop();
+      /* turn is fully closed (history recorded) before the next starts */
+      await waitFor(() => ofKind(st, 'close').length >= t + 1, 'turn ' + (t + 1) + ' close', 3000, st);
+    }
+    const bodies = fake.state.requests.filter((r) => r.route === 'chat')
+      .map((r) => JSON.parse(r.body.toString()).messages);
+    assert.equal(bodies.length, 2);
+    assert.deepEqual(bodies[0], [
+      { role: 'system', content: DEFAULT_SYSTEM },
+      { role: 'user', content: TURNS[0].user }
+    ], 'turn 1: system + user');
+    assert.deepEqual(bodies[1], [
+      { role: 'system', content: DEFAULT_SYSTEM },
+      { role: 'user', content: TURNS[0].user },
+      { role: 'assistant', content: TURNS[0].reply },
+      { role: 'user', content: TURNS[1].user }
+    ], 'turn 2: prior user+assistant injected before current user');
+    assert.equal(st.historySize(), 4, 'session holds two user+assistant pairs');
+    pass('r120: two turns on one session inject prior user+assistant into chat body');
+  });
+
+  let offIdx = 0;
+  await withFake({
+    stt: () => json({ text: TURNS[offIdx].user }),
+    chat: () => sseChat([TURNS[offIdx].reply]),
+    tts: defaultTts
+  }, async (fake) => {
+    const st = makePersistentSession(0);            /* history disabled */
+    for (let t = 0; t < 2; t++) {
+      offIdx = t;
+      const up = makeUp(fake);
+      up.start(st);
+      for (let i = 0; i < 3; i++) up.sendAudio(makeFrame(i));
+      up.stop();
+      await waitFor(() => ofKind(st, 'close').length >= t + 1, 'turn ' + (t + 1) + ' close', 3000, st);
+    }
+    const bodies = fake.state.requests.filter((r) => r.route === 'chat')
+      .map((r) => JSON.parse(r.body.toString()).messages);
+    assert.deepEqual(bodies[1], [
+      { role: 'system', content: DEFAULT_SYSTEM },
+      { role: 'user', content: TURNS[1].user }
+    ], 'limit=0 keeps the r119 single-turn body');
+    assert.equal(st.historySize(), 0, 'no history stored when disabled');
+    pass('r120: history-limit=0 keeps r119 single-turn body (real adapter)');
   });
 
   console.log('ALL GATEWAY UPSTREAM CASES PASSED (' + checks + ' cases)');

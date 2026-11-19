@@ -19,7 +19,11 @@ async function runCase(label, factory, fn, opts = {}) {
     port: 0,
     deviceToken: opts.deviceToken || '',
     log: (event, fields) => logs.push({ event, fields }),
-    upstreamFactory: factory || (() => new MockUpstream())
+    upstreamFactory: factory || (() => new MockUpstream()),
+    /* r120: pass session-history / keep-alive config through to the gateway. */
+    historyLimit: opts.historyLimit,
+    historyCharBudget: opts.historyCharBudget,
+    multiturn: opts.multiturn
   });
   await gw.start();
   const url = 'ws://127.0.0.1:' + gw.address().port + '/';
@@ -76,6 +80,66 @@ async function untilClosed(st) {
     await new Promise(r => setTimeout(r, 5));
   }
   assert.equal(st.closed, true, 'WS onClose fired');
+}
+
+/* r120 helpers: wait for the Nth final text-delta and drive one uplink turn. */
+const isFinalDelta = (d) => {
+  if (typeof d !== 'string') return false;
+  try { const m = JSON.parse(d); return m.type === 'text-delta' && m.final === true; }
+  catch (e) { return false; }
+};
+async function untilFinals(st, n, label) {
+  const started = Date.now();
+  for (;;) {
+    if (st.msgs.filter(isFinalDelta).length >= n) return;
+    if (st.closed) throw new Error('socket closed before ' + label);
+    if (Date.now() - started > LIMIT_MS) throw new Error('timeout waiting ' + label);
+    await new Promise(r => setTimeout(r, 5));
+  }
+}
+async function driveTurn(st, text, n) {
+  st.client.sendText(JSON.stringify({ v: 1, type: 'text', text }));
+  for (let i = 0; i < 3; i++) st.client.sendBinary(Buffer.alloc(UPLINK_BYTES, 0x55));
+  st.client.sendText(JSON.stringify({ v: 1, type: 'end' }));
+  await untilFinals(st, n, 'final delta #' + n);
+}
+async function untilHistoryCleared(session) {
+  const started = Date.now();
+  while (session.history.size() !== 0 && Date.now() - started < LIMIT_MS) {
+    await new Promise(r => setTimeout(r, 5));
+  }
+}
+
+/* r120: a recording upstream that builds the SAME [system, ...history, user]
+ * shape the OpenAI adapter builds, using the session's history facade. Lets
+ * this harness assert cross-turn injection without a real LLM endpoint. */
+function historyRecorder(rec) {
+  return class HistoryCaptureUpstream {
+    start(session) { this.session = session; this.user = ''; this.gotAudio = false; session.sendState('thinking'); }
+    sendAudio() { this.gotAudio = true; }
+    sendText(t) { this.user = String(t == null ? '' : t); }
+    stop() {
+      const s = this.session;
+      /* Mirror the real adapter's advisory-stop guard: device-close and fatal
+       * paths call stop() too, and must not start a (recorded) response. */
+      if (typeof s.isOpen === 'function' && !s.isOpen()) return;
+      if (!this.gotAudio) { s.sendState('idle'); return; }
+      const messages = [{ role: 'system', content: 'DEFAULT PERSONA' }];
+      if (typeof s.historyEnabled === 'function' && s.historyEnabled() &&
+          typeof s.historyMessages === 'function') {
+        for (const m of s.historyMessages()) messages.push(m);
+      }
+      messages.push({ role: 'user', content: this.user || '(voice)' });
+      rec.bodies.push(messages);
+      const answer = 'A' + rec.bodies.length;
+      s.sendTextDelta(answer, false);
+      s.sendTextDelta('', true);
+      if (typeof s.historyEnabled === 'function' && s.historyEnabled() &&
+          typeof s.recordTurn === 'function') s.recordTurn(this.user || '(voice)', answer);
+      s.sendState('idle');
+      s.close(1000, 'done');   /* re-arms a fresh adapter when multiturn is on */
+    }
+  };
 }
 
 const hasType = (type) => (d) => {
@@ -413,6 +477,98 @@ function assertNoTokenLeak(logs, token) {
       assert.equal(earlyCalls, 0, 'upstream factory never invoked');
     },
     { deviceToken: TOKEN });
+
+  /* ---- r120: per-session multi-turn history ----------------------------- */
+  const rec1 = { bodies: [] };
+  await runCase('r120: two turns carry user+assistant history; close clears; reconnect fresh',
+    () => new (historyRecorder(rec1))(),
+    async ({ gw, url }) => {
+      const st = device(url);
+      await untilOpen(st);
+      st.client.sendText(JSON.stringify(HELLO));
+      await until(st, hasType('hello-ack'), 'hello-ack');
+
+      await driveTurn(st, 'MY NAME IS XIAOMING', 1);
+      assert.equal(rec1.bodies.length, 1);
+      assert.deepEqual(rec1.bodies[0], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'MY NAME IS XIAOMING' }
+      ], 'turn 1 body = system + user');
+
+      await driveTurn(st, 'WHAT IS MY NAME', 2);
+      assert.equal(rec1.bodies.length, 2);
+      assert.deepEqual(rec1.bodies[1], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'MY NAME IS XIAOMING' },
+        { role: 'assistant', content: 'A1' },
+        { role: 'user', content: 'WHAT IS MY NAME' }
+      ], 'turn 2 body injects turn 1 user+assistant before current user');
+
+      const s1 = gw.sessions[0];
+      assert.equal(s1.history.size(), 4, 'two user+assistant pairs after two turns');
+      st.client.close(1000, 'bye');
+      await untilClosed(st);
+      await untilHistoryCleared(s1);
+      assert.equal(s1.history.size(), 0, 'history cleared on ANY close');
+
+      /* New connection = new conversation: no leakage from session s1. */
+      const st2 = device(url);
+      await untilOpen(st2);
+      st2.client.sendText(JSON.stringify(HELLO));
+      await until(st2, hasType('hello-ack'), 'hello-ack');
+      await driveTurn(st2, 'FRESH CONVERSATION', 1);
+      assert.deepEqual(rec1.bodies[2], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'FRESH CONVERSATION' }
+      ], 'reconnected session has no prior history');
+      st2.client.close(1000, 'bye');
+      await untilClosed(st2);
+    },
+    { multiturn: true, historyLimit: 12 });
+
+  const rec2 = { bodies: [] };
+  await runCase('r120: history-limit=0 degrades to single-turn (r119 body)',
+    () => new (historyRecorder(rec2))(),
+    async ({ gw, url }) => {
+      const st = device(url);
+      await untilOpen(st);
+      st.client.sendText(JSON.stringify(HELLO));
+      await until(st, hasType('hello-ack'), 'hello-ack');
+      assert.equal(gw.sessions[0].history.enabled(), false, 'limit=0 disables history');
+      await driveTurn(st, 'FIRST', 1);
+      await driveTurn(st, 'SECOND', 2);
+      assert.deepEqual(rec2.bodies[0], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'FIRST' }
+      ]);
+      assert.deepEqual(rec2.bodies[1], [
+        { role: 'system', content: 'DEFAULT PERSONA' },
+        { role: 'user', content: 'SECOND' }
+      ], 'no history injected when limit=0 (byte-for-byte r119 body)');
+      st.client.close(1000, 'bye');
+      await untilClosed(st);
+    },
+    { multiturn: true, historyLimit: 0 });
+
+  const rec3 = { bodies: [] };
+  await runCase('r120: window keeps only the most recent N pairs (oldest dropped first)',
+    () => new (historyRecorder(rec3))(),
+    async ({ gw, url }) => {
+      const st = device(url);
+      await untilOpen(st);
+      st.client.sendText(JSON.stringify(HELLO));
+      await until(st, hasType('hello-ack'), 'hello-ack');
+      /* limit=4 -> at most 2 complete user+assistant pairs survive. */
+      for (let t = 1; t <= 3; t++) await driveTurn(st, 'U' + t, t);
+      assert.equal(gw.sessions[0].history.size(), 4, 'window capped at 4 messages');
+      assert.deepEqual(gw.sessions[0].history.snapshot(), [
+        { role: 'user', content: 'U2' }, { role: 'assistant', content: 'A2' },
+        { role: 'user', content: 'U3' }, { role: 'assistant', content: 'A3' }
+      ], 'oldest pair (U1/A1) dropped first');
+      st.client.close(1000, 'bye');
+      await untilClosed(st);
+    },
+    { multiturn: true, historyLimit: 4 });
 
   console.log(`ALL GATEWAY HARNESS CASES PASSED (${checks} cases)`);
 })().catch((e) => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });
