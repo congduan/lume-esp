@@ -1844,3 +1844,103 @@ PASS prelude 67016 bytes; 43 apps
 网关仅 1 次 hello-ack（同一 session），与协议 §8.1.10 实证一致。取舍见
 `docs/KNOWN-SIMPLIFICATIONS.md` r121 与 `docs/voice-gateway-protocol.md` §8.1.10 / §10。
 真机时延 / barge-in 手感 / 双 DMA deferred to board，未声称真机验证。
+
+### r122 result — voice_assistant 设备侧会话历史持久化（E 刀续；close 不再丢历史；appended, milestone checkboxes untouched）
+
+基线 HEAD `6ada61d`；分支 `r122-va-history`。commits：feat / test / docs 分开提交，
+不推送（主控轮负责 push）。**纯 app + Node 层，零固件 / runtime 改动**，按纪律未跑
+`idf.py build` / `idf.py size`。工作区新建即已存在 `/tmp/lume-r122-wt` worktree，
+`git log --oneline -1` 确认为基线 `6ada61d`；开工 `lume_model_guard.sh` 确认
+`model=hy4flash-free`。
+
+先实证再动码（读码结论，写入协议 §8.1.9.1）：`tools/gateway/server.js` 的
+`ConversationHistory` 归 `DeviceSession` 所有（第 62 行），`conn.on('close')` 无条件
+`history.clear()`（第 72-80 行）即 r121 KS 所述丢失点；r119 token 门在 `v` 校验之后、
+phase flip / hello-ack / 上游工厂之前（第 222-234 行），hello 解析只读已知字段、
+**无白名单拒绝未知字段**；协议 §3「未知字段 MUST 被忽略」、§9「v1 冻结、只追加」，
+r119 `auth` 与 r117 `transcript-delta` 均为追加先例。结论：**加可选字段合规**。
+
+设计拍板 **C（网关 sessionId 重绑定）**：hello 加可选 `resume`（上次 sessionId），网关
+把退休历史绑到新连接，设备内存只多一个字符串、协议只加一个可选字段。被否：
+**A 网关文件持久化**——仍须在 hello 携带恢复标识，协议增量没少，反而多出磁盘路径 /
+键控 / 锁 / 陈旧文件；**B 设备 KV 缓存回放**——要新控制帧且吃设备 NVS（8 KB 预算），
+破坏「帧零变化 / 只加可选字段」。设备仅在多轮模式记住 sessionId 并发 `resume`，
+非多轮 hello 逐字节等价 r121（host harness 的精确 deepEqual 断言保护）。
+
+实现：`tools/gateway/history.js` 加 `clone()`；`tools/gateway/server.js` 加有界 TTL
+`resumeStore`（默认 5 分钟 / 64 条），`close` 先退休快照再清连接副本，hello 在 token
+门**之后**消费 `resume`（命中单次换入、未命中降级新会话），新增 `history.retire` /
+`history.resume` / `history.resume.miss` 日志（只记条数与来源 sessionId，不记 token /
+system）；`tools/gateway/device-sim.js` 加 `--drop-after N` 强断重连。协议 §2 / §4.1 /
+§8.1.9.1 / §8.1.10(5) / §9 / §10 与 VA README、KNOWN-SIMPLIFICATIONS r122 同步。
+
+验证（原始输出摘录）：
+
+```
+$ node tests/gateway.js
+PASS r122: close retires history; reconnect with resume restores it
+PASS r122: unknown resume id degrades to a fresh session
+PASS r122: locked + wrong token + resume -> unauthorized, zero restore, zero upstream
+PASS r122: expired resume snapshot degrades to a fresh session
+ALL GATEWAY HARNESS CASES PASSED (23 cases)          # 19 基线 + 4 r122
+
+$ node tests/gateway_upstream.js
+PASS r122: real adapter injects resumed user+assistant across disconnect
+ALL GATEWAY UPSTREAM CASES PASSED (37 cases)         # 36 基线 + 1 r122
+
+$ node tests/va_ws.js
+PASS r121: 2 turns / 1 connection / 1 hello, history carries, no close
+PASS r122: close retires history, reconnect resumes it + re-sends token, no log leak
+PASS r121: wrong token blocked on initial + reconnect, upstream never created
+PASS r122: barge-in close -> reconnect with resume -> history of prior turns still continues
+ALL VA WS HARNESS CASES PASSED (13 cases)            # 12 基线 + 1 r122（原 close 清史 case 改为 retire+resume）
+
+$ for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo "FAIL $t"; done; echo done
+done                                                  # 0 FAIL
+
+$ npm test --prefix tools/lume
+# tests 50 / # pass 49 / # fail 0 / # skipped 1
+
+$ python3 scripts/check_website.py
+API missing: none / API invented: none / API duplicates: none
+
+$ node tools/lume/lume.js check examples/voice_assistant --no-emu
+RESULT: PASS (4 steps, 0 failed; exit 0)
+
+$ node tools/lume/lume.js check examples/counter --no-emu
+RESULT: PASS (4 steps, 0 failed; exit 0)
+
+$ npm run build:playground --prefix tools/lume     # app.js 改动 → 重生成 playground
+PASS prelude 67016 bytes; 43 apps
+（生成物 website/playground/{apps,sources}/voice_assistant.js + sources.js 随本轮提交）
+```
+
+集成 smoke（真 `cli.js --upstream openai` + 本地假 STT/chat/TTS + 真
+`device-sim --turns 2 --drop-after 1`；锁定模式 + `--multiturn`，两端原始日志
+`artifacts/r122-smoke.log`；强断采用设备主导的 `close(4000, forced-drop)`，因为本仓库
+vendored WS 服务端对裸 TCP destroy 要到下次写才察觉，会与重连竞态，故用显式非 1000
+的 close 帧表达「轮中途断开」）：
+
+```
+[gateway] ready url=ws://127.0.0.1:45943/ deviceAuth=on systemPrompt=custom historyLimit=12 multiturn=on
+[SMOKE] --- PASS A: locked gateway + WRONG device token ---
+[device] send.hello auth=on resume=off
+[SMOKE] PASS A: unauthorized + 1008, upstream requests=0
+[SMOKE] --- PASS B: correct token, 2 turns, forced WS drop between them ---
+[FAKE-UP] chat.messages=system,user count=2 stream=true
+[device] force.drop turn=1 sessionId=s2
+[gateway] history.retire sessionId=s2 count=2
+[device] reconnect resume=s2
+[device] send.hello auth=on resume=on
+[gateway] history.resume sessionId=s3 from=s2
+[FAKE-UP] chat.messages=system,user,assistant,user count=4 stream=true
+[SMOKE] PASS B detail: chat requests=2 turn2.roles=system,user,assistant,user turn1.user+assistant.retained=true
+[SMOKE] PASS B: forced drop + resume -> turn2 chat body carries turn1 user+assistant; token gate on
+[SMOKE] DONE: all r122 smoke assertions passed
+```
+
+设备 token / system prompt 全文均未出现在任何日志（smoke 直接断言，grep 计数 0）。
+第二轮 chat 请求体 `system,user,assistant,user` 含第一轮 user+assistant，直接证明断连
+后历史续上。取舍见 `docs/KNOWN-SIMPLIFICATIONS.md` r122（进程重启仍丢、sessionId
+可预测、TTL 过期仍丢、只恢复已完成轮等）与 `docs/voice-gateway-protocol.md`
+§4.1 / §8.1.9.1 / §10。真机时延 / barge-in 手感 / 双 DMA deferred，未声称真机验证。

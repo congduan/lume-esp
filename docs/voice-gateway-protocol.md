@@ -39,6 +39,12 @@
 失败分支直接 `error{code:"unauthorized",fatal:true}` → `close(1008)`，不进入
 下列任何会话阶段、不回 `hello-ack`、不初始化上游适配器。
 
+**r122（追加式扩展，可选字段）**：多轮模式下连接被关闭 / barge-in / 致命错误中止后，
+设备重连时可在 `hello` 带 `resume`（上次 hello-ack 的 `sessionId`），请求网关把该会话
+已退休的历史绑到新连接。网关在 token 校验**通过之后**才处理恢复；未知 / 过期 id
+降级为新会话。§1 的帧类型、序号与关闭码零变化；不发送 `resume` 的客户端行为与
+r120/r121 完全一致（详见 §4.1 与 §8.1.9）。
+
 一轮内的严格顺序（v1.1 流式转写已协商时）：
 `transcript-delta(final=false)*` → `transcript-delta(final=true)` → `text-delta*`
 （含 chat 的 `final=true`）→ `audio*` → `state=idle` → `close(1000, done)`。
@@ -82,11 +88,14 @@
 | `device` | object | 否 | `{model, fw, app}` 自描述字符串，仅日志用，不影响路由。 |
 | `caps` | object | 否 | `{audioFormats: string[]}`；v1 仅识别 `"pcm_s16le_16000_2ch"`。缺省按该值处理。 |
 | `auth` | object | 否（锁定模式必填） | `{token: string}`，r119 追加字段（§9 只追加）。开放模式 MUST 忽略该字段；锁定模式缺失/类型错/不匹配均 → `unauthorized` + 1008。 |
+| `resume` | string | 否（可选恢复） | r122 追加字段：上次 `hello-ack` 的 `sessionId`（如 `"s12"`）。重连时携带，网关在 token 门通过后尝试把该会话退休的历史绑到新连接。未知 / 过期 / 类型错 → 忽略并按新会话处理（不报错、不断连）；单次消费，用过即失效。仅在设备侧多轮重连时发送；旧客户端不发送，行为逐字节不变。 |
 
 示例（ASCII 负载）：
 `{"v":1,"type":"hello","device":{"model":"lume","fw":"r106"},"caps":{"audioFormats":["pcm_s16le_16000_2ch"]}}`
 锁定模式追加（token 仅示意，真实值由设备 KV / env 注入，不进代码库）：
 `{"v":1,"type":"hello",...,"auth":{"token":"SHARED_TOKEN"}}`
+重连恢复追加（r122，可选，sessionId 来自上次 hello-ack）：
+`{"v":1,"type":"hello",...,"resume":"s12"}`
 
 ### 4.2 `hello-ack`（网关 → 设备）
 
@@ -452,8 +461,9 @@ r120 为每路 `DeviceSession` 增加一份有界对话历史（`[{role, content
 | `GATEWAY_MULTITURN` | `--multiturn` | （关） | 会话保活：一轮正常收口后不关 WS，复用同一 session 建新适配器，使下一轮读到历史。默认关闭 = r119 每轮 `close(1000, done)` 不变。 |
 
 - **会话隔离与清理**：历史实例归 `DeviceSession` 所有（按 sessionId 天然隔离）；
-  `conn.on('close')` 在**任意关闭码**下调 `history.clear()`，新连接 = 新对话，
-  不跨连接泄漏。
+  `conn.on('close')` 在**任意关闭码**下调 `history.clear()` 清掉连接侧副本（r120 语义
+  不变）；r122 起另把一份有界快照退休到网关内部 `resumeStore`，只有后续hello 显式带
+  匹配 `resume` 且通过 token 门才会被新会话消费，否则不跨连接泄漏。
 - **字符预算**：每会话另有 `historyCharBudget`（默认 8192 字符）上限，与条数上限
   同时生效，按最旧 user+assistant 成对淘汰，防止长对话无界增长；取舍见
   KNOWN-SIMPLIFICATIONS r120。
@@ -465,6 +475,27 @@ r120 为每路 `DeviceSession` 增加一份有界对话历史（`[{role, content
   `createGateway()` 的调用方可传 `historyLimit` / `historyCharBudget` / `multiturn`。
 - **mock 上游**：`MockUpstream` 镜像同样的历史语义（记录 canned 答复与设备
   `text`），但 canned 答复与音频不变，设备侧 harness 不回归。
+
+#### 8.1.9.1 断连不丢历史：hello.resume（r122；仅加可选字段）
+
+r120/r121 的历史是易失的：`session.close`（任意 code）即清空，barge-in / 致命
+error / 远端关闭后重连就是新对话。r122 把「连接生命周期」与「历史生命周期」解耦，
+**§1-§7 的 v1 冻结基线不变**：不新增帧型、不改任何字段语义、序号与关闭码零变化。
+
+- **逐字段增量**：仅 `hello.resume`（§4.1）——string，可选，取上次 `hello-ack.sessionId`。
+  无其它新字段、无新控制帧；`hello-ack` 仍由公共 `_ctrl` 携带 `sessionId`。
+- **网关侧**：`conn.on('close')` 仍清连接侧历史，同时把 `history.clone()` 快照退休到
+  进程内 `resumeStore`，键为 sessionId；默认 TTL 5 分钟、上限 64 条，最旧先淘汰。
+  新 hello 的处理顺序固定为 `not_hello` → `unsupported_version` → `unauthorized`
+  → **resume 绑定** → `hello-ack` → 上游工厂；恢复命中即换入快照并单次消费，
+  未命中记 `history.resume.miss` 并用空历史继续（降级为新会话，不报错、不断连）。
+- **设备侧**：仅多轮模式（`voice_gateway_multiturn` / `--multiturn`）在 `hello-ack`
+  记住新 sessionId，下次重连 hello 带 `resume`；非多轮模式不发该字段，hello 逐字节
+  等价 r121。旧网关 / 旧设备按 §3 忽略未知字段，双方均可独立升级。
+- **安全与边界**：恢复发生在 token 门**之后**，错 token → `unauthorized` + 1008 +
+  上游工厂零调用，且退休快照不被消费；快照只存 user/assistant 文本，不存 token /
+  system 全文；`history.retire` / `history.resume` 日志只记条数与来源 sessionId。
+  取舍见 `docs/KNOWN-SIMPLIFICATIONS.md` r122（进程重启仍丢、sessionId 可预测等）。
 
 ### 8.1.10 设备侧多轮适配（r121；设备协议帧零变化）
 
@@ -490,8 +521,10 @@ r120 的 `--multiturn` 只改变网关侧关闭时机；r121 让设备 app 复�
    一旦 park 的连接被网关关闭 / 致命错误 / barge-in 中止，设备清掉 park，下一轮走
    新连接并重新发 `hello.auth.token`，网关 token 门照常校验（失败 → `unauthorized` + 1008，
    上游工厂零调用）。host harness 对此有专门断言（`tests/va_ws.js` r121 case 11/12）。
-5. **历史归属**：历史仍只在网关会话窗口内，app 不本地存历史、不消费历史帧；`close`
-   （任意 code）即清空，重连 = 新对话（见 KNOWN-SIMPLIFICATIONS r121）。
+5. **历史归属**：历史仍只在网关会话窗口内，app 不本地存历史、不消费历史帧；r121 时
+   `close`（任意 code）即清空、重连 = 新对话。**r122 收紧了这一点**：park 连接断开 /
+   barge-in 后重连时，多轮模式在 hello 带 `resume`（§8.1.9.1），网关重新绑定已退休的
+   历史，重连不再等于新对话；非多轮模式仍逐字节等价 r121。
 
 ## 8.2 设备鉴权：共享 token 门（r119；非 HMAC）
 
@@ -534,6 +567,9 @@ r120 的 `--multiturn` 只改变网关侧关闭时机；r121 让设备 app 复�
 ## 9. 版本兼容策略
 
 - v1 为冻结基线；新增字段只能追加，旧字段语义不得改变。
+- r122 的 `hello.resume` 是**纯追加可选字段**，与 r117 的下行 `transcript-delta`、
+  r119 的 `hello.auth` 同口径：旧设备不发送即保持原行为，旧网关按 §3 忽略未知
+  字段；线上 `v` 仍固定 `1`，无需升 v2、无协商握手。
 - 设备发来高于 1 的 `v`：网关回 `unsupported_version` + 1008，不猜测降级。
 - 网关未来升 v2 时，必须在 `hello-ack` 中显式给出协商版本；设备只接受自己支持的
   版本。二进制头 `version` 与 JSON `v` 同步演进。
@@ -576,3 +612,15 @@ r121 追加（设备侧适配，**协议帧零变化**）：设备 app 新增 KV
 + 真 `device-sim --turns 2` 集成 smoke（锁定模式 + 双轮，第二轮 chat 请求体含第一轮
 user+assistant，设备两轮仅 1 次 hello，原始日志 `artifacts/r121-smoke.log`）。不声称真机；
 固件 / runtime 零改动，按纪律不跑 `idf.py build` / `idf.py size`。
+
+r122 追加（断连不丢历史，**只加可选字段**）：hello 新增可选 `resume`（§4.1 /
+§8.1.9.1），网关把 `session.close` 的历史快照退休到有界 TTL store，按 sessionId 键控，
+恢复在 token 门后单次消费；误 token / 未知 / 过期 id 一律降级为新会话，不产生新帧型、
+不改序号与关闭码。验证口径：`tests/gateway.js` 23 case（19 基线 + 4 r122：恢复 /
+未知 id 降级 / 错 token 零恢复 / TTL 过期）、`tests/gateway_upstream.js` 37 case
+（36 基线 + 1 真适配器跨断连注入）、`tests/va_ws.js` 13 case（12 基线 + 1 r122
+barge-in 重连续史；原 r121 close 清史 case 改为 retire+resume）。集成 smoke 用真
+`cli.js --upstream openai` + 本地假 STT/chat/TTS + 真 `device-sim --turns 2
+--drop-after 1` 强断一次 WS 后续传，断言第二轮 chat 请求体仍含第一轮 user+assistant
+（原始日志 `artifacts/r122-smoke.log`）。不声称真机；固件 / runtime 零改动，按纪律不跑
+`idf.py build` / `idf.py size`。

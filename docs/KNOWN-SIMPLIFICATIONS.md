@@ -1756,3 +1756,37 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   真 `device-sim --turns 2` 两轮 smoke（`artifacts/r121-smoke.log`，第二轮 chat 请求体含
   第一轮 user+assistant 且两轮仅 1 次 hello）。真机时延 / barge-in 手感 / 双 DMA deferred。
   固件与 runtime 零改动，按纪律不跑 `idf.py build` / `idf.py size`。
+
+## r122 — voice_assistant 断连不丢历史（hello.resume 可选字段；无真机/无出网）
+
+- **只解决单次断连，不做进程级持久化**：退休历史存网关进程内存 `resumeStore`
+  （默认 TTL 5 分钟 / 上限 64 条，最旧先淘汰），**网关重启 / 进程退出即全丢**，不落
+  NVS / LittleFS / 文件。取舍：零新 I/O 与文件系统依赖、协议零新帧型；代价是无跨进程
+  恢复、无跨设备同步。被否方案 A（网关文件持久化）否因：仍须在 hello 携带恢复标识，
+  并未减少协议增量，反而新增磁盘路径 / 键控 / 锁与陈旧文件问题。
+- **被否方案 B（设备 KV 缓存回放）否因**：设备要把 user/assistant 文本存 KV 并用新控制
+  帧回放，破坏「协议帧零变化 / 只加可选字段」口径；8 KB 预算与 NVS 空间也与之冲突。
+  最终选 C（网关 sessionId 重绑定）：协议仅加 `hello.resume` 一个可选字段，设备侧只多
+  存一个 sessionId 字符串。拍板前实证：§3「未知字段 MUST 被忽略」、§9「v1 冻结、只
+  追加」、r119 `auth` 追加先例、网关 hello 解析无白名单拒绝未知字段。
+- **恢复键是可预测的 sessionId**：值形如 `sN` 且递增，同一共享 token 下的授权客户端
+  可猜到邻近 id 并尝试恢复。与 r119 §8.2.3 一致：这是单一共享 token 的 LAN 信任模型，
+  不是逐设备身份、不替代网络隔离；恢复仍须通过 token 门，错 token 零恢复。取舍：复用
+  既有 sessionId、零新随机标识字段；代价是不防同 LAN 内已授权客户端的猜测重绑定。
+- **一次性消费 + TTL**：命中后快照从 store 删除，连续两次带同一 `resume` 的第二次会
+  降级为新对话；空闲超过 TTL 也丢弃。取舍：避免陈旧 id 被无限重放；代价是设备若迟迟
+  不重连（>5 分钟）仍会丢历史，不做无界保留。
+- **只保留已完成的轮**：barge-in / 致命错误中断的当前轮不写历史（r120 既有语义），
+  所以恢复的是中断前已收口的轮次；设备 UI 的 `TURN n` 计数与网关实际窗口条数仍可能
+  不一致（r121 取舍延续）。
+- **非多轮逐字节等价**：`voice_gateway_multiturn` 关闭时设备不发 `resume`，hello 与
+  r121 逐字节一致；网关不配 `resume` 也能与旧设备互通。代价是恢复能力必须显式在设备
+  侧开启，默认单轮场景仍是新对话。
+- **仍 open / 诚实口径**：无真机 / 无出网 / 无真实 key；证据来自宿主 harness
+  （`tests/gateway.js` 23 case = 19 基线 + 4 r122，`tests/gateway_upstream.js` 37 =
+  36 + 1，`tests/va_ws.js` 13 = 12 + 1）、`npm test --prefix tools/lume`、
+  `check_website.py`、真 `cli.js --upstream openai` + 本地假 STT/chat/TTS + 真
+  `device-sim --turns 2 --drop-after 1` 强断一次 WS 的续传 smoke
+  （`artifacts/r122-smoke.log`，第二轮 chat 请求体含第一轮 user+assistant）。真机时延 /
+  barge-in 手感 / 双 DMA deferred。固件与 runtime 零改动，按纪律不跑 `idf.py build` /
+  `idf.py size`。

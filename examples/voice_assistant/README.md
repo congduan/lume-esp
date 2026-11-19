@@ -109,9 +109,10 @@ r120 给网关加了有界会话历史与可选 `--multiturn` 会话保活；r12
 lume.storage.kv.set('voice_gateway_multiturn', '1');   // 或 true / 'true'
 ```
 
-- 顶部常量 `VA_GATEWAY_MULTITURN` 默认 `false`；网关侧必须同时开
-  `--multiturn` / `GATEWAY_MULTITURN=1`，否则网关每轮仍 close，设备下一轮自动
-  回退到新连接（历史随之清零）。
+- 顶部常量 `VA_GATEWAY_MULTITURN` 默认 `false`；**park 复用**（轮间不关 WS、
+  不重发 hello）要求网关侧也开 `--multiturn` / `GATEWAY_MULTITURN=1`。若网关未开，
+  网关每轮仍 close，设备下一轮回退到新连接；r122 起该重连 hello 会带 `resume`
+  请网关重新绑定历史（见下节），不再是必然清零。
 - **开**：第一轮 `hello`（锁定模式带 `auth.token`）→ 流式回复 → `state=idle`
   后 app **不关 WS**，把它 park；再次 TALK 直接在该连接上发 3840 B 上行帧 +
   `end`，**不重发 hello**，token 也不重发（该连接已通过门）。`MODE` 行下方新增
@@ -120,9 +121,30 @@ lume.storage.kv.set('voice_gateway_multiturn', '1');   // 或 true / 'true'
   下一轮新连接、新 hello；不显示上下文行。
 - 连接被网关关闭、致命 `error`、`onError` 或 barge-in 中止都会清掉 park；下一次
   TALK 走全新连接并重新发送带 KV token 的 hello，网关 token 门**照常拦截**。
-  历史只活在网关侧窗口内，app 不本地存历史；重连即遗忘（见 KNOWN-SIMPLIFICATIONS r121）。
+  历史只活在网关侧窗口内，app 不本地存历史。r122 起该重连 hello 另带 `resume`
+  让网关重新绑定已退休的历史 —— 重连不再等于新对话（见 r122 节）。
 
-Host 验证：`node tests/va_ws.js` 现 12 case（9 基线 + 3 r121：跨轮保活 / 无重 hello /
-close 重连历史清零 + token 门复拦）；真 `device-sim --turns 2` + 锁定网关 +
-`--multiturn` 的两轮 smoke 见 `artifacts/r121-smoke.log`。真机时延 / barge-in 手感
-deferred to board，未声称真机验证。
+Host 验证：`node tests/va_ws.js` 现 13 case（9 基线 + 3 r121 + 1 r122：barge-in
+重连续史；原 r121 的 close 清史 case 已按 r122 语义改为 retire+resume）；真
+`device-sim --turns 2` + 锁定网关 + `--multiturn` 的两轮 smoke 见
+`artifacts/r121-smoke.log`。真机时延 / barge-in 手感 deferred to board，未声称真机验证。
+
+## r122 断连不丢历史（hello.resume；零新帧型）
+
+只加hello 的一个可选字段，设备/网关任一侧旧版本都能互操作（协议 §4.1 / §8.1.9.1 /
+§9）：
+
+- 设备仅在多轮模式（`voice_gateway_multiturn` 开）从 `hello-ack` 记住本次
+  `sessionId`；该连接被关闭 / barge-in / 致命错误中止后，下一次 TALK 的新 hello
+  在 `auth.token` 之外追加 `"resume":"<上次 sessionId>"`。日志只记
+  `VA WS RESUME REQ`，不记 token 值。
+- 网关 `close`（任意 code）仍清连接侧历史，但先把一份有界快照退休到进程内 store
+  （默认 5 分钟 / 64 条上限）；重连 hello 的 `resume` 在 **token 校验通过之后**
+  才被消费：命中则新会话续上历史，未知 / 过期 id 自动降级为新对话，错 token 仍
+  `unauthorized` + 1008 且历史不被恢复。
+- `voice_gateway_multiturn` **关闭**时设备不发 `resume`，hello 逐字节等价 r121；
+  网关侧也无需新配置。进程重启仍会丢历史（store 只在内存），不是离线记忆。
+- 验证：`node tests/va_ws.js` / `tests/gateway.js` / `tests/gateway_upstream.js` 的
+  r122 case，以及 `cli.js --upstream openai` + 假 STT/chat/TTS + 真
+  `device-sim --turns 2 --drop-after 1` 设备主导 close(4000) 强断续传 smoke
+  （`artifacts/r122-smoke.log`）。
