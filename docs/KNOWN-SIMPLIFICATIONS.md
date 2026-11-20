@@ -2043,3 +2043,33 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   均 `RESULT: PASS`；playground 47 行 PASS。worktree 缺 `firmware/build/lume.bin`，
   哨兵 emu 复用主仓 ffdd757 基线固件镜像（固件零改动故等价），未跑 `idf.py build`；
   `git diff ffdd757 HEAD -- firmware/ runtime/ tools/` 为空。未跑 codex review。
+
+## r131 — weather SNTP-first 取舍（app-only，基线 1dc7c76）
+
+- **无真机 SNTP + TLS 全链路验收**：本轮只改 `examples/weather/app.js`，SNTP 断言全为宿主
+  源码静态契约 + 变异实证。DNS、SNTP 往返、`settimeofday()` 后证书校验是否真通过、
+  冷启动首刷成功率和功耗全部留接板轮；**不声称真机验证**。
+- **墙钟未设置的判定阈值**：`lume.system.time()` 早于 `2026-01-01T00:00:00Z`
+  （`1767225600000` ms）即视为未设置并先校时。这是一个保守的下界——固件 1 月 1 日之后
+  的真实 RTC 不会被误判；若设备时钟被设到 2026 年之前的有效日期，会触发一次多余校时，
+  但校时成功即纠正、失败只提示不发请求，不会伪造数据。常量写出并注释，便于接板后按
+  实际 RTC 行为调整。
+- **失败节流 60 s 口径**：`setTimeNtp()` 是 BLOCKING（同 httpGet，最长 10 s）。校时失败后
+  记 `lastSyncFailMs = lume._nowMs()`，60 s 内再点刷新直接显示「校时失败，稍后重试」，
+  不重试也不烧 https，避免连点反复阻塞引擎。窗口取 60 s 是 UX 折中（r129/r130 用
+  30 s 重试 / 10 min 重同步；weather 是按需刷新、非连续帧循环，无需 30 s 那么激进）。
+- **insecure 逃生口边界**：`weather.insecure=1` 的 `skipTls` 用户完全绕过校时门控，直走
+  `httpsInsecure`，行为与旧版一致；头注释不再编号推荐，仅标为无 SNTP 可达环境下的受控
+  逃生口。代价是跳过证书校验（MITM 风险），会在成功状态显示「（未校验证书）」。
+- **-2 文案纠偏**：校时失败分支已单独拦截并提示 ASCII 返回码，能走到 httpGet 的 -2 视为
+  传输/TLS 问题，文案从「TLS 需校时」改为「TLS 传输问题」。既有 `tests/weather.js` 的
+  `-2` 断言只检查出现 'TLS'，故零改动通过；新 harness 精确断言旧文案已移除。
+- **宿主桩门控天然不触发**：`_systemTime: () => Date.now()` 在宿主是 2026 墙钟，
+  `time() >= 阈值` 使 SNTP 分支在宿主 app harness 中不执行；SNTP 真实路径靠静态断言 +
+  变异实证覆盖，不靠宿主运行。
+- **验证 / 诚实口径**：`tests/weather_sntp.js` 15 PASS + 15 变异实证 PASS；`tests/weather.js`
+  13 PASS 不回归；全量宿主 harness 0 FAIL；`npm test` 50/0/0（补齐 gitignore 的 `bin/qjsc`）；
+  `check_website.py` 三项 none；`lume check` weather + counter `--no-emu` 均
+  `RESULT: PASS`；playground 47 行 PASS（45 bundles + 2 summary，含 `weather 8080 bytes`）。
+  `git diff 1dc7c76 HEAD -- firmware/ runtime/ tools/` 及工作树 diff 均为空，固件零改动故
+  未跑 `idf.py build`；磁盘 88%，本轮日志落 `/tmp`，artifacts 未新增大件。未跑 codex review。

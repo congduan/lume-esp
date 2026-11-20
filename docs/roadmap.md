@@ -2365,3 +2365,54 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   改动，按纪律未跑 `idf.py build`。磁盘 88%，artifacts 只留最终日志，已清测试残留。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r130 节。本轮未跑 codex review（主控轮负责）。
+
+### r131 result — SNTP 第三波消费方刀：weather 的 SNTP-first verified HTTPS（纯 app 刀；appended, milestone checkboxes untouched）
+
+基线 `1dc7c76`（r130）；worktree `/tmp/lume-r131-wt`、分支 `r131-sntp-weather`；
+开工前 `lume_model_guard.sh` 绿（hy4flash-free）、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- `runtime/types/lume.d.ts:350-374` 契约确认：`time()` 返回毫秒墙钟，冷启动未同步时是
+  1970 基点小值；`setTimeNtp()` 默认 server / 默认 10 s 超时、BLOCKING、0 成功 /
+  -1 非法 server / -2 SNTP 失败 / -3 无 IPv4。
+- 宿主桩实证：`tests/lib/prelude_runner.js` 的 `_systemTime: () => Date.now()`（宿主墙钟
+  已是 2026）、`_systemSetTimeNtp: () => -3`。故 `tests/weather.js` 的 UI pass 下
+  `time() >= 2026-01-01`，SNTP 门控天然不触发，既有 harness 零改动通过（13 PASS）。
+- `weather` 确在 `tools/playground/build.mjs` 的 45-app 清单内；playground 生成物落在
+  `website/playground/`（非 `tools/`），故重建不破坏「firmware/runtime/tools 零改动」断言。
+- 明确 documented 变通：`examples/weather/app.js` 头注释旧称「没有 SNTP/设时 API」并编号
+  推荐 `weather.insecure=1`，`-2` 文案写「TLS 需校时」却无校时动作——本轮全部纠偏。
+
+**实现**（纯 app 层；firmware/runtime/tools 零改动）：
+- `examples/weather/app.js` 刷新门：GOT_IP 通过后、`fetchForecast` 之前，仅当
+  `!skipTls && lume.system.time() < WEATHER_CLOCK_MIN_MS` 才先 `lume.system.setTimeNtp()`
+  （默认参数）；只看 `r === 0` 继续 verified HTTPS，-2/-3/抛错一律不烧 https、`data` 保持
+  DEMO、状态显示带 ASCII 返回码的中文短文案（如 `校时失败 -2，未发 HTTPS`），不伪造数据。
+- 墙钟阈值常量 `WEATHER_CLOCK_MIN_MS = 1767225600000`（`Date.parse('2026-01-01T00:00:00Z')`，
+  写出并注释）；已达标则不重复同步。失败节流 `lastSyncFailMs`（`lume._nowMs()` 域）
+  + `WEATHER_SYNC_RETRY_MS = 60000`，60 s 内不重试，避免连点刷新反复阻塞引擎 10 s。
+- 保持 `setTimeout(0)` 模式：SNTP 与 httpGet 同处一次回调顺序执行，不拆两段阻塞。
+  `skipTls` 为显式逃生口，直接走 httpsInsecure、不经校时门控，行为不变。
+- `-2` 文案从「TLS 需校时」改为「TLS 传输问题」：校时失败已在门内单独提示，能走到
+  httpGet 的 -2 是传输/TLS 问题。头注释重写为 SNTP-first 现状，insecure 降为受控逃生口。
+- `tests/weather_sntp.js`（新，CommonJS）：15 条源码静态断言 + **15 项变异实证**（去调用、
+  移阈值、改比较、跳过 skipTls 门、去节流、改文案、恢复旧头注释、生成物漂移、清单丢
+  weather、改固件文件——全部必须 FAIL）；ASCII 断言只收窄到新增 SNTP 块。
+- `npm run build:playground`：47 行 PASS（45 bundles + 2 summary），含
+  `PASS bundle weather 8080 bytes`；`website/playground/{apps/weather.js,sources/weather.js,sources.js}`
+  随 feat commit 提交。
+
+**验证**（真机 SNTP + verified HTTPS 全链路 deferred；不声称真机验证）：
+- `node tests/weather_sntp.js`：15 契约 PASS + 15 变异实证 PASS。
+- `node tests/weather.js`：13 PASS（10 逻辑 + 3 UI），既有 harness 零改动不回归。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done`：
+  0 FAIL、输出 `done`。
+- `npm test --prefix tools/lume`：pass 50 / fail 0 / skipped 0（worktree 缺 gitignore 的
+  `tools/lume/bin/qjsc`，从主仓复制后对齐基线，源码零改动）。
+- `python3 scripts/check_website.py`：missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check examples/weather|counter --no-emu`：两者均
+  `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- `git diff 1dc7c76 HEAD -- firmware/ runtime/ tools/` 与工作树 diff 均为空 → 固件零
+  改动，按纪律未跑 `idf.py build`。磁盘 88%，本轮日志落 `/tmp`，artifacts 未新增大件。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r131 节。本轮未跑 codex review（主控轮负责）。
