@@ -2175,3 +2175,41 @@ api.html 重生成未做。主控接管收口：修唯一编译错误（ESP-IDF 
 `PASS bundle image_gallery` 行不存在，也未改 `build.mjs`（守「纯 app 层 / 范围控制」）。
 生成物 diff 为空，feat commit 只含 app.js。详见 docs/KNOWN-SIMPLIFICATIONS.md r126 节。
 roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
+
+### r127 result — examples/files 的 TF 卡浏览 + playground 补清单（app + 工具清单层；appended, milestone checkboxes untouched）
+
+基线 `67b635f`（r126 image_gallery Sd-first）；worktree `/tmp/lume-r127-wt`、分支
+`r127-sd-files`；开工前 `lume_model_guard.sh` 绿、无 429、未在主仓写文件。
+
+**实现**（只改 `examples/files/app.js`、`tools/playground/build.mjs` + 生成物、`tests/sd_files.js`、docs）：
+- **导航模式选择（实证后定案）**：采用「Fs 根目录追加 `SD/` 虚拟入口 → 点入切到独立
+  `onSd` 浏览模式（cwd 重置 `/`）」，而非把 Sd 路径混进同一 `cwd`。理由：现有导航/删除/
+  预览全部以 `cwd` 作为「当前后端内路径」前缀，Fs 与 Sd 的根都写作 `/`；若共用 cwd 必须
+  给每个路径额外带后端标签，侵入 `isDirPath`/`loadDir`/`removeTree`/`preview`/`onBack` 全部
+  链路。虚拟入口只在 Fs 根且 `sdReady` 时出现，`e.sd` 标记进入 SD 模式；SD 根 BACK/goUp
+  退回 Fs 根，不直接回桌面。不挂卡时行为与 r126 之前完全一致。
+- **逐操作降级**：`listDir`/`readText`/`pathExists`/`removeAt`/`mkdirAt` 统一按 `onSd` 分发
+  到 `Sd.*` 或 `Fs.*`；`loadDir`/`isDirPath`/`previewSelected`/`makeDir`/`removeTree` 每步
+  独立 try/catch。Sd API 缺失/未挂载/读失败（number 错误码或抛错）退化为「空目录/读取失败」，
+  不拖垮整个 eval；宿主用 stub Sd 实测了正常路径与 list 抛错 / statvfs -3 / read -2 降级路径。
+- **删除取舍**：实证 `lume_sd.c` 确认 `Sd.exists(p + '/')` 沿用 Fs 的「是目录」约定、
+  `Sd.remove` 同为 unlink→rmdir 兜底、`Sd.list` 归一化尾斜杠——目录递归在 JS 侧完成，
+  SD 侧删除语义明确，故**启用** SD 模式删除并复用同一个 `askDelete` Dialog（无第二份流程）；
+  仅 `SD/` 虚拟入口禁删并 ASCII 提示。
+- **HUD**：SD 模式顶栏显示 `Sd.statvfs()` 剩余空间，`typeof stat === 'object'` 判别成功
+  （`Math.floor(stat.free / 1048576)` 整数 MB），错误码显示 `NO CARD`；UI 文案全 ASCII（r64）。
+- **playground**：`tools/playground/build.mjs` 的 43-app 清单追加 `image_gallery`（r126 尾巴）
+  与 `files`（本轮 Sd 化）；两者均无 esbuild 不兼容写法（`files` 的 shell.js 副作用导入可被
+  esbuild iife 正常打包），重建后 45 apps。
+
+**验证**（宿主口径；真机插卡 deferred，未声称真机验证；原始输出见本轮日志）：
+- `node tests/sd_files.js`：23 source/non-source PASS + 13 变异实证 PASS（删掉被断言代码必须
+  FAIL；变异实证过程中还抓出并修掉 harness 自身两处「假断言」）；`node tests/sd_gallery.js` 不回归。
+- `for t in tests/*.js`：0 FAIL；`npm test --prefix tools/lume`：pass 50 / fail 0 / skipped 0（不回归）。
+- `check_website.py`：missing/invented/duplicates 均 none。
+- `lume check examples/files --no-emu`、`examples/image_gallery --no-emu`、`examples/counter --no-emu`：
+  均 `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume`：45 个 `PASS bundle ...`（含 image_gallery、
+  files）+ `PASS prelude 67016 bytes; 45 apps`。
+- `git diff 67b635f -- firmware/ runtime/` 为空 → 未跑 `idf.py build`。
+详见 docs/KNOWN-SIMPLIFICATIONS.md r127 节。roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。

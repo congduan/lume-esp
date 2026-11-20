@@ -1912,3 +1912,37 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   0 FAIL；`npm test --prefix tools/lume` 50/0 不回归；`check_website.py` missing/invented/
   duplicates 均 none；两个 `--no-emu` 哨兵 PASS；playground 43 bundles PASS；
   `git diff 5be09c3 -- firmware/ runtime/` 为空故未跑 `idf.py build`。固件 / runtime 源码零改动。
+
+## r127 — examples/files 的 Sd 浏览（app + 工具清单；零固件 / 零 runtime，无真机插卡）
+
+- **SD 导航模式选择理由（实证后定案）**：选「Fs 根追加 `SD/` 虚拟入口 → 点入切独立 `onSd`
+  模式（cwd 重置 `/`）」，不把 Sd 路径混进原 cwd。实证：`examples/files/app.js` 的
+  `isDirPath`/`loadDir`/`removeTree`/`previewSelected`/`onBack` 全部把 `cwd` 当作「当前后端内
+  路径」前缀，而 Fs 与 Sd 的根都写作 `/`；共用 cwd 就得给每个路径附后端标签，侵入面覆盖
+  所有操作。虚拟入口仅 `!onSd() && sdReady && clean === '/'` 时出现，以 `e.sd` 标记；SD 根
+  `goUp`/BACK 退回 Fs 根而非回桌面。未挂卡时零行为变化。
+- **删除语义取舍（实证纠偏）**：任务简报担心 Sd 删除「目录递归语义不明确」，但读码
+  `firmware/components/lume-storage/lume_sd.c` 实证：`lume_sd_exists` 与 Fs 一样用
+  `exists(path + '/')` + `S_ISDIR` 判目录（:228-242）；`lume_sd_remove` 与 Fs 一样
+  unlink 失败后 rmdir 兜底（:195-199）；`lume_sd_list` 的 `full_path(...,true)` 归一化尾斜杠
+  （:39-63）。因此递归在 JS 侧 `removeTree` 完成（先删子项再删目录），Sd 侧删除语义明确，
+  **启用** SD 模式删除并复用唯一 `askDelete` Dialog，没有第二份删除流程；仅 `SD/` 虚拟入口
+  禁删并 ASCII 提示 `Cannot delete SD entry`。代价：真机未插卡验证前，SD 侧删除只在宿主
+  stub 上验证过分发与降级，不对真实卡数据做承诺。
+- **容量取整口径**：`Sd.statvfs()` 成功返回 `{total,free}` 字节，取 `free` 按 1 MiB=1048576 B
+  `Math.floor` 截断成整数 MB，不四舍五入、不显示小数；返回 number（-2 IO / -3 无卡等）或
+  抛错显示 `NO CARD`；无 Sd API 时该状态不走（被 `sdReady` 门控）。与 r126 image_gallery
+  HUD 口径一致。
+- **playground 清单变动**：`tools/playground/build.mjs` 的 43-app 清单追加 `image_gallery`
+  （r126 遗留尾巴）与 `files`（本轮 Sd 化）。实证两者 esbuild 兼容：`image_gallery` 无
+  import，`files` 的 `import '../../runtime/shell.js'` 是副作用导入且 shell.js 为无导出 IIFE，
+  esbuild iife bundle 正常。重建为 45 bundles + 45 sources，生成物随 tooling commit 提交。
+- **真机插卡验收 deferred**：宿主 harness 只做源码静态断言 + stub Sd 的 Node vm 运行探针；
+  主机无卡。SPI 挂载、真实卡上目录列举/文本读取/删除/掉电持久性、`statvfs` 真实容量、BACK
+  手势在卡根目录的手感均未在板上验证，不声称真机验证。
+- **验证 / 诚实口径**：`tests/sd_files.js` 23 source/non-source PASS + 13 变异实证 PASS
+  （变异实证抓出并修掉 harness 自身两处假断言：NO CARD 只替换首处、manifest 断言未参数化）；
+  `tests/sd_gallery.js` 不回归；全量宿主回归 0 FAIL；`npm test --prefix tools/lume` 50/0 不回归；
+  `check_website.py` missing/invented/duplicates 均 none；三个 `--no-emu` 哨兵 PASS；
+  playground 45 bundles PASS；`git diff 67b635f -- firmware/ runtime/` 为空故未跑 `idf.py build`。
+  固件 / runtime 源码零改动。
