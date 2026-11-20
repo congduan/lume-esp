@@ -2134,3 +2134,41 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `--no-emu` 均 `RESULT: PASS`；playground 46 bundles + 2 summary PASS。
   `git diff c4b390a HEAD -- firmware/ runtime/` 及工作树 diff 均为空，固件零改动故未跑
   `idf.py build`；磁盘 88%，本轮日志落 `/tmp`。未跑 codex review。
+
+## r134 — crypto_check 摘要/校验工具取舍（app-only，基线 c003834）
+
+- **宿主注入的是真 node:crypto，不是真机 mbedTLS**：`lume.crypto` 的权威路径是 ESP-IDF
+  mbedTLS（r91），宿主/浏览器桩只返回 -3。`tests/crypto_check.js` 通过 `options.crypto`
+  注入 node:crypto（SHA-256 / HMAC-SHA256 / AES-128-CTR）与自写反射表 CRC-32，对拍对象
+  是 node:crypto 与 `zlib.crc32`，**不是** mbedTLS。它证明 app 的渲染/分支/切换逻辑正确，
+  不证明固件实现在真机上与这些向量一致；mbedTLS 的 NIST 向量与错误码分支仍由
+  `tests/crypto.js` / `tests/crypto_host.c` 在宿主编译真 C 源码覆盖，真机实测 deferred。
+- **hex 截断口径**：32 B 摘要 = 64 hex 字符，在 480 px 屏上以可读字号无法单行容纳，
+  故只显示前 16 B（32 hex 字符）+ `...`。代价是肉眼看不到尾部，两个不同 payload 若前
+  16 B 相同则显示相同；harness 把这段前缀与 node:crypto 真摘要逐字符对拍，截断造假
+  （改成全量或改长度）会被静态谓词与 live 断言同时抓到。HMAC 同口径（呼应 r132 OTA
+  token，但本 app 固定 key，不做密钥轮换）。
+- **AES-CTR 回环的证明边界**：app 用同一 key/iv 加密再解密并逐字节比较，OK 表示自洽；
+  对短 payload（4 B）密文只有 4 B，显示 8 hex 字符而非 16，空 payload 回环必然 OK
+  （无字节可校验，不真正 exercise CTR 分组）。harness 另用 node:crypto 独立算出密文前
+  8 B 与 app 显示值对拍，故对非空 payload 实际上是已知答案测试，不只是自证。
+- **CRC-32 无符号口径**：`crc32` 返回 u32，`0xFFFFFFFF` 合法值为 4294967295；app 只在
+  返回值 `< 0` 时判错，并用 `>>> 0` 保证十进制显示无符号。app 把 payload 分两段链式
+  seed（覆盖 seed 参数），harness 断言第二次调用确实以第一段 CRC 为 seed。自写查表
+  与 `zlib.crc32` 交叉验证，但 CRC 本身不是密码学原语。
+- **UNSUPPORTED 是正常呈现不是异常**：-3 在宿主/浏览器桩里是常态；app 把它渲染为
+  ASCII `UNSUPPORTED`，其他负值为 `ERR <code>`，0 与正数一律不是错误。把 -3 当异常吞掉
+  会让 playground 里四个数据行全空白，故 harness 专门用默认桩跑一遍确认四行都显示
+  UNSUPPORTED。
+- **18 节点 / <=20 预算**：宿主 create 消息计数 18，头注释声明 `LUME_MAX_NODES = 128`
+  与 <=20 的 app 自定上限；没有列表与运行时建节点。
+- **46→47 清单同步的合法性**：`tools/playground/build.mjs` 的 apps 是数据清单，新 app
+  注册使 4 只 harness 的清单长度断言与 `sd_files.js` 的硬编码变异串以及三只 consumer
+  的**检查名字符串**必须同步到 47；这些改动不改任何生产行为，只让数量/清单断言继续
+  有效。`tools/lume/`（CLI 工具面）仍在 gitChanged 钉死范围内且零 diff。
+- **验证 / 诚实口径**：`tests/crypto_check.js` 23 PASS + 1 汇总 PASS（含 6 项变异实证）；
+  全量宿主 harness 0 FAIL；`npm test` 50/0/0；`check_website.py` 三项 none；
+  `lume check` crypto_check + counter `--no-emu` 均 `RESULT: PASS`；playground
+  `PASS bundle crypto_check 3175 bytes` + 47 sources + 47 apps。
+  `git diff c003834 HEAD -- firmware/ runtime/ tools/lume/` 与工作树 diff 均为空，
+  固件零改动故未跑 `idf.py build`；磁盘 88%，本轮日志落 `/tmp`。未跑 codex review。

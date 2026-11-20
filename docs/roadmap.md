@@ -2528,3 +2528,57 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   `artifacts/r82/fft-host-*/sdkconfig.h` 已清理）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r133 节。本轮未跑 codex review（主控轮负责）。
+
+### r134 result — `lume.crypto` 消费方刀：examples/crypto_check 摘要/校验工具（纯 app 层；appended, milestone checkboxes untouched）
+
+基线 `c003834`（r133）；worktree `/tmp/lume-r134-wt`、分支 `r134-crypto-consumers`；
+开工前 `lume_model_guard.sh` 绿（hy4flash-free）、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- `runtime/types/lume.d.ts:1168-1194` 与 `firmware/components/lume-crypto/lume_crypto.c`
+  确认契约：`sha256(data,out)` / `hmacSha256(key,data,out)` 写 32 B，返回 0/-1/-2
+  （out < 32 B 为 -2）；`crc32(data,seed?)` 返回 u32 或 -1（0xFFFFFFFF 以
+  4294967295 返回，不是 -1）；`aesCtr(key,iv,data,out)`（key 16/24/32 B、iv 16 B，
+  可原地）返回 0/-1/-2/-3。`-1` = 类型错、`-2` = 长度/重叠非法、`-3` = mbedTLS 内部失败。
+- **playground 数量实证**：`tools/playground/build.mjs` 的 apps 数组实为 **46** 项且不含
+  `crypto_check`，与简报一致；46→47。钉清单长度的断言不止简报点名的三处：还有
+  `tests/adc_meter.js` 的 `apps.length === 46`，以及三只 consumer 测试用**检查名字符串**
+  引用同一条断言（`must('dashboard is in the 46-app playground manifest', ...)` 等）。
+  故同步 `list.length`、`apps.length`、注释、检查名字符串与 `sd_files.js` 的硬编码变异串，
+  理由写入对应 commit message。`bridge_protocol.c:28` 的 `LUME_ATTR_MAX_WIDTH == 46`
+  是 ATTR ID，不是 app 数量，未改。
+- `tests/lib/prelude_runner.js:170-185` 的 crypto 桩固定返回 -3 并经 `options.crypto`
+  spread 注入真实现；宿主/浏览器天然呈现 UNSUPPORTED，不是异常。
+- `examples/adc_meter/app.js`（r133 先例）给出 `var`/`function` 保守全局脚本、
+  `LUME_MAX_NODES = 128` 预算声明、`< 0` 数值判别、ASCII-only 的范式，本 app 沿用。
+
+**实现**（固件/runtime/CLI 零改动）：
+- `examples/crypto_check/app.js`：单屏静态树（宿主 create 计数 **18** 节点）；3 条内置
+  payload（短文本 / 长文本 / 空串）由 NEXT 按钮循环。SHA-256 / HMAC-SHA256 取前 16 B
+  共 32 hex 字符 + `...`（480 px 宽度取舍）；CRC-32 分两段链式 seed、按 `>>> 0` 无符号
+  十进制显示；AES-CTR 16 B key/iv 加解密回环显示 OK/MISMATCH + 密文前 8 B hex。
+  所有负值按数值判别显示 `ERR <code>`，`-3` 单独显示 `UNSUPPORTED`；CRC 只有负值才算
+  错误，4294967295 正常渲染。头注释登记节点预算与 hex 截断取舍，UI 文案 ASCII-only。
+- `tests/crypto_check.js`（新，CommonJS）：经 `options.crypto` 注入 node:crypto 真实现
+  （SHA/HMAC/AES-128-CTR 对拍）+ 自写反射表 CRC-32（与 `zlib.crc32` 交叉验证）；真跑 app
+  断言 hex/回环/循环/空 payload/ERR -2/-1/-3/UNSUPPORTED/CRC 无符号与 seed 链/ASCII/
+  节点预算/清单 47/生成物字节一致；6 项变异实证（删 -3 分支、注入非 ASCII、摘要截断造假、
+  改有符号 CRC、改 firmware 文件、改 runtime 文件）全部必须 FAIL。
+- `tools/playground/build.mjs`：apps 数组加 `'crypto_check'`（47）；
+  `website/playground/{apps/crypto_check.js,sources/crypto_check.js,sources.js}` 随 feat commit。
+
+**验证**（真机 mbedTLS / 触屏手感 deferred；不声称真机验证）：
+- `node tests/crypto_check.js`：23 PASS + 1 汇总 PASS（含 6 项变异实证）。
+- `for t in tests/*.js; do node "$t"; done`：**0 FAIL**。
+- `npm test --prefix tools/lume`：`# pass 50 / # fail 0 / # skipped 0`（worktree 补齐
+  gitignore 的 `tools/lume/bin/qjsc` 后恢复基线）。
+- `python3 scripts/check_website.py`：missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check examples/crypto_check --no-emu`：`RESULT: PASS (4 steps)`；
+  `examples/counter --no-emu` 哨兵 `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume`：`PASS bundle crypto_check 3175 bytes` +
+  `PASS esbuild-wasm assets and 47 editable sources` + `PASS prelude 67317 bytes; 47 apps`。
+- `git diff c003834 HEAD -- firmware/ runtime/ tools/lume/` 与工作树 diff 均为空 →
+  固件/runtime/CLI 零改动，按纪律未跑 `idf.py build`。磁盘 88%，本轮日志落 `/tmp`，
+  测试生成的 `artifacts/r82/fft-host-*/sdkconfig.h` 已清理。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r134 节。本轮未跑 codex review（主控轮负责）。
