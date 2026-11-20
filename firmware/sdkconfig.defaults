@@ -55,3 +55,12 @@ CONFIG_BT_NIMBLE_MAX_CONNECTIONS=1
 # requested. IDF's skip-default switch affects only requests without a CA.
 CONFIG_ESP_TLS_INSECURE=y
 CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY=y
+
+# SNTP wall clock (r128). lume.system.setTimeNtp() drives esp_netif_sntp's
+# bounded synchronous wait, so one server slot (the default pool.ntp.org) is
+# enough; keeping the count at 1 minimises the flash/runtime footprint. The
+# 1h update delay bounds periodic resync traffic if SNTP is left running by
+# another caller. IRAM: SNTP runs entirely on the tcpip task in flash, so the
+# 16384/16384 IRAM budget stays at Remain 0.
+CONFIG_LWIP_SNTP_MAX_SERVERS=1
+CONFIG_LWIP_SNTP_UPDATE_DELAY=3600000

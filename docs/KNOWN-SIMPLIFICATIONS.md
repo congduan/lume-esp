@@ -1951,3 +1951,38 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `check_website.py` missing/invented/duplicates 均 none；三个 `--no-emu` 哨兵 PASS；
   playground 45 bundles PASS；`git diff 67b635f -- firmware/ runtime/` 为空故未跑 `idf.py build`。
   固件 / runtime 源码零改动。
+
+## r128 — SNTP 时间同步 / `lume.system.time()`（固件刀，未接板）
+
+- **时间单位 = unix 毫秒**：`time()` 用 `gettimeofday()` 取秒+微秒后拼成毫秒，
+  `JS_NewInt64` 在 int32 外退化为 float64；当前纪元毫秒约 1.7e12，远小于 2^53，
+  浮点表示仍精确，且与 `Date.now()` 同单位。未同步时返回的是从 1970 起算的**真实**
+  小值（不伪造一个看似合理的年份）；调用方应把过小的值当作「时钟尚未校准」。
+- **默认 server 选择 `pool.ntp.org`**：通用、DNS 多 IP、无单点；注释与 d.ts 明确提示
+  CN 网络可显式传 `ntp.aliyun.com`。`CONFIG_LWIP_SNTP_MAX_SERVERS=1` 只留一个槽位以
+  压缩体积；需要多 server 时须改 sdkconfig 并重新走固件验收（本轮未做）。
+- **同步阻塞口径**：`setTimeNtp()` 通过 `esp_netif_sntp_sync_wait()` 同步等待，最长
+  持有引擎任务 `timeoutMs`（默认 10 s、上限 30 s），期间 touch、热更新与 UI 刷新全部
+  停顿——与 `lume.net.httpGet` 同款取舍。异步/callback 版本未做。负 timeout 抛
+  `RangeError`、非字符串 server 抛 `TypeError`；0 回落到 10 s 默认。返回码 -1 非法
+  server、-2 SNTP init/传输/超时、-3 WiFi 无可用 IPv4（`lume_net_has_ip()` 门控）。
+- **幂等与时钟持久化**：每次调用先 `esp_netif_sntp_deinit()`（未初始化时空操作）再
+  `init()`，返回前再次 `deinit()`，因此重复调用只是重新对时；`settimeofday()` 由 lwip
+  SNTP 在收到同步包时完成，`deinit` 不会回退已设的时钟。`CONFIG_LWIP_SNTP_STARTUP_DELAY`
+  保持 IDF 默认（首次请求随机延迟 <=5 s），慢网下 10 s 默认可能偏紧，可显式加大到
+  30 s 上限；真机延迟分布未实测。
+- **真机 SNTP 实测 deferred**：宿主 harness 只做静态契约/注册/错误码/阻塞注释断言 +
+  变异实证，主机无电台、无 NTP 包。DNS 解析、SNTP 往返、`settimeofday()` 后
+  `Date.now()` 是否真的跳到正确年份、TLS 证书校验能否因此从 `httpsInsecure` 切回
+  安全模式、功耗/启动延迟，全部留接板轮；本轮验收口径 = 编译绿 + IRAM Remain 0 +
+  harness + 契约自洽，**不声称真机验证**。
+- **轮次哨兵适配**：r126/r127 的 sd_gallery/sd_files harness 含「firmware/ 与 runtime/
+  相对旧基线零 diff」的 app-only 轮次哨兵。r128 是固件刀，该不变量按设计失效；
+  两个 harness 改为「相对 r127 基线 040fc11，firmware/ 与 runtime/ 仅允许 r128 已知
+  文件变更」的 allowlist，保留防误改作用，未删断言。worktree 缺 gitignore 的
+  `tools/lume/bin/qjsc`，从主仓复制该测试工具使 `npm test` 回到 50/0/0，源码零改动。
+- **验证 / 诚实口径**：`tests/sntp.js` 24 PASS + 9 变异实证 PASS；全量宿主回归 0 FAIL；
+  `npm test --prefix tools/lume` 50/0/0；`check_website.py` missing/invented/duplicates 均
+  none；`lume check examples/counter --no-emu` `RESULT: PASS`；playground 47 行 PASS；
+  `idf.py build` + `idf.py size` 绿，`BUILD_EXIT=0`，Flash Code 2041168、IRAM
+  16384/16384 Remain 0（硬线达标）、DIRAM 247491 (72.42%)。未跑 codex review。

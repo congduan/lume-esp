@@ -223,6 +223,13 @@ function runApp(script, options = {}) {
     canvasInvalidate: (...args) => emit('invalidate', ...args),
     nativeAnimate: (...args) => { emit('animate', ...args); return ++token; },
     nativeAnimateCancel: (...args) => emit('cancelAnimate', ...args),
+    // r128: _nowMs is monotonic uptime on the device; in the host it is the
+    // wall clock too. _systemTime is the unix-ms wall clock -- the host has a
+    // real clock already, so no fake 1970 value is needed here.
+    _systemTime: () => Date.now(),
+    // No WiFi radio or SNTP daemon in the host: mirror the device's -3
+    // "WiFi not connected" state error. Harnesses can assert this contract.
+    _systemSetTimeNtp: (server, timeoutMs) => -3,
     _nowMs: () => Date.now(), log: (...args) => options.onLog?.(...args),
     warn: (...args) => options.onWarn?.(...args),
     // Host-side IMU stand-in: read() returns null (no sensor) unless a harness

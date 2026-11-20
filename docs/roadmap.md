@@ -2215,3 +2215,56 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   files）+ `PASS prelude 67016 bytes; 45 apps`。
 - `git diff 67b635f -- firmware/ runtime/` 为空 → 未跑 `idf.py build`。
 详见 docs/KNOWN-SIMPLIFICATIONS.md r127 节。roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
+
+### r128 result — SNTP 时间同步 + `lume.system.time()`（固件刀；appended, milestone checkboxes untouched）
+
+基线 `040fc11`（r127 files SD 浏览）；worktree `/tmp/lume-r128-wt`、分支
+`r128-sntp-time`；开工前 `lume_model_guard.sh` 绿、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- 简报假设 `lume_engine.c` 有 `lume.system` natives 注册块——实证为**假**：
+  `lume.system` 是 JS prelude 对象（`lume_scripts.c:464`），`setTimeout`/`setInterval`
+  是纯 JS（靠 `lume._nowMs()`，而 `_nowMs` 是单调 `esp_timer`，**非** unix 时间）。
+  故沿用 `_nowMs` / `power._sleepNow` 的既有模式：C 侧注册 `_systemTime` /
+  `_systemSetTimeNtp` 到 `lume`，prelude 里包成 `lume.system.time()` / `setTimeNtp()`。
+- `quickjs.c:57763 date_now()` → `js__gettimeofday_us()/1000` → `gettimeofday()`
+  （`cutils.h:1626`）；lwip `sntp_sync_time()` 在 immediate 模式调 `settimeofday()`。
+  因此同步成功后 `Date.now()` 自动正确，无需改 QuickJS。
+- `esp_netif_sntp.h` 在 ESP-IDF v5.5.5 可用，`esp_netif_sntp_sync_wait()` 存在；
+  生成 `sdkconfig` 中 `CONFIG_LWIP_SNTP_MAX_SERVERS=1` 已是默认，未降级到 lwip 裸 API。
+  代价/取舍见 docs/KNOWN-SIMPLIFICATIONS.md r128 节。
+
+**实现**（固件 + d.ts + 宿主桩 + harness + docs；examples 不重构）：
+- `lume.system.time()`：`gettimeofday()` 的 unix **毫秒**（`JS_NewInt64`；未同步时返回
+  1970 起真实小值，不伪造）。`setTimeNtp(server?, timeoutMs?)`：`esp_netif_sntp_init()`
+  + `esp_netif_sntp_sync_wait()` 有界等待，默认 server `pool.ntp.org`、默认 10 s、上限
+  30 s；负值 timeout 抛 `RangeError`、非字符串 server 抛 `TypeError`。返回 0 / -1 参数 /
+  -2 传输或超时 / -3 WiFi 无 IP（`lume_net_has_ip()` 门控）。每次调用先 `deinit` 再
+  `init`、返回前再 `deinit`，重复调用幂等重同步。**同步阻塞引擎任务**，UI/touch/
+  热更新停顿（d.ts 与 C 注释均如实写明，同 httpGet 先例）。新代码无 `IRAM_ATTR`。
+- `sdkconfig.defaults` 显式 `CONFIG_LWIP_SNTP_MAX_SERVERS=1` +
+  `CONFIG_LWIP_SNTP_UPDATE_DELAY=3600000`；engine `CMakeLists.txt` 加 `esp_netif`。
+- d.ts 追加两个契约；`gen_api_docs.py` 重生成 152 行，`--check` 输出
+  `api.html is up to date with lume.d.ts (152 entries)`。
+- 宿主桩：`tests/lib/prelude_runner.js` 与 `website/playground/runtime.js` 补
+  `_systemTime: () => Date.now()`、`_systemSetTimeNtp: (...) => -3`（browser/host 无电台，
+  照实返回 -3）；`npm run build:playground` 重生成 `prelude.js`。
+
+**验证**（真机 SNTP 实测 deferred；不声称真机验证）：
+- `node tests/sntp.js`：24 契约 PASS + **9 项变异实证 PASS**（删 d.ts 声明、改错误码、
+  删 C 注册、去 sync_wait、改默认 server、去 sdkconfig 项、删 prelude wrapper、删宿主桩
+  均必须 FAIL）。
+- `for t in tests/*.js; do ... done`：0 FAIL（r126/r127 的「firmware/runtime 零 diff」
+  轮次哨兵改为「仅允许 r128 已知文件变更」的 allowlist，因本轮本就是固件刀）。
+- `npm test --prefix tools/lume`：pass 50 / fail 0 / skipped 0（worktree 缺 gitignore 的
+  `tools/lume/bin/qjsc`，从主仓复制该测试工具后对齐基线，源码零改动）。
+- `python3 scripts/check_website.py`：missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check examples/counter --no-emu`：`RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume`：45 bundles + 2 summary，共 47 行 PASS。
+- **固件构建（本轮必跑）**：`BUILD_EXIT=0`，原始 size 表：
+  `Flash Code 2041168`、`Flash Data 853084`、`DIRAM 247491 (72.42%, Remain 94269)`、
+  `IRAM 16384 (100.0%, **Remain 0**)`、`Total image size 3036023 bytes`、
+  `lume.bin ... 0x35ac10 bytes (54%) free`。`grep -c "error:"` = 0；无 SNTP/time 相关警告。
+  日志仅留 `/tmp/lume-r128-idf-build.log`。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r128 节。本轮未跑 codex review（主控轮负责）。

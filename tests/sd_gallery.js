@@ -2,8 +2,8 @@
 //   node tests/sd_gallery.js
 // Static source assertions: the app really reads from lume.storage.Sd when a
 // card is mounted, degrades per image to the pre-existing Fs path, discriminates
-// statvfs()'s number error codes correctly, keeps UI copy ASCII-only (r64), and
-// leaves firmware/ and runtime/ byte-identical to the r125 baseline.
+// statvfs()'s number error codes correctly and keeps UI copy ASCII-only (r64).
+// The old app-only "zero firmware diff" guard is now an r128 allowlist.
 // No card on the host: nothing here proves a real SPI mount -- board acceptance
 // stays deferred.
 const fs = require('node:fs');
@@ -78,16 +78,28 @@ for (const s of stringLits) {
     'all app string literals (UI copy) must be ASCII-only: ' + JSON.stringify(s));
 }
 
-// --- 6. firmware/ + runtime/ untouched vs the r125 baseline --------------
-const diff = execFileSync('git', ['diff', '5be09c3', '--', 'firmware/', 'runtime/'],
-  { cwd: root, encoding: 'utf8' }).trim();
-assert.equal(diff, '',
-  'firmware/ and runtime/ must stay byte-identical to 5be09c3 (r126 is app-only)');
+// --- 6. round-scope guard: only r128's firmware files may differ ----------
+// r126 was an app-only round; r128 deliberately adds the SNTP/time natives,
+// so the old "zero firmware diff" sentinel is narrowed to an allowlist
+// instead of being deleted. Anything else under firmware/ or runtime/
+// changing vs the r127 baseline still fails this harness.
+const R128_FIRMWARE_FILES = [
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_scripts.c',
+  'firmware/sdkconfig.defaults',
+  'runtime/types/lume.d.ts',
+];
+const diffFiles = execFileSync('git', ['diff', '--name-only', '040fc11',
+  '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
+const changed = diffFiles ? diffFiles.split('\n') : [];
+assert.ok(changed.every(f => R128_FIRMWARE_FILES.includes(f)),
+  'only r128 firmware files may differ from 040fc11: ' + changed.join(', '));
 
 console.log('PASS sd_gallery: Sd-first read path wired before Fs fallback');
 console.log('PASS sd_gallery: per-image try/catch degrades one image only');
 console.log('PASS sd_gallery: Fs fallback + embedded red PNG intact');
 console.log('PASS sd_gallery: statvfs error-code discrimination + integer MB HUD');
 console.log('PASS sd_gallery: all app string literals ASCII-only (r64)');
-console.log('PASS sd_gallery: firmware/ runtime/ zero diff vs 5be09c3');
+console.log('PASS sd_gallery: firmware/ runtime/ differ only in r128 files vs 040fc11');
 console.log('ALL SD GALLERY HARNESS CASES PASSED');

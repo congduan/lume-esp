@@ -215,6 +215,12 @@
     canvasInvalidate: (...args) => emit('invalidate', ...args),
     nativeAnimate: (...args) => { emit('animate', ...args); return ++token; },
     nativeAnimateCancel: (...args) => emit('cancelAnimate', ...args),
+    // r128 browser semantics: there is no SNTP daemon / WiFi station here,
+    // but Date.now() is already the wall clock. time() returns it directly;
+    // setTimeNtp() mirrors the firmware -3 "WiFi not connected" state error
+    // rather than pretending to sync the browser's clock.
+    _systemTime: () => Date.now(),
+    _systemSetTimeNtp: (server, timeoutMs) => -3,
     _nowMs: () => Date.now(), log: (...args) => options.onLog?.(...args),
     warn: (...args) => options.onWarn?.(...args),
     // Host-side IMU stand-in: read() returns null (no sensor) unless a harness
