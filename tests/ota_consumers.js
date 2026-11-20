@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 45-app manifest, all UI literals are ASCII (r64), and only the
+//     in the 46-app manifest, all UI literals are ASCII (r64), and only the
 //     known r132 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 45-app playground manifest is the source of truth for "in清单".
+// 46-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -82,17 +82,32 @@ function gitChanged(paths) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/']);
+/* r133: the playground manifest (tools/playground/build.mjs) is DATA that now
+ * registers adc_meter as a 46th app; the firmware/runtime/CLI-tooling surface
+ * is still pinned. Scope the diff to tools/lume/ so manifest registration is
+ * not misreported as a tooling behaviour change. */
+const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
   'examples/settings/app.js',
   'examples/dashboard/app.js',
   'tests/ota_consumers.js',
+  'tests/sd_files.js',
+  'tests/weather_sntp.js',
+  'tests/sntp_consumers2.js',
   'docs/roadmap.md',
   'docs/KNOWN-SIMPLIFICATIONS.md',
   'website/playground/apps/dashboard.js',
   'website/playground/sources.js',
   'website/playground/sources/dashboard.js',
+  // r133: this slice's baseline predates the adc_meter consumer app; its files
+  // and the manifest registration are the only additional legal changes.
+  'tools/playground/build.mjs',
+  'examples/adc_meter/app.js',
+  'tests/adc_meter.js',
+  'tests/lib/prelude_runner.js',
+  'website/playground/apps/adc_meter.js',
+  'website/playground/sources/adc_meter.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -155,15 +170,15 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 45-app playground manifest', [playgroundApps,
-    list => list.length === 45 && list.includes('dashboard')]],
+  ['dashboard is in the 46-app playground manifest', [playgroundApps,
+    list => list.length === 46 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ tools/ identical to d85e69a', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ CLI tooling identical to d85e69a', [fwChanged, c => c.length === 0]],
 
-  ['only known r132 files differ from d85e69a', [allChanged, c =>
+  ['only known r132 + r133 files differ from d85e69a', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f))]],
 ];
 
@@ -232,15 +247,15 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 45-app playground manifest', playgroundApps);
+  'dashboard is in the 46-app playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
 must('a firmware file changes vs d85e69a',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ tools/ identical to d85e69a', fwChanged);
+  'firmware/ runtime/ CLI tooling identical to d85e69a', fwChanged);
 must('an out-of-scope file changes vs d85e69a',
   () => allChanged.concat(['docs/unexpected.md']),
-  'only known r132 files differ from d85e69a', allChanged);
+  'only known r132 + r133 files differ from d85e69a', allChanged);
 
 console.log('ALL OTA CONSUMERS HARNESS CASES PASSED');

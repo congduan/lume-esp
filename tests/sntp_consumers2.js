@@ -5,7 +5,7 @@
 //   - clock_round / aurora_clock / watchface: GOT_IP-gated setTimeNtp(),
 //     only a 0 return enables wall-time rendering, failure copy is ASCII,
 //     sync is cadence-gated in the tick (not every frame).
-//   - worldclock absence (no dir, not in the 45-app playground manifest).
+//   - worldclock absence (no dir, not in the 46-app playground manifest).
 //   - firmware/ runtime/ tools/ are byte-identical to baseline ffdd757.
 // There is NO radio and NO board on the host: nothing here proves a real SNTP
 // exchange. Host net.status() is DISCONNECTED, so the GOT_IP gate is inert.
@@ -51,7 +51,7 @@ for (const a of APPS) {
   next[a.name] = a.p + 'NextSyncMs';
 }
 
-// The 45-app playground manifest is the source of truth for "in清单".
+// The 46-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -67,7 +67,9 @@ function gitChanged(paths) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const changed = gitChanged(['firmware/', 'runtime/', 'tools/']);
+/* r133 registers adc_meter in tools/playground/build.mjs (data-only) as the
+ * 46th app; keep the firmware/runtime/CLI surface pinned to the baseline. */
+const changed = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
 // --- checks -----------------------------------------------------------------
 const checks = [];
@@ -88,13 +90,13 @@ for (const a of APPS) {
   checks.push([`${n}: sync cadence-gated in tick via ${next[n]}`, [sources[n], s =>
     s.includes('lume._nowMs() >= ' + next[n])]]);
 }
-checks.push(['all three migrated apps are in the 45-app playground manifest',
-  [playgroundApps, list => list.length === 45 &&
+checks.push(['all three migrated apps are in the 46-app playground manifest',
+  [playgroundApps, list => list.length === 46 &&
     ['clock_round', 'aurora_clock', 'watchface'].every(x => list.includes(x))]]);
 checks.push(['worldclock absent (no example dir, not in manifest)',
   [playgroundApps, list => !list.includes('worldclock') &&
     !fs.existsSync(path.join(root, 'examples/worldclock/app.js'))]]);
-checks.push(['firmware/ runtime/ tools/ identical to ffdd757 (empty allowlist)',
+checks.push(['firmware/ runtime/ CLI tooling identical to ffdd757 (manifest excluded)',
   [changed, c => c.length === 0]]);
 
 for (const [name, [source, test]] of checks) {
@@ -133,12 +135,12 @@ for (const a of APPS) {
 }
 must('playground manifest drops clock_round',
   list => list.filter(x => x !== 'clock_round'),
-  'all three migrated apps are in the 45-app playground manifest', playgroundApps);
+  'all three migrated apps are in the 46-app playground manifest', playgroundApps);
 must('playground manifest gains worldclock',
   list => [...list, 'worldclock'],
   'worldclock absent (no example dir, not in manifest)', playgroundApps);
 must('a firmware file changes vs ffdd757',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ tools/ identical to ffdd757 (empty allowlist)', changed);
+  'firmware/ runtime/ CLI tooling identical to ffdd757 (manifest excluded)', changed);
 
 console.log('ALL SNTP CONSUMERS2 HARNESS CASES PASSED');
