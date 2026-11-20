@@ -1890,3 +1890,25 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   missing/invented/duplicates 均 none、两个 `--no-emu` 哨兵 PASS、playground 生成物随提交。
   **真机按住手感 / 时延 / 双 DMA 并发 deferred to board，未声称真机验证。固件 / runtime
   源码零改动**（实证过程未触及需改固件的边界，故未构建 / 未贴 size）。
+
+## r126 — image_gallery 的 Sd-first 读图（纯 app 层；零固件 / 零 runtime，无真机插卡）
+
+- **Sd→Fs 逐图降级语义**：`Sd.mounted() !== true` 时三张图全部走原 `Fs.readBinary`
+  （即 r125 之前的行为不变）；卡已挂载但某张读回 -2/-3 或抛错时，仅该张回退 Fs；
+  Fs 也读不到则该张不出 tile。内嵌 1×1 红 PNG 的 head tile 始终存在，因此即使三张
+  卡图与 Fs 图全丢，eval 仍产出一个 tile。每张图各自 try/catch，外层 main() 仍留兜底
+  catch，单张失败不拖垮整个 eval。
+- **HUD 换算取整口径**：`Sd.statvfs()` 成功返回 `{total,free}` 字节，按 1 MiB=1048576 B
+  `Math.floor` 截断成整数 MB，不四舍五入、不显示小数；返回 number（-2 IO / -3 无卡等）
+  显示 `NO CARD`；Sd API 缺失或 statvfs 抛错时该 HUD 行不渲染（防御，理论不会发生）。
+  容量口径是卡文件系统的总/剩余字节，未做簇对齐之外的额外修正。
+- **真机插卡验收 deferred**：宿主 harness 只做源码静态断言，主机无卡；SPI 挂载、真实
+  `/gallery/*` 文件、读速、容量与掉电持久性均未在板上验证，不声称真机验证。
+- **playground 清单实证纠偏**：简报称 image_gallery 在 43-app 列表内，实证
+  `tools/playground/build.mjs` 的 43 项不含它、`website/playground/` 无其产物。本轮未改
+  build.mjs（守纯 app 层 / 范围控制），故 playground 重建无 image_gallery 生成物；若需
+  该 app 的 playground 版本，须另刀把 id 加入清单并重建。
+- **验证 / 诚实口径**：`tests/sd_gallery.js` 6 PASS 且关键断言变异实测非空；全量宿主回归
+  0 FAIL；`npm test --prefix tools/lume` 50/0 不回归；`check_website.py` missing/invented/
+  duplicates 均 none；两个 `--no-emu` 哨兵 PASS；playground 43 bundles PASS；
+  `git diff 5be09c3 -- firmware/ runtime/` 为空故未跑 `idf.py build`。固件 / runtime 源码零改动。
