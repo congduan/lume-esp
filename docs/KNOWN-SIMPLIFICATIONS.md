@@ -2073,3 +2073,30 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `RESULT: PASS`；playground 47 行 PASS（45 bundles + 2 summary，含 `weather 8080 bytes`）。
   `git diff 1dc7c76 HEAD -- firmware/ runtime/ tools/` 及工作树 diff 均为空，固件零改动故
   未跑 `idf.py build`；磁盘 88%，本轮日志落 `/tmp`，artifacts 未新增大件。未跑 codex review。
+
+## r132 — OTA 消费方取舍（app-only，基线 d85e69a）
+
+- **Math.random 非安全随机**：设备端没有 `crypto.getRandomValues`，「New token」用
+  `Math.random()` 拼 32 个小写 hex。它不是 CSPRNG，熵与不可预测性不满足密码学密钥生成
+  要求；当前靠 OTA 通道的 HMAC-SHA256 challenge-response 与 LAN 边界兜底。这是被接受的
+  已知简化，不应被误读为「安全随机」；若后续固件提供 CSPRNG 绑定，应替换来源并同步更新
+  `tests/ota_consumers.js` 的生成模式断言。
+- **token 不上屏**：`OtaStatus.token`（32 hex）只在本地快照与串口 log 出现；settings 与
+  dashboard 均不读取该字段，状态行只显示 `running` / `port` / `hmac` / `tokenReady` 的派生
+  文案。屏幕截图、远程协助不会泄露 key；代价是用户无法在设备上肉眼核对 token，需从串口
+  读取。
+- **两段确认的有意摩擦**：`New token` 首点只 arm（3 s 窗口，标题变 `Confirm new token?`），
+  再点才真正轮换并写 NVS，避免误触导致 OTA 通道短暂不可用；超时自动撤销。失败只显示
+  ASCII 错误码，不伪造成功状态。
+- **真机 OTA 端到端 deferred**：本轮全部为宿主源码静态断言 + 变异实证，加一次有限运行时
+  烟测（patched 桩验证两次按压才调用一次 `setToken`、生成 32 hex、token 不进任何 UI attr
+  消息）。真实 WiFi GOT_IP 自动起监听、HMAC 握手、`setToken()` 写 NVS 后的持久化与重启
+  恢复、真机推包全部留接板轮。**不声称真机验证**。
+- **dashboard SYSTEM 行预算**：SYSTEM canvas 由 9 行增至 10 行、分隔线 8→9，第 10 行
+  y=332（底边 346 < H=360）；未新增 canvas、未改 14 px 文本布局、未扩页高，行数硬断言
+  落在 harness 中。
+- **验证 / 诚实口径**：`tests/ota_consumers.js` 19 PASS + 19 变异实证 PASS；全量宿主
+  harness 0 FAIL；`npm test` 50/0/0；`check_website.py` 三项 none；`lume check` settings /
+  counter / dashboard `--no-emu` 均 `RESULT: PASS`；playground 47 行 PASS。
+  `git diff d85e69a HEAD -- firmware/ runtime/ tools/` 及工作树 diff 均为空，固件零改动故
+  未跑 `idf.py build`；磁盘 88%，本轮日志落 `/tmp`。未跑 codex review。

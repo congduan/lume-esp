@@ -4,7 +4,7 @@
  *
  *   page 0  GAUGE   battery ring + power/temperature readouts
  *   page 1  TRACE   live 3-axis accelerometer strip chart (5 Hz)
- *   page 2  SYSTEM  device inventory + radio/storage state
+ *   page 2  SYSTEM  device inventory + radio/storage state + OTA listener
  *
  * Canvas is the only drawing surface available to apps besides Views (and its
  * text is fixed at 14 px), so the "professional" look comes from layering:
@@ -70,10 +70,10 @@ function traceStaticLines() {
   return segs;
 }
 function systemStaticLines() {
-  /* readSlow() always publishes nine info rows, so eight separators at fixed
-   * y positions. */
+  /* readSlow() always publishes ten info rows (r132: one more for OTA), so
+   * nine separators at fixed y positions. Row 9 lands at y=332, inside H=360. */
   var segs = [];
-  for (var i = 0; i < 8; i++) segs.push([16, 82 + i * 30, W - 16, 82 + i * 30]);
+  for (var i = 0; i < 9; i++) segs.push([16, 82 + i * 30, W - 16, 82 + i * 30]);
   return segs;
 }
 var STATIC_LINES = [gaugeStaticLines(), traceStaticLines(), systemStaticLines()];
@@ -110,6 +110,7 @@ var bleProbed = false;
 var bleReady = false;
 var radioText = 'off';
 var storageText = '--';
+var otaText = 'ota off';   /* r132: SYSTEM-page OTA listener status */
 
 /* --- canvas ------------------------------------------------------------- */
 
@@ -286,6 +287,19 @@ function readSlow() {
   storageText = (mounted === true ? 'fs ok' : 'fs --') +
     (typeof keys === 'object' && keys !== null ? ' ' + keys.length + ' kv' : '');
 
+  /* ---- r132: OTA status line BEGIN ---- */
+  /* Local snapshot only: a number return is an error code, not a status bag.
+   * The token field is never read -- it stays on the serial log. */
+  var ota = lume.ota.status();
+  if (typeof ota === 'object' && ota !== null) {
+    otaText = !ota.running ? 'ota off' :
+      (!ota.wifiReady ? 'ota wifi down' :
+       (!ota.tokenReady ? 'ota no token' : 'ota :' + ota.port + (ota.hmac ? ' hmac' : '')));
+  } else {
+    otaText = 'ota err ' + ota;
+  }
+  /* ---- r132: OTA status line END ---- */
+
   var shownPct = pct < 0 ? 0 : (pct > 100 ? 100 : pct);
   var voltsText = num(mv, 0) === '--' ? '--' : (mv / 1000).toFixed(2) + ' V';
   var vbusText = usb === 1 ? (vbus < 0 ? '--' : (vbus / 1000).toFixed(2) + ' V') : 'none';
@@ -306,7 +320,8 @@ function readSlow() {
     ['BLE', radioText],
     ['STORAGE', storageText],
     ['TEMP', tempText],
-    ['UPTIME', Math.floor((lume._nowMs() - startedMs) / 1000) + 's']
+    ['UPTIME', Math.floor((lume._nowMs() - startedMs) / 1000) + 's'],
+    ['OTA', otaText]   /* r132: 10th row, same canvas line layout */
   ];
 }
 var slow = { pct: 0, volts: '--', vbus: '--', charge: '--', temp: '--', info: [] };

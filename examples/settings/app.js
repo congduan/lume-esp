@@ -4,7 +4,8 @@
  *  NODE BUDGET: the firmware node table is LUME_MAX_NODES = 128 slots and the
  *  engine does NOT reject ids beyond it (creates are silently dropped on the
  *  LVGL side, leaving JS/UI diverged), so this app keeps its static tree at
- *  ~95 nodes and its two virtualized Lists add <= ~25 visible rows worst case.
+ *  ~98 nodes (incl. the r132 OTA status row) and its two virtualized Lists add
+ *  <= ~25 visible rows worst case.
  *  The on-screen keyboard is therefore 4 compact rows; BACK navigation uses
  *  the prelude's global gesture (swipe up) instead of per-page back buttons.
  *
@@ -25,6 +26,13 @@
  *    app advertises for a central; it cannot scan/pair/connect out to other
  *    devices. ble.status() WARNs on every call while NimBLE is down, so it is
  *    probed once (same as examples/device_monitor).
+ *  - r132 OTA consumer: lume.ota.status() is a LOCAL snapshot (running /
+ *    wifiReady / tokenReady / hmac / port / token). The 32-hex token appears
+ *    only on the serial log and is NEVER rendered on screen. The two-stage
+ *    "New token" button generates its replacement with Math.random() -- the
+ *    device has no crypto.getRandomValues, so the key is NOT cryptographically secure.
+ *    The channel still has HMAC challenge-response and a LAN boundary.
+ *    See docs/KNOWN-SIMPLIFICATIONS.md r132.
  *
  *  On-device acceptance (advertising, association, real scan results,
  *  coexistence, sleep current) is deferred to the board bring-up round -- a
@@ -88,6 +96,9 @@ var volNote = signal('');
 var powerConfirm = signal(false);
 var wifiBusy = signal('');         /* ssid while a connect attempt is running */
 var timeSyncLine = signal('TIME SYNC: --');  /* r129: General-page NTP status */
+var otaLine = signal('ota off');             /* r132: General-page OTA status */
+var otaNote = signal('');                    /* r132: transient setToken result */
+var otaConfirm = signal(false);              /* r132: New-token two-stage confirm */
 
 var savedNets = signal(loadSaved());
 var autoSsid = signal(function () {
@@ -400,6 +411,46 @@ function syncTimeNow() {
   else timeSyncLine.set('TIME SYNC: ERR ' + r);
 }
 
+/* ---- r132: OTA status + token rotation BEGIN (pure app layer) ----------------
+ * lume.ota.status() is a local snapshot; a number return is an error code, so
+ * discriminate with typeof === 'object'. The token field is deliberately never
+ * read here: the 32-hex key stays on the serial log, never on the display. */
+function otaStatusText() {
+  var st = lume.ota.status();
+  if (!(typeof st === 'object') || st === null) return 'ota err ' + st;
+  if (!st.running) return 'ota off';
+  if (!st.wifiReady) return 'ota wifi down';
+  if (!st.tokenReady) return 'ota no token';
+  return 'ota :' + st.port + (st.hmac ? ' hmac' : '');
+}
+function refreshOta() { otaLine.set(otaStatusText()); }
+
+/* 32 lowercase hex chars. Math.random is NOT a CSPRNG; see header comment and
+ * docs/KNOWN-SIMPLIFICATIONS.md r132 for the accepted tradeoff. */
+function newOtaToken() {
+  var digits = '0123456789abcdef';
+  var out = '';
+  for (var i = 0; i < 32; i++) out += digits.charAt(Math.floor(Math.random() * 16));
+  return out;
+}
+
+var otaArmTimer = null;
+function rotateOtaToken() {
+  if (!otaConfirm()) {                       /* first tap: arm, do not rotate */
+    otaConfirm.set(true);
+    if (otaArmTimer !== null) lume.system.clearTimeout(otaArmTimer);
+    otaArmTimer = lume.system.setTimeout(function () { otaConfirm.set(false); }, 3000);
+    return;
+  }
+  otaConfirm.set(false);                     /* second tap: rotate */
+  if (otaArmTimer !== null) { lume.system.clearTimeout(otaArmTimer); otaArmTimer = null; }
+  var r = lume.ota.setToken(newOtaToken());   /* token never rendered on screen */
+  if (r !== 0) { otaNote.set('setToken err ' + r); return; }
+  otaNote.set('');
+  refreshOta();
+}
+/* ---- r132: OTA status + token rotation END ---- */
+
 /* ---- polling ------------------------------------------------------------------ */
 
 function pollWifi() {
@@ -420,6 +471,7 @@ function pollWifi() {
 }
 function pollOnce() {
   pollWifi();
+  refreshOta();                              /* r132: listener state at 600 ms */
 
   if (!bleProbed) {
     bleProbed = true;
@@ -636,6 +688,23 @@ var generalPage = View({ style: {
   infoRow('storage', function () {
     return storeLine() + (volNote() === '' ? '' : ' ' + volNote());
   }),
+  /* r132 OTA ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
+   * The Text shows status only; the full token never enters a render path.
+   * Kept BEFORE the r129 NTP row so the 3-node NTP slice stays isolated. */
+  View({ style: {
+    width: '100%', height: 44, background: 'surface',
+    display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', padding: 8, gap: 8, scroll: 'none'
+  } }, [
+    Text({ text: function () {
+      return otaLine() + (otaNote() === '' ? '' : ' ' + otaNote());
+    }, style: {} }),
+    Button({ title: function () {
+      return otaConfirm() ? 'Confirm new token?' : 'New token';
+    }, onPress: rotateOtaToken,
+      style: { width: 132, height: 34, borderRadius: 8 } })
+  ]),
+  /* r132 OTA ROW END */
   /* r129: NTP sync row -- exactly 3 new nodes (View + Text + Button). */
   View({ style: {
     width: '100%', height: 44, background: 'surface',
@@ -670,6 +739,7 @@ lume.app.onStart(function () {
   applyVolume(volume(), false);   /* restore persisted volume */
   autoConnect();
   timeSyncLine.set(timeSyncStatus());
+  refreshOta();
 });
 lume.app.onPause(function () {
   stopPolling();
@@ -678,6 +748,7 @@ lume.app.onPause(function () {
 lume.app.onResume(function () {
   startPolling();
   timeSyncLine.set(timeSyncStatus());
+  refreshOta();
 });
 lume.app.onBack(function () {
   if (kbOpen) { kbHide(); return true; }

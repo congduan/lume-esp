@@ -1,0 +1,246 @@
+// Host harness for the r132 OTA-consumer slice (pure app layer).
+// Standalone CommonJS:
+//   node tests/ota_consumers.js
+// Static source-contract checks only, every one mutation-proven below. The
+// `lume.ota` host stub exists but the UI paths need signal/lume bindings, so
+// this harness asserts the SOURCE of examples/settings/app.js and
+// examples/dashboard/app.js instead.
+//   - settings General page owns a 3-node OTA row driven by lume.ota.status()
+//     with typeof === 'object' discrimination (a number is an error code).
+//   - the 32-hex key is NEVER read: no `.token` / ['token'] anywhere in either
+//     app, so it cannot reach a Text or canvas text render path.
+//   - New token is two-stage (first tap arms a 3 s confirm, second tap rotates)
+//     and generates 32 lowercase hex chars with Math.random (non-CSPRNG,
+//     registered in the header + KNOWN-SIMPLIFICATIONS.md r132).
+//   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
+//     the 360 px page height.
+//   - dashboard playground generated source matches the example, dashboard is
+//     in the 45-app manifest, all UI literals are ASCII (r64), and only the
+//     known r132 files differ from the d85e69a baseline.
+// There is NO radio / board / real OTA push on the host: nothing here proves a
+// real token rotation or a real HMAC exchange. Deferred to board bring-up.
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const { execFileSync } = require('node:child_process');
+
+const root = path.resolve(__dirname, '..');
+const read = p => fs.readFileSync(path.join(root, p), 'utf8');
+const BASE = 'd85e69a';
+
+const settings = read('examples/settings/app.js');
+const dashboard = read('examples/dashboard/app.js');
+const both = settings + '\n---\n' + dashboard;
+
+const S_BEGIN = '/* ---- r132: OTA status + token rotation BEGIN';
+const S_END = '/* ---- r132: OTA status + token rotation END ---- */';
+const ROW_BEGIN = '/* r132 OTA ROW BEGIN';
+const ROW_END = '/* r132 OTA ROW END */';
+const D_BEGIN = '/* ---- r132: OTA status line BEGIN ---- */';
+const D_END = '/* ---- r132: OTA status line END ---- */';
+
+function sliceBetween(s, a, b) {
+  const i = s.indexOf(a);
+  assert.ok(i >= 0, 'missing start marker: ' + a);
+  const j = s.indexOf(b, i + a.length);
+  assert.ok(j >= 0, 'missing end marker: ' + b);
+  return s.slice(i, j + b.length);
+}
+
+const settingsOta = sliceBetween(settings, S_BEGIN, S_END);
+const otaRow = sliceBetween(settings, ROW_BEGIN, ROW_END);
+const dashOta = sliceBetween(dashboard, D_BEGIN, D_END);
+const header = settings.slice(0, settings.indexOf('var settingsTheme'));
+const pollSlice = sliceBetween(settings, 'function pollOnce()', 'function stopPolling()');
+
+// Text/canvas render paths must never be able to obtain the full key.
+function noTokenRead(s) {
+  return !/\.token\b/.test(s) && !/\[\s*['"]token['"]\s*\]/.test(s);
+}
+
+// String literals are the UI copy surface (comments are English here anyway).
+function literals(s) {
+  return [...s.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g)]
+    .map(m => (m[1] !== undefined ? m[1] : m[2]));
+}
+const lits = [...literals(settings), ...literals(dashboard)];
+
+// 45-app playground manifest is the source of truth for "in清单".
+const manifest = read('tools/playground/build.mjs');
+const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
+assert.ok(listBlock, 'playground app list not found');
+const playgroundApps = listBlock.split(',')
+  .map(x => x.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+const playgroundSrc = read('website/playground/sources/dashboard.js');
+
+function gitChanged(paths) {
+  const head = execFileSync('git',
+    ['diff', '--name-only', BASE, 'HEAD', '--', ...paths],
+    { cwd: root, encoding: 'utf8' }).trim();
+  const work = execFileSync('git',
+    ['diff', '--name-only', BASE, '--', ...paths],
+    { cwd: root, encoding: 'utf8' }).trim();
+  return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
+}
+const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/']);
+const allChanged = gitChanged([]);
+const ALLOWED = [
+  'examples/settings/app.js',
+  'examples/dashboard/app.js',
+  'tests/ota_consumers.js',
+  'docs/roadmap.md',
+  'docs/KNOWN-SIMPLIFICATIONS.md',
+  'website/playground/apps/dashboard.js',
+  'website/playground/sources.js',
+  'website/playground/sources/dashboard.js',
+];
+
+// --- checks -----------------------------------------------------------------
+// Each entry: [name, [sourceToTest, predicate]]. Mutation proof calls the same
+// predicate on a mutated copy, so every assertion is load-bearing.
+const checks = [
+  ['OTA helper reads lume.ota.status() locally', [settingsOta, s =>
+    s.includes('var st = lume.ota.status();')]],
+
+  ['number return discriminated via typeof === object, ASCII err code', [settingsOta, s =>
+    s.includes("typeof st === 'object'") && s.includes("'ota err ' + st")]],
+
+  ['four flags + port rendered; .token / [token] never read in either app', [both, s =>
+    ['st.running', 'st.wifiReady', 'st.tokenReady', 'st.port', 'st.hmac']
+      .every(k => s.includes(k)) && noTokenRead(s)]],
+
+  ['OTA row is exactly View + Text + Button (3 nodes)', [otaRow, s =>
+    /View\(\{/.test(s) && /Text\(\{ text: function \(\)/.test(s) && /Button\(\{/.test(s)]],
+
+  ['row Text shows only status; New-token title flips on confirm', [otaRow, s =>
+    s.includes('otaLine()') &&
+    s.includes("otaConfirm() ? 'Confirm new token?' : 'New token'") &&
+    noTokenRead(s)]],
+
+  ['setToken sits after the two-stage confirm gate', [settingsOta, s =>
+    s.includes('if (!otaConfirm())') &&
+    s.indexOf('if (!otaConfirm())') < s.indexOf('lume.ota.setToken(')]],
+
+  ['first tap arms a 3 s confirm and returns before setToken', [settingsOta, s => {
+    const gate = s.indexOf('if (!otaConfirm())');
+    const ret = s.indexOf('return;', gate);
+    const call = s.indexOf('lume.ota.setToken(');
+    const timer = s.indexOf('otaConfirm.set(false); }, 3000)', gate);
+    return gate >= 0 && ret > gate && call > ret && timer > gate && timer < call;
+  }]],
+
+  ['replacement token is 32 lowercase hex chars from Math.random', [settingsOta, s =>
+    s.includes("'0123456789abcdef'") && s.includes('Math.random() * 16') &&
+    s.includes('i < 32')]],
+
+  ['setToken failure renders ASCII code; success refreshes status', [settingsOta, s =>
+    s.includes("'setToken err ' + r") && s.includes('refreshOta();')]],
+
+  ['600 ms poll refreshes OTA status', [pollSlice, s =>
+    s.includes('refreshOta();') && s.includes('lume.system.setInterval(pollOnce, 600)')]],
+
+  ['header registers Math.random as NOT cryptographically secure', [header, s =>
+    s.includes('Math.random') && s.includes('NOT cryptographically secure')]],
+
+  ['dashboard SYSTEM reads status() with typeof === object discrimination', [dashOta, s =>
+    s.includes('lume.ota.status()') && s.includes("typeof ota === 'object'") &&
+    s.includes("'ota err ' + ota")]],
+
+  ['dashboard publishes OTA row with 9 separators inside 360 px', [dashboard, s =>
+    s.includes("['OTA', otaText]") &&
+    /function systemStaticLines\(\)[\s\S]*?for \(var i = 0; i < 9; i\+\+\) segs\.push\(\[16, 82 \+ i \* 30/.test(s)]],
+
+  ['dashboard OTA line never reads token', [dashOta, s => noTokenRead(s)]],
+
+  ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
+    s === dashboard]],
+
+  ['dashboard is in the 45-app playground manifest', [playgroundApps,
+    list => list.length === 45 && list.includes('dashboard')]],
+
+  ['all UI string literals ASCII-only (r64)', [lits,
+    arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
+
+  ['firmware/ runtime/ tools/ identical to d85e69a', [fwChanged, c => c.length === 0]],
+
+  ['only known r132 files differ from d85e69a', [allChanged, c =>
+    c.length > 0 && c.every(f => ALLOWED.includes(f))]],
+];
+
+for (const [name, [src, test]] of checks) {
+  assert.ok(test(src), 'FAIL ota_consumers: ' + name);
+  console.log('PASS ota_consumers: ' + name);
+}
+
+// --- mutation proof: every assertion MUST fail when its contract is removed --
+function must(name, mutation, checkName, sourceForCheck) {
+  const mutated = mutation(sourceForCheck);
+  assert.notEqual(mutated, sourceForCheck, 'mutation did not change source: ' + name);
+  const found = checks.find(([n]) => n === checkName);
+  assert.ok(found, 'unknown check: ' + checkName);
+  assert.equal(found[1][1](mutated), false,
+               'assertion is decorative; mutation did not FAIL: ' + name);
+  console.log('PASS ota_consumers mutation: ' + name + ' -> FAIL as expected');
+}
+
+must('drop the lume.ota.status() read',
+  s => s.replace('var st = lume.ota.status();', 'var st = null;'),
+  'OTA helper reads lume.ota.status() locally', settingsOta);
+must('truthy test replaces typeof === object discrimination',
+  s => s.replace("typeof st === 'object'", 'st'),
+  'number return discriminated via typeof === object, ASCII err code', settingsOta);
+must('render the full token straight into the status text',
+  s => s.replace('otaLine()', 'otaLine() + st.token'),
+  'four flags + port rendered; .token / [token] never read in either app', both);
+must('drop the OTA row Text',
+  s => s.replace('Text({ text: function ()', 'Dummy({ text: function ()'),
+  'OTA row is exactly View + Text + Button (3 nodes)', otaRow);
+must('New-token button never flips to Confirm',
+  s => s.replace("otaConfirm() ? 'Confirm new token?' : 'New token'", "'New token'"),
+  'row Text shows only status; New-token title flips on confirm', otaRow);
+must('setToken moves before the confirm gate',
+  s => s.replace('if (!otaConfirm())',
+                 'lume.ota.setToken(newOtaToken()); if (false)'),
+  'setToken sits after the two-stage confirm gate', settingsOta);
+must('first tap no longer returns before setToken',
+  s => s.replace('    return;\n  }\n  otaConfirm.set(false);',
+                 '  }\n  otaConfirm.set(false);'),
+  'first tap arms a 3 s confirm and returns before setToken', settingsOta);
+must('token length shrinks from 32 to 16 hex chars',
+  s => s.replace('i < 32', 'i < 16'),
+  'replacement token is 32 lowercase hex chars from Math.random', settingsOta);
+must('setToken failure loses its ASCII return code',
+  s => s.replace("'setToken err ' + r", "'setToken err'"),
+  'setToken failure renders ASCII code; success refreshes status', settingsOta);
+must('poll no longer refreshes OTA status',
+  s => s.replace('refreshOta();', ''),
+  '600 ms poll refreshes OTA status', pollSlice);
+must('header drops the non-CSPRNG registration',
+  s => s.replace('NOT cryptographically secure', 'cryptographically secure'),
+  'header registers Math.random as NOT cryptographically secure', header);
+must('dashboard truthy test replaces typeof === object',
+  s => s.replace("typeof ota === 'object'", 'ota'),
+  'dashboard SYSTEM reads status() with typeof === object discrimination', dashOta);
+must('dashboard separators revert to 8',
+  s => s.replace('i < 9', 'i < 8'),
+  'dashboard publishes OTA row with 9 separators inside 360 px', dashboard);
+must('dashboard renders the full token on canvas',
+  s => s.replace("'ota off'", "'ota ' + ota.token"),
+  'dashboard OTA line never reads token', dashOta);
+must('playground generated source drifts from the example',
+  s => s + '\n// drift',
+  'playground sources/dashboard.js byte-identical to example', playgroundSrc);
+must('playground manifest drops dashboard',
+  list => list.filter(x => x !== 'dashboard'),
+  'dashboard is in the 45-app playground manifest', playgroundApps);
+must('a non-ASCII UI literal slips in',
+  arr => arr.concat('中'),
+  'all UI string literals ASCII-only (r64)', lits);
+must('a firmware file changes vs d85e69a',
+  () => ['firmware/components/lume-engine/lume_engine.c'],
+  'firmware/ runtime/ tools/ identical to d85e69a', fwChanged);
+must('an out-of-scope file changes vs d85e69a',
+  () => allChanged.concat(['docs/unexpected.md']),
+  'only known r132 files differ from d85e69a', allChanged);
+
+console.log('ALL OTA CONSUMERS HARNESS CASES PASSED');
