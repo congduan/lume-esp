@@ -12,11 +12,13 @@
  *   weather.city              —— 可选，JSON：{"name":"上海","lat":31.23,"lon":121.47}
  *   weather.insecure          —— 可选，true/1 时跳过 TLS 证书校验（见下方说明）
  *
- * TLS 注意：固件用 ESP-IDF 的证书 bundle 校验服务器证书，证书有效期依赖系统时钟。
- * 没有 SNTP/设时 API，RTC 未同步时 https 请求会失败（通常返回 -2）。两种解决方式：
- *   1) 先让设备拿到正确时间（后续轮次补 SNTP），再正常刷新；
- *   2) 写 Kv weather.insecure=1 强制走 httpsInsecure 路径 —— 不校验证书，仅供受控环境。
- * 另外 httpGet() 是同步阻塞调用，请求期间触摸与热重载会被卡住（固件已知限制）。
+ * TLS / 校时：固件用 ESP-IDF 证书 bundle 校验服务器证书，证书有效期依赖系统时钟。
+ * r131 起刷新走 SNTP-first：墙钟未设置（time() < 2026-01-01）时先 lume.system.setTimeNtp()
+ * 校时，成功才发 verified HTTPS；校时失败则不发请求、保留演示数据（失败 60s 内不重试）。
+ * weather.insecure=1 是在无 SNTP 可达环境下的受控逃生口：跳过校时门控与证书校验，
+ * 行为与旧版一致，但安全性下降，不作为推荐做法。
+ * 另外 setTimeNtp() / httpGet() 都是同步阻塞调用，执行期间触摸与热重载会被卡住
+ * （固件已知限制）。
  */
 
 /* ---- 天气码 / 解析 / 格式化：纯函数，宿主 harness 直接测 ---- */
@@ -214,6 +216,11 @@ function netReady() {
   return typeof st === 'object' && st !== null && st.state === lume.net.GOT_IP;
 }
 
+/* r131: 冷启动 RTC 未同步时 time() 返回 1970 基点的小数值；早于 2026-01-01 视为未设置。 */
+var WEATHER_CLOCK_MIN_MS = 1767225600000; /* Date.parse('2026-01-01T00:00:00Z') */
+var WEATHER_SYNC_RETRY_MS = 60000;        /* 校时失败后 60s 内不重复尝试，避免连点卡引擎 */
+var lastSyncFailMs = 0;                   /* 域：lume._nowMs()；上次校时失败节拍 */
+
 function refresh() {
   if (busy()) return;
   if (!netReady()) {
@@ -224,15 +231,45 @@ function refresh() {
   }
   busy.set(true);
   status.set('正在获取…');
-  /* 先让 loading 文案落地，再进入同步 httpGet（它会阻塞引擎）。 */
+  /* 先让 loading 文案落地，再进入同步 setTimeNtp/httpGet（都会阻塞引擎）；
+   * 两段同步同处这一次 setTimeout 回调，顺序执行，不拆成两次阻塞段。 */
   lume.system.setTimeout(function () {
+    /* ---- r131: SNTP-first BEGIN ---- */
+    /* insecure 是显式逃生口：直接发请求，不走校时门控，行为不变。 */
+    var sys = lume.system;
+    if (!skipTls && sys && typeof sys.time === 'function' &&
+        sys.time() < WEATHER_CLOCK_MIN_MS) {
+      /* 墙钟未设置：先校时；节流窗口内不重试（setTimeNtp 是 BLOCKING 的）。 */
+      if (lume._nowMs() - lastSyncFailMs < WEATHER_SYNC_RETRY_MS) {
+        busy.set(false);
+        online.set(false);
+        data.set(DEMO);
+        status.set('校时失败，稍后重试');
+        return;
+      }
+      var r = -2;
+      if (typeof sys.setTimeNtp === 'function') {
+        try { r = sys.setTimeNtp(); } catch (e) { r = -2; }
+      }
+      if (r !== 0) {
+        lastSyncFailMs = lume._nowMs();
+        busy.set(false);
+        online.set(false);
+        data.set(DEMO);
+        /* 短文案带 ASCII 返回码，value 不伪造：校时失败就不发 HTTPS。 */
+        status.set('校时失败 ' + r + '，未发 HTTPS');
+        return;
+      }
+    }
+    /* ---- r131: SNTP-first END ---- */
     var res = fetchForecast(buildUrl(city.lat, city.lon));
     busy.set(false);
     if (typeof res === 'number') {
       online.set(false);
       data.set(DEMO);
-      /* 短文案：header 只有一行，长提示会被省略号截断（insecure 开关见文件头）。 */
-      status.set('请求失败 ' + res + (res === -2 && !skipTls ? ' · TLS 需校时' : ''));
+      /* 短文案：header 只有一行，长提示会被省略号截断（insecure 开关见文件头）。
+       * r131：校时失败已在上面拦截并单独提示；走到这里的 -2 是传输/TLS 问题。 */
+      status.set('请求失败 ' + res + (res === -2 && !skipTls ? ' · TLS 传输问题' : ''));
       return;
     }
     if (res.status !== 200) {
