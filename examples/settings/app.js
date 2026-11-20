@@ -87,6 +87,7 @@ var volume = signal(function () {
 var volNote = signal('');
 var powerConfirm = signal(false);
 var wifiBusy = signal('');         /* ssid while a connect attempt is running */
+var timeSyncLine = signal('TIME SYNC: --');  /* r129: General-page NTP status */
 
 var savedNets = signal(loadSaved());
 var autoSsid = signal(function () {
@@ -370,6 +371,35 @@ function powerOff() {
   lume.pmic.powerOff();
 }
 
+/* ---- r129: time sync (r128 lume.system.time / setTimeNtp primitives) ----------
+ * time() and Date.now() both read gettimeofday(), so a synced device shows
+ * them agreeing at a large wall epoch while a cold boot reports a small
+ * near-1970 value for both. The difference plus magnitude is an honest,
+ * radio-free "synced?" heuristic (ASCII copy, r64 discipline). */
+function timeSyncStatus() {
+  var t = lume.system.time(), d = Date.now();
+  if (typeof t !== 'number' || typeof d !== 'number') return 'TIME SYNC: NOT SYNCED';
+  if (Math.abs(t - d) > 5000) return 'TIME SYNC: NOT SYNCED';
+  return t > 1000000000000 ? 'TIME SYNC: NTP OK' : 'TIME SYNC: NOT SYNCED';
+}
+function syncTimeNow() {
+  var sys = lume.system;
+  if (!sys || typeof sys.setTimeNtp !== 'function') {
+    timeSyncLine.set('TIME SYNC: NO API');
+    return;
+  }
+  var st = lume.net.status();
+  if (typeof st !== 'object' || st === null || st.state !== lume.net.GOT_IP) {
+    timeSyncLine.set('TIME SYNC: NO WIFI');
+    return;
+  }
+  var r = sys.setTimeNtp();            /* default server / default 10 s */
+  if (r === 0) timeSyncLine.set('TIME SYNC: NTP OK');
+  else if (r === -2) timeSyncLine.set('TIME SYNC: SYNC FAILED');
+  else if (r === -3) timeSyncLine.set('TIME SYNC: NO WIFI');
+  else timeSyncLine.set('TIME SYNC: ERR ' + r);
+}
+
 /* ---- polling ------------------------------------------------------------------ */
 
 function pollWifi() {
@@ -606,6 +636,16 @@ var generalPage = View({ style: {
   infoRow('storage', function () {
     return storeLine() + (volNote() === '' ? '' : ' ' + volNote());
   }),
+  /* r129: NTP sync row -- exactly 3 new nodes (View + Text + Button). */
+  View({ style: {
+    width: '100%', height: 44, background: 'surface',
+    display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', padding: 8, gap: 8, scroll: 'none'
+  } }, [
+    Text({ text: function () { return timeSyncLine(); }, style: {} }),
+    Button({ title: 'Sync now', onPress: syncTimeNow,
+      style: { width: 92, height: 34, borderRadius: 8 } })
+  ]),
   actionRow([
     bigButton('Sleep now', function () { lume.power.sleepNow(); }),
     bigButton(function () {
@@ -629,12 +669,16 @@ lume.app.onStart(function () {
   startPolling();
   applyVolume(volume(), false);   /* restore persisted volume */
   autoConnect();
+  timeSyncLine.set(timeSyncStatus());
 });
 lume.app.onPause(function () {
   stopPolling();
   if (blePoll !== null) { lume.system.clearInterval(blePoll); blePoll = null; }
 });
-lume.app.onResume(startPolling);
+lume.app.onResume(function () {
+  startPolling();
+  timeSyncLine.set(timeSyncStatus());
+});
 lume.app.onBack(function () {
   if (kbOpen) { kbHide(); return true; }
   if (page() === 4) { go('wifi'); return true; }   /* scan -> wifi page */

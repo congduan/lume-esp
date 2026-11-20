@@ -7,9 +7,12 @@
  *
  * Time source: new Date() on the device counts from boot (no RTC battery).
  * When WiFi is already associated and has an IP (lume.net.status() reports
- * GOT_IP — the association survives app switches), the app fetches wall time
- * over HTTP and keeps the offset wall-epoch − device-epoch; ticks then apply
- * it locally. No WiFi / failed fetch degrades to device-uptime time. */
+ * GOT_IP — the association survives app switches), the app tries the r128
+ * lume.system.setTimeNtp() primitive first: a success already corrects
+ * Date.now() via settimeofday(), so the local offset becomes 0. If SNTP is
+ * missing / fails (-2/-3), it falls back to the r128 HTTP source list and
+ * keeps the offset wall-epoch − device-epoch. No WiFi / total failure
+ * degrades to device-uptime time. */
 var clockTheme = { colors: {
   primary: '#0B0F14', surface: '#141A22', accent: '#2E86FF', text: '#E8EEF6'
 }, radius: 14, fontScale: 1 };
@@ -29,20 +32,29 @@ var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /* ---- network time sync (read-only: WiFi association is owned elsewhere) --
- * Polls lume.net.status(); on GOT_IP (state 3) tries a list of plain-HTTP
- * time endpoints IN ORDER and applies the FIRST success (httpGet has no CA
- * bundle this round, so https:// is not usable; single sources come and go,
- * hence the fallback list). Each httpGet is SYNCHRONOUS and blocks the engine
- * task for up to HTTP_TIMEOUT_MS (touch/timers stall; worst case is one full
- * pass over the list). Success re-syncs every 10 min; no IP or total failure
- * retries after 30 s while keeping device time running.
+ * Polls lume.net.status(); on GOT_IP (state 3) first calls the r128 SNTP
+ * primitive lume.system.setTimeNtp() with default server / default 10 s.
+ * On success settimeofday() has already corrected Date.now(), so the local
+ * offset is reset to 0 and the HTTP list is skipped this round. Anything
+ * else (no API / -1 / -2 / -3 / thrown) falls through to the r128 HTTP path:
+ * plain-HTTP time endpoints tried IN ORDER, FIRST success applied (httpGet
+ * has no CA bundle, so https:// is not usable; single sources come and go,
+ * hence the list). Each httpGet is SYNCHRONOUS and blocks the engine task for
+ * up to HTTP_TIMEOUT_MS (worst case one full pass). Success re-syncs every
+ * 10 min; no IP or total failure retries after 30 s while device time runs.
  *
- * Display timezone: the device renders dates in UTC, so the wall epoch is
- * utc-epoch + tzMin minutes. tzMin comes from a source carrying an explicit
- * offset (worldtimeapi) and is persisted in kv ('clock.tzMin'); UTC-only
- * sources reuse the cached value (default 480 = UTC+08:00). The offset also
- * compensates the display timezone (getTimezoneOffset), so the clock reads
- * the same on the device and in the host simulator. */
+ * Display timezone: on the HTTP path the device renders dates in UTC, so the
+ * wall epoch is utc-epoch + tzMin minutes. tzMin comes from a source carrying
+ * an explicit offset (worldtimeapi) and is persisted in kv ('clock.tzMin');
+ * UTC-only sources reuse the cached value (default 480 = UTC+08:00). The SNTP
+ * path leaves tzMin untouched. The offset also compensates the display
+ * timezone (getTimezoneOffset), so the clock reads the same on device and in
+ * the host simulator.
+ *
+ * wallDate() reads Date.now() (+ the HTTP offset): on the device Date.now()
+ * is gettimeofday(), which SNTP corrects, while lume._nowMs() is a monotonic
+ * uptime timer. With the offset at 0 the path is the identity (Date.now()),
+ * which is exactly the post-SNTP wall clock. */
 var SYNC_OK_MS = 600000;      /* re-sync every 10 min */
 var SYNC_RETRY_MS = 30000;    /* retry after failure / while WiFi has no IP */
 var HTTP_TIMEOUT_MS = 4000;
@@ -89,14 +101,29 @@ var TIME_SOURCES = [
 ];
 
 function syncNetTime() {
-  var now = lume._nowMs();
+  var mono = lume._nowMs();          /* monotonic uptime: drives the cadence */
   var st = lume.net.status();
   /* status() returns an object only while the station is up; GOT_IP means a
-   * usable IPv4 (what httpGet needs). Anything else: keep device time. */
+   * usable IPv4 (what httpGet and SNTP need). Anything else: keep device time. */
   if (typeof st !== 'object' || st === null || st.state !== lume.net.GOT_IP) {
-    nextSyncMs = now + SYNC_RETRY_MS;
+    nextSyncMs = mono + SYNC_RETRY_MS;
     return;
   }
+  /* r129: SNTP-first. On success settimeofday() already made Date.now() the
+   * wall clock, so reset the local offset to 0 (identity in wallDate) and
+   * finish without touching the HTTP sources or the cached tzMin. Default
+   * server / default 10 s timeout mirror lume.system.setTimeNtp()'s contract. */
+  var sys = lume.system;
+  if (sys && typeof sys.setTimeNtp === 'function') {
+    try {
+      if (sys.setTimeNtp() === 0) {
+        epochOffsetMs = 0;
+        nextSyncMs = mono + SYNC_OK_MS;
+        return;                     /* wall clock is correct already */
+      }
+    } catch (e) { /* API threw: fall through to the HTTP source list */ }
+  }
+  /* HTTP fallback (r128 path, unchanged behaviour): */
   for (var i = 0; i < TIME_SOURCES.length; i++) {
     var wallMs = null, tz;
     try {
@@ -112,20 +139,21 @@ function syncNetTime() {
         tzMin = tz;
         lume.storage.kv.set('clock.tzMin', tz);
       }
-      /* Anchor to the monotonic device clock; compensate the display
-       * timezone ( getTimezoneOffset() is 0 on the UTC device, so the
-       * anchor is exactly the wall epoch there). */
-      epochOffsetMs = wallMs + new Date().getTimezoneOffset() * 60000 - now;
-      nextSyncMs = now + SYNC_OK_MS;
+      /* Anchor to Date.now() (gettimeofday ms on the device, wall clock in
+       * the host) and compensate the display timezone (getTimezoneOffset()
+       * is 0 on the UTC device). wallDate() adds the offset back to Date.now(),
+       * so this is the same wall epoch as the r128 _nowMs()-anchored path. */
+      epochOffsetMs = wallMs + new Date().getTimezoneOffset() * 60000 - Date.now();
+      nextSyncMs = mono + SYNC_OK_MS;
       return;
     }
   }
-  nextSyncMs = now + SYNC_RETRY_MS;   /* every source failed: retry later */
+  nextSyncMs = mono + SYNC_RETRY_MS;  /* every source failed: retry later */
 }
 
-/** wall-clock Date; before the first sync this is device uptime since boot. */
+/** wall-clock Date; epochOffsetMs === 0 is the identity (post-SNTP wall clock). */
 function wallDate() {
-  return new Date(lume._nowMs() + epochOffsetMs);
+  return new Date(Date.now() + epochOffsetMs);
 }
 
 function tick() {
