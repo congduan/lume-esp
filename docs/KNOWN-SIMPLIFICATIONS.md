@@ -1986,3 +1986,29 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   none；`lume check examples/counter --no-emu` `RESULT: PASS`；playground 47 行 PASS；
   `idf.py build` + `idf.py size` 绿，`BUILD_EXIT=0`，Flash Code 2041168、IRAM
   16384/16384 Remain 0（硬线达标）、DIRAM 247491 (72.42%)。未跑 codex review。
+
+## r129 — SNTP 消费方刀取舍（app-only，基线 b5ca082）
+
+- **无真机 SNTP 往返验收**：本轮只改 app JS，SNTP 断言全为宿主静态契约 + 变异
+  实证。DNS 解析、SNTP 往返、`settimeofday()` 后 `Date.now()` 是否真跳到正确年份、
+  功耗/启动延迟全部留接板轮；**不声称真机验证**。
+- **clock SNTP-first 的阻塞窗口**：`setTimeNtp()` 默认 10 s 上限、同步持有引擎
+  任务（同 httpGet），期间 touch/热更新/UI 刷新停顿。clock 每 10 min 重同步一次，
+  最坏一次同步可阻塞最长 10 s 的 tick；接板后若卡顿可调 timeoutMs 或改异步
+  （本轮未做）。HTTP 回落路径每源最多 4 s，维持 r128 口径。
+- **offset=0 恒等的锚点改写**：设备 `lume._nowMs()` 是单调 uptime 而非墙钟，
+  `wallDate()` 改读 `Date.now() + epochOffsetMs`，HTTP 路径的 offset 锚点同步改为
+  `Date.now()`（同步前两者同为 1970 起小值、速率一致，观测等价），`nextSyncMs`
+  仍用 `_nowMs()` 保持节拍。宿主桩 `_nowMs() === Date.now()`，行为与现状一致。
+- **settings 节点预算口径**：General 页新增恰好 3 节点（1 View + 1 Text + 1
+  Button），静态树约 95 → 98/128 slots，两个虚拟 List 的可见行不增加；harness
+  以「同步行工厂调用数 === 3」断言，第 4 节点变异必须 FAIL。
+- **playground 清单口径纠偏**：brief 假设 settings 在 45-app 清单内，实证为假
+  （`tools/playground/build.mjs` 的 `apps` 数组无 settings）。本轮不扩清单，避免
+  45→46 文档口径漂移与 tooling 越界；settings 的 app 层改动由 `lume check
+  examples/settings --no-emu` 与宿主 runApp 覆盖，playground 重建只刷新 clock 生成物。
+- **验证 / 诚实口径**：`tests/sntp_consumers.js` 17 PASS + 17 变异实证 PASS；
+  全量宿主回归 0 FAIL；`npm test` 50/0/0；`check_website.py` 三项均 none；
+  `lume check` clock/settings/counter --no-emu 均 `RESULT: PASS`；playground 47 行
+  PASS（45 bundles + 2 summary）。`git diff b5ca082 HEAD -- firmware/ runtime/`
+  为空，固件零改动故未跑 `idf.py build`。未跑 codex review。
