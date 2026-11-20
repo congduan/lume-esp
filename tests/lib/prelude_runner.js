@@ -301,6 +301,14 @@ function runApp(script, options = {}) {
       setPin: () => 0, write: () => 0, read: () => 1, toggle: () => 0,
       pwmAttach: () => 0, pwmDuty: () => 0, pwmFree: () => 0,
     },
+    // Host-side ADC1 stand-in (no real sampling): config succeeds, readRaw is
+    // a mid-scale 12-bit sample and readMv an arbitrary calibrated value.
+    // Harnesses override any method with options.adc to inject error codes /
+    // custom measurements (mirrors the gpio/imu stub spread convention).
+    adc: {
+      config: () => 0, readRaw: () => 2048, readMv: () => 1650, free: () => 0,
+      ...(options.adc || {}),
+    },
     image: { sizeOf: bytes => -1, decode: imageDecodeStub(), _setSource: (id, bytes, width, height) => -1 },
     audio: {
       play: () => 0, record: () => -3, setVolume: () => 0, stop: () => 0,
