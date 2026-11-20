@@ -2312,3 +2312,56 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   按纪律未跑 `idf.py build`（命令输出为空作证）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r129 节。本轮未跑 codex review（主控轮负责）。
+
+### r130 result — SNTP 第二波消费方刀：clock_round / aurora_clock / watchface（纯 app 刀；appended, milestone checkboxes untouched）
+
+基线 `ffdd757`（r129）；worktree `/tmp/lume-r130-wt`、分支 `r130-sntp-consumers2`；
+开工前 `lume_model_guard.sh` 绿（hy4flash-free）、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- 简报列出 `examples/worldclock`「若存在则纳入」——实证为**假**：`examples/` 无此
+  目录，`tools/playground/build.mjs` 的 45-app 清单亦无。harness 反向断言清单不含它，
+  不虚报第四个 app，本轮实为**三**个目标 app。
+- 简报假设三 app 可直接照 r129 clock 模式改——实证部分成立：`clock_round` /
+  `aurora_clock` 的宿主 harness 都按 `/* GAME UI */` 切纯逻辑片，故同步块必须落在该
+  标记之后，否则纯 vm 因 `signal`/`lume` 未注入而崩。`watchface` 则相反：其状态 Text
+  在文件靠前处创建并立即求值绑定函数，同步块的 signal 必须先声明，否则
+  `faceSyncStatus is not a function`（首轮实证确实触发，已前移修复）。
+- `watchface` 的 canvas 预算被 harness 硬断言为 4 canvas / 228,544 px（≤230,400），
+  且已有非 ASCII 文案（周几 / 步 / 分钟）。故只加**1 个原生 Text**角落状态（不增
+  canvas、不扩尺寸），ASCII 断言收窄到新增的 SNTP 同步块，不误伤既有中文文案。
+- 宿主桩 `lume.net.status()` 恒为 `state 0`（DISCONNECTED），故三 app 在宿主下 GOT_IP
+  门控天然不触发、不会调用阻塞的 `setTimeNtp()`；同步均按 `_nowMs()` 节拍门控，
+  避免 aurora 的 50 ms 帧循环 Every-frame 触发同步。
+
+**实现**（纯 app 层；firmware/runtime/tools 零改动）：
+- 三 app 同构同步块：GOT_IP 门控 → `lume.system.setTimeNtp()`（默认 server / 默认 10 s）
+  → 仅 `r === 0` 置 `<prefix>WallValid=true` 视为墙钟有效并清空状态；-2/-3/抛错/API 缺失
+  照实显示 1970 起设备时间 + ASCII 状态（`SYNCING`/`NO WIFI`/`NO SYNC`），**不伪造时间**。
+  重同步 10 min / 失败重试 30 s；动画 / 滑动 / IMU / 天气 / 交互逻辑一律未改。
+- `examples/clock_round/app.js`：左上角新增一行 ASCII 状态 Text，空串即已同步。
+- `examples/aurora_clock/app.js`：复用既有 `AURORA` HUD 文案位，已同步显示 `AURORA`，
+  未同步显示同步状态；不新增节点。
+- `examples/watchface/app.js`：共享根上新增 1 个原生 Text（最后子节点、覆盖 5 页），
+  既有 4 canvas / 228,544 px 预算原样保留。
+- `tests/sntp_consumers2.js`（新，CommonJS）：18 条静态断言 + **18 项变异实证**（去
+  GOT_IP 门控、把成功条件改成 `r!==0`、解绑状态 Text、注入非 ASCII、去掉节拍门控、
+  清单丢 app / 塞入 worldclock、改固件文件——全部必须 FAIL）。
+- `npm run build:playground`：45 bundles + 2 summary，共 47 行 PASS；
+  `PASS bundle clock_round 1931 bytes` / `aurora_clock 5432` / `watchface 9146` /
+  `PASS prelude 67317 bytes; 45 apps`；三 app 生成物随 feat commit 提交。
+
+**验证**（真机 SNTP 实测 deferred；不声称真机验证）：
+- `node tests/sntp_consumers2.js`：18 契约 PASS + 18 变异实证 PASS。
+- `node tests/clock_round.js`：PASS（71 calls/frame，60 秒 tick 冒烟）；
+  `for t in tests/*.js; do ... done`：73 个 harness，0 FAIL（3m8s）。
+- `npm test --prefix tools/lume`：pass 50 / fail 0 / skipped 0（worktree 缺 gitignore
+  的 `tools/lume/bin/qjsc`，从主仓复制后对齐基线，源码零改动）。
+- `python3 scripts/check_website.py`：missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check`：`clock_round` / `aurora_clock` / `watchface` 均
+  `--no-emu` `RESULT: PASS`；哨兵 `examples/counter` 跑完整 emu（复用 ffdd757 基线
+  `lume.bin`，未跑 idf.py build）`RESULT: PASS`，R1–R7 全过。
+- `git diff ffdd757 HEAD -- firmware/ runtime/ tools/` 与工作树 diff 均为空 → 固件零
+  改动，按纪律未跑 `idf.py build`。磁盘 88%，artifacts 只留最终日志，已清测试残留。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r130 节。本轮未跑 codex review（主控轮负责）。

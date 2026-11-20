@@ -2012,3 +2012,34 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `lume check` clock/settings/counter --no-emu 均 `RESULT: PASS`；playground 47 行
   PASS（45 bundles + 2 summary）。`git diff b5ca082 HEAD -- firmware/ runtime/`
   为空，固件零改动故未跑 `idf.py build`。未跑 codex review。
+
+## r130 — SNTP 第二波消费方刀取舍（app-only，基线 ffdd757）
+
+- **无真机 SNTP 往返验收**：本轮只改 app JS，SNTP 断言全为宿主静态契约 + 变异实证。
+  DNS 解析、SNTP 往返、`settimeofday()` 后 `Date.now()` 是否真跳到正确年份、功耗 /
+  启动延迟全部留接板轮；**不声称真机验证**。
+- **失败态显示口径（不伪造时间）**：GOT_IP 且 `setTimeNtp()` 返回 0 才把 `new Date()`
+  视为有效墙钟并清空状态；-1/-2/-3/抛错/API 缺失/无 WiFi 一律照实显示 1970 起设备
+  时间（`new Date()` 原样读，无 offset 补偿、无假 epoch），仅以角落 ASCII 状态提示
+  `SYNCING` / `NO WIFI` / `NO SYNC`。demo 语义（无 WiFi 下时钟照旧跳动）保持现状。
+- **状态文案落位**：`clock_round` 用左上角 1 行 Text（不打扰表盘）；`aurora_clock`
+  复用既有 `AURORA` HUD 文案位（同步时仍显示 AURORA，未同步显示状态，不新增节点）；
+  `watchface` 在共享根加 1 个原生 Text（最后子节点覆盖 5 页，空串即已同步）。三处
+  文案全 ASCII（r64），`sync` 块内字符串字面量由 harness 断言；watchface 既有中文
+  文案不在新增范围内，故 ASCII 断言按 block 收窄而非全文件。
+- **watchface 预算约束**：canvas 像素预算已满（228,544/230,400，harness 硬断言
+  4 canvas），新状态只走原生 Text，不加 canvas、不扩尺寸、不改 5 页滑动与天气/
+  电量/目标 complication。
+- **同步节拍与阻塞**：`setTimeNtp()` 默认 10 s 上限且阻塞引擎任务（同 httpGet）；
+  三 app 均按 `_nowMs()` 门控，成功 10 min 后重同步、失败 30 s 重试，避免 aurora
+  50 ms 帧循环每帧调用。宿主桩 `net.status()` 为 DISCONNECTED，故宿主不触发同步。
+  -1（非法 server）在本轮三 app 的调用参数下不可达（均默认 server），归入非空即
+  失败态分支。
+- **世界表盘缺位**：`examples/worldclock` 不存在且不在 45-app playground 清单内；
+  harness 断言清单不含它、无目录，不虚报为第四个消费方。本轮实际迁移三个 app。
+- **验证 / 诚实口径**：`tests/sntp_consumers2.js` 18 PASS + 18 变异实证 PASS；全量
+  73 宿主 harness 0 FAIL；`npm test` 50/0/0（补齐 gitignore 的 `bin/qjsc`）；
+  `check_website.py` 三项 none；`lume check` 三 app `--no-emu` + counter 完整 emu
+  均 `RESULT: PASS`；playground 47 行 PASS。worktree 缺 `firmware/build/lume.bin`，
+  哨兵 emu 复用主仓 ffdd757 基线固件镜像（固件零改动故等价），未跑 `idf.py build`；
+  `git diff ffdd757 HEAD -- firmware/ runtime/ tools/` 为空。未跑 codex review。
