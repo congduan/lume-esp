@@ -2,8 +2,9 @@
 //   node tests/sd_files.js
 // Static source assertions: the file manager discovers a mounted TF card via
 // lume.storage.Sd, enters an SD browse mode through an SD/ virtual root entry,
-// dispatches every filesystem operation to Sd.* in that mode with per-op
-// try/catch degradation, discriminates statvfs()'s number error codes, reuses
+// dispatches every filesystem operation to Sd.* in that mode, falls back to
+// Fs on the same path when Sd fails, with per-op try/catch degradation,
+// discriminates statvfs()'s number error codes, reuses
 // the single existing delete Dialog, keeps UI copy ASCII-only (r64), leaves
 // firmware/ and runtime/ byte-identical to the r126 baseline, and lists both
 // image_gallery and files in the playground manifest.
@@ -51,20 +52,31 @@ const checks = [
   { name: 'SD/ entry flagged and handled as SD mode entry',
     test: s => /isDir: true, sd: true/.test(s) && /if \(e\.sd\)/.test(s) &&
                /onSd\.set\(true\)/.test(s) },
-  { name: 'Sd.list dispatch before Fs.list',
-    test: s => /function listDir\(p\) \{ return onSd\(\) \? sd\.list\(p\) : Fs\.list\(p\); \}/.test(s) &&
-               s.indexOf('sd.list(p)') < s.indexOf('Fs.list(p)') },
+  { name: 'Sd.list dispatch with Fs fallback',
+    test: s => /onSd\(\) \? sdOrFs\('list', p\) : Fs\.list\(p\)/.test(s) },
   { name: 'Sd.read dispatch for text preview',
-    test: s => /function readText\(p\) \{ return onSd\(\) \? sd\.read\(p\) : Fs\.read\(p\); \}/.test(s) },
+    test: s => /onSd\(\) \? sdOrFs\('read', p\) : Fs\.read\(p\)/.test(s) },
   { name: 'Sd remove/mkdir/exists dispatch (delete semantics reuse Fs recursion)',
-    test: s => /onSd\(\) \? sd\.remove\(p\) : Fs\.remove\(p\)/.test(s) &&
-               /onSd\(\) \? sd\.mkdir\(p\) : Fs\.mkdir\(p\)/.test(s) &&
-               /onSd\(\) \? sd\.exists\(p\) : Fs\.exists\(p\)/.test(s) },
+    test: s => /onSd\(\) \? sdOrFs\('remove', p\) : Fs\.remove\(p\)/.test(s) &&
+               /onSd\(\) \? sdOrFs\('mkdir', p\) : Fs\.mkdir\(p\)/.test(s) &&
+               /onSd\(\) \? sdOrFs\('exists', p\) : Fs\.exists\(p\)/.test(s) },
+  { name: 'sdOrFs falls back to Fs same path on negative code or throw',
+    test: s => {
+      const b = blockFrom(s, 'function sdOrFs(method, p)');
+      return /catch \(e\) \{ return Fs\[method\]\(p\); \}/.test(b) &&
+             /typeof r === 'number' && r < 0/.test(b);
+    } },
   { name: 'isDirPath degrades on native throw',
     test: s => hasTryCatch(blockFrom(s, 'function isDirPath(p)')) },
   { name: 'loadDir degrades per operation (list failure -> empty dir)',
     test: s => hasTryCatch(blockFrom(s, 'function loadDir(path)')) &&
                /typeof list === 'number'/.test(s) },
+  { name: 'loadDir failure branch clears selected + preview',
+    test: s => {
+      const b = blockFrom(s, 'function loadDir(path)');
+      const m = b.match(/if \(typeof list === 'number'\) \{[\s\S]*?notify\('Read failed/);
+      return !!m && /selected\.set\(null\)/.test(m[0]) && /closePreview\(\)/.test(m[0]);
+    } },
   { name: 'removeTree degrades per operation (JS recursion, try/catch)',
     test: s => (blockFrom(s, 'function removeTree(path, isDirectory, depth)').match(/\btry\s*\{/g) || []).length >= 3 },
   { name: 'previewSelected degrades on read failure',
@@ -135,11 +147,21 @@ must('drop SD/ root entry',
   s => s.replace("list.push('SD/');", '/* removed */'),
   'SD/ virtual root entry appended only in Fs root when ready', app);
 must('force Sd.list dispatch back to Fs',
-  s => s.replace('return onSd() ? sd.list(p) : Fs.list(p);', 'return Fs.list(p);'),
-  'Sd.list dispatch before Fs.list', app);
+  s => s.replace("return onSd() ? sdOrFs('list', p) : Fs.list(p);", 'return Fs.list(p);'),
+  'Sd.list dispatch with Fs fallback', app);
 must('force Sd.read dispatch back to Fs',
-  s => s.replace('return onSd() ? sd.read(p) : Fs.read(p);', 'return Fs.read(p);'),
+  s => s.replace("return onSd() ? sdOrFs('read', p) : Fs.read(p);", 'return Fs.read(p);'),
   'Sd.read dispatch for text preview', app);
+must('drop sdOrFs fallback on negative code',
+  s => s.replace("if (typeof r === 'number' && r < 0) return Fs[method](p);", ''),
+  'sdOrFs falls back to Fs same path on negative code or throw', app);
+must('drop sdOrFs fallback on native throw',
+  s => s.replace('catch (e) { return Fs[method](p); }', 'catch (e) { throw e; }'),
+  'sdOrFs falls back to Fs same path on negative code or throw', app);
+must('drop loadDir failure preview clear',
+  s => s.replace(/    closePreview\(\);[^\n]*\n    notify\('Read failed: ' \+ list\);/,
+                 "    notify('Read failed: ' + list);"),
+  'loadDir failure branch clears selected + preview', app);
 must('drop loadDir try/catch',
   s => s.replace('try { list = listDir(clean); }\n  catch (e) { list = -2; }', 'list = listDir(clean);'),
   'loadDir degrades per operation (list failure -> empty dir)', app);

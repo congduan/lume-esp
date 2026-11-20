@@ -1927,8 +1927,12 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   unlink 失败后 rmdir 兜底（:195-199）；`lume_sd_list` 的 `full_path(...,true)` 归一化尾斜杠
   （:39-63）。因此递归在 JS 侧 `removeTree` 完成（先删子项再删目录），Sd 侧删除语义明确，
   **启用** SD 模式删除并复用唯一 `askDelete` Dialog，没有第二份删除流程；仅 `SD/` 虚拟入口
-  禁删并 ASCII 提示 `Cannot delete SD entry`。代价：真机未插卡验证前，SD 侧删除只在宿主
-  stub 上验证过分发与降级，不对真实卡数据做承诺。
+  禁删并 ASCII 提示 `Cannot delete SD entry`。代价：真机未插卡验证前，SD 侧删除只在源码
+  静态断言层面核对了分发与降级（无行为级探针，deferred），不对真实卡数据做承诺。
+- **SD->Fs 同路径回落（兼容性兜底）**：SD 模式每步调用（exists/list/read/remove/mkdir）
+  失败（负数错误码 -1/-2/-3/-4 或 native 抛错）时该步回落 Fs 同路径，仍失败才按原失败
+  路径处理，保持每步独立 try/catch；卡拔出 / 路径不存在时表现与无卡一致，不把两种后端
+  混成一个命名空间。代价：Fs 同路径若恰好有同名项，会成为兜底目标——可接受的兼容取舍。
 - **容量取整口径**：`Sd.statvfs()` 成功返回 `{total,free}` 字节，取 `free` 按 1 MiB=1048576 B
   `Math.floor` 截断成整数 MB，不四舍五入、不显示小数；返回 number（-2 IO / -3 无卡等）或
   抛错显示 `NO CARD`；无 Sd API 时该状态不走（被 `sdReady` 门控）。与 r126 image_gallery
@@ -1937,10 +1941,11 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   （r126 遗留尾巴）与 `files`（本轮 Sd 化）。实证两者 esbuild 兼容：`image_gallery` 无
   import，`files` 的 `import '../../runtime/shell.js'` 是副作用导入且 shell.js 为无导出 IIFE，
   esbuild iife bundle 正常。重建为 45 bundles + 45 sources，生成物随 tooling commit 提交。
-- **真机插卡验收 deferred**：宿主 harness 只做源码静态断言 + stub Sd 的 Node vm 运行探针；
-  主机无卡。SPI 挂载、真实卡上目录列举/文本读取/删除/掉电持久性、`statvfs` 真实容量、BACK
-  手势在卡根目录的手感均未在板上验证，不声称真机验证。
-- **验证 / 诚实口径**：`tests/sd_files.js` 23 source/non-source PASS + 13 变异实证 PASS
+- **真机插卡验收 deferred**：宿主 harness 只做源码静态断言 + 变异实证，没有跑行为级探针
+  （无 stub Sd 的 Node vm 运行探针，行为级探针 deferred）；主机无卡。SPI 挂载、真实卡上
+  目录列举/文本读取/删除/掉电持久性、`statvfs` 真实容量、BACK 手势在卡根目录的手感均未
+  在板上验证，不声称真机验证。
+- **验证 / 诚实口径**：`tests/sd_files.js` 25 source/non-source PASS + 16 变异实证 PASS
   （变异实证抓出并修掉 harness 自身两处假断言：NO CARD 只替换首处、manifest 断言未参数化）；
   `tests/sd_gallery.js` 不回归；全量宿主回归 0 FAIL；`npm test --prefix tools/lume` 50/0 不回归；
   `check_website.py` missing/invented/duplicates 均 none；三个 `--no-emu` 哨兵 PASS；

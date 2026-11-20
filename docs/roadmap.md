@@ -2188,10 +2188,12 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   给每个路径额外带后端标签，侵入 `isDirPath`/`loadDir`/`removeTree`/`preview`/`onBack` 全部
   链路。虚拟入口只在 Fs 根且 `sdReady` 时出现，`e.sd` 标记进入 SD 模式；SD 根 BACK/goUp
   退回 Fs 根，不直接回桌面。不挂卡时行为与 r126 之前完全一致。
-- **逐操作降级**：`listDir`/`readText`/`pathExists`/`removeAt`/`mkdirAt` 统一按 `onSd` 分发
-  到 `Sd.*` 或 `Fs.*`；`loadDir`/`isDirPath`/`previewSelected`/`makeDir`/`removeTree` 每步
-  独立 try/catch。Sd API 缺失/未挂载/读失败（number 错误码或抛错）退化为「空目录/读取失败」，
-  不拖垮整个 eval；宿主用 stub Sd 实测了正常路径与 list 抛错 / statvfs -3 / read -2 降级路径。
+- **逐操作降级 + SD->Fs 同路径回落**：`listDir`/`readText`/`pathExists`/`removeAt`/`mkdirAt`
+  统一按 `onSd` 分发到 `Sd.*` 或 `Fs.*`；Sd 调用失败（负数错误码或 native 抛错）时该步回落
+  Fs 同路径，仍失败才退化为「空目录/读取失败」——此回落是兼容性兜底，卡拔出/路径不存在时
+  表现与无卡一致。`loadDir`/`isDirPath`/`previewSelected`/`makeDir`/`removeTree` 每步独立
+  try/catch，不拖垮整个 eval；`loadDir` 失败分支与成功路径同口径清空 `selected` 并关预览。
+  harness 只做源码静态断言 + 变异实证；行为级探针 deferred（未跑 stub Sd 行为探针）。
 - **删除取舍**：实证 `lume_sd.c` 确认 `Sd.exists(p + '/')` 沿用 Fs 的「是目录」约定、
   `Sd.remove` 同为 unlink→rmdir 兜底、`Sd.list` 归一化尾斜杠——目录递归在 JS 侧完成，
   SD 侧删除语义明确，故**启用** SD 模式删除并复用同一个 `askDelete` Dialog（无第二份流程）；
@@ -2203,7 +2205,7 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   esbuild iife 正常打包），重建后 45 apps。
 
 **验证**（宿主口径；真机插卡 deferred，未声称真机验证；原始输出见本轮日志）：
-- `node tests/sd_files.js`：23 source/non-source PASS + 13 变异实证 PASS（删掉被断言代码必须
+- `node tests/sd_files.js`：25 source/non-source PASS + 16 变异实证 PASS（删掉被断言代码必须
   FAIL；变异实证过程中还抓出并修掉 harness 自身两处「假断言」）；`node tests/sd_gallery.js` 不回归。
 - `for t in tests/*.js`：0 FAIL；`npm test --prefix tools/lume`：pass 50 / fail 0 / skipped 0（不回归）。
 - `check_website.py`：missing/invented/duplicates 均 none。
