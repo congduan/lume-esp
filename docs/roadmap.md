@@ -2607,7 +2607,11 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   / `sntp_consumers2.js` 用**检查名字符串**引用同一条断言，以及 `sd_files.js` 的硬编码变异串
   `'image_gallery', 'files', 'adc_meter', 'crypto_check'];`。故同步 `list.length`、
   `apps.length`、注释、检查名字符串与变异串到 48，理由写入对应 commit message。
-  `bridge_protocol.c:28` 的 `LUME_ATTR_MAX_WIDTH == 46` 是 ATTR ID，未改。
+  另因 r135 新文件在 feat/test commit 后才进入 HEAD，`tests/ota_consumers.js` 的
+  `gitChanged([])` 允许清单须追加 4 个 r135 新文件（`examples/archive_view/app.js`、
+  `tests/archive_view.js`、`website/playground/{apps,sources}/archive_view.js`），
+  否则该 harness 在提交后由绿转红。`bridge_protocol.c:28` 的
+  `LUME_ATTR_MAX_WIDTH == 46` 是 ATTR ID，未改。
 
 **实现**（固件/runtime/CLI 零改动）：
 - `examples/archive_view/app.js`：单屏静态树（宿主 create 计数 **14** 节点）；3 条内置

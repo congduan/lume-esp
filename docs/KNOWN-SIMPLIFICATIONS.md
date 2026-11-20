@@ -2199,8 +2199,10 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   与 <=20 自定上限；没有列表与运行时建节点。
 - **47→48 清单同步的合法性**：`tools/playground/build.mjs` 的 apps 是数据清单，新 app
   注册使 `crypto_check.js` / `adc_meter.js` 的 `apps.length`、三只 consumer 的检查名
-  字符串、`sd_files.js` 的硬编码变异串必须同步到 48；这些改动不改任何生产行为，只让
-  数量/清单断言继续有效。`tools/lume/`（CLI 工具面）仍在 gitChanged 钉死范围内且零 diff。
+  字符串、`sd_files.js` 的硬编码变异串必须同步到 48；新文件进入 HEAD 后还需把 4 个
+  r135 文件加进 `ota_consumers.js` 的 `gitChanged([])` 允许清单，否则该 harness 提交后
+  由绿转红。这些改动不改任何生产行为，只让数量/清单断言继续有效。`tools/lume/`
+  （CLI 工具面）仍在 gitChanged 钉死范围内且零 diff。
 - **验证 / 诚实口径**：`tests/archive_view.js` 21 PASS（含 6 项变异实证）；全量宿主
   harness 0 FAIL；`npm test` 50/0/0；`check_website.py` 三项 none；`lume check`
   archive_view + counter `--no-emu` 均 `RESULT: PASS`；playground `PASS bundle
