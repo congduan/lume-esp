@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 46-app manifest, all UI literals are ASCII (r64), and only the
+//     in the 47-app manifest, all UI literals are ASCII (r64), and only the
 //     known r132 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 46-app playground manifest is the source of truth for "in清单".
+// 47-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -83,9 +83,10 @@ function gitChanged(paths) {
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
 /* r133: the playground manifest (tools/playground/build.mjs) is DATA that now
- * registers adc_meter as a 46th app; the firmware/runtime/CLI-tooling surface
- * is still pinned. Scope the diff to tools/lume/ so manifest registration is
- * not misreported as a tooling behaviour change. */
+ * registers adc_meter as a 46th app; r134 adds crypto_check as a 47th. The
+ * firmware/runtime/CLI-tooling surface is still pinned. Scope the diff to
+ * tools/lume/ so manifest registration is not misreported as a tooling
+ * behaviour change. */
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
@@ -170,8 +171,8 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 46-app playground manifest', [playgroundApps,
-    list => list.length === 46 && list.includes('dashboard')]],
+  ['dashboard is in the 47-app playground manifest', [playgroundApps,
+    list => list.length === 47 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
@@ -247,7 +248,7 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 46-app playground manifest', playgroundApps);
+  'dashboard is in the 47-app playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
