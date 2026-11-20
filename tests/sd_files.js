@@ -5,8 +5,8 @@
 // dispatches every filesystem operation to Sd.* in that mode, falls back to
 // Fs on the same path when Sd fails, with per-op try/catch degradation,
 // discriminates statvfs()'s number error codes, reuses
-// the single existing delete Dialog, keeps UI copy ASCII-only (r64), leaves
-// firmware/ and runtime/ byte-identical to the r126 baseline, and lists both
+// the single existing delete Dialog, keeps UI copy ASCII-only (r64), limits
+// firmware/ and runtime/ changes to r128's known files, and lists both
 // image_gallery and files in the playground manifest.
 //
 // Every source check is a predicate over the source text. After the live run,
@@ -109,9 +109,21 @@ const checks = [
 ];
 
 // --- non-source checks ---------------------------------------------------
+// r126/r127 were app-only rounds; r128 is an explicit firmware round that
+// intentionally adds lume.system.time()/setTimeNtp(). Keep the round-scope
+// guard: only those known r128 files may differ from the r127 baseline.
+const R128_FIRMWARE_FILES = [
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_scripts.c',
+  'firmware/sdkconfig.defaults',
+  'runtime/types/lume.d.ts',
+];
 function gitDiffEmpty() {
-  return execFileSync('git', ['diff', '67b635f', '--', 'firmware/', 'runtime/'],
-    { cwd: root, encoding: 'utf8' }).trim() === '';
+  const out = execFileSync('git', ['diff', '--name-only', '040fc11',
+    '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
+  const files = out ? out.split('\n') : [];
+  return files.every(f => R128_FIRMWARE_FILES.includes(f));
 }
 function manifestHasApps(src) {
   const m = src.match(/const apps = \[([\s\S]*?)\];/);
@@ -122,8 +134,8 @@ for (const c of checks) {
   assert.ok(c.test(app), 'FAIL sd_files: ' + c.name);
   console.log('PASS sd_files: ' + c.name);
 }
-assert.ok(gitDiffEmpty(), 'FAIL sd_files: firmware/ runtime/ must be zero diff vs 67b635f');
-console.log('PASS sd_files: firmware/ runtime/ zero diff vs 67b635f (no firmware build needed)');
+assert.ok(gitDiffEmpty(), 'FAIL sd_files: only r128 firmware files may differ from 040fc11');
+console.log('PASS sd_files: firmware/ runtime/ differ from 040fc11 only in r128 files');
 assert.ok(manifestHasApps(manifest), 'FAIL sd_files: playground manifest must list image_gallery and files');
 console.log('PASS sd_files: playground manifest lists image_gallery and files');
 
