@@ -1,0 +1,66 @@
+r126 verification transcript — base 5be09c3, worktree /tmp/lume-r126-wt, branch r126-sd-gallery
+guard: bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh
+  GUARD: settings.json model=hy4flash-free ✓
+  GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)
+  (no 429; no writes in /home/ubuntu/lume)
+
+[1] node tests/sd_gallery.js
+PASS sd_gallery: Sd-first read path wired before Fs fallback
+PASS sd_gallery: per-image try/catch degrades one image only
+PASS sd_gallery: Fs fallback + embedded red PNG intact
+PASS sd_gallery: statvfs error-code discrimination + integer MB HUD
+PASS sd_gallery: all app string literals ASCII-only (r64)
+PASS sd_gallery: firmware/ runtime/ zero diff vs 5be09c3
+ALL SD GALLERY HARNESS CASES PASSED
+
+[1b] mutation proof (in-memory, assertions non-vacuous)
+Sd.readBinary wired: present=true / afterFeatureRemoved=false -> NON-VACUOUS
+statvfs typeof-object guard: present=true / afterFeatureRemoved=false -> NON-VACUOUS
+NO CARD on error code: present=true / afterFeatureRemoved=false -> NON-VACUOUS
+per-image try/catch extraction: before=true / afterRemovingTryCatch=false -> NON-VACUOUS
+ASCII guard after CJK injection: rejects=true -> ["卡 "]
+
+[2] for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done
+done
+(0 FAIL)
+
+[3] npm test --prefix tools/lume
+1..50
+# tests 50
+# suites 0
+# pass 50
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2455.427413
+(note: fresh worktree lacked gitignored local tools/lume/bin/qjsc; copied from main repo to match baseline. Without it: pass 49 / skipped 1 — the qjsc bytecode test gates on existsSync(localQjsc).)
+
+[4] python3 scripts/check_website.py
+HTML pages: 7; internal href/src and anchors checked
+API: 150 catalog entries, 150 type declarations, 34 function namespaces
+API missing: none
+API invented: none
+API duplicates: none
+API signatures not found in lume.d.ts: none
+
+[5] node tools/lume/lume.js check examples/image_gallery --no-emu
+RESULT: PASS (4 steps, 0 failed; exit 0)
+[5b] node tools/lume/lume.js check examples/counter --no-emu
+RESULT: PASS (4 steps, 0 failed; exit 0)
+
+[6] npm run build:playground --prefix tools/lume
+PASS bundle counter 2160 bytes
+... (43 PASS bundle lines total)
+PASS bundle wordring 13656 bytes
+PASS esbuild-wasm assets and 43 editable sources
+PASS prelude 67016 bytes; 43 apps
+(EMPIRICAL CORRECTION: image_gallery is NOT in tools/playground/build.mjs's 43-app list;
+has image_gallery=false; website/playground/ has no image_gallery artifacts. No PASS bundle
+image_gallery line exists, generated diff is empty, build.mjs unchanged for scope control.)
+
+[7] git diff 5be09c3 HEAD -- firmware/ runtime/  -> (empty)
+    git diff 5be09c3 -- firmware/ runtime/         -> (empty)
+    => firmware/runtime zero change; idf.py build not run.
+
+Board insertion acceptance (real TF card mount/read/capacity/persistence) DEFERRED — no on-device claim.

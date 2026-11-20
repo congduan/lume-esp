@@ -2141,3 +2141,37 @@ api.html 重生成未做。主控接管收口：修唯一编译错误（ESP-IDF 
 速度档起步；1.8 profile 的同名引脚实为 SDMMC（SPI 口径只对 2.16 声称有效，1.75c 无槽
 返 -3）。详见 docs/KNOWN-SIMPLIFICATIONS.md r125 节。roadmap M2 的 TF 卡行本轮不勾
 （留真机验收后再勾）。
+
+### r126 result — image_gallery 成为 lume.storage.Sd 消费方（纯 app 层；appended, milestone checkboxes untouched）
+
+基线 `5be09c3`（r125 TF 卡 API）；worktree `/tmp/lume-r126-wt`、分支 `r126-sd-gallery`；
+开工前 `lume_model_guard.sh` 绿、无 429。r125 的 429 降级教训本轮未重演：未在主仓
+`/home/ubuntu/lume` 写任何文件。
+
+**实现**（只改 `examples/image_gallery/app.js`）：
+- Sd-first：`lume.storage.Sd` 防御式解析，`mounted() === true` 时三张
+  `/gallery/{photo.jpg,icon.png,alpha.png}` 先走 `Sd.readBinary`；非 `ArrayBuffer`
+  （-2 IO / -3 无卡）或抛错逐图回退原 `Fs.readBinary` 路径。每张图各自 try/catch，
+  单张失败只丢那张；最外层 try/catch 与内嵌 1×1 红 PNG 兜底均保留。
+- HUD：`Sd.statvfs()` 用 `typeof stat === 'object'` 判别成功（`{total,free}`）与错误码
+  （number）；成功显示 `SD <总MB>MB TOTAL <剩余MB>MB FREE`（`Math.floor(byte/1048576)`），
+  错误码显示 `NO CARD`，无 Sd API / statvfs 抛错则不显示该行。UI 文案全 ASCII（r64）。
+- `examples/files` 未动（范围控制，留后续刀）；固件 / runtime 源码零改动。
+
+**验证**（宿主口径，真机插卡 deferred；原始输出见本轮日志）：
+- `node tests/sd_gallery.js`：6 PASS + `ALL SD GALLERY HARNESS CASES PASSED`；关键断言经
+  内存变异实测为非摆设（去掉 Sd.readBinary / typeof 判别 / NO CARD / 逐图 try 或注入
+  CJK 文案都会 FAIL）。
+- `for t in tests/*.js`：0 FAIL；`npm test --prefix tools/lume`：pass 50 / fail 0（不回归）。
+- `check_website.py`：missing/invented/duplicates 均 none。
+- `lume check examples/image_gallery --no-emu` 与 `examples/counter --no-emu`：均 `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume`：43 个 `PASS bundle ...` +
+  `PASS prelude 67016 bytes; 43 apps`。
+- `git diff 5be09c3 -- firmware/ runtime/` 为空 → 未跑 `idf.py build`。
+
+**实证纠偏 / 取舍**：任务简报称「image_gallery 在 43-app 列表内」，实证
+`tools/playground/build.mjs` 的 43 项清单并无 `image_gallery`（`has image_gallery=false`，
+`website/playground/` 亦无其产物）。因此本轮 playground 重建不产生 image_gallery 生成物、
+`PASS bundle image_gallery` 行不存在，也未改 `build.mjs`（守「纯 app 层 / 范围控制」）。
+生成物 diff 为空，feat commit 只含 app.js。详见 docs/KNOWN-SIMPLIFICATIONS.md r126 节。
+roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
