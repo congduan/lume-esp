@@ -347,6 +347,31 @@ declare namespace lume.system {
   function setTimeout(cb: () => void, ms: number): number;
   function clearInterval(id: number): void;
   function clearTimeout(id: number): void;
+  /**
+   * r128: wall-clock Unix time in MILLISECONDS (same unit as Date.now()).
+   * QuickJS's Date.now() reads gettimeofday() too, so a successful setTimeNtp()
+   * corrects it without extra work. Before any sync this returns the genuine
+   * value counted from 1970 (a small number near zero), NOT a fabricated
+   * plausible epoch -- treat small values as "clock not set" on a cold boot.
+   */
+  function time(): number;
+  /**
+   * r128: bounded, synchronous SNTP one-shot. `server` defaults to
+   * "pool.ntp.org" (pass "ntp.aliyun.com" on CN networks); max 127 chars.
+   * `timeoutMs` defaults to 10000 ms and is capped at 30000 ms; 0 falls back
+   * to the default and a negative value throws a RangeError. A non-string
+   * server throws a TypeError.
+   *
+   * Returns 0 on success (settimeofday() already applied, so Date.now() and
+   * time() become correct), -1 for an invalid server, -2 for an SNTP
+   * init/transport/timeout failure, or -3 when WiFi has no usable IPv4.
+   * Idempotent: repeated calls tear down prior SNTP state and re-sync.
+   *
+   * BLOCKING: holds the engine task for up to `timeoutMs` -- touch, hot
+   * reload and UI refresh stall meanwhile (same contract as net.httpGet).
+   * Real on-device SNTP exchange is deferred to board bring-up.
+   */
+  function setTimeNtp(server?: string, timeoutMs?: number): number;
 }
 
 declare namespace lume.power {

@@ -12,8 +12,10 @@
  * r127：TF 卡挂载后，Fs 根目录列表追加一个 `SD/` 虚拟入口，点入即切到独立
  * 的 SD 浏览模式（onSd=true，cwd 重置为 '/'）；卡根目录按 Sd.list 列举，
  * Sd 模式下预览/新建/递归删除分别走 Sd.read / Sd.mkdir / Sd.remove（契约
- * 与 Fs 对齐，递归仍在 JS 侧完成）。每步独立 try/catch，Sd API 缺失/未挂载/
- * 读失败时退化为「空目录/读取失败」，不拖垮整个 eval。顶栏在 SD 模式显示
+ * 与 Fs 对齐，递归仍在 JS 侧完成）。每步独立 try/catch；Sd 调用失败（负数
+ * 错误码/抛错）时该步回落 Fs 同路径——这是兼容性兜底，卡拔出/路径不存在时
+ * 表现与无卡一致，不把两种后端混成一个命名空间。仍失败（Fs 也报错）才退化
+ * 为「空目录/读取失败」，不拖垮整个 eval。顶栏在 SD 模式显示
  * Sd.statvfs() 的剩余 MB（错误码显示 NO CARD）。UI 文案全 ASCII（r64）。
  * 真机插卡验收 deferred。
  */
@@ -40,16 +42,27 @@ function notify(message) { lume.ui.shell.Toast.show(message); }
 var sd = (lume.storage && lume.storage.Sd) || null;
 var sdReady = !!(sd && typeof sd.mounted === 'function' && sd.mounted() === true);
 
-/* 后端分发：SD 模式全部走 Sd.*，否则走原 Fs.*。每个调用方各自 try/catch，
- * Sd 返回负数错误码（list/read 为 number，exists 为 -1/-3）时按原失败路径处理。
- * 实证（lume_sd.c）：Sd.exists(p + '/') 沿用 Fs 的「是目录」约定，
- * Sd.remove 与 Fs.remove 同为 unlink→rmdir 兜底，list 归一化尾部斜杠，
- * 因此递归删除在 JS 侧完成，SD 侧删除语义明确。 */
-function pathExists(p) { return onSd() ? sd.exists(p) : Fs.exists(p); }
-function listDir(p) { return onSd() ? sd.list(p) : Fs.list(p); }
-function readText(p) { return onSd() ? sd.read(p) : Fs.read(p); }
-function removeAt(p) { return onSd() ? sd.remove(p) : Fs.remove(p); }
-function mkdirAt(p) { return onSd() ? sd.mkdir(p) : Fs.mkdir(p); }
+/* 后端分发：SD 模式先走 Sd.*；Sd 调用失败（负数错误码 -1/-2/-3/-4 或 native
+ * 抛错）时该步回落 Fs 同路径，否则走原 Fs.*。SD->Fs 回落是兼容性兜底：卡拔出 /
+ * 路径不存在时 Sd 侧报负数错误码，此时表现与无卡一致。回落后再失败（Fs 也返回
+ * 错误码或抛错）才交给调用方按原失败路径处理；每步调用方各自 try/catch，不拖垮
+ * 整个 eval。实证（lume_sd.c / lume_engine.c）：Sd.read/list 成功为 string/array、
+ * 失败为负数；Sd.exists 成功为 bool、失败为负数；Sd.remove/mkdir 成功为 0、失败
+ * 为负数——故统一用「number 且 < 0」判别失败（0 是成功，不算失败）。
+ * 另实证：Sd.exists(p + '/') 沿用 Fs 的「是目录」约定，Sd.remove 与 Fs.remove
+ * 同为 unlink→rmdir 兜底，list 归一化尾部斜杠，递归删除在 JS 侧完成。 */
+function sdOrFs(method, p) {
+  var r;
+  try { r = sd[method](p); }
+  catch (e) { return Fs[method](p); }                     // native 抛错 -> Fs 同路径
+  if (typeof r === 'number' && r < 0) return Fs[method](p); // 负数错误码 -> Fs 同路径
+  return r;                                               // 成功值原样返回
+}
+function pathExists(p) { return onSd() ? sdOrFs('exists', p) : Fs.exists(p); }
+function listDir(p) { return onSd() ? sdOrFs('list', p) : Fs.list(p); }
+function readText(p) { return onSd() ? sdOrFs('read', p) : Fs.read(p); }
+function removeAt(p) { return onSd() ? sdOrFs('remove', p) : Fs.remove(p); }
+function mkdirAt(p) { return onSd() ? sdOrFs('mkdir', p) : Fs.mkdir(p); }
 
 /* ============ 数据层 ============ */
 function isDirPath(p) {
@@ -101,6 +114,8 @@ function loadDir(path) {
   if (typeof list === 'number') {
     entries.set([]);
     cwd.set(clean === '/' ? '/' : clean + '/');
+    selected.set(null);   // 失败分支与成功路径同口径：清掉旧选中项
+    closePreview();       // 同时收起预览，避免残留上一个目录的文件名
     notify('Read failed: ' + list);
     return;
   }

@@ -19,6 +19,7 @@
 #include <stdlib.h>          /* abort(): boot-stage fail-fast on OOM */
 #include <string.h>
 #include <math.h>
+#include <sys/time.h>        /* r128: gettimeofday() for lume.system.time() */
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -26,6 +27,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "esp_heap_caps.h"
+#include "esp_netif_sntp.h"  /* r128: bounded SNTP sync for lume.system.setTimeNtp() */
 #include "lume_engine.h"
 #include "lume_ui_bridge.h"
 #include "lume_scripts.h"
@@ -589,7 +591,122 @@ static JSValue js_warn(JSContext *ctx, JSValueConst this_val,
 static JSValue js_now_ms(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
 {
     (void)self; (void)argc; (void)argv;
+    /* NOTE: monotonic uptime, NOT unix time. lume.system.time() is the wall clock. */
     return JS_NewFloat64(ctx, (double)esp_timer_get_time() / 1000.0);
+}
+
+/* ---- r128: lume.system wall clock + bounded SNTP sync ----
+ * QuickJS's date_now() (quickjs.c date_now) reads gettimeofday() too, so a
+ * successful setTimeNtp() corrects Date.now() without touching QuickJS.
+ * All newly added code lives in flash .text/.rodata (no IRAM attributes). */
+#define LUME_SNTP_DEFAULT_SERVER      "pool.ntp.org"
+#define LUME_SNTP_SERVER_MAX          128
+#define LUME_SNTP_TIMEOUT_DEFAULT_MS  10000
+#define LUME_SNTP_TIMEOUT_MAX_MS      30000
+
+/* Wall-clock unix time in MILLISECONDS, from gettimeofday(). After a successful
+ * setTimeNtp() this is the real epoch; before sync it is the genuine value
+ * counted from 1970 (a small number near zero) -- we deliberately do NOT fake
+ * a plausible epoch. JS_NewInt64 returns a float64 for values above int32;
+ * epoch-ms (~1.7e12) stays exactly representable in double. */
+static JSValue js_system_time(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    int64_t ms = (int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000;
+    return JS_NewInt64(ctx, ms);
+}
+
+/* Synchronous, bounded SNTP one-shot.
+ * server   : optional NTP host string; default "pool.ntp.org" (pass
+ *            "ntp.aliyun.com" for CN networks). Max 127 chars, no NUL.
+ * timeoutMs: optional wait budget in ms; default 10000, capped at 30000.
+ *            0 falls back to the 10 s default; negative throws RangeError.
+ * Returns 0 on success (settimeofday already done by lwip SNTP), -1 invalid
+ * server, -2 SNTP init / transport / timeout failure, -3 WiFi has no usable
+ * IP. Non-string server throws TypeError. Idempotent: prior SNTP state is
+ * torn down before each call and again on return, so repeated calls re-sync.
+ *
+ * BLOCKING: this holds the engine task for up to timeoutMs -- touch, hot
+ * reload and UI refresh stall meanwhile (same contract as lume.net.httpGet).
+ * Real SNTP exchange / on-device timing is deferred to board bring-up. */
+static JSValue js_system_set_time_ntp(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self;
+    const char *server = LUME_SNTP_DEFAULT_SERVER;
+    char *server_copy = NULL;
+    int timeout_ms = LUME_SNTP_TIMEOUT_DEFAULT_MS;
+    int rc = LUME_NET_ERR_ARG;
+
+    if (argc >= 1 && !JS_IsUndefined(argv[0]) && !JS_IsNull(argv[0])) {
+        if (!JS_IsString(argv[0]))
+            return JS_ThrowTypeError(ctx,
+                "lume.system.setTimeNtp: server must be a string");
+        size_t slen = 0;
+        const char *s = JS_ToCStringLen(ctx, &slen, argv[0]);
+        if (s == NULL) return JS_EXCEPTION;
+        if (slen == 0 || slen >= LUME_SNTP_SERVER_MAX ||
+            memchr(s, '\0', slen) != NULL) {
+            JS_FreeCString(ctx, s);
+            return JS_NewInt32(ctx, LUME_NET_ERR_ARG);
+        }
+        /* lwip sntp_setservername() retains the pointer: keep an owned copy
+         * alive until esp_netif_sntp_deinit() below. */
+        server_copy = (char *)malloc(slen + 1);
+        if (server_copy == NULL) {
+            JS_FreeCString(ctx, s);
+            return JS_NewInt32(ctx, LUME_NET_ERR_DRIVER);
+        }
+        memcpy(server_copy, s, slen + 1);
+        JS_FreeCString(ctx, s);
+        server = server_copy;
+    }
+
+    if (argc >= 2 && !JS_IsUndefined(argv[1]) && !JS_IsNull(argv[1])) {
+        int32_t v = 0;
+        if (JS_ToInt32(ctx, &v, argv[1]) < 0) {
+            free(server_copy);
+            return JS_EXCEPTION;
+        }
+        if (v < 0) {
+            free(server_copy);
+            return JS_ThrowRangeError(ctx,
+                "lume.system.setTimeNtp: timeoutMs must be nonnegative");
+        }
+        if (v > 0) {
+            timeout_ms = v > LUME_SNTP_TIMEOUT_MAX_MS
+                ? LUME_SNTP_TIMEOUT_MAX_MS : (int)v;
+        }
+    }
+
+    if (!lume_net_has_ip()) {
+        rc = LUME_NET_ERR_STATE;   /* -3: WiFi not connected / no IPv4 */
+        goto done;
+    }
+
+    esp_netif_sntp_deinit();       /* no-op if a previous call left state behind */
+    esp_sntp_config_t cfg = ESP_NETIF_SNTP_DEFAULT_CONFIG(server);
+    cfg.wait_for_sync = true;
+    cfg.start = true;
+    esp_err_t err = esp_netif_sntp_init(&cfg);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "setTimeNtp: sntp init failed: %s", esp_err_to_name(err));
+        rc = LUME_NET_ERR_DRIVER;  /* -2 */
+        goto done;
+    }
+    err = esp_netif_sntp_sync_wait(pdMS_TO_TICKS(timeout_ms));
+    esp_netif_sntp_deinit();
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "setTimeNtp: sync wait failed: %s", esp_err_to_name(err));
+        rc = LUME_NET_ERR_DRIVER;  /* -2: transport / timeout */
+        goto done;
+    }
+    rc = 0;
+
+done:
+    free(server_copy);
+    return JS_NewInt32(ctx, rc);
 }
 
 static JSValue js_power_sleep_now(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
@@ -3016,6 +3133,12 @@ static void register_bindings(JSContext *ctx)
     JS_SetPropertyStr(ctx, lume, "removeChild",
                       JS_NewCFunction(ctx, js_remove_child, "removeChild", 1));
     JS_SetPropertyStr(ctx, lume, "_nowMs", JS_NewCFunction(ctx, js_now_ms, "_nowMs", 0));
+    /* r128: natives are _-prefixed on `lume`; the JS prelude wraps them into
+     * lume.system.time()/setTimeNtp() (same pattern as _nowMs / power._sleepNow). */
+    JS_SetPropertyStr(ctx, lume, "_systemTime",
+                      JS_NewCFunction(ctx, js_system_time, "_systemTime", 0));
+    JS_SetPropertyStr(ctx, lume, "_systemSetTimeNtp",
+                      JS_NewCFunction(ctx, js_system_set_time_ntp, "_systemSetTimeNtp", 2));
     JSValue power = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, power, "_sleepNow", JS_NewCFunction(ctx, js_power_sleep_now, "_sleepNow", 0));
     JS_SetPropertyStr(ctx, power, "_wake", JS_NewCFunction(ctx, js_power_wake, "_wake", 0));
