@@ -2172,3 +2172,39 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `PASS bundle crypto_check 3175 bytes` + 47 sources + 47 apps。
   `git diff c003834 HEAD -- firmware/ runtime/ tools/lume/` 与工作树 diff 均为空，
   固件零改动故未跑 `idf.py build`；磁盘 88%，本轮日志落 `/tmp`。未跑 codex review。
+
+## r135 — archive_view 压缩档案查看器取舍（app-only，基线 9d1849f）
+
+- **宿主注入的是 node:zlib，不是真机 miniz**：`lume.compress.inflate` 的权威路径是
+  固件 vendored miniz tinfl（r92），宿主/浏览器桩只返回 -3。`tests/archive_view.js`
+  通过 `options.compress` 注入 `zlib.inflateSync` / `zlib.inflateRawSync`（适配成
+  stub 签名并把结果拷进 out），对拍对象是 node:zlib，**不是** miniz。它证明 app 的
+  解压渲染/字节统计/压缩比/错误分支/循环逻辑正确，不证明固件在真机上的 DEFLATE
+  吞吐与错误码一致；权威覆盖在 `tests/compress.js`（编固件同一份 `lume_compress.c`），
+  真机 miniz 实测仍 deferred。
+- **payload 是自造样本不是真实数据**：三条字节字面量由 node:zlib 在写入时压缩合成
+  boot log（zlib, 181 B）/ 传感器记录（raw, 177 B）/ 前者尾部截短（zlib, 71 B）；
+  都是 fixture，不含任何真实设备日志或历史数据。截短流经原生 runner 实测返回 -2
+  （而非 -1），DAMAGED 条目据此覆盖损坏流分支；-1/-3/0 由 harness 注入覆盖。
+- **文本截断口径**：解压文本截到前 120 字符并追加 `...`，避免整条记录溢出 480 px
+  Text 行。代价是肉眼看不完整尾部；harness 把这段前缀与 node:zlib 真结果逐字符对拍，
+  截断造假（删截断或改长度）会被静态谓词与 live 断言同时抓到。
+- **out 缓冲复用与 -3 防御**：单一 2 KiB Uint8Array 复用，样本解压后约 180 B，远低于
+  上限；更大流会返回 -3 而不是越界写，app 把它渲染为 `ERR -3`，harness 注入 -3
+  覆盖该分支。宿主默认桩的 -3 也显示为 `ERR -3`，不是 UNSUPPORTED（compress 的 -3
+  语义是 out 太小，与 crypto 的 -3 语义不同，故不套用 r134 的 UNSUPPORTED 呈现）。
+- **0 不是错误**：`inflate` 返回 0 表示合法空流，app 显示 `OK` 与 `0%`，绝不显示
+  `ERR 0`；负值一律用 `n < 0` 数值判别，不用真值判断。harness 注入 0 专门断言此点。
+- **14 节点 / <=20 预算**：宿主 create 消息计数 14，头注释声明 `LUME_MAX_NODES = 128`
+  与 <=20 自定上限；没有列表与运行时建节点。
+- **47→48 清单同步的合法性**：`tools/playground/build.mjs` 的 apps 是数据清单，新 app
+  注册使 `crypto_check.js` / `adc_meter.js` 的 `apps.length`、三只 consumer 的检查名
+  字符串、`sd_files.js` 的硬编码变异串必须同步到 48；这些改动不改任何生产行为，只让
+  数量/清单断言继续有效。`tools/lume/`（CLI 工具面）仍在 gitChanged 钉死范围内且零 diff。
+- **验证 / 诚实口径**：`tests/archive_view.js` 21 PASS（含 6 项变异实证）；全量宿主
+  harness 0 FAIL；`npm test` 50/0/0；`check_website.py` 三项 none；`lume check`
+  archive_view + counter `--no-emu` 均 `RESULT: PASS`；playground `PASS bundle
+  archive_view 3455 bytes` + 48 sources + 48 apps。`git diff 9d1849f HEAD --
+  firmware/ runtime/ tools/lume/` 与工作树 diff 均为空，固件零改动故未跑 `idf.py
+  build`；磁盘 88%，本轮日志落 `/tmp`，`artifacts/r82/fft-host-*/sdkconfig.h` 已清理。
+  未跑 codex review。

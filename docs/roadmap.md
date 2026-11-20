@@ -830,8 +830,9 @@ work buffer，r79）、`lume.svg`（mini-SVG 光栅化，r58）。
    AES-CTR（封装 esp-idf mbedtls，不自己实现）。消费方：WS 鉴权签名、OTA
    校验、配网 token。接口全部 typed array 进出。
 4. **`lume.compress`（P2，热更新大包/日志）**——deflate/raw 解压（miniz 级
-   单文件实现 vendored）。消费方：bundle 压缩传输（256KiB 上限内装更多）、
-   日志/历史数据压缩存储。解压优先（压缩 JS 侧用不上）。
+  单文件实现 vendored）。消费方：bundle 压缩传输（256KiB 上限内装更多）、
+  日志/历史数据压缩存储（r135 已补纯 app 消费方 `examples/archive_view`）。
+  解压优先（压缩 JS 侧用不上）。
 5. **`lume.raymarch`/`lume.particles`（P3，演示效果类）**——按需立项：
    raycast 模式的推广（体素/粒子系统整帧 C 渲染）。只有具体 demo app 拉动
    时才做，不做无消费方的投机 API。
@@ -2582,3 +2583,63 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   测试生成的 `artifacts/r82/fft-host-*/sdkconfig.h` 已清理。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r134 节。本轮未跑 codex review（主控轮负责）。
+
+### r135 result — `lume.compress` 消费方刀：examples/archive_view 压缩档案查看器（纯 app 层；appended, milestone checkboxes untouched）
+
+基线 `9d1849f`（r134）；worktree `/tmp/lume-r135-wt`、分支 `r135-compress-consumers`；
+开工前 `lume_model_guard.sh` 绿（hy4flash-free）、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- `runtime/types/lume.d.ts:1196-1212` 与 `firmware/components/lume-compress/lume_compress.c`
+  确认契约：`inflate(src, out, format?)` 写入调用方持有的 `Uint8Array`，返回写出字节数
+  （空流 0），`-1` 类型/format 非法、`-2` 损坏/截断/校验失败、`-3` out 太小；src 任意
+  typed array、out 必须 Uint8Array、view 直接用不拷贝。`tests/compress.js` 编固件同一份
+  C 源码，已覆盖上述码；另用同一 runner 对**本 app 的三条真实字节**实测：
+  zlib payload 返回 181、raw 返回 177、尾部截短流返回 **-2**（不是 -1）、坏 Adler 返回 -2、
+  format `'gzip'` 返回 -1、8 B out 返回 -3。破坏流确实落 -2 而非 -1，故 DAMAGED 条目用
+  截短的真实 zlib 字节。
+- `tests/lib/prelude_runner.js:186-197` 的 compress 桩固定返回 -3 并经 `options.compress`
+  spread 注入真实现（宿主无原生 inflate），浏览器/宿主天然呈现 `ERR -3`，不是异常。
+- `examples/crypto_check/app.js`（r134 先例）给出 `var`/`function` 保守全局脚本、
+  `LUME_MAX_NODES = 128` 预算声明、`< 0` 数值判别、ASCII-only 的范式，本 app 沿用。
+- **playground 数量实证**：47→48。钉清单长度的断言不止 `tests/crypto_check.js` 与
+  `tests/adc_meter.js` 的 `apps.length === 47`，还有 `weather_sntp.js` / `ota_consumers.js`
+  / `sntp_consumers2.js` 用**检查名字符串**引用同一条断言，以及 `sd_files.js` 的硬编码变异串
+  `'image_gallery', 'files', 'adc_meter', 'crypto_check'];`。故同步 `list.length`、
+  `apps.length`、注释、检查名字符串与变异串到 48，理由写入对应 commit message。
+  `bridge_protocol.c:28` 的 `LUME_ATTR_MAX_WIDTH == 46` 是 ATTR ID，未改。
+
+**实现**（固件/runtime/CLI 零改动）：
+- `examples/archive_view/app.js`：单屏静态树（宿主 create 计数 **14** 节点）；3 条内置
+  压缩 payload（合成 boot log zlib / 合成传感器记录 raw / boot log 的截短 zlib 损坏流），
+  字节字面量内嵌、非真实数据。单一 2 KiB Uint8Array 复用；NEXT 按钮循环 3 条；显示
+  解压 ASCII 文本（截到前 120 字符 + `...` 以适配 480 px）、前后字节数与整数百分比
+  压缩比、ZLIB/RAW 格式标签。所有负值按数值判别显示 `ERR <code>`，0 不算错误
+  （不显示 `ERR 0`）；-2 由真实损坏流触发，-1/-3/0 由 harness 注入覆盖。头注释登记
+  节点预算、payload 来源与截断取舍，UI 文案 ASCII-only。
+- `tests/archive_view.js`（新，CommonJS）：经 `options.compress` 注入 node:zlib 真实现
+  （`inflateSync`/`inflateRawSync` 适配成 stub 签名并把结果拷进 out）；真跑 app 断言
+  两条正常 payload 的解压文本/字节数/压缩比/格式标签、真实 -2 损坏流、注入 -1/-2/-3/0
+  的 `ERR <code>` 与 0 非错误、NEXT 循环与环绕、默认桩 `ERR -3`、ASCII/`< 0`/截断/
+  节点预算/清单 48/生成物字节一致；6 项变异实证（删错误分支、注入非 ASCII、解压结果造假
+  含 live 断言、删截断、改 firmware 文件、改 runtime 文件）全部必须 FAIL。
+- `tools/playground/build.mjs`：apps 数组加 `'archive_view'`（48）；
+  `website/playground/{apps/archive_view.js,sources/archive_view.js,sources.js}`
+  随 feat commit。
+
+**验证**（真机 miniz 实测 / 触屏手感 deferred；不声称真机验证）：
+- `node tests/archive_view.js`：21 PASS（含 6 项变异实证）。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done`：
+  `done`，**0 FAIL**。
+- `npm test --prefix tools/lume`：`# pass 50 / # fail 0 / # skipped 0`（worktree 补齐
+  gitignore 的 `tools/lume/bin/qjsc` 软链后恢复基线）。
+- `python3 scripts/check_website.py`：missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check examples/archive_view --no-emu`：`RESULT: PASS (4 steps)`；
+  `examples/counter --no-emu` 哨兵 `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume`：`PASS bundle archive_view 3455 bytes` +
+  `PASS esbuild-wasm assets and 48 editable sources` + `PASS prelude 67317 bytes; 48 apps`。
+- `git diff 9d1849f HEAD -- firmware/ runtime/ tools/lume/` 与工作树 diff 均为空 →
+  固件/runtime/CLI 零改动，按纪律未跑 `idf.py build`。磁盘 88%，本轮日志落 `/tmp`，
+  测试生成的 `artifacts/r82/fft-host-*/sdkconfig.h` 已清理。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r135 节。本轮未跑 codex review（主控轮负责）。
