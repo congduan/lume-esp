@@ -2268,3 +2268,47 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   日志仅留 `/tmp/lume-r128-idf-build.log`。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r128 节。本轮未跑 codex review（主控轮负责）。
+
+### r129 result — `lume.system.time()`/`setTimeNtp()` 消费方刀：clock SNTP-first + settings 手动同步（纯 app 刀；appended, milestone checkboxes untouched）
+
+基线 `b5ca082`（r128 SNTP 原语）；worktree `/tmp/lume-r129-wt`、分支
+`r129-sntp-consumers`；开工前 `lume_model_guard.sh` 绿、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- 简报假设 `examples/settings` 在 playground 45-app 清单内——实证为**假**：
+  `tools/playground/build.mjs` 的 `apps` 数组是 45 个精选 app，无 `settings`。
+  故本轮不扩清单（避免 tooling 越界与 45→46 文档口径漂移）；重建只刷新 clock
+  生成物，settings 由 `lume check examples/settings --no-emu` + 宿主 runApp 覆盖。
+- 简报假设 `epochOffsetMs=0` 天然恒等——实证为**假**：设备上 `lume._nowMs()`
+  是 `esp_timer_get_time()/1000`（单调 uptime，`lume_engine.c:595`），不是墙钟；
+  SNTP 成功后被 `settimeofday()` 修正的是 `Date.now()` / `lume.system.time()`。
+  故 `wallDate()` 改读 `Date.now() + epochOffsetMs`，HTTP 回落路径锚点同步从
+  `_nowMs()` 改为 `Date.now()`（两者同步前同为 1970 起小值、速率相同，观测等价），
+  offset=0 才真正恒等为墙钟；`nextSyncMs` 仍走 `_nowMs()` 域保持节拍。
+
+**实现**（纯 app 层，固件/runtime 零改动）：
+- `examples/clock/app.js`：GOT_IP 时先 `lume.system.setTimeNtp()`（默认 server /
+  默认 10 s）；0 → `epochOffsetMs=0`、本轮完成（不轮 HTTP、不动 tzMin）；非 0
+  （-2/-3）或 API 缺失/抛错 → 保留 r128 HTTP 源列表回落。节拍 SYNC_OK_MS=10 min /
+  无 IP SYNC_RETRY_MS=30 s 不变，kv 'clock.tzMin' 语义不变。
+- `examples/settings/app.js` General 页：新增恰好 3 节点（View+Text+Button）同步行——
+  `TIME SYNC: NTP OK / NOT SYNCED / SYNC FAILED / NO WIFI` + `Sync now`；GOT_IP
+  时调 `setTimeNtp()` 并刷新状态，UI 文案 ASCII。
+- `tests/sntp_consumers.js`（新，CommonJS）：17 条静态断言 + **17 项变异实证**
+  （删 NTP-first、去 offset 置零、去 HTTP 回落、去 API 守卫、回退 wallDate 锚点、
+  去 tzMin kv、改节拍、去按钮/状态绑定/第 4 节点、去文案、去 GOT_IP 门控、
+  去 -2 映射、去 system.time、注入非 ASCII、改固件文件——全部必须 FAIL）。
+- `npm run build:playground`：45 bundles + 2 summary，共 47 行 PASS；
+  `PASS bundle clock 3433 bytes` / `PASS prelude 67317 bytes; 45 apps`。
+
+**验证**（真机 SNTP 实测 deferred；不声称真机验证）：
+- `node tests/sntp_consumers.js`：17 契约 PASS + 17 变异实证 PASS。
+- `node tests/clock_round.js` / `node tests/sntp.js`：不回归，全绿。
+- `for t in tests/*.js; do ... done`：0 FAIL；`npm test --prefix tools/lume`：
+  pass 50 / fail 0 / skipped 0；`check_website.py` missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check examples/clock|settings|counter --no-emu`：
+  三者均 `RESULT: PASS`。
+- `git diff --stat b5ca082 HEAD -- firmware/ runtime/` 空 → 固件零改动，
+  按纪律未跑 `idf.py build`（命令输出为空作证）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r129 节。本轮未跑 codex review（主控轮负责）。
