@@ -2210,3 +2210,38 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   firmware/ runtime/ tools/lume/` 与工作树 diff 均为空，固件零改动故未跑 `idf.py
   build`；磁盘 88%，本轮日志落 `/tmp`，`artifacts/r82/fft-host-*/sdkconfig.h` 已清理。
   未跑 codex review。
+
+## r136 — img_view RGB565 缩放演示取舍（app-only，基线 67d37a7）
+
+- **宿主跑的是 prelude JS + imgscale 桩，不是真机 C 绑定**：`lume.imgscale.scale` 的权威
+  路径是固件 vendored C 实现（零拷贝视图、8-bit 定点 bilinear）。宿主
+  `tests/lib/prelude_runner.js:77-132` 提供同契约的**真实现** JS 桩（nearest 中心采样、
+  bilinear 逐通道定点插值），harness 对拍的是这个桩，不是 ESP32-S3 上的 C。它证明 app
+  的按钮/HUD/错误分支/像素结果逻辑正确，不证明真机 CO5300 面板上缩放图样的观感、
+  帧率与触屏手感；这些仍 deferred，未声称真机验证。
+- **fixture 是合成图不是真实图片**：24x24 RGB565 数组由作者期一次性脚本生成后内嵌，
+  混合渐变、棋盘硬边与色块条纹，只为让 nearest/bilinear 的差异肉眼可辨；不含任何
+  照片、设备截图或历史数据。生成脚本留在 `/tmp`，不进仓。
+- **缩放比/裁剪口径**：只放大整数倍（2x/4x/8x），源 24x24 → 目标 48/96/192 方形，
+  不引入小数倍或非整数裁剪。采样按中心对齐并**钳制到源边缘**（sampling 不越界）；
+  目标在 200x200 Canvas 内居中显示 `floor((200-dw)/2, (200-dh)/2)`，四周留底色边。
+  单一 192x192 `Uint16Array` 预分配，每帧取 `subarray(0, dw*dh)` 作为 dst，零拷贝；
+  放大后的图通过 `retainImage`/`drawImage` 上传精灵槽（slot 1）重放，避免逐像素 JS 绘制。
+- **-3 不可达，仅按数值呈现**：契约把 -3 留作内部保留码，当前实现无可达路径产生它；
+  harness 仍现场注入 -3 断言 app 显示 `ERR -3`，不把它误当异常或吞掉。所有负值一律
+  `rc < 0` 数值判别，0 显示 `OK`、绝不显示 `ERR 0`，不用真值判断返回码。
+- **10 节点 / <=12 预算**：宿主 create 消息计数 10，头注释声明 `LUME_MAX_NODES = 128`
+  与 <=12 自定上限；静态树，无列表与运行时建节点，精灵槽原地重定义。
+- **48→49 清单同步的合法性**：`tools/playground/build.mjs` 的 apps 是数据清单，新 app
+  注册使 `archive_view.js` / `crypto_check.js` / `adc_meter.js` 的 `apps.length`、
+  `weather_sntp.js` / `sntp_consumers2.js` / `ota_consumers.js` 的检查名字符串、
+  `sd_files.js` 的硬编码变异串都必须同步到 49；新文件进入 HEAD 后还需把 4 个 r136
+  文件加进 `ota_consumers.js` 的 `gitChanged([])` 允许清单，否则该 harness 由绿转红。
+  这些改动不改任何生产行为，只让数量/清单断言继续有效。`tools/lume/`（CLI 工具面）
+  仍在 gitChanged 钉死范围内且零 diff。
+- **验证 / 诚实口径**：`tests/img_view.js` 18 条检查 + 1 汇总行全 PASS（含 6 项变异实证）；
+  全量宿主 harness 0 FAIL；`npm test` 50/0/0；`check_website.py` 三项 none；
+  `lume check` img_view + counter `--no-emu` 均 `RESULT: PASS`；playground
+  `PASS bundle img_view 4850 bytes` + 49 sources + 49 apps。`git diff 67d37a7 HEAD --
+  firmware/ runtime/ tools/lume/` 与工作树 diff 均为空，固件零改动故未跑 `idf.py
+  build`；磁盘 88%，本轮日志落 `/tmp`。未跑 codex review。

@@ -2647,3 +2647,69 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   测试生成的 `artifacts/r82/fft-host-*/sdkconfig.h` 已清理。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r135 节。本轮未跑 codex review（主控轮负责）。
+
+### r136 result — `lume.imgscale` 消费方刀：examples/img_view RGB565 缩放演示（纯 app 层；appended, milestone checkboxes untouched）
+
+基线 `67d37a7`（r135）；worktree `/tmp/lume-r136-wt`、分支 `r136-imgscale-consumer`；
+开工前 `lume_model_guard.sh` 绿（hy4flash-free）、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- `runtime/types/lume.d.ts:1150-1166` 确认契约：`scale(src, sw, sh, dst, dw, dh, mode?)`
+  直接使用调用方持有的 Uint16Array 视图（无拷贝，subarray 偏移生效），mode 默认
+  `'nearest'`、可 `'bilinear'`；返回 0 / -1（参数/类型/mode 错）/ -2（尺寸非法、视图过短、
+  部分重叠）/ -3（内部保留、当前实现无可达路径）。同 buffer 仅允许 `sw===dw && sh===dh`
+  的原位拷贝。
+- `tests/lib/prelude_runner.js:77-132` 的 `imgscaleStub()` 是**真实现**（nearest 中心采样、
+  bilinear 8-bit 定点 R5/G6/B5 独立插值），不是固定 -3 桩；它没有 `options.imgscale`
+  注入点，但 `runApp()` 返回同一个 `lume` 对象，harness 可在 app 求值后替换
+  `ui.lume.imgscale.scale` 现场注入 -1/-2/-3/0，覆盖全部返回码分支。
+- `examples/crypto_check/app.js` 与 `examples/archive_view/app.js` 给出保守全局脚本
+  （`var`/`function`）、`LUME_MAX_NODES = 128` 预算声明、`< 0` 数值判别（0 非错误）、
+  ASCII-only 文案的范式，本 app 沿用。
+- 写 harness 前先用独立浮点参考实现对桩输出做标定：24x24 fixture 在 2x/4x/8x 下，
+  nearest 与 bilinear 的逐通道误差均为 **0**，故对拍用逐值严格相等，不引入容差。
+- **playground 数量实证**：48→49。钉清单长度的断言不止 `tests/archive_view.js` /
+  `tests/crypto_check.js` / `tests/adc_meter.js` 的 `apps.length === 48`，还有
+  `weather_sntp.js` / `sntp_consumers2.js` / `ota_consumers.js` 用**检查名字符串**引用的
+  `list.length === 48`，以及 `sd_files.js` 的硬编码变异串
+  `'image_gallery', 'files', 'adc_meter', 'crypto_check', 'archive_view'];`。已逐处同步到
+  49；另因新文件在 feat/test commit 后才进入 HEAD，预先把 4 个 r136 新文件加进
+  `tests/ota_consumers.js` 的 `gitChanged([])` 允许清单（否则提交后由绿转红），理由写入
+  对应 commit message。
+
+**实现**（固件/runtime/CLI 零改动）：
+- `examples/img_view/app.js`：单屏静态树（宿主 create 计数 **10** 节点）。内置一张
+  24x24 **合成** RGB565 fixture（作者期脚本生成后以数组字面量内嵌，含横向红蓝渐变、
+  纵向绿色渐变、黑白棋盘硬边、青色块+红对角条纹，非真实图片）。一张 200x200 Canvas
+  每帧调 `imgscale.scale` 把 fixture 放大到 48/96/192 方形，经 `retainImage`/`drawImage`
+  呈现；NEXT 按钮循环 2x/4x/8x，MODE 按钮切 nearest/bilinear。HUD 显示 `X<n> <mode>
+  24x24 -> <dw>x<dh>` 与状态码；负返回值用 `rc < 0` 数值判别显示 `ERR <code>`，0 显示
+  `OK`，绝不显示 `ERR 0`。头注释登记节点预算、fixture 来源与零拷贝 DST 复用取舍，
+  UI 文案 ASCII-only。
+- `tests/img_view.js`（新，CommonJS）：经 prelude_runner 真跑 app，**独立**写 nearest
+  与 bilinear 两个参考缩放实现（浮点坐标、逐通道插值，不抄 stub）做已知答案对拍；
+  断言默认 2x、NEXT 三档循环、MODE 双模式切换（含 bilinear 与 nearest 必不同）、
+  两个 Button 直连、注入 -1/-2/-3/0 的 `ERR <code>` 与 0 非错误、spy 断言传入的
+  mode 字符串与尺寸；静态断言 ASCII/`< 0`/真实 scale 调用/节点预算/清单 49/生成物
+  字节一致/固件 runtime CLI 零 diff；**6 项变异实证**（删错误分支、注入非 ASCII、
+  scale 结果造假含 live 对拍、参考实现造假、改 firmware 文件、改 runtime 文件）全部
+  必须 FAIL。
+- `tools/playground/build.mjs`：apps 数组加 `'img_view'`（49）；
+  `website/playground/{apps/img_view.js,sources/img_view.js,sources.js}` 随 feat commit。
+
+**验证**（真机面板/触屏 deferred；不声称真机验证）：
+- `node tests/img_view.js`：19 PASS 行（18 条检查 + 1 汇总行；其中 6 项为变异实证）。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done`：
+  `done`，**0 FAIL**。
+- `npm test --prefix tools/lume`：`# tests 50 / # pass 50 / # fail 0 / # skipped 0`
+  （worktree 补齐 gitignore 的 `tools/lume/bin/qjsc` 软链并 `npm ci` 后恢复基线）。
+- `python3 scripts/check_website.py`：missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check examples/img_view --no-emu`：`RESULT: PASS (4 steps)`；
+  `examples/counter --no-emu` 哨兵 `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume`：`PASS bundle img_view 4850 bytes` +
+  `PASS esbuild-wasm assets and 49 editable sources` + `PASS prelude 67317 bytes; 49 apps`。
+- `git diff 67d37a7 HEAD -- firmware/ runtime/ tools/lume/` 与工作树 diff 均为空 →
+  固件/runtime/CLI 零改动，按纪律未跑 `idf.py build`。磁盘 88%，本轮日志落 `/tmp`，
+  测试临时物（fixture 生成脚本）留在 `/tmp`，未进仓。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r136 节。本轮未跑 codex review（主控轮负责）。
