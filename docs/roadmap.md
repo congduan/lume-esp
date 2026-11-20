@@ -2416,3 +2416,54 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   改动，按纪律未跑 `idf.py build`。磁盘 88%，本轮日志落 `/tmp`，artifacts 未新增大件。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r131 节。本轮未跑 codex review（主控轮负责）。
+
+### r132 result — OTA 消费方刀：settings OTA 状态行 + token 轮换（纯 app 刀；appended, milestone checkboxes untouched）
+
+基线 `d85e69a`（r131）；worktree `/tmp/lume-r132-wt`、分支 `r132-ota-consumers`；
+开工前 `lume_model_guard.sh` 绿（hy4flash-free）、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- `runtime/types/lume.d.ts:848-859` / `956-962` 契约确认：`OtaStatus` 含
+  `running/wifiReady/tokenReady/hmac/port/token`；`token` 是 32 小写 hex，只在本地
+  快照与串口 log 出现，从不上 WiFi 信道。`lume.ota.status()` 返回快照，
+  `setToken(tokenHex)` 返回 0 成功 / 负码失败。
+- `examples/settings/app.js`：page 3 = General，`infoRow`、r129 NTP 行（View + Text +
+  Button 三节点）、`pollOnce()` 600 ms 轮询、powerOff 两段确认（signal + 3 s
+  setTimeout）均为现成先例；头注释声明 LUME_MAX_NODES=128、静态树 ~95 节点，加一行后
+  ~98 仍在预算内。
+- `examples/dashboard/app.js`：SYSTEM 为 page 2 canvas，`readSlow()` 发 9 行 info、
+  `systemStaticLines()` 8 条分隔线，行 y=62+i*30；第 10 行落在 y=332、底边 346 <
+  H=360，故加 1 行 + 1 条分隔线安全。
+- `tests/lib/prelude_runner.js` 已有 `lume.ota` 桩（status 返回 object、setToken 返回
+  -3）；`vm` 中 `Math.random` 可用（宿主非安全随机源已实证）。
+- `dashboard` 在 `tools/playground/build.mjs` 的 45-app 清单内，`settings` 不在；生成物
+  落在 `website/playground/`（非 `tools/`），不破坏 firmware/runtime/tools 零改动。
+
+**实现**（纯 app 层；firmware/runtime/tools 零改动）：
+- `examples/settings/app.js` General 页新增 OTA 行（3 节点）：ASCII 状态文案由
+  `lume.ota.status()` 派生 `ota off / ota wifi down / ota no token / ota :8765 hmac`；
+  number 返回按错误码显示 `ota err <code>`（判别用 `typeof === 'object'`）。token 全串
+  从不读取、从不进入任何 Text 渲染路径。
+- 「New token」两段确认：首点标题变 `Confirm new token?` 并起 3 s 计时器，再点才调
+  `lume.ota.setToken()`；新 key 由 `Math.random()` 生成 32 个小写 hex；失败显示
+  `setToken err <code>`，成功刷新状态行（tokenReady=true）。头注释如实登记
+  `Math.random` 非 CSPRNG 的取舍。
+- `examples/dashboard/app.js` SYSTEM 页第 10 行 `OTA <status>`，同样 `typeof === 'object'`
+  判别、ASCII 文案，分隔线 8→9；canvas 文本行布局不变。
+- `tests/ota_consumers.js`（新，CommonJS）：19 条源码静态断言 + 19 项变异实证（删 status
+  读、truthy 判别、直接渲染 token、去两段确认、token 位数改 16、生成物漂移、清单丢
+  dashboard、改固件文件等——全部必须 FAIL）。
+- `npm run build:playground`：45 bundles + 2 summary PASS；
+  `website/playground/{apps/dashboard.js,sources/dashboard.js,sources.js}` 随 feat commit。
+
+**验证**（真机 OTA 推包 / HMAC 握手端到端 deferred；不声称真机验证）：
+- `node tests/ota_consumers.js`：19 契约 PASS + 19 变异实证 PASS；全量宿主 harness
+  0 FAIL；`npm test` 50/0/0；`check_website.py` missing/invented/duplicates 均 none；
+  `lume check` settings / counter / dashboard `--no-emu` 均 `RESULT: PASS`；playground
+  47 行 PASS。
+- 额外运行时烟测（非提交物）：patched 宿主桩按两次按钮 → setToken 仅第二次调用 1 次，
+  生成 32 hex 小写 token，且该 token 不出现在任何 UI attr 消息。
+- `git diff d85e69a HEAD -- firmware/ runtime/ tools/` 与工作树 diff 均为空 → 固件零
+  改动，按纪律未跑 `idf.py build`。磁盘 88%，日志落 `/tmp`。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r132 节。本轮未跑 codex review（主控轮负责）。
