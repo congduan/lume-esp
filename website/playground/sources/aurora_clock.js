@@ -115,6 +115,43 @@ var ac = acState();
 var acFrame = signal(0), acTime = signal('00:00'), acDate = signal('');
 var acSpriteMinute = '', acGlowTheme = -1;
 acClock(ac, new Date()); acTime.set(ac.timeText); acDate.set(ac.date);
+
+/* ---- r130: SNTP sync BEGIN ---- */
+/* r130: SNTP-first wall clock. WiFi GOT_IP -> lume.system.setTimeNtp(); only a
+ * 0 return means Date.now()/new Date() is a corrected wall clock (valid).
+ * Until then (or on -2/-3/throw) the genuine 1970-based device time is shown;
+ * the existing AURORA HUD slot carries the ASCII sync status. No fabricated
+ * epoch, and the 20 Hz ribbon animation / tap interaction are untouched. */
+var AC_SYNC_RETRY_MS = 30000;
+var AC_SYNC_OK_MS = 600000;
+var acWallValid = false;              /* true ONLY after setTimeNtp() === 0 */
+var acSyncStatus = signal('SYNCING'); /* ASCII: SYNCING / NO WIFI / NO SYNC / '' */
+var acNextSyncMs = 0;                 /* first attempt due immediately */
+function acSyncNtp() {
+  var st = lume.net.status();
+  if (typeof st !== 'object' || st === null || st.state !== lume.net.GOT_IP) {
+    acWallValid = false; acSyncStatus.set('NO WIFI');
+    acNextSyncMs = lume._nowMs() + AC_SYNC_RETRY_MS; return;
+  }
+  var sys = lume.system;
+  if (!sys || typeof sys.setTimeNtp !== 'function') {
+    acWallValid = false; acSyncStatus.set('NO API');
+    acNextSyncMs = lume._nowMs() + AC_SYNC_RETRY_MS; return;
+  }
+  acSyncStatus.set('SYNCING');
+  var r;
+  try { r = sys.setTimeNtp(); } catch (e) { r = -2; }
+  if (r === 0) {
+    acWallValid = true; acSyncStatus.set('');     /* wall time: enable rendering */
+    acNextSyncMs = lume._nowMs() + AC_SYNC_OK_MS;
+  } else {
+    acWallValid = false;
+    acSyncStatus.set(r === -3 ? 'NO WIFI' : 'NO SYNC');
+    acNextSyncMs = lume._nowMs() + AC_SYNC_RETRY_MS;
+  }
+}
+/* ---- r130: SNTP sync END ---- */
+
 var acRoot = View({ style: { width: AC_W, height: AC_H, background: AC_BG, scroll: 'none' } });
 Text({ parent: acRoot, text: acTime, style: { position: 'absolute', x: 50, y: 209,
   width: 380, height: 91, fontSize: 72, color: AC_WHITE, textAlign: 'center' } });
@@ -154,13 +191,17 @@ var acCanvas = Canvas({ parent: acRoot, width: AC_W, height: AC_H,
   } });
 Text({ parent: acRoot, text: acDate, style: { position: 'absolute', x: 48, y: 79,
   width: 384, height: 27, fontSize: 17, color: '#DAEAF4', textAlign: 'center' } });
-Text({ parent: acRoot, text: 'AURORA', style: { position: 'absolute', x: 120, y: 423,
+/* r130: the existing HUD slot shows AURORA when synced, else ASCII sync state. */
+Text({ parent: acRoot, text: function () {
+  return acWallValid ? 'AURORA' : acSyncStatus();
+}, style: { position: 'absolute', x: 120, y: 423,
   width: 240, height: 24, fontSize: 15, color: '#C3D8E4', textAlign: 'center' } });
 lume.gesture.on(acRoot, 'tap', function () { ac.theme = (ac.theme + 1) % AC_LUT.length; acWake(ac); acFrame.set(acFrame() + 1); });
 lume.system.setInterval(function () {
   var sample = null;
   try { sample = lume.imu.read(); } catch (e) { /* no board */ }
   acStep(ac, sample);
+  if (lume._nowMs() >= acNextSyncMs) acSyncNtp();  /* r130: cadence-gated sync */
   if (acClock(ac, new Date())) { acTime.set(ac.timeText); acDate.set(ac.date); }
   acFrame.set(acFrame() + 1);
 }, 50);
