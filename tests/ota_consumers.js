@@ -15,8 +15,8 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 48-app manifest, all UI literals are ASCII (r64), and only the
-//     known r132 files differ from the d85e69a baseline.
+//     in the 49-app manifest, all UI literals are ASCII (r64), and only the
+//     known r132-r136 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
 const fs = require('node:fs');
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 48-app playground manifest is the source of truth for "in清单".
+// 49-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -84,8 +84,8 @@ function gitChanged(paths) {
 }
 /* r133: the playground manifest (tools/playground/build.mjs) is DATA that now
  * registers adc_meter as a 46th app; r134 adds crypto_check as a 47th; r135
- * adds archive_view as the 48th. The firmware/runtime/CLI-tooling surface is
- * still pinned. Scope the diff to
+ * adds archive_view as the 48th; r136 adds img_view as the 49th. The
+ * firmware/runtime/CLI-tooling surface is still pinned. Scope the diff to
  * tools/lume/ so manifest registration is not misreported as a tooling
  * behaviour change. */
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
@@ -120,6 +120,13 @@ const ALLOWED = [
   'tests/archive_view.js',
   'website/playground/apps/archive_view.js',
   'website/playground/sources/archive_view.js',
+  // r136: this slice's baseline also predates the img_view consumer app. The
+  // four new files are staged here BEFORE commit because `git diff` does not
+  // see untracked files; without this the allowlist turns red after commit.
+  'examples/img_view/app.js',
+  'tests/img_view.js',
+  'website/playground/apps/img_view.js',
+  'website/playground/sources/img_view.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -182,15 +189,15 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 48-app playground manifest', [playgroundApps,
-    list => list.length === 48 && list.includes('dashboard')]],
+  ['dashboard is in the 49-app playground manifest', [playgroundApps,
+    list => list.length === 49 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
   ['firmware/ runtime/ CLI tooling identical to d85e69a', [fwChanged, c => c.length === 0]],
 
-  ['only known r132 + r133 + r134 + r135 files differ from d85e69a', [allChanged, c =>
+  ['only known r132 + r133 + r134 + r135 + r136 files differ from d85e69a', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f))]],
 ];
 
@@ -259,7 +266,7 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 48-app playground manifest', playgroundApps);
+  'dashboard is in the 49-app playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
@@ -268,6 +275,6 @@ must('a firmware file changes vs d85e69a',
   'firmware/ runtime/ CLI tooling identical to d85e69a', fwChanged);
 must('an out-of-scope file changes vs d85e69a',
   () => allChanged.concat(['docs/unexpected.md']),
-  'only known r132 + r133 + r134 + r135 files differ from d85e69a', allChanged);
+  'only known r132 + r133 + r134 + r135 + r136 files differ from d85e69a', allChanged);
 
 console.log('ALL OTA CONSUMERS HARNESS CASES PASSED');

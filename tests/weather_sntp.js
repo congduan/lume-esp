@@ -13,7 +13,7 @@
 //   - header no longer claims there is no SNTP / set-time API; the old
 //     "TLS 需校时" -2 copy is replaced by a transport reading.
 //   - playground sources/weather.js byte-identical to examples, weather in the
-//     48-app manifest, firmware/ runtime/ tools/ byte-identical to baseline.
+//     49-app manifest, firmware/ runtime/ tools/ byte-identical to baseline.
 // There is NO radio and NO board on the host: nothing here proves a real SNTP
 // exchange or a real verified HTTPS round trip. Deferred to board bring-up.
 const fs = require('node:fs');
@@ -40,7 +40,7 @@ const sntp = sliceBetween(source, BEGIN, END);          // gate + call, inside s
 const refresh = sliceBetween(source, 'function refresh()', 'function headerLine()');
 const header = source.split('/* ---- 天气码')[0];       // file header comment only
 
-// The 48-app playground manifest is the source of truth for "in清单".
+// The 49-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -117,8 +117,8 @@ const checks = [
   ['playground sources/weather.js byte-identical to examples/weather/app.js',
     [playgroundSrc, s => s === source]],
 
-  ['weather is in the 48-app playground manifest', [playgroundApps,
-    list => list.length === 48 && list.includes('weather')]],
+  ['weather is in the 49-app playground manifest', [playgroundApps,
+    list => list.length === 49 && list.includes('weather')]],
 
   ['firmware/ runtime/ CLI tooling identical to 1dc7c76 (manifest excluded)',
     [changed, c => c.length === 0]],
@@ -181,7 +181,7 @@ must('playground generated source drifts from the example',
   'playground sources/weather.js byte-identical to examples/weather/app.js', playgroundSrc);
 must('playground manifest drops weather',
   list => list.filter(x => x !== 'weather'),
-  'weather is in the 48-app playground manifest', playgroundApps);
+  'weather is in the 49-app playground manifest', playgroundApps);
 must('a firmware file changes vs 1dc7c76',
   () => ['firmware/components/lume-engine/lume_engine.c'],
   'firmware/ runtime/ CLI tooling identical to 1dc7c76 (manifest excluded)', changed);
