@@ -115,6 +115,11 @@ const ALLOWED = [
   'tests/crypto_check.js',
   'website/playground/apps/crypto_check.js',
   'website/playground/sources/crypto_check.js',
+  // r135: this slice's baseline also predates the archive_view consumer app.
+  'examples/archive_view/app.js',
+  'tests/archive_view.js',
+  'website/playground/apps/archive_view.js',
+  'website/playground/sources/archive_view.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -185,7 +190,7 @@ const checks = [
 
   ['firmware/ runtime/ CLI tooling identical to d85e69a', [fwChanged, c => c.length === 0]],
 
-  ['only known r132 + r133 + r134 files differ from d85e69a', [allChanged, c =>
+  ['only known r132 + r133 + r134 + r135 files differ from d85e69a', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f))]],
 ];
 
@@ -263,6 +268,6 @@ must('a firmware file changes vs d85e69a',
   'firmware/ runtime/ CLI tooling identical to d85e69a', fwChanged);
 must('an out-of-scope file changes vs d85e69a',
   () => allChanged.concat(['docs/unexpected.md']),
-  'only known r132 + r133 + r134 files differ from d85e69a', allChanged);
+  'only known r132 + r133 + r134 + r135 files differ from d85e69a', allChanged);
 
 console.log('ALL OTA CONSUMERS HARNESS CASES PASSED');
