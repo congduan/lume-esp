@@ -107,6 +107,43 @@ function goalTick() {
   }
   goalProgress.set(next); goalValues.set(values);
 }
+/* ---- r130: SNTP sync BEGIN ---- */
+/* r130: SNTP-first wall clock. WiFi GOT_IP -> lume.system.setTimeNtp(); only a
+ * 0 return means Date.now()/new Date() is a corrected wall clock (valid).
+ * Until then (or on -2/-3/throw) the genuine 1970-based device time is shown;
+ * a single native Text corner slot carries the ASCII sync status. No
+ * fabricated epoch; face swipes / IMU / weather / goal loops are untouched.
+ * Declared before the UI so the status Text can bind to the signal. */
+var FACE_SYNC_RETRY_MS = 30000;
+var FACE_SYNC_OK_MS = 600000;
+var faceWallValid = false;              /* true ONLY after setTimeNtp() === 0 */
+var faceSyncStatus = signal('SYNCING'); /* ASCII: SYNCING / NO WIFI / NO SYNC / '' */
+var faceNextSyncMs = 0;                 /* first attempt due immediately */
+function faceSyncNtp() {
+  var st = lume.net.status();
+  if (typeof st !== 'object' || st === null || st.state !== lume.net.GOT_IP) {
+    faceWallValid = false; faceSyncStatus.set('NO WIFI');
+    faceNextSyncMs = lume._nowMs() + FACE_SYNC_RETRY_MS; return;
+  }
+  var sys = lume.system;
+  if (!sys || typeof sys.setTimeNtp !== 'function') {
+    faceWallValid = false; faceSyncStatus.set('NO API');
+    faceNextSyncMs = lume._nowMs() + FACE_SYNC_RETRY_MS; return;
+  }
+  faceSyncStatus.set('SYNCING');
+  var r;
+  try { r = sys.setTimeNtp(); } catch (e) { r = -2; }
+  if (r === 0) {
+    faceWallValid = true; faceSyncStatus.set('');   /* wall time: enable rendering */
+    faceNextSyncMs = lume._nowMs() + FACE_SYNC_OK_MS;
+  } else {
+    faceWallValid = false;
+    faceSyncStatus.set(r === -3 ? 'NO WIFI' : 'NO SYNC');
+    faceNextSyncMs = lume._nowMs() + FACE_SYNC_RETRY_MS;
+  }
+}
+/* ---- r130: SNTP sync END ---- */
+
 var faceRoot = View({ style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' } });
 var facePages = [];
 function facePanel() { return View({ parent: faceRoot, style: { position: 'absolute', x: 0, y: 0, width: 480, height: 480, background: 'bg', scroll: 'none' } }); }
@@ -149,6 +186,13 @@ var modularWeatherCard = modularCard(32, 210, 'WEATHER', function () { return mo
 var modularBatteryCard = modularCard(246, 210, 'BATTERY', function () { return faceBatt() + '%'; }, function () { return faceBattLive() ? 'PMIC' : 'DEMO'; }, 'accent');
 var modularCalendarCard = modularCard(32, 326, 'CALENDAR', function () { var d = faceNow(); return FACE_DAYS[d.getDay()]; }, function () { var d = faceNow(); return (d.getMonth() + 1) + '月' + d.getDate() + '日'; });
 var modularStepsCard = modularCard(246, 326, 'STEPS', function () { return modularSteps() + ' 步'; }, 'IMU EST.', 'accent');
+/* r130: one native Text corner status on the shared root (NO canvas added --
+ * the other four faces already use 228,544/230,400 canvas px). Last child so
+ * it renders above every face; empty once the wall clock is trusted. */
+Text({ parent: faceRoot, text: function () {
+  return faceWallValid ? '' : faceSyncStatus();
+}, style: { position: 'absolute', x: 8, y: 8, width: 140, height: 22,
+  fontSize: 13, color: 'textDim' } });
 function modularPollWeather() {
   /* wttr.in chooses the current location; no city is assumed by the example.
    * Text-only output: the firmware font has no weather-symbol glyphs, and a
@@ -176,8 +220,10 @@ lume.gesture.on(ringCanvas, 'swipe', faceSwipe);
 lume.gesture.on(goalCanvas, 'swipe', faceSwipe);
 for (var modularGestureCard of [modularWeatherCard, modularBatteryCard, modularCalendarCard, modularStepsCard]) lume.gesture.on(modularGestureCard.card, 'swipe', faceSwipe);
 faceShow(facePage);
+
 function faceTick() {
-  faceNow.set(new Date());
+  if (lume._nowMs() >= faceNextSyncMs) faceSyncNtp();  /* r130: cadence-gated sync */
+  faceNow.set(new Date());  /* genuine device/wall time, never fabricated */
   var b = lume.pmic.battPercent(); if (typeof b === 'number' && b >= 0 && b <= 100) { faceBattLive.set(true); faceBatt.set(b); }
   var imu = lume.imu.read(); if (imu && Math.abs(imu.ax) + Math.abs(imu.ay) > 1.3) faceSteps.set(faceSteps() + 1);
   goalTick();
