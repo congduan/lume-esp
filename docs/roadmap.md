@@ -2467,3 +2467,64 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   改动，按纪律未跑 `idf.py build`。磁盘 88%，日志落 `/tmp`。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r132 节。本轮未跑 codex review（主控轮负责）。
+
+### r133 result — `lume.adc` 消费方刀：examples/adc_meter 电压表（纯 app + 宿主桩层；appended, milestone checkboxes untouched）
+
+基线 `c4b390a`（r132）；worktree `/tmp/lume-r133-wt`、分支 `r133-adc-consumers`；
+开工前 `lume_model_guard.sh` 绿（hy4flash-free）、无 429、未在主仓写文件。
+
+**实证纠偏（先实证后编码）**：
+- `runtime/types/lume.d.ts:425-467` / `firmware/components/lume-adc/lume_adc.c` /
+  `lume_adc.h:22-32` 确认：`config(pin,atten)` / `readRaw` / `readMv` / `free` 全部以
+  NUMBER 返回状态；-1 = 非法 pin/atten 或越界 raw，-2 = ESP-IDF 驱动/校准失败，
+  -3 = pin 未配置或 eFuse 校准不可用。有效 pin = ADC1 GPIO 1..10，atten 0..3 =
+  DB_0/2_5/6/12。`readRaw` 成功返回 0..4095，`readMv` 是曲线拟合校准 mV；
+  无 eFuse 校准位时 `config` 仍成功但 `readMv` 返回 -3。
+- **meta.json 假设被证伪**：`find . -name meta.json` 全仓为空，examples 连 `package.json`
+  都没有；CLI `tools/lume/lume.js:109-127` 的 `appMeta()` 在 **deploy 时**从
+  `package.json` 的 `lume` 块（label/icon/color）生成 meta 文本。examples 是源码/playground
+  app，没有也没有必要新增 meta.json——故本轮**不创建**该文件，避免死文件。
+- **生命周期先例**：`lume.app` 只有 `onStart/onPause/onResume/onBack`（prelude
+  `__lifecycle` 无 close），app 没有卸载钩子可调用 `free()`；ADC 槽位是引擎任务态、
+  hot reload 后保留，`config()` last-wins 重建通道。故 app **不调用** `lume.adc.free()`，
+  头注释如实登记该取舍（与 gpio.pwmAttach 不主动 pwmFree 同构）。
+- `tests/lib/prelude_runner.js` 的 gpio/imu 桩采用 `...(options.xxx || {})` spread 惯例，
+  本轮 adc 桩沿用；宿主无真实 ADC，值全靠注入。
+- **数量断言实证**：`grep -rn "45 " tests/ tools/lume/test/ scripts/` 命中 3 处
+  （weather_sntp.js / ota_consumers.js / sntp_consumers2.js 的 `list.length === 45`）；
+  另 `tests/sd_files.js` 的变异串硬编码 `'image_gallery', 'files'];`。清单从 45→46 后
+  三处计数改 46、sd_files 变异串同步，理由写入对应 commit message。三只 consumer 测试另把
+  `gitChanged(['firmware/','runtime/','tools/'])` 收窄为 `tools/lume/`：playground 清单是
+  **数据注册**，不是 CLI 行为变更；固件/runtime/CLI 工具面仍钉死在各自基线。
+- `examples/counter/app.js` / `examples/settings/app.js` 头注释给出保守 `var`/`function`
+  全局脚本模板与 `LUME_MAX_NODES = 128` 预算声明惯例；本 app 静态树 ~17 节点。
+
+**实现**（固件/runtime 零改动）：
+- `examples/adc_meter/app.js`：默认 GPIO3/atten0，Button 循环 pin 1..10 与 atten 0..3，
+  重配走 `adc.config()`；250 ms `setInterval` 轮询 `readRaw`/`readMv`，负值按 `< 0`
+  **数值分支**显示 `err <code>`，raw > 4095 显示 `RAW OOR`；正常值渲染 raw / mV 整数，
+  Canvas bar 按 mV 比例填充。ASCII-only 文案（r64），pin/atten 越界 `clampInt` 防御。
+- `tests/lib/prelude_runner.js`：新增 `adc` 桩（config 0 / readRaw 2048 / readMv 1650 /
+  free 0 + `...(options.adc || {})`），与 gpio 桩同风格。
+- `tests/adc_meter.js`（新，CommonJS）：真跑 app 读 UI attr/draw 消息，断言 raw/mV 渲染、
+  `err -3` / `err -2` / `err -1` 错误分支、pin/atten 切换与环绕、零值不误判为错误、
+  4096 越界拒绝、无 free 调用；源码静态断言 ASCII/`< 0` 数值分支/无 token 串/节点预算声明；
+  变异实证证明删错误分支、注入非 ASCII、改固件文件、readRaw=4096 均 FAIL。
+- `tools/playground/build.mjs`：apps 数组加 `'adc_meter'`（46）；`npm run build:playground`
+  生成 `website/playground/{apps,sources}/adc_meter.js` 与 `sources.js`，随 feat commit。
+
+**验证**（真机 ADC 采样精度 / atten 电压范围 / eFuse 曲线 deferred；不声称真机验证）：
+- `node tests/adc_meter.js`：18 PASS（含 4 项变异实证）。
+- `for t in tests/*.js; do node "$t"; done`：**0 FAIL**。
+- `npm test --prefix tools/lume`：`# pass 50 / # fail 0 / # skipped 0`（补齐 worktree 内
+  gitignore 的 `tools/lume/bin/qjsc` 软链后恢复 50/0/0 基线）。
+- `python3 scripts/check_website.py`：missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check examples/adc_meter --no-emu`：`RESULT: PASS (4 steps)`；
+  `examples/counter --no-emu` 哨兵 `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume`：`PASS bundle adc_meter 2453 bytes` +
+  `PASS esbuild-wasm assets and 46 editable sources` + `PASS prelude 67317 bytes; 46 apps`。
+- `git diff c4b390a HEAD -- firmware/ runtime/` 与工作树 diff 均为空 → 固件零改动，
+  按纪律未跑 `idf.py build`。磁盘 88%，日志落 `/tmp`，未新增 artifacts 大件（测试生成的
+  `artifacts/r82/fft-host-*/sdkconfig.h` 已清理）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r133 节。本轮未跑 codex review（主控轮负责）。

@@ -2100,3 +2100,37 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   counter / dashboard `--no-emu` 均 `RESULT: PASS`；playground 47 行 PASS。
   `git diff d85e69a HEAD -- firmware/ runtime/ tools/` 及工作树 diff 均为空，固件零改动故
   未跑 `idf.py build`；磁盘 88%，本轮日志落 `/tmp`。未跑 codex review。
+
+## r133 — ADC 电压表消费方取舍（app-only + 宿主桩，基线 c4b390a）
+
+- **宿主桩是假值，不是真采样**：`tests/lib/prelude_runner.js` 的 `adc` 桩固定返回
+  `config=0 / readRaw=2048 / readMv=1650 / free=0`（可由 harness 注入覆盖）。宿主没有 ADC
+  外设，`tests/adc_meter.js` 里所有 raw/mV 数字都是注入值；它证明的是 app 的渲染/分支/
+  切换逻辑，不证明任何真实电压测量。
+- **真机 ADC 精度与 atten 实测 deferred**：ESP32-S3 的 0/2.5/6/12 dB 衰减对应量程、
+  线性度、噪声与参考电压偏差，以及 GPIO 1..10 的实际走线/分压，全部留接板轮。
+  app 里 `FULL_SCALE_MV = 3300` 只是 Canvas bar 的**显示比例**，不是校准量程，
+  不可当作硬件规格。
+- **readMv 校准曲线只在真机生效**：固件用 curve-fitting + eFuse 校准位换算 mV；若芯片
+  eFuse 未烧录，`config()` 仍成功、`readRaw()` 可用，但 `readMv()` 返回 -3。宿主桩默认
+  给一个任意 mV，只有注入 -3 的 harness 分支能验证 UI 的 `err -3` 文案；真实无校准芯片
+  的行为 deferred。
+- **表盘只反映注入值**：Canvas bar 比例来自 `mvValue` 信号，`readMv` 注入多少就画多少；
+  `RAW OOR`（raw > 4095）是 app 侧的契约防御，不是硬件断言。
+- **无卸载钩子所以不 free()**：`lume.app` 只有 start/pause/resume/back，没有 close；
+  ADC 槽位状态是引擎任务态且 hot reload 后保留，`config()` last-wins 重建通道，
+  所以在 app 里调 `lume.adc.free(pin)` 没有正确时机。代价是槽位在 app 切换后仍占用，
+  与 `gpio.pwmAttach` 不主动 `pwmFree` 的既有取舍一致。
+- **没有 meta.json**：全仓 examples 均无 meta.json / package.json，meta 文本由 CLI 在 deploy
+  时从 `package.json` 的 `lume` 块生成。examples 是源码/playground app，故本轮不创建
+  meta.json，避免无人读取的死文件。
+- **45→46 清单同步的合法性**：`tools/playground/build.mjs` 的 apps 是**数据清单**，
+  新 app 注册使 3 只 consumer 测试的 `list.length === 45` 与 `sd_files.js` 的硬编码变异串
+  必须同步到 46；同时把这些测试的 `gitChanged` 路径从 `tools/` 收窄为 `tools/lume/`
+  （固件/runtime/CLI 工具面仍钉死各自基线），并在 ota allowlist 登记 r133 新文件。
+  这些改动不触碰任何生产行为，仅让「app 数量/清单内容」断言继续有效。
+- **验证 / 诚实口径**：`tests/adc_meter.js` 18 PASS（含 4 项变异实证）；全量宿主 harness
+  0 FAIL；`npm test` 50/0/0；`check_website.py` 三项 none；`lume check` adc_meter + counter
+  `--no-emu` 均 `RESULT: PASS`；playground 46 bundles + 2 summary PASS。
+  `git diff c4b390a HEAD -- firmware/ runtime/` 及工作树 diff 均为空，固件零改动故未跑
+  `idf.py build`；磁盘 88%，本轮日志落 `/tmp`。未跑 codex review。
