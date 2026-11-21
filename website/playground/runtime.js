@@ -115,6 +115,49 @@
     };
   }
 
+  // r137: JS mirror of firmware/components/lume-engine/lume_math.c. Kept
+  // byte-for-byte in logic with tests/lib/prelude_runner.js. This is the only
+  // lume namespace that throws (TypeError for a non-Float32Array view,
+  // RangeError for a length mismatch) instead of returning a negative code.
+  // Float32Array writes round once after double arithmetic (the C (float)
+  // cast); subarray byteOffsets are honoured by typed-array indexing.
+  function mathStub(options = {}) {
+    const isF32 = value => Object.prototype.toString.call(value) === '[object Float32Array]';
+    return {
+      vecAdd(a, b) {
+        if (!isF32(a) || !isF32(b)) throw new TypeError('expected Float32Array');
+        if (a.length !== b.length) throw new RangeError('Float32Array lengths differ');
+        for (let i = 0; i < a.length; i++) a[i] += b[i];
+        return a;
+      },
+      vecScale(a, scale) {
+        scale = Number(scale);
+        if (!isF32(a)) throw new TypeError('expected Float32Array');
+        for (let i = 0; i < a.length; i++) a[i] = a[i] * scale;
+        return a;
+      },
+      dot(a, b) {
+        if (!isF32(a) || !isF32(b)) throw new TypeError('expected Float32Array');
+        if (a.length !== b.length) throw new RangeError('Float32Array lengths differ');
+        let sum = 0;
+        for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+        return sum;
+      },
+      integrate(acc, vx, vy, dt) {
+        dt = Number(dt);
+        if (!isF32(acc) || !isF32(vx) || !isF32(vy)) throw new TypeError('expected Float32Array');
+        if (vx.length !== vy.length || acc.length !== vx.length * 2)
+          throw new RangeError('acc must have twice as many elements as vx and vy');
+        for (let i = 0; i < vx.length; i++) {
+          vx[i] = vx[i] + acc[2 * i] * dt;
+          vy[i] = vy[i] + acc[2 * i + 1] * dt;
+        }
+        return undefined;
+      },
+      ...(options.math || {}),
+    };
+  }
+
   // No PNG/JPEG decoder in the browser stub: return a deterministic RGB565
   // pattern with the same shape/marshalling contract as the native binding.
   function imageDecodeStub() {
@@ -187,6 +230,7 @@
   const lume = {
     fft: fftStub(),
     imgscale: imgscaleStub(),
+    math: mathStub(options),
     crypto: cryptoStub(),
     compress: compressStub(),
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },

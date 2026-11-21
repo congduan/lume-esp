@@ -131,6 +131,51 @@ const demo = extract('lume_demo_js');
     };
   }
 
+  // r137: JS mirror of firmware/components/lume-engine/lume_math.c. This is the
+  // only lume namespace that signals failure by THROWING (TypeError for a
+  // non-Float32Array view, RangeError for a length mismatch) instead of a
+  // negative return code. A Float32Array write rounds once after double
+  // arithmetic, which is exactly the C (float) cast, so no fround is needed;
+  // subarray byteOffsets are honoured by native typed-array indexing just as
+  // float_view() takes the pointer at base+offset. Options.math may inject
+  // overrides (harnesses inject throwing stubs to exercise app try/catch).
+  function mathStub(options = {}) {
+    const isF32 = value => Object.prototype.toString.call(value) === '[object Float32Array]';
+    return {
+      vecAdd(a, b) {
+        if (!isF32(a) || !isF32(b)) throw new TypeError('expected Float32Array');
+        if (a.length !== b.length) throw new RangeError('Float32Array lengths differ');
+        for (let i = 0; i < a.length; i++) a[i] += b[i];
+        return a;
+      },
+      vecScale(a, scale) {
+        scale = Number(scale);
+        if (!isF32(a)) throw new TypeError('expected Float32Array');
+        for (let i = 0; i < a.length; i++) a[i] = a[i] * scale;
+        return a;
+      },
+      dot(a, b) {
+        if (!isF32(a) || !isF32(b)) throw new TypeError('expected Float32Array');
+        if (a.length !== b.length) throw new RangeError('Float32Array lengths differ');
+        let sum = 0;
+        for (let i = 0; i < a.length; i++) sum += a[i] * b[i];
+        return sum;
+      },
+      integrate(acc, vx, vy, dt) {
+        dt = Number(dt);
+        if (!isF32(acc) || !isF32(vx) || !isF32(vy)) throw new TypeError('expected Float32Array');
+        if (vx.length !== vy.length || acc.length !== vx.length * 2)
+          throw new RangeError('acc must have twice as many elements as vx and vy');
+        for (let i = 0; i < vx.length; i++) {
+          vx[i] = vx[i] + acc[2 * i] * dt;
+          vy[i] = vy[i] + acc[2 * i + 1] * dt;
+        }
+        return undefined;
+      },
+      ...(options.math || {}),
+    };
+  }
+
 // No PNG/JPEG decoder in the host stub: deterministic RGB565 pattern with the
 // same shape/marshalling contract as the native lume.image.decode binding.
 function imageDecodeStub() {
@@ -198,6 +243,7 @@ function runApp(script, options = {}) {
   const lume = {
     fft: fftStub(),
     imgscale: imgscaleStub(),
+    math: mathStub(options),
     crypto: cryptoStub(),
     compress: compressStub(),
     // r96: no real OTA channel in the host runner; status() mirrors net.otaStatus.
