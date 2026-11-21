@@ -8,6 +8,14 @@ void lume_engine_start(void);
 /* Engine-task-only QuickJS PSRAM allocator snapshot; zero with profile off. */
 void lume_engine_alloc_stats(size_t *net_bytes, size_t *live);
 
+#if CONFIG_LUME_PERF_PROFILE
+/* r139: arm a one-second window, starting `delay_ms` from now, in which the
+ * QuickJS PSRAM allocator returns NULL. Called from an LUMC RX task; the
+ * engine task observes the failure window inside its allocator hooks. Only
+ * compiled into profile firmware (CONFIG_LUME_PERF_PROFILE=y). */
+int lume_engine_oom_inject(uint32_t delay_ms);
+#endif
+
 /* Engine event queue record (LVGL task -> engine task). Fixed size, copied.
  * node_id 0 is reserved (active screen); press events carry the clicked node. */
 #define LUME_EVT_PRESS 1

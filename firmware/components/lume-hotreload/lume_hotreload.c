@@ -532,6 +532,21 @@ static void handle_cmd(reply_sink_t sink, const uint8_t *payload, size_t len)
                   s < 0 ? (s == -1 ? "token" : "nvs") : NULL);
         break;
     }
+#if CONFIG_LUME_PERF_PROFILE
+    case LUME_CMD_OOM: {
+        /* r139: arm the allocator failure window. The enum/arm state exist
+         * only in profile builds; default firmware never reaches this case.
+         * Serialize concurrent USB/TCP arming so the RX side stays one writer. */
+        char ms[16];   /* oom_ms is capped at 9 decimal digits by the parser */
+        int n = snprintf(ms, sizeof(ms), "%u", (unsigned)cmd.oom_ms);
+        xSemaphoreTakeRecursive(s_pending_mutex, portMAX_DELAY);
+        int s = lume_engine_oom_inject(cmd.oom_ms);
+        xSemaphoreGiveRecursive(s_pending_mutex);
+        cmd_reply(sink, s == 0 && n > 0, s == 0 && n > 0 ? "oom" : NULL,
+                  s == 0 && n > 0 ? ms : NULL, 0, s != 0 ? "oom" : NULL);
+        break;
+    }
+#endif
     }
 }
 

@@ -63,6 +63,30 @@ int lume_cmd_parse(const uint8_t *payload, size_t len, lume_cmd_t *out)
         out->kind = LUME_CMD_FWTAG;
         return LUME_CMD_OK;
     }
+    /* r139: OOM <ms> — profile-only allocator fault injection. Gated out of
+     * the verb table for default firmware: the same bytes then fall through
+     * to LUME_CMD_ERR_VERB ("CMD ERR verb"), keeping default size unchanged. */
+#if CONFIG_LUME_PERF_PROFILE
+    if (verb_end == 3 && memcmp(p, "OOM", 3) == 0) {
+        /* <ms> is a positive decimal arm delay; cap digits to avoid u32 wrap. */
+        if (!has_id || id_len == 0 || id_len > 9) {
+            return LUME_CMD_ERR_ARG;
+        }
+        uint32_t ms = 0;
+        for (size_t i = 0; i < id_len; i++) {
+            if (id[i] < '0' || id[i] > '9') {
+                return LUME_CMD_ERR_ARG;
+            }
+            ms = ms * 10u + (uint32_t)(id[i] - '0');
+        }
+        if (ms == 0) {
+            return LUME_CMD_ERR_ARG;
+        }
+        out->kind = LUME_CMD_OOM;
+        out->oom_ms = ms;
+        return LUME_CMD_OK;
+    }
+#endif
     /* r96: TOKEN <32hex> — validate here so a bad token never reaches NVS. */
     if (verb_end == 5 && memcmp(p, "TOKEN", 5) == 0) {
         if (!has_id || id_len != LUME_CMD_TOKEN_HEX_LEN) {

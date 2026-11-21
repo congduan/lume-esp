@@ -152,6 +152,94 @@ static lume_ota_set_token_fn s_ota_token_setter;
  * runtime, eval, callbacks, GC and teardown never run on the LVGL task. */
 static size_t s_alloc_net_bytes;
 static size_t s_alloc_live;
+
+/* r139: OOM fault-injection window (profile only).
+ *
+ * Cross-task contract (see r138 KNOWN-SIMPLIFICATIONS "cross-task read"):
+ *  - s_oom_gen / s_oom_open_us / s_oom_end_us have ONE writer: the LUMC RX
+ *    task inside lume_engine_oom_inject(). Volatile 32-bit publishes them;
+ *    gen is stored LAST so the engine task observes a fully armed window.
+ *  - All other state below is engine-task-owned (allocator hooks + inner
+ *    loop); the RX task never reads or writes it. No locks in the hot path.
+ *  - Timestamps are 32-bit esp_timer microseconds with wrap-safe signed
+ *    difference comparisons (the window is ~3.5 s, far below the ~71 min
+ *    u32 wrap). Log lines are pure ASCII and gated with the rest of the code.
+ */
+static volatile uint32_t s_oom_gen;
+static volatile uint32_t s_oom_open_us;
+static volatile uint32_t s_oom_end_us;
+
+static uint32_t s_oom_seen_gen;
+static bool s_oom_active;
+static bool s_oom_done;
+static bool s_oom_logged_active;
+static uint32_t s_oom_denials;
+
+#define LUME_OOM_WINDOW_US 1000000u   /* drill expects a ~1 s failure window */
+
+static bool oom_in_window(uint32_t now, uint32_t open, uint32_t end)
+{
+    return (int32_t)(now - open) >= 0 && (int32_t)(now - end) < 0;
+}
+
+/* Engine-task only. Keeps ACTIVE / window-closed logs deterministic even if
+ * no allocation lands exactly at the boundary; called from the allocator
+ * hooks and once per inner-loop turn. */
+static void oom_task_tick(uint32_t now)
+{
+    uint32_t gen = s_oom_gen;
+    if (gen != s_oom_seen_gen) {
+        s_oom_seen_gen = gen;
+        s_oom_active = false;
+        s_oom_done = false;
+        s_oom_logged_active = false;
+        s_oom_denials = 0;
+    }
+    if (s_oom_done) {
+        return;
+    }
+    if (!s_oom_active) {
+        uint32_t open = s_oom_open_us;
+        if (open != 0 && (int32_t)(now - open) >= 0) {
+            s_oom_active = true;
+            if (!s_oom_logged_active) {
+                s_oom_logged_active = true;
+                ESP_LOGI(TAG, "oom-inject: ACTIVE");
+            }
+        }
+        return;
+    }
+    if ((int32_t)(now - s_oom_end_us) >= 0) {
+        s_oom_active = false;
+        s_oom_done = true;
+        ESP_LOGI(TAG, "oom-inject: window closed after %u denials",
+                 (unsigned)s_oom_denials);
+    }
+}
+
+/* JSMallocFunctions allocation paths call this first; true => return NULL. */
+static bool oom_deny(void)
+{
+    uint32_t now = (uint32_t)esp_timer_get_time();
+    oom_task_tick(now);
+    if (!s_oom_active ||
+        !oom_in_window(now, s_oom_open_us, s_oom_end_us)) {
+        return false;
+    }
+    s_oom_denials++;
+    return true;
+}
+
+int lume_engine_oom_inject(uint32_t delay_ms)
+{
+    uint32_t now = (uint32_t)esp_timer_get_time();
+    uint32_t open = now + delay_ms * 1000u;
+    s_oom_open_us = open;
+    s_oom_end_us = open + LUME_OOM_WINDOW_US;
+    s_oom_gen++;                       /* publish last */
+    ESP_LOGI(TAG, "oom-inject: armed %u ms", (unsigned)delay_ms);
+    return 0;
+}
 #endif
 
 void lume_engine_alloc_stats(size_t *net_bytes, size_t *live)
@@ -168,6 +256,9 @@ void lume_engine_alloc_stats(size_t *net_bytes, size_t *live)
 static void *js_calloc_psram(void *opaque, size_t count, size_t size)
 {
     (void)opaque;
+#if CONFIG_LUME_PERF_PROFILE
+    if (oom_deny()) return NULL;
+#endif
     void *ptr = heap_caps_calloc(count, size, MALLOC_CAP_SPIRAM);
 #if CONFIG_LUME_PERF_PROFILE
     if (ptr) { s_alloc_live++; s_alloc_net_bytes += heap_caps_get_allocated_size(ptr); }
@@ -177,6 +268,9 @@ static void *js_calloc_psram(void *opaque, size_t count, size_t size)
 static void *js_malloc_psram(void *opaque, size_t size)
 {
     (void)opaque;
+#if CONFIG_LUME_PERF_PROFILE
+    if (oom_deny()) return NULL;
+#endif
     void *ptr = heap_caps_malloc(size, MALLOC_CAP_SPIRAM);
 #if CONFIG_LUME_PERF_PROFILE
     if (ptr) { s_alloc_live++; s_alloc_net_bytes += heap_caps_get_allocated_size(ptr); }
@@ -195,6 +289,7 @@ static void *js_realloc_psram(void *opaque, void *ptr, size_t size)
 {
     (void)opaque;
 #if CONFIG_LUME_PERF_PROFILE
+    if (oom_deny()) return NULL;   /* realloc failure leaves *ptr valid */
     size_t before = ptr ? heap_caps_get_allocated_size(ptr) : 0;
 #endif
     void *next = heap_caps_realloc(ptr, size, MALLOC_CAP_SPIRAM);
@@ -4423,6 +4518,7 @@ static void engine_task(void *arg)
             webserv_poll();
 #if CONFIG_LUME_PERF_PROFILE
             int64_t heap_now = lume_perf_now();
+            oom_task_tick((uint32_t)heap_now);   /* r139: boundary logs */
             if (heap_now - last_heap_sample >= 1000000) {
                 JSMemoryUsage usage;
                 JS_ComputeMemoryUsage(rt, &usage);
@@ -4630,7 +4726,18 @@ static void engine_task(void *arg)
                     cand_src = newsrc;
                     cand_len = n;
                     cand_is_reload = true;
+#if CONFIG_LUME_PERF_PROFILE
+                    /* r139: the FIFO sink pushed by lume-hotreload for a DATA
+                     * frame is only popped by the engine result callback. At
+                     * baseline that callback was suppressed here, so a
+                     * successful reload never emitted "RELOAD OK" and the
+                     * oom-inject drill could not verify the runtime recycle.
+                     * Profile-only fix; default firmware keeps the exact
+                     * legacy path (and byte-identical binary). */
+                    cand_want_reply = true;
+#else
                     cand_want_reply = false;   /* DATA frames reply via FIFO */
+#endif
                     /* A hot update belongs to the app that is running now. */
                     snprintf(cand_app, sizeof(cand_app), "%s", s_running_app);
                     cand_is_home = false;

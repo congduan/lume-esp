@@ -1,4 +1,12 @@
 #pragma once
+/* r139: pick up the profile gate when built by ESP-IDF (sdkconfig.h lives in
+ * build/config). The host harness has no such header; there the same macro
+ * is either supplied with -D for the profile gate test or left undefined. */
+#if defined(__has_include)
+#if __has_include("sdkconfig.h")
+#include "sdkconfig.h"
+#endif
+#endif
 /* ------------------------------------------------------------------------
  * lume_cmd (r30): portable text parser for "LUMC" command frames.
  *
@@ -22,6 +30,9 @@
  *                  "CMD OK fwt <TAG>" so the CLI can stamp meta.json)
  *   TOKEN\t<hex>   (r96: set the WiFi-OTA token to a 32-hex-char value;
  *                  answered "CMD OK token ok" / "CMD ERR token")
+ *   OOM\t<ms>      (r139, PROFILE ONLY: arm the allocator failure window;
+ *                  answered "CMD OK oom <ms>". Absent from non-profile builds,
+ *                  where the same bytes yield "CMD ERR verb".)
  *
  * Rules:
  *   - The first '\n' ends the first line. Verbs are case-sensitive.
@@ -54,6 +65,9 @@ typedef enum {
     LUME_CMD_VER,
     LUME_CMD_FWTAG,
     LUME_CMD_TOKEN,   /* r96: TOKEN <32hex> — set the WiFi-OTA HMAC token */
+#if CONFIG_LUME_PERF_PROFILE
+    LUME_CMD_OOM,     /* r139: OOM <ms> — arm allocator failure window */
+#endif
 } lume_cmd_kind_t;
 
 #define LUME_CMD_OK          0
@@ -71,6 +85,9 @@ typedef struct {
     const char *src;                   /* points into the payload (STORE only) */
     size_t      src_len;
     char        token[LUME_CMD_TOKEN_HEX_LEN + 1];  /* r96: TOKEN verb only */
+#if CONFIG_LUME_PERF_PROFILE
+    uint32_t    oom_ms;                  /* r139: OOM verb only, arm delay */
+#endif
 } lume_cmd_t;
 
 /* Parse one command payload. Returns LUME_CMD_OK or a LUME_CMD_ERR_* code.
