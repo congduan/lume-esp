@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 49-app manifest, all UI literals are ASCII (r64), and only the
+//     in the 50-app manifest, all UI literals are ASCII (r64), and only the
 //     known r132-r136 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 49-app playground manifest is the source of truth for "in清单".
+// 50-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -84,7 +84,8 @@ function gitChanged(paths) {
 }
 /* r133: the playground manifest (tools/playground/build.mjs) is DATA that now
  * registers adc_meter as a 46th app; r134 adds crypto_check as a 47th; r135
- * adds archive_view as the 48th; r136 adds img_view as the 49th. The
+ * adds archive_view as the 48th; r136 adds img_view as the 49th; r137 adds
+ * vec_demo as the 50th. The
  * firmware/runtime/CLI-tooling surface is still pinned. Scope the diff to
  * tools/lume/ so manifest registration is not misreported as a tooling
  * behaviour change. */
@@ -127,6 +128,15 @@ const ALLOWED = [
   'tests/img_view.js',
   'website/playground/apps/img_view.js',
   'website/playground/sources/img_view.js',
+  // r137: this slice's baseline also predates the vec_demo consumer app. The
+  // four new files are staged here BEFORE commit because `git diff` does not
+  // see untracked files; without this the allowlist turns red after commit.
+  // runtime.js is modified (math stub) and must be listed too.
+  'examples/vec_demo/app.js',
+  'tests/vec_demo.js',
+  'website/playground/apps/vec_demo.js',
+  'website/playground/sources/vec_demo.js',
+  'website/playground/runtime.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -189,8 +199,8 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 49-app playground manifest', [playgroundApps,
-    list => list.length === 49 && list.includes('dashboard')]],
+  ['dashboard is in the 50-app playground manifest', [playgroundApps,
+    list => list.length === 50 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
@@ -266,7 +276,7 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 49-app playground manifest', playgroundApps);
+  'dashboard is in the 50-app playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
