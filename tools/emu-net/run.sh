@@ -79,4 +79,21 @@ if [[ $result == 0 ]] && ! grep -Fq "$exit_on" "$output/serial.log"; then
   echo "exit-on string absent (esp-emu timeout): $exit_on" >&2
   result=1
 fi
+if [[ $result != 0 ]]; then
+  # r144: self-contained failure snapshot for cross-round comparison. Never
+  # log the passphrase itself (same credential policy as prepare.py).
+  diag=$output/failure-diag.txt
+  {
+    echo "esp-emu: $emu"
+    "$emu" --version 2>&1 | head -12 || true
+    echo "params: chip=esp32s3 auth=wpa2-psk net=user,net=192.168.4.0/24"
+    echo "ssid=$ssid password_len=${#pass} (value redacted) timeout=${seconds}s"
+    echo "exit_on=$exit_on"
+    echo "firmware: $base"
+    sha256sum "$base" 2>/dev/null || true
+    echo "--- WiFi/NETCHECK serial lines ---"
+    grep -E 'wifi:|WiFi|assoc|got ip|\[NETCHECK\]' "$output/serial.log" | head -80 || true
+  } > "$diag"
+  echo "failure diag: $diag"
+fi
 exit "$result"
