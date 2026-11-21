@@ -2823,3 +2823,44 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 - 红线：未改 vendored（QuickJS/LVGL）、未改 JS API 契约与 `.d.ts`、未改 `firmware/`、`runtime/`、`tools/lume/`；既有一切 harness 零回归。commits 拆 feat/test/docs，未推送；**未跑 codex review（主控轮负责）**。ASCII 纪律：新增 host harness 输出全 ASCII，无 app 可见文案改动。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r138 节。
+
+### r139 result — 固件侧 OOM 注入 verb（profile 门控），check_oom_inject drill 转绿
+
+**开工纪律**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓`，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r139-wt`（分支 `r139-oom-verb`，基线 `10c93c0`）。
+
+**实证纠偏（假设可能错，先实证）**：
+- 通读 `tools/emu/check_oom_inject.py` 全文，drill 精确期望：t=2.5 LUMC 帧 `OOM\t2500\n` → `CMD OK oom 2500` + `oom-inject: armed`；窗口 5.0–6.0 s（`oom-inject: ACTIVE` / `oom-inject: window closed after \d+ denials`）；t=7.5 `LIST` → `CMD OK list \d+`；t=9.0 reload `clock.frame` → `RELOAD OK \d+`；失败判据含 `RELOAD ERR|eval failed`。注意任务书写的 `oom-inject ACTIVE` 与 drill 正则不符（drill 有冒号），按 drill 正则实现。
+- `git grep` 复核 `r77-oom-wip`（merge-base `f0dd8ef`）：**无任何 `LUME_CMD_OOM` / OOM verb 实现**，只有 playground 清单修复——r138 KNOWN-SIMPLIFICATIONS 所称「verb 在未合入分支」被证伪，该 verb 从未被实现过。
+- 窗口参数口径：`<ms>` 是 arm 到窗口开启的**延迟**，窗口长度固定 1 s（`LUME_OOM_WINDOW_US`）；drill t=2.5 arm 2500 → 5.0–6.0 s，与任务书「t+ms 起持续 ~1s」一致。
+- 另查出**存量缺陷**：DATA 帧 reload 设 `cand_want_reply=false`（blame `9421903`），成功 eval 不触发结果回调，`RELOAD OK` 永不发出；即使不 arm OOM 也复现。任务书未预告，属实证纠偏，profile-only 修复，default 路径原样保留。
+
+**实现（firmware 刀，5 文件，全部预处理器门控）**：`lume_cmd.h` 加 `LUME_CMD_OOM` / `oom_ms`（`__has_include("sdkconfig.h")` 取固件门控宏，host 由 `-D` 或缺省决定）；`lume_cmd.c` 加 `OOM <ms>` parser（9 位正整数防 u32 wrap）；`lume_hotreload.c` 加 dispatch（`s_pending_mutex` 串行化 RX 侧单写）；`lume_engine.h`/`lume_engine.c` 加 `lume_engine_oom_inject()`、volatile u32 窗口状态、四个 `s_psram_mf` 分配钩子的 NULL 失败分支、engine loop 边界日志 tick。跨 task 口径：RX task 单写 gen/open/end（gen 最后发布），engine task 独占 flags/denials，u32 微秒有符号差比较规避 wrap，热路径无锁。未动 vendored（QuickJS/LVGL）、JS API 契约与 `.d.ts`。
+
+**验证（原始输出；真机 deferred，不声称真机验证）**：
+- default 固件完整构建 + size（命令按环境 quirk `env -u VIRTUAL_ENV IDF_PYTHON_ENV_PATH=.../idf5.5_py3.12_env`）：`BUILD_EXIT=0` / `SIZE_EXIT=0`，`Flash Code 2041168` / `Flash Data 853084` / `DIRAM 247491 (72.42%, Remain 94269)` / `IRAM 16384 (100.0%, Remain 0)` / `Total image size: 3036023 bytes`。与 r138 基线**逐字节一致**（含最后一次门的复验），Flash/DIRAM/IRAM 增量均 0 B；`strings build/lume.elf | grep -c oom-inject` = **0**。
+- profile 固件构建 `idf.py -B build-r54-profile -D SDKCONFIG=sdkconfig.r54-profile build`：`BUILD_EXIT=0`，`Project build complete.`；`sdkconfig.r54-profile` 被自动 normalize（+15 行），已 `git checkout --` 撤销不进提交。`strings build-r54-profile/lume.elf | grep oom-inject` → 3 条（`armed` / `ACTIVE` / `window closed after %u denials`）。
+- **`python3 tools/emu/check_oom_inject.py`（主验收）全文输出**：
+  ```
+  bundle /tmp/lume-r139-wt/examples/clock: source 3433 bytes; payload 3433 bytes; frame 3445 bytes (source)
+  I (2688) lume-engine: oom-inject: armed 2500 ms
+  CMD OK oom 2500
+  I (5207) lume-engine: oom-inject: ACTIVE
+  I (6208) lume-engine: oom-inject: window closed after 0 denials
+  CMD OK list 0
+  I (9190) lume-engine: engine recv RELOAD -> recycle runtime
+  RELOAD OK 3433
+  [emu] wrote /tmp/lume-r139-wt/artifacts/emu/oom-inject/counter/tft.png
+  alloc.net drift across run: 17044 B (12 samples)
+  PASS: engine survived the OOM window (arm -> 2500 ms -> ACTIVE -> window closed -> LIST ok -> reload ok); artifacts: /tmp/lume-r139-wt/artifacts/emu/oom-inject/counter
+  ```
+  `DRILL_EXIT=0`。诚实边界：`window closed after 0 denials`——clock 帧 t=9.0 才 stage，窗口内无 QuickJS 分配落入；drill 正则 `\d+` 接受 0，总退出 0。钩子有效性由 profile-only 代码路径 + host 语法门 + ELF 字符串三路证据支撑；denial-positive 场景登记 deferred，不声称已验证。
+- host harness 双门编译（`gcc -std=c11 -Wall -Wextra -Werror`，profile 版加 `-DCONFIG_LUME_PERF_PROFILE=1`）：default `mode: default ...` → **47 checks, 0 failure(s)**；profile `mode: profile ...` → **51 checks, 0 failure(s)**。跨 task 分配窗口无法 host 覆盖，如实登记由 esp32sim drill 覆盖。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**。11 个 app-only 守卫的 firmware-immutability BASE 按 r128/r129 先例重钉到 `d91a038`（语义不变，非放宽；详见 KNOWN-SIMPLIFICATIONS r139 节）。
+- `npm test --prefix tools/lume` → `# tests 50 / # suites 0 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0 / # todo 0`，`NPM_EXIT=0`。worktree 缺 gitignore 的 `tools/lume/bin/qjsc` 与 `tools/lume/node_modules`，软链主仓只读物后对齐基线（源码零改动；r128/r137/r138 同一环境事实）。
+- `python3 scripts/check_website.py` → `HTML pages: 7...` / `API: 152 catalog entries, 152 type declarations, 34 function namespaces` / `API missing: none` / `API invented: none` / `API duplicates: none` / `API signatures not found in lume.d.ts: none`，`WEBSITE_EXIT=0`。
+- `node tools/lume/lume.js check examples/counter --no-emu` → `[PASS] bundle 2160 bytes (17 ms)` / `[SKIP] eval --no-emu` / `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- `python3 tools/emu/check_alloc_leak.py` → `counter: steady-growth=0 threshold=32768 PASS`；`leak: steady-growth=319316 threshold=32768 FAIL`（正对照按预期转红）；`LEAK_EXIT=0`，阈值 32768 判定不变。
+
+**commits（未推送）**：`d91a038 feat(firmware): profile-gated OOM injection verb for check_oom_inject`；`1f2cd1e test(r139): OOM verb gate assertions and re-pin firmware-immutability guards`；docs(r139): append result and known simplifications（本提交）。收尾删 `firmware/build/` 与 `firmware/build-r54-profile/`（各约 337M），日志仅留 `/tmp`，测试临时物未进仓；ASCII 纪律：新增日志与 harness 输出全 ASCII。未跑 codex review（主控轮负责）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r139 节。
