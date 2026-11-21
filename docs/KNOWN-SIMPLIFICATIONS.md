@@ -2245,3 +2245,41 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   `PASS bundle img_view 4850 bytes` + 49 sources + 49 apps。`git diff 67d37a7 HEAD --
   firmware/ runtime/ tools/lume/` 与工作树 diff 均为空，固件零改动故未跑 `idf.py
   build`；磁盘 88%，本轮日志落 `/tmp`。未跑 codex review。
+
+## r137 — vec_demo 矢量物理演示取舍（宿主侧刀，基线 7c47db1）
+
+- **宿主/浏览器跑的是 C 语义的 JS 镜像，不是真机 C 绑定**：`lume.math` 的权威路径是
+  `firmware/components/lume-engine/lume_math.c` 注册的 QuickJS 原生函数。宿主
+  `tests/lib/prelude_runner.js` 与浏览器 `website/playground/runtime.js` 的 `mathStub` 是
+  忠实镜像——原地 mutation、返回 a、double dot、交错 acc、Float32Array 单次舍入、
+  subarray byteOffset 生效，异常 TypeError/RangeError 照抄。harness 对拍的是这个镜像，
+  不是 ESP32-S3 上的 C。它证明 app 的四 API 调用/HUD/反弹/防御分支逻辑正确，不证明真机
+  CO5300 面板上的粒子观感、帧率与触屏手感；这些仍 deferred，未声称真机验证。
+- **异常契约与 lume 其它命名空间不一致**：`lume.math` 是全仓唯一**抛异常**而非返回负错误码
+  的命名空间（非零返回码约定不适用）。stub 不发明负返回码：非 Float32Array → TypeError，
+  vecAdd/dot 长度不等 → RangeError，integrate `vx.length !== vy.length || acc.length !==
+  vx.length*2` → RangeError。app 因此用 try/catch 而非 `rc < 0` 判别，这是与 img_view /
+  archive_view 返回码纪律的**有意差异**，不是回归。
+- **物理参数口径**：固定 50 ms 步长、N=24、半径 4 px、240x240 方形画布；重力档
+  [40,80,160] px/s²（NEXT 循环），阻尼 0.98/步，水平冲量 6 px/s/步，反弹系数 0.7。
+  均为整数取整的演示值，未经真机调参。acc 交错 `[ax0,ay0,...]` 且 ax 恒为 0，水平运动
+  来自初始速度与 vecAdd 冲量。位置积分与触壁反弹留在 app 层 JS（C 的 integrate 只改速度）。
+- **9 节点 / <=12 预算**：宿主 create 消息计数 9，头注释声明 `LUME_MAX_NODES = 128` 与
+  <=12 自定上限；静态树，无列表与运行时建节点。画布刻意取 240x240 而非全屏，控制栅格预算。
+- **测试边界**：独立 double 参考积分器与 stub 用完全相同的运算顺序，因此能量与状态逐值
+  严格相等、无需容差；参考实现造假会被对拍抓到。try/catch 正常不可达，由注入抛异常的
+  vecAdd/integrate 触发，验证 HUD 呈现 MATH ERR 并冻结物理；这不是固件会产生的状态。
+- **48→49→50 清单同步的合法性**：`tools/playground/build.mjs` 的 apps 是数据清单，新 app
+  注册使 `archive_view.js` / `crypto_check.js` / `adc_meter.js` / `img_view.js` 的
+  `apps.length`、`weather_sntp.js` / `sntp_consumers2.js` / `ota_consumers.js` 的检查名
+  字符串、`sd_files.js` 的硬编码变异串都必须同步到 50；新文件进入 HEAD 后还需把 4 个 r137
+  新文件和被改的 `website/playground/runtime.js` 加进 `ota_consumers.js` 的 `gitChanged([])`
+  允许清单（新文件 commit 前对 git diff 不可见，预加防提交后转红），否则该 harness 转红。
+  这些改动不改任何生产行为，只让数量/清单断言继续有效。`tools/lume/`（CLI 工具面）
+  仍在 gitChanged 钉死范围内且零 diff。
+- **验证 / 诚实口径**：`tests/vec_demo.js` 25 条检查 + 1 汇总行全 PASS（含 6 项变异实证）；
+  全量宿主 harness 0 FAIL；`npm test` 50/0/0；`check_website.py` 三项 none；`lume check`
+  vec_demo + counter `--no-emu` 均 `RESULT: PASS`；playground `PASS bundle vec_demo 2712
+  bytes` + 50 sources + 50 apps。`git diff 7c47db1 HEAD -- firmware/ runtime/ tools/lume/`
+  与工作树 diff 均为空，固件零改动故未跑 `idf.py build`；磁盘 88%，本轮日志落 `/tmp`，
+  测试临时物未进仓。未跑 codex review（主控轮负责）。

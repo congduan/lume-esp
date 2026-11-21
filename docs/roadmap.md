@@ -2713,3 +2713,57 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   测试临时物（fixture 生成脚本）留在 `/tmp`，未进仓。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r136 节。本轮未跑 codex review（主控轮负责）。
+
+### r137 Result — vec_demo 矢量物理演示 + 宿主/浏览器 math stub（基线 7c47db1）
+
+**实证纠偏（先实证后编码）**：
+- 精读 `firmware/components/lume-engine/lume_math.c` 全文确认语义基准：`vecAdd` 原地
+  `a+=b` 并返回 `a`；`vecScale` 原地 `a*=s` 返回 `a`；`dot` 以 double 累加并返回；
+  `integrate` 的 acc 交错 `[ax0,ay0,ax1,ay1,...]`、只原地更新 vx/vy（double 运算后一次
+  float32 舍入），调用方自行积分位置；`float_view` 按 byteOffset 取指针，subarray 偏移
+  生效。**错误契约是抛异常**：非 Float32Array → TypeError，长度不等 / `acc.length !=
+  vx.length*2` → RangeError，没有负返回码。`runtime/types/lume.d.ts:1128-1135` 的
+  `declare namespace lume.math` 与 `lume.math` 常量核对一致。
+- `tests/lib/prelude_runner.js` / `website/playground/runtime.js` 原先**都没有 math 对象**：
+  任何用 `lume.math` 的 app 在宿主 harness 与浏览器 playground 会直接 undefined crash。
+  两份 stub 追加 `math:` 键，逻辑一致（已用规范化 diff 比对确认）。
+- 先例 `examples/img_view/app.js` / `examples/archive_view/app.js` 给出保守全局脚本
+  （`var`/`function`）、`LUME_MAX_NODES = 128` 预算声明、ASCII-only 文案的范式，本 app 沿用。
+
+**实现**（固件/runtime/CLI 零改动）：
+- `examples/vec_demo/app.js`：24 粒子，Float32Array 存 px/py/vx/vy + 交错 acc；固定
+  50 ms 步长每步真实调用四个 API——`integrate` 施重力、`vecScale` 阻尼、`vecAdd` 合成
+  水平冲量、`dot(vx,vx)+dot(vy,vy)` 报告速度平方；位置积分与触壁反弹是 app 层 JS。
+  240x240 Canvas 逐帧画粒子矩形，HUD 显示 `N24 G<g> E<energy>` 与 `OK`；NEXT 循环
+  重力档 40/80/160。四个调用包 try/catch，异常时 HUD 显示 `MATH ERR` 并冻结物理
+  （防御分支，正常不可达）。宿主 create 计数 **9** 节点，头注释登记预算与物理口径，
+  UI 文案 ASCII-only。
+- `tests/lib/prelude_runner.js` + `website/playground/runtime.js`：各加一份
+  `mathStub(options)`，忠实镜像 C 语义（原地 mutation、返回 a、double dot、交错 acc、
+  Float32Array 单次舍入），异常契约照抄为 TypeError / RangeError，不发明负返回码；
+  `options.math` 可供 harness 注入抛异常桩。
+- `tests/vec_demo.js`（新，CommonJS）：经 prelude_runner 真跑 app，**独立**写 double 参考
+  积分器（不抄 stub）对拍 30 步 vx/vy/px/py/energy 逐值严格相等；断言 200 步反弹不出屏、
+  NEXT 档位循环、try/catch 防御（注入TypeError→MATH ERR→冻结）、四 API spy 计数
+  （1/2/2/1）；已知答案单测逐值验证 stub 原地性/返回值/byteOffset/dot/integrate 交错
+  acc/TypeError+RangeError 契约；静态断言 ASCII/预算/真实调用/清单 50/生成物字节一致/
+  固件 runtime CLI 零 diff；**6 项变异实证**（删 try/catch、非 ASCII、app 物理造假、
+  对拍参考造假、改 firmware、改 runtime）全部必须 FAIL。
+- `tools/playground/build.mjs`：apps 数组加 `'vec_demo'`（50）；
+  `website/playground/{apps/vec_demo.js,sources/vec_demo.js,sources.js}` 随 feat commit。
+
+**验证**（真机面板/触屏 deferred；不声称真机验证）：
+- `node tests/vec_demo.js`：26 PASS 行（25 条检查 + 1 汇总行；含 6 项变异实证）。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done`：
+  `done`，**0 FAIL**（共享 prelude_runner 改动后全量必跑）。
+- `npm test --prefix tools/lume`：`# tests 50 / # pass 50 / # fail 0 / # skipped 0`。
+- `python3 scripts/check_website.py`：missing/invented/duplicates 均 none。
+- `node tools/lume/lume.js check examples/vec_demo --no-emu`：`RESULT: PASS (4 steps, 0 failed)`，
+  bundle 2712 bytes；`examples/counter --no-emu` 哨兵 `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume`：`PASS bundle vec_demo 2712 bytes` +
+  `PASS esbuild-wasm assets and 50 editable sources` + `PASS prelude 67317 bytes; 50 apps`。
+- `git diff 7c47db1 HEAD -- firmware/ runtime/ tools/lume/` 与工作树 diff 均为空 →
+  固件/runtime/CLI 零改动，按纪律未跑 `idf.py build`。磁盘 88%，本轮日志落 `/tmp`，
+  测试临时物未进仓。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r137 节。本轮未跑 codex review（主控轮负责）。
