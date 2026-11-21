@@ -16,9 +16,14 @@
  *      in one interleaved byte stream, including byte-at-a-time feeding;
  *   2. the text grammar of STORE/LAUNCH/REMOVE/META/LIST/HOME/SHOT/VER/FWTAG/TOKEN;
  *   3. id validation (reserved ".current", traversal, length, charset);
- *   4. CRC / resync behaviour is unchanged for both frame kinds.
+ *   4. CRC / resync behaviour is unchanged for both frame kinds;
+ *   5. r139 OOM verb profile gate: accepted with an arm delay when compiled
+ *      with -DCONFIG_LUME_PERF_PROFILE=1, absent (CMD ERR verb) otherwise.
  *
- * Installing, launching and uninstalling on a real board is NOT tested here.
+ * Compile twice to exercise BOTH gates; the firmware build defines the same
+ * macro from sdkconfig.h. Installing/launching on a board, and the cross-task
+ * allocator failure window itself (lume_engine.c, ESP-IDF-only), are NOT
+ * covered here -- the esp32sim drill tools/emu/check_oom_inject.py covers that.
  */
 #include <stdio.h>
 #include <string.h>
@@ -235,6 +240,38 @@ static void test_cmd_parse(void)
           "reason token for an empty source");
 }
 
+/* ---------------- 2b. r139 OOM verb gate (compile-time) ---------------- */
+static void test_oom_verb(void)
+{
+    printf("[oom verb]\n");
+    lume_cmd_t c;
+#if CONFIG_LUME_PERF_PROFILE
+    CHECK(lume_cmd_parse((const uint8_t *)"OOM\t2500\n", strlen("OOM\t2500\n"), &c)
+              == LUME_CMD_OK && c.kind == LUME_CMD_OOM && c.oom_ms == 2500,
+          "profile: OOM 2500 parses with a 2500 ms arm delay");
+    CHECK(lume_cmd_parse((const uint8_t *)"OOM\t1", strlen("OOM\t1"), &c)
+              == LUME_CMD_OK && c.kind == LUME_CMD_OOM && c.oom_ms == 1,
+          "profile: OOM 1 boundary value accepted");
+    CHECK(lume_cmd_parse((const uint8_t *)"OOM", 3, &c) == LUME_CMD_ERR_ARG,
+          "profile: OOM without a delay rejected");
+    CHECK(lume_cmd_parse((const uint8_t *)"OOM\t0", strlen("OOM\t0"), &c)
+              == LUME_CMD_ERR_ARG,
+          "profile: OOM 0 rejected");
+    CHECK(lume_cmd_parse((const uint8_t *)"OOM\t12x", strlen("OOM\t12x"), &c)
+              == LUME_CMD_ERR_ARG,
+          "profile: non-numeric delay rejected");
+    CHECK(lume_cmd_parse((const uint8_t *)"OOM\t1234567890",
+                         strlen("OOM\t1234567890"), &c) == LUME_CMD_ERR_ARG,
+          "profile: overlong delay rejected (u32 wrap guard)");
+#else
+    CHECK(lume_cmd_parse((const uint8_t *)"OOM\t2500\n", strlen("OOM\t2500\n"), &c)
+              == LUME_CMD_ERR_VERB,
+          "default: OOM absent from verb table -> CMD ERR verb");
+    CHECK(strcmp(lume_cmd_reason(LUME_CMD_ERR_VERB), "verb") == 0,
+          "default: unknown-verb reason token is 'verb'");
+#endif
+}
+
 /* ---------------- 3. CLI/device round trip (byte level) ---------------- */
 static void test_round_trip(void)
 {
@@ -266,8 +303,14 @@ static void test_round_trip(void)
 
 int main(void)
 {
+#if CONFIG_LUME_PERF_PROFILE
+    printf("mode: profile (CONFIG_LUME_PERF_PROFILE=1)\n");
+#else
+    printf("mode: default (CONFIG_LUME_PERF_PROFILE off)\n");
+#endif
     test_frames();
     test_cmd_parse();
+    test_oom_verb();
     test_round_trip();
     printf("\n%d checks, %d failure(s)\n", g_checks, g_fail);
     return g_fail == 0 ? 0 : 1;

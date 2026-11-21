@@ -23,7 +23,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '1dc7c76';
+const BASE = 'd91a038'; // r139: firmware changed deliberately for the OOM verb
 const BEGIN = '/* ---- r131: SNTP-first BEGIN ---- */';
 const END = '/* ---- r131: SNTP-first END ---- */';
 

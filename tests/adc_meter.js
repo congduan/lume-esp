@@ -20,7 +20,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/adc_meter/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = 'c4b390a';
+const BASE = 'd91a038'; // r139: firmware changed deliberately for the OOM verb
 
 function literals(s) {
   return [...s.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g)]

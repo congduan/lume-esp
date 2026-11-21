@@ -28,7 +28,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/crypto_check/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = 'c003834';
+const BASE = 'd91a038'; // r139: firmware changed deliberately for the OOM verb
 
 // ---- independent host implementations (the injected `options.crypto`) ----
 const CRC_TABLE = new Int32Array(256);

@@ -120,7 +120,7 @@ const R128_FIRMWARE_FILES = [
   'runtime/types/lume.d.ts',
 ];
 function gitDiffEmpty() {
-  const out = execFileSync('git', ['diff', '--name-only', '040fc11',
+  const out = execFileSync('git', ['diff', '--name-only', 'd91a038',
     '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
   const files = out ? out.split('\n') : [];
   return files.every(f => R128_FIRMWARE_FILES.includes(f));
