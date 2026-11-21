@@ -1,0 +1,663 @@
+===== tests/abc123.js =====
+PASS 62 SVG outlines and 26 Aa pairs have valid structure
+PASS 36-card deck, words and digit dot counts
+PASS Image glyph and auxiliary Canvas nodes
+PASS page advance, Z-to-0 transition and Image bounce
+PASS four-mode cycle, random bag and vertical Aa source
+PASS number-dot Canvas draws three filled arcs
+ALL ABC123 HARNESS CASES PASSED
+===== tests/adc_meter.js =====
+PASS default stub renders raw=2048, mv=1650, CFG OK and draws the bar
+PASS pin/atten buttons reconfigure and wrap 1..10 / 0..3
+PASS no free() call: no app close hook, slot state is engine-persistent
+PASS negative readMv/readRaw/config render as err <code> numerically
+PASS 0 sample is NOT treated as an error (numeric, not truthy, branch)
+PASS out-of-range raw 4096 is rejected, so the normal-render proof FAILS
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 error discrimination present, no truthy if(r)/if(m)
+PASS config/readRaw/readMv calls bound to pin, no token-class strings
+PASS header declares the LUME_MAX_NODES budget
+PASS playground manifest has 50 apps including adc_meter
+PASS generated playground source is byte-identical to the example
+PASS firmware/ and runtime/ byte-identical to baseline c4b390a
+PASS MUTATION delete numeric error branch -> predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION touch a tracked firmware file -> diff predicate FAILS
+PASS MUTATION raw=4096 -> normal render predicate FAILS (already shown live)
+PASS adc_meter harness: all live, static and mutation checks green
+===== tests/ai.js =====
+request construction + key storage: PASS
+HTTP error + timeout + bad JSON + truncation: PASS
+Node local POST round trip: PASS
+===== tests/alloc_inject.js =====
+setup: calls=69 net=167632 live=54
+inject: armed-at=83 window=1
+engine: exception=InternalError: out of memory
+inject: denied=1 calls=83
+resume: malloc-after-window ok net=167720 live=55
+teardown: net=0 live=0
+RESULT: PASS
+PASS alloc_inject: countdown OOM -> deterministic failure, counter consistent, no crash
+===== tests/animation_mapping.js =====
+PASS initial transition value uses SET_ATTR
+PASS transition signal.set emits ANIMATE with omitted from and ease-out
+PASS ANIMATE_CANCEL path
+PASS onComplete registered and dispatched through reverse event hook
+PASS same-property replacement discards old completion
+PASS color animation rejected
+===== tests/apps.js =====
+PASS apps entries merges meta.json and falls back per field
+PASS apps entries tolerates a store without native metadata
+PASS apps entries ignores malformed meta instead of throwing
+PASS apps current() reports the running app id
+PASS apps launch/home/remove return the native status codes
+PASS apps setBoot pins independently of launch and home, then clears
+PASS apps setBoot reports invalid ids and storage errors
+PASS apps launcher pins itself and its edit exit clears the pin before home
+PASS apps Launcher defaults to the installed app set
+PASS apps Launcher tap launches the app by default (no host callback)
+PASS apps explicit apps + onLaunch still override the store
+PASS apps Launcher rejects a non-array app list
+PASS apps embedded home renders a clock and one tile per installed app
+PASS apps embedded home launches a tile and keeps BACK at the root
+PASS apps embedded home shows an empty state with no apps
+PASS 15 multi-app cases
+===== tests/archive_view.js =====
+PASS payload 1 zlib: real inflate text, byte counts, ratio and ZLIB label
+PASS payload 2 raw: real inflate text, byte counts, ratio and RAW label
+PASS payload 3 truncated zlib is a REAL -2 (not -1), rendered as ERR -2
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS NEXT cycles three payloads and wraps; format labels follow the cycle
+PASS default host stub (no options.compress) renders ERR -3, no fake success
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real inflate call present
+PASS text truncation to 120 chars + "..." is declared and implemented
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest has 50 apps including archive_view
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 9d1849f
+PASS MUTATION delete <0 error branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake inflate result -> real-inflate predicate and live FAIL
+PASS MUTATION drop text truncation -> truncation predicate FAILS
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS archive_view harness: all live, static and mutation checks green
+===== tests/async_jobs.js =====
+async jobs host prelude: PASS
+===== tests/aurora_clock.js =====
+PASS centers, 20 Hz speed cap, 60 s idle drift x0.3 and wake
+PASS palette lookup interpolates only precomputed colors
+PASS clock text changes on minute boundary only
+PASS prelude/no IMU, per-frame draw calls max=30, ripple <=35
+ALL AURORA CLOCK CASES PASSED
+===== tests/ble.js =====
+PASS lume.ble wiring (header, CMake, sdkconfig, natives, types, docs)
+PASS onStart advertises; first poll of a live link sends HELLO
+PASS poll drains one RX packet, verifies the link and acks it
+PASS Ping Button press sends a ping
+PASS Ping counter Text reflects the press
+PASS negative read() status is handled by the app
+PASS onPause / shutdown stops advertising
+PASS failed start() is surfaced without starting the poll timer
+===== tests/canvas_mapping.js =====
+PASS canvas create dimensions and fixed wire kind
+PASS drawing command order and final invalidate
+PASS r48 native arc emits one LUME_DRAW_ARC (opcode 5) with normalised args
+PASS r48 native arc rounds fractional degrees and rejects bad angles
+PASS optional dirty rectangles preserve local coordinates
+PASS signal change redraws once; equal value stays idle
+PASS canvas is adopted into flex layout flow at fixed size
+PASS dimensions/coordinates/color/text/point bounds reject
+PASS injected 390x390 screen governs canvas size, budget and draw bounds
+PASS counter example retains count and theme behavior
+SAMPLE messages (first 12): [["create",1,0],["attr",1,12,12],["attr",1,0,"taps: 0"],["create",0,0],["attr",2,1,2377581],["attr",2,16,100],["attr",2,3,120],["attr",2,7,1],["attr",2,8,2],["attr",2,9,2],["attr",2,11,6],["attr",2,12,12]]
+SAMPLE totals: {"create":7,"attr":42,"press":3}
+PASS 33 contiguous lines split at 32
+CANVAS 240 points: old=239 messages / 27724 queue bytes; new=8 messages / 928 queue bytes + 3824 payload bytes
+PASS 240-point polyline uses eight batches
+CANVAS retained path: 2 segments uploaded once, 2 draws / 1 upload
+PASS retained path uploads geometry once and replays from C
+PASS retainSegments uploads independent segments
+PASS retained sprite uploads pixels once and replays from C
+PASS sprite argument validation matches the native contract
+PASS sprite slot redefinition re-uploads (animation frame swap)
+===== tests/canvas_prims.js =====
+PASS prelude emits fillCircle/fillEllipse/ellipse draw records
+PASS Playground prelude snapshot matches firmware source
+===== tests/clock_round.js =====
+PASS clock_round pure angles, prelude, 71 calls/frame, 60-second tick smoke
+===== tests/compass.js =====
+PASS compass heading wraps 0-360
+PASS compass demo mode angular speed (18 deg/s)
+PASS compass gyro-Z integration wraps and scales by dt
+PASS compass retained ring: 36 segments + 2 paths uploaded once
+PASS compass DRIFT badge condition (IMU mode, |spin|>30deg)
+PASS compass no-IMU fallback to demo (honest, no crash)
+PASS compass serial smoke: COMPASS HDG <deg> mode=<demo|imu>
+PASS compass IMU mode integrates gz and shows DRIFT badge
+PASS compass mode toggle returns to demo, badge clears
+PASS compass honest wording: inertial/relative only, no north promise in UI
+PASS compass host harness: 10/10 assertions
+===== tests/compress.js =====
+PASS correctness: empty / repetitive text / RLE / random stored / >64KiB dynamic (raw+zlib, byte-exact)
+PASS default format (omitted/null) is raw
+PASS damaged streams rejected (truncated / bad header / reserved BTYPE / Adler mismatch)
+PASS out-too-small -> -3 with no out-of-bounds write
+PASS subarray/byteOffset views on src and out with guards intact
+PASS error contract: -1 type / -2 data / -3 length, no exceptions
+PERF native inflate 200x 111530B: 30ms (sink=22306000, NOT ESP32-S3)
+ALL OK
+PERF Node zlib.inflateSync baseline 200x 111530B: 41ms (sink=22306000, native C, host only)
+FIXTURES raw/zlib sizes: text=69/75B random=70025B big=5391B big-zlib=5397B
+===== tests/create_failure.js =====
+PASS: create-failed notice disposes signal effects and warns once
+PASS: Canvas failure latches dead id and native attrs become no-op
+===== tests/crypto.js =====
+PASS SHA-256 NIST vectors: empty / abc / 56-byte two-block
+PASS HMAC-SHA256 RFC 4231 cases 1/2/3
+PASS CRC-32 0xCBF43926 + JS reference cross-check (seed/no-seed)
+PASS AES-128/256-CTR SP 800-38A F.5 vectors + CTR symmetry + in-place
+PASS subarray/byteOffset views for all four primitives
+PASS error contract: -1 type / -2 length, no exceptions
+PERF host single sample (20000x 60B): native=15ms js=833ms ratio=55.5x (sink=1966913649, NOT ESP32-S3)
+ALL OK
+===== tests/crypto_check.js =====
+PASS CRC-32 table cross-checks against zlib.crc32 (independent reference)
+PASS default payload Lume: SHA/HMAC hex matches node:crypto, AES loopback OK
+PASS rendered text stream carries the computed digest, not just ctx state
+PASS NEXT button cycles 3 payloads and wraps; empty payload does not crash
+PASS negative codes render numerically: ERR -2 / ERR -1, never ERR 0
+PASS -3 from any primitive renders UNSUPPORTED (host/playground stub reality)
+PASS default no-crypto host stub shows UNSUPPORTED for all four rows
+PASS CRC-32 u32: 4294967295 is VALID, not ERR -1; seed chaining used once
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / !== 0 error discrimination, no truthy branch
+PASS digest truncation to 16 bytes + "..." in both SHA and HMAC rows
+PASS CRC unsigned String(c2 >>> 0) with negative-only guard
+PASS header declares LUME_MAX_NODES budget and app is plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest has 50 apps including crypto_check
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline c003834
+PASS MUTATION delete -3/UNSUPPORTED branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake/full digest (drop truncation) -> predicate FAILS
+PASS MUTATION signed CRC render -> unsigned predicate FAILS
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS crypto_check harness: all live, static and mutation checks green
+===== tests/dashboard_round.js =====
+PASS dashboard_round SIM prelude, 28 calls/frame
+PASS dashboard_round IMU prelude, 28 calls/frame
+PASS dashboard_round relative heading and linear level mapping
+===== tests/decode.js =====
+PASS 1x1 PNG -> {1,1,Uint16Array(1)}, red 0xf800, LE bytes 00 f8
+PASS 2x2 PNG exact RGB565 0xf800 0x07e0 0x001f 0xffff; A8 plane discarded
+PASS decode 2x2 -> 4x4 nearest + -> 1x1 centre tap
+PASS decode pixels fed into lume.imgscale.scale, bits preserved
+PASS error codes -1/-2 (type, dimensions, 480 cap, corrupt input)
+===== tests/fft.js =====
+PASS 8/16-point known DFT, Float32 bit patterns, packed magnitude
+PASS 1kHz peak bin 64/1024 and Parseval
+PASS 4096-point inclusive upper bound
+PASS offset views, guards, split magnitude
+PASS error codes for type, length, non-power-of-two, limit, overlap
+PERF 1024-point mean over 1000 calls: JS butterflies=2.0690 ms native=0.0270 ms (host single sample; not ESP32-S3)
+===== tests/files_dialog.js =====
+PASS files before: DEL -> status confirmation -> DEL -> remove
+PASS files after: DEL -> Dialog -> Delete -> remove -> Toast
+===== tests/fishtank.js =====
+PASS 60 s smoke: six fish bounded, finite, continuous, capped turn; eaten=40
+PASS food pursuit changes heading and position
+PASS eating removes pellet and accelerates swimming/tail
+PASS size tiers 6/5/6 stations; prelude integration: tap feeding, no errors, max draw calls/frame=135 (limit 250)
+ALL FISHTANK HARNESS CASES PASSED
+===== tests/flapdot.js =====
+PASS flapdot UI strings are ASCII-only (r64 font rule)
+PASS flapdot pipe geometry deterministic, gaps sane, ramp stepwise
+PASS flapdot pipe window covers exactly the visible pipes
+PASS flapdot scoring gate at pipe right edge
+PASS flapdot collision: pipes/ground kill, gap passes, top clamps
+PASS flapdot physics: gravity/flap/terminal, no NaN
+PASS flapdot state machine ready/run/dead/restart
+PASS flapdot course winnable: scripted policy cleared 135 pipes
+PASS flapdot boots in ready mode with HUD and full first paint
+PASS flapdot tap -> run through the gesture pipeline
+PASS flapdot dirty-band discipline + canvas pixel budget (max inc 20680 px)
+PASS flapdot death + restart through the real prelude
+PASS flapdot 60 s smoke (draws=114918, paints=5648, phase=run, score=0)
+ALL flapdot harness checks passed
+===== tests/frogger.js =====
+PASS frogger four-direction hop + boundary clamp
+PASS frogger vehicle collision
+PASS frogger log carry displacement
+PASS frogger water death
+PASS frogger home fill + level up
+PASS frogger difficulty speed-up
+PASS frogger high-score KV + graceful failure
+PASS frogger sprite spans precomputed once, stable across ticks
+PASS frogger game over restart
+PASS frogger canvas/events + tap-direction hops
+ALL FROGGER HARNESS CASES PASSED
+===== tests/game_of_life.js =====
+PASS life budget: GRID<=60, 9px cells, single canvas <=300x300
+PASS life B3 birth: dead cell with exactly 3 live neighbours comes alive
+PASS life B3/S23 survival 2-3, death 0-1 and 4+
+PASS life stable 2x2 block is unchanged
+PASS life torus edges wrap neighbour counts across all four borders
+PASS life boot: glider seeded, RUN at 350ms, LIFE READY logged
+PASS life STATIC layer: retainSegments uploaded exactly once (72 segments)
+PASS life LIVE layer: each generation logs LIFE GEN and invalidates <30% of frame
+PASS life glider translates while conserving 5 live cells
+PASS life tap: empty cell plants glider; live cell toggles off
+PASS life swipe up toggles play/pause; left/right cycle 200/350/500ms
+PASS life longpress clears the grid
+PASS life PATTERN cycles GLIDER -> LWSS -> PULSAR(48) -> RANDOM
+life harness: 13 cases passed
+===== tests/games.js =====
+PASS 2048 left
+PASS 2048 right
+PASS 2048 up
+PASS 2048 down
+PASS 2048 no change
+PASS 2048 game over
+PASS snake turns
+PASS snake eats
+PASS snake wall
+PASS snake body
+PASS snake IMU threshold and axis sign
+PASS 2048 high score KV key
+PASS snake high score KV key
+PASS brkout high score KV key
+PASS breakout wall rebound
+PASS breakout brick
+PASS breakout level
+PASS breakout game over
+PASS tetris clockwise wall kick
+PASS tetris line clear, score and speed floor
+PASS tetris lock scores cleared row
+PASS tetris high score KV and graceful failure
+PASS tetris canvas, tap rotation, pan follow, soft and hard drop, line log
+===== tests/gateway.js =====
+PASS happy path: hello -> 60ms PCM -> text delta -> audio -> close
+PASS negative: uplink before hello -> not_hello + 1008
+PASS negative: non-hello text first -> not_hello + 1008
+PASS negative: broken JSON -> bad_json + 1002
+PASS negative: 1920-byte mono frame -> bad_audio_frame + 1009
+PASS negative: unmasked WS frame rejected at WS layer + 1002
+PASS negative: upstream disconnect -> upstream_closed + 1011
+PASS negative: hello v=2 -> unsupported_version + 1008
+PASS device close: gateway releases upstream and echoes 1000
+PASS control: unknown_type is non-fatal, ping gets pong
+PASS r117: transcript seq independent of text/audio, single final
+PASS r119: open mode + hello without auth -> full round unchanged
+PASS r119: locked + hello without token -> unauthorized + 1008 + zero upstream calls
+PASS r119: locked + wrong token -> unauthorized + 1008 + zero upstream calls
+PASS r119: locked + correct token -> full round, upstream engaged
+PASS r119: locked + audio before hello -> not_hello wins over token gate
+PASS r120: two turns carry user+assistant history; close clears; reconnect fresh
+PASS r120: history-limit=0 degrades to single-turn (r119 body)
+PASS r120: window keeps only the most recent N pairs (oldest dropped first)
+PASS r122: close retires history; reconnect with resume restores it
+PASS r122: unknown resume id degrades to a fresh session
+PASS r122: locked + wrong token + resume -> unauthorized, zero restore, zero upstream
+PASS r122: expired resume snapshot degrades to a fresh session
+ALL GATEWAY HARNESS CASES PASSED (23 cases)
+===== tests/gateway_upstream.js =====
+PASS stt: multipart WAV header, downmix, model + auth
+PASS chat: model + system/user messages + transcript + auth
+PASS chat: OPENAI_CHAT_BASE_URL overrides LLM endpoint only
+PASS tts: one request per sentence + model/voice/format/auth
+PASS tts: per-sentence 24k->16k resample + 3840-byte frame sequence
+PASS delta: one-per-SSE-chunk + single final marker + exact reassembly
+PASS turn: thinking -> speaking -> idle + close(1000, done)
+PASS sendText: device text folded into chat user message
+PASS negative: stt 401 -> no retry, idle + non-fatal error
+PASS negative: chat 5xx -> 1 retry cap, idle + fatal error
+PASS negative: tts timeout -> 1 retry, idle + upstream_closed, no hang
+PASS retry: 429 -> success on second attempt, full turn completes
+PASS negative: tts 5xx -> retry cap, idle, no audio
+PASS helpers: wav/resample/chunk/split/joinUrl invariants
+PASS zero-audio: stop -> idle, no HTTP, no close (advisory stop)
+PASS stop: idempotent, never cancels in-flight response
+PASS sse: split-line chunks + CRLF + comment + [DONE] + accumulated TTS text
+PASS sse: mid-stream disconnect -> deltas kept + final + non-fatal + no retry
+PASS sse: stop() aborts active read, keeps prior deltas, no error/hang
+PASS sse: non-SSE 200 -> upstream_error, no fallback deltas
+PASS splitter: stateful boundaries, CJK/ASCII, ellipsis, quotes, residual
+PASS streaming: first audio before chat SSE end + final delta
+PASS streaming: sentence order + serial TTS + 51-frame sequence
+PASS streaming: single sentence TTS failure skipped, rest continue
+PASS streaming: chat break -> queued sentences played + truncated final
+PASS streaming: stop abort in-flight TTS + drop queue + clean close
+PASS streaming: stop after chat sealed aborts TTS -> clean close, no error
+PASS asr: interim deltas + independent seq + single final before chat
+PASS asr: 3x3840B frames forwarded on arrival, before stop + commit
+PASS fallback: no hello.caps -> one-shot REST, no transcript (r113 intact)
+PASS fallback: config off -> r113 REST + chat + TTS unchanged
+PASS asr: stop mid-stream aborts WS, no duplicate final, clean close
+PASS asr: stream error -> REST fallback + one final, chat/TTS intact
+PASS asr: end before handshake queues commit, final without timeout
+PASS r120: two turns on one session inject prior user+assistant into chat body
+PASS r120: history-limit=0 keeps r119 single-turn body (real adapter)
+PASS r122: real adapter injects resumed user+assistant across disconnect
+ALL GATEWAY UPSTREAM CASES PASSED (37 cases)
+===== tests/gesture_queue.js =====
+PASS: DOWN MOVE UP retain FIFO order
+PASS: MOVE pressure reserves capacity and UP reaches queue tail
+===== tests/gestures.js =====
+PASS tap: short press with small displacement -> one tap with end coords
+PASS tap boundary: displacement >= tapMovePx(10) is NOT a tap
+PASS tap boundary: duration >= tapMaxMs(400) is NOT a tap (becomes longpress)
+PASS longpress boundary: fires while still down once t-start >= 400ms
+PASS longpress suppresses tap AND swipe on release (no double-fire)
+EVIDENCE pan stream types=["panstart","pan","pan","panend"] final dx/dy=35/2
+PASS pan stream: panstart -> pan* -> panend, with dx/dy from press start
+PASS swipe: LVGL gesture-dir hint (right=2) wins over axis inference
+PASS swipe: axis fallback when no LVGL dir hint (vertical -> down)
+PASS swipe speed gate: a 5s STATIONARY hold is a longpress, never a swipe
+PASS r21-fix: a SLOW drag held past 400ms is pan, NEVER longpress (movement gate)
+PASS r21-fix: a slow drag that ends fast stays swipe-eligible (no longpress steal)
+PASS r21-fix: slow long drag (dist>=50px, vel<min) is neither longpress nor swipe
+PASS swipeMinVel is a real, tunable gate (raise it -> slow drag stops swiping)
+PASS scroll-cancelled UP: a List scroll wins, no tap/swipe/longpress
+PASS tuning is centralized and tunable: swipeMinPx can be raised at runtime
+PASS on() enables LVGL events once per node and rejects bad type/callback
+PASS  dispatched GestureEvent reaches the right callback with coordinates
+PASS unregister function is idempotent and stops future delivery
+PASS longpress then release: no tap delivered; onPress (CLICKED) suppressed
+PASS normal tap: onPress AND gesture tap both fire (no longpress latch)
+PASS dispose clears per-node gesture state (removed node stops dispatching)
+EVIDENCE demo tap -> status="tap (61,100)" taps=1
+PASS examples/gestures/app.js evaluates and its tap counter responds
+PASS example swipe changes page and longpress toggles color
+PASS 20 r21 gesture cases
+===== tests/golf.js =====
+PASS golf UI strings are ASCII-only (r64 font rule)
+PASS golf seeded generation deterministic, safe, water/sand/slope spread
+PASS golf terrain classification (tee managed ground, hole green)
+PASS golf straight drive rolls and stops on managed grass
+PASS golf sand friction kills the roll
+PASS golf water splash detection deterministic
+PASS golf hole capture speed gate
+PASS golf swing peak -> power ramp clamps and monotonic
+PASS golf all 10 holes solvable by grid search, round total=18
+PASS golf water penalty +1 and reset to pre-shot spot
+PASS golf strike guards (rolling/holed rejected, wild input finite)
+PASS golf boots in demo mode with HUD
+PASS golf tap aim + demo strike through the gesture pipeline
+PASS golf dirty-rect discipline + canvas pixel budget
+PASS golf round completion + restart through the real prelude
+ALL golf harness checks passed
+===== tests/gravity_ball.js =====
+PASS gravity_ball gravity accelerates and displaces
+PASS gravity_ball the screen edge clamps and reflects normal velocity
+PASS gravity_ball tilting the other way reverses the fall direction
+PASS gravity_ball dt cap limits delayed tick
+PASS gravity_ball a hard tilt keeps the ball inside the screen
+PASS gravity_ball the first frame paints the canvas once and invalidates all of it
+PASS gravity_ball no frame falls back to the whole canvas
+PASS gravity_ball per-frame raster stays far below a full repaint
+PASS gravity_ball the dirty rect tracks the ball and stays small
+PASS gravity_ball the canvas holds exactly one ball and no ghost
+===== tests/image_mapping.js =====
+PASS Image create/source/size message order
+PASS Image participates in View flex child adoption
+PASS Image preserves aspect ratio for one explicit dimension
+PASS Image forwards two explicit raster dimensions
+PASS Image propagates decoder error and removes failed node
+PASS Image rejects invalid input and propagates header error
+PASS embedded PNG 1x1 decodes to exact opaque red RGBA bytes
+===== tests/img_view.js =====
+PASS default: 2x nearest, HUD/dims/OK, sprite pixels = independent nearest
+PASS NEXT cycles 2x -> 4x -> 8x -> 2x; every grid matches independent nearest
+PASS MODE toggles nearest <-> bilinear at every zoom; bilinear differs from nearest
+PASS both Buttons are wired: press NEXT changes zoom, press MODE flips sampling
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS scale() spy: app passes SRC, correct dims and the exact mode string
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real scale() call present
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 12 nodes
+PASS playground manifest has 50 apps including img_view
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 67d37a7
+PASS MUTATION delete <0 error branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake scale result -> real-scale predicate and pixel compare FAIL
+PASS MUTATION fake reference -> pixel comparison FAILS (comparator load-bearing)
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS img_view harness: all live, static and mutation checks green
+===== tests/imgscale.js =====
+PASS nearest 2x upsample, exact RGB565 bits: 0xf800 0xf800 0x07e0 0x07e0 ...
+PASS nearest 2x downsample, centre taps = 0x0006 0x0008 0x000e 0x0010
+PASS bilinear hand case 3x1->2x1 = 0xb800 0x05e0
+PASS bilinear 2x2->3x3, centre=0x8410 (channel separation)
+PASS bilinear 5x4->9x7 reference + omitted-mode defaults to nearest
+PASS subarray offset views, guards intact
+PASS error codes -1/-2 and identical-view in-place allowance
+PERF 64x64->128x128 bilinear mean over 200 calls: JS=17.6900 ms native=0.3950 ms (host single sample; not ESP32-S3)
+===== tests/invaders.js =====
+PASS invaders formation direction flip at right edge
+PASS invaders edge contact descends one row
+PASS invaders bullet hit removes member + score
+PASS invaders player hit loses lives / game over
+PASS invaders UFO adds bonus score
+PASS invaders wave speed-up and formation reset
+PASS invaders last kill enters next wave
+PASS invaders high-score KV + graceful failure
+PASS invaders sprite spans precomputed once, stable across ticks
+PASS invaders game over restart
+PASS invaders canvas/dirty budget, pan follow, tap fire, swipe pause
+ALL INVADERS HARNESS CASES PASSED
+===== tests/lcd_dual.js =====
+PASS lcd ghost geometry bounded (A=124, B=99) + lit/ghost split
+PASS lcd dual state machines independent
+PASS lcd bread catch + score
+PASS lcd MISS count + 3-miss game over
+PASS lcd bread 3-stage fall + phase wrap
+PASS lcd lane collision = one-hit game over
+PASS lcd lane clamp + dodge scoring
+PASS lcd MODE switch cleanup + score preservation + reset
+PASS lcd score KV (<=15 char key, graceful failure)
+PASS lcd canvas/ghost-once/dirty budget, A+B swipes, MODE button
+ALL LCD_DUAL HARNESS CASES PASSED
+===== tests/lifecycle.js =====
+PASS registration, unregistration and start/pause/resume sequence
+PASS onBack unregistered selects default
+PASS onBack false selects default
+PASS onBack true intercepts
+PASS timeout once and interval skips missed periods
+PASS timer clear is idempotent
+PASS paused timer waits and resumes without catch-up burst
+PASS hot replacement disposes effect, canvas onDraw, animation and timer
+PASS shutdown clears lifecycle and timer registries
+PASS replacement starts fresh app without old callbacks
+===== tests/list_virtualization.js =====
+EVIDENCE 1000 items / 12 visible: actual created nodes=17 (15 rows + container + spacer)
+PASS 1000 items, 12 visible: initial 15 rows, 17 total nodes
+EVIDENCE 1000 items / 12 visible: middle window live nodes=20 (18 rows + 2 fixed)
+PASS scroll maps to 18-row middle window
+PASS scroll window reclaims old rows before creating replacements
+PASS small scroll within same window does not churn nodes
+PASS same-length items replacement rebuilds window and keeps offset
+PASS length change rebuilds and resets scroll to top
+PASS removed row loses press callback and signal effects
+PASS 1000-item traversal stays within the 127-node table
+PASS bridge throttle and overflow policy are present
+EVIDENCE files seedTestEntries(): 1000 entries, 40 new nodes
+PASS files example seeds 1000 entries without creating 1000 rows
+PASS 10 list virtualization cases
+===== tests/memory.js =====
+PASS memory deal: 16 cards, 8 faces x2
+PASS memory shuffle: deterministic under injected rnd, true permutation
+PASS memory single flip: one-open, moves not yet counted
+PASS memory match: pair removed, counter advanced
+PASS memory miss: face-up window, flipback on tick, cards stay in play
+PASS memory negative: no double-flip, no third-card flip
+PASS memory negative: range/matched/won guards
+PASS memory full game: 8-pair clear, WIN event, best=8 saved
+PASS memory best: worse keeps / fewer overwrites / equal keeps
+PASS memory spans: 8 faces decoded, palette refs all valid
+PASS memory canvas budget: 230400 px single canvas, grid in bounds
+PASS memory solvability: 20 random deals all contain exactly 8 pairs
+ALL tests/memory.js PASS
+===== tests/minesweeper.js =====
+PASS minesweeper deal: fresh board, mines pending first tap
+PASS minesweeper neighbors: corner=3 edge=5 interior=8, in bounds
+PASS minesweeper placement: 15 mines, first-tap 3x3 safe, counts correct (10 boards)
+PASS minesweeper first tap: always digs, placement deterministic under seed
+PASS minesweeper flood: zero region opens, boundary counts stay closed
+PASS minesweeper flood vs flags: flagged cells are not auto-opened
+PASS minesweeper flag: toggle + guards on revealed/out-of-range
+PASS minesweeper dig-vs-flag: flag blocks the dig, unflag re-opens
+PASS minesweeper boom: round over, mines revealed, hit cell marked
+PASS minesweeper win: 85 safe cells, WIN event, best time saved
+PASS minesweeper best: worse keeps / lower overwrites / equal keeps
+PASS minesweeper tick: clock runs only between start and end
+PASS minesweeper spans: 10 sprites decoded, palette refs all valid
+PASS minesweeper canvas budget: 230400 px single canvas, grid in bounds
+PASS minesweeper solvability: 20 random boards all diggable to a win
+ALL tests/minesweeper.js PASS
+===== tests/minigolf.js =====
+PASS minigolf UI strings ASCII-only (r64 font rule)
+PASS minigolf power mapping (threshold/dead-zone/clamp, shared curve)
+PASS minigolf turn flow + shot gating (rolling/rejected putt)
+PASS minigolf physics (friction stop, slope deflection, OOB clamp, guard bounce)
+PASS minigolf cup capture / lip-out / hazard penalty reset
+EVIDENCE L1 OPEN PUTT solvable@par hole-in-one {"angle":90,"power":8,"speed":268}
+EVIDENCE L2 SLOPE solvable@par hole-in-one {"angle":90,"power":7,"speed":246}
+EVIDENCE L3 ONE GUARD solvable@par hole-in-one {"angle":75,"power":8,"speed":268}
+EVIDENCE L4 TWO GUARDS solvable@par hole-in-one {"angle":75,"power":9,"speed":291}
+EVIDENCE L5 BUNKERS solvable@par hole-in-one {"angle":70,"power":8,"speed":268}
+EVIDENCE L6 GAUNTLET solvable@par hole-in-one {"angle":105,"power":11,"speed":335}
+PASS minigolf all 6 procedural holes solvable at par (angle x power search)
+PASS minigolf hiscore KV (9-char key, strict-min, graceful failure)
+PASS minigolf boot + retained paths + first paint + canvas budget
+PASS minigolf demo/imu degradation + stationary no-putt
+PASS minigolf IMU swing threshold + one-putt debounce + weak-swing negative
+PASS minigolf drag -> aim -> HIT + dirty budget (max inc 9044 px) + pathDraw replay
+PASS minigolf RESET/NEXT navigation + 1800-tick finite smoke
+ALL MINIGOLF HARNESS CASES PASSED (12 cases)
+===== tests/music_player.js =====
+LRC normal: PASS
+LRC skip untimed: PASS
+LRC sort: PASS
+LRC bad GBK bytes: PASS
+Scheduler: ticks=7 decoded=5 sent=4 retry=2 PASS
+Scheduler: stop and negative-index wrap PASS
+Lyrics: five-line window and missing LRC PASS
+Library: recursive scan, ID3 title order, last track and offset KV PASS
+Restart: last track and LRC offset restored, playback starts at zero PASS
+===== tests/ota_auth.js =====
+[1] CRC-32 + encoder field-by-field vs CLI
+  ok  : crc32("123456789") == 0xcbf43926
+  ok  : encode length == 12 + 9
+  ok  : C encoder emits byte-for-byte the CLI/USB frame (LUME|len|crc|payload)
+  ok  : offset 0..3 magic LUME
+  ok  : offset 4..7 total_len u32 LE == payload bytes (9)
+  ok  : offset 8..11 crc32 u32 LE == crc(payload)
+  ok  : offset 12.. payload verbatim
+[2] frame protocol reuse (OTA decoder == USB/CLI wire format)
+  ok  : CLI frame -> exactly one DATA event, no ERR
+  ok  : DATA len == 9
+  ok  : DATA payload matches source
+  ok  : single-byte streaming parse OK
+  ok  : encode->decode round trip OK
+[3] aligned 4-byte control frames
+  ok  : BACK event
+  ok  : PAUS event
+  ok  : RESM event
+  ok  : controls emit no DATA/ERR
+[4] reject reasons, lengths and LUME resync
+  ok  : bad magic -> ERR bad-magic
+  ok  : resync: valid frame after noise still parses
+  ok  : total_len 0 -> ERR empty
+  ok  : total_len > 256KiB -> ERR too-large (drop+resync)
+  ok  : corrupted payload -> ERR bad-crc (len=9)
+  ok  : encoder accepts a 1 KiB payload
+  ok  : 1 KiB frame decode OK
+[4b] r43b bytecode frame kind
+  ok  : encode_bytecode length == 12 + payload
+  ok  : bytecode frame magic == "LUMB"
+  ok  : LUMB decodes as EV_BYTECODE (not DATA/CMD) and round-trips
+  ok  : LUME/LUMC/LUMB interleave in one parser with no resync
+[5] token auth (correct / wrong token)
+  ok  : auth_parse("AUTH <token>\n") extracts token
+  ok  : RIGHT token: token_equal == true (auth OK path)
+  ok  : WRONG token (1 char off): token_equal == false (auth ERR path)
+  ok  : empty token rejected
+  ok  : 31-char token rejected (length)
+  ok  : wrong prefix -> auth_parse false
+  ok  : empty token line -> auth_parse false
+  ok  : space in token -> auth_parse false
+[5b] r96 HMAC-SHA256 challenge-response auth
+  ok  : mbedTLS SHA-256 HMAC primitive available
+  ok  : RFC 4231 case 1 HMAC vector matches
+  ok  : hex_valid: 32 hex OK
+  ok  : hex_valid: non-hex rejected
+  ok  : hex_decode: odd nhex rejected
+  ok  : hex_decode: first/last byte correct
+  ok  : hex_valid: 64 hex MAC OK
+  ok  : hex_equal: identical MAC matches
+  ok  : hex_equal: 1-char-off MAC rejected
+  ok  : challenge line format == "CHALLENGE <32hex>\n"
+  ok  : RIGHT MAC: mac_verify == 0 (auth OK path)
+  ok  : WRONG MAC: mac_verify == -4 (auth ERR path)
+  ok  : replay with a different challenge -> mac_verify -4
+  ok  : malformed challenge hex -> mac_verify -2
+  ok  : auth_parse extracts a 64-hex MAC
+[6] RELOAD reply lines
+  ok  : OK line == "RELOAD OK 9\n"
+  ok  : ERR line == "RELOAD ERR bad-crc\n"
+[7] listener gate (WiFi not connected -> no OTA server)
+  ok  : WiFi DOWN + token ready -> can_serve FALSE (refuse to start)
+  ok  : WiFi DOWN + no token -> FALSE
+  ok  : WiFi UP + no token -> FALSE
+  ok  : WiFi UP (GOT_IP) + token ready -> TRUE (auto-start)
+
+56 checks, 0 failures -> PASS
+===== tests/ota_consumers.js =====
+PASS ota_consumers: OTA helper reads lume.ota.status() locally
+PASS ota_consumers: number return discriminated via typeof === object, ASCII err code
+PASS ota_consumers: four flags + port rendered; .token / [token] never read in either app
+PASS ota_consumers: OTA row is exactly View + Text + Button (3 nodes)
+PASS ota_consumers: row Text shows only status; New-token title flips on confirm
+PASS ota_consumers: setToken sits after the two-stage confirm gate
+PASS ota_consumers: first tap arms a 3 s confirm and returns before setToken
+PASS ota_consumers: replacement token is 32 lowercase hex chars from Math.random
+PASS ota_consumers: setToken failure renders ASCII code; success refreshes status
+PASS ota_consumers: 600 ms poll refreshes OTA status
+PASS ota_consumers: header registers Math.random as NOT cryptographically secure
+PASS ota_consumers: dashboard SYSTEM reads status() with typeof === object discrimination
+PASS ota_consumers: dashboard publishes OTA row with 9 separators inside 360 px
+PASS ota_consumers: dashboard OTA line never reads token
+PASS ota_consumers: playground sources/dashboard.js byte-identical to example
+PASS ota_consumers: dashboard is in the 50-app playground manifest
+PASS ota_consumers: all UI string literals ASCII-only (r64)
+PASS ota_consumers: firmware/ runtime/ CLI tooling identical to d85e69a
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: FAIL ota_consumers: only known r132 + r133 + r134 + r135 + r136 files differ from d85e69a
+    at Object.<anonymous> (/tmp/lume-r142-wt/tests/ota_consumers.js:232:10)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.1

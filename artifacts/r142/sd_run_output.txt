@@ -1,0 +1,9 @@
+esptool.py v4.13.0
+SHA digest in image updated
+Wrote 0x2f53f0 bytes to file merged_flash.bin, ready to flash to offset 0x0
+prepared /tmp/lume-r142-wt/artifacts/r142/sd/flash.bin: 8716288 bytes; app 2836 bytes
+I (1926) lume-engine: js: [NETCHECK] sd_mount FAIL mounted=false
+I (1927) lume-engine: js: [NETCHECK] init PASS ret=0
+I (1931) lume-engine: js: [NETCHECK] connect PASS ret=0
+serial: /tmp/lume-r142-wt/artifacts/r142/sd/serial.log
+exit-on string absent (esp-emu timeout): [NETCHECK] ALL PASS

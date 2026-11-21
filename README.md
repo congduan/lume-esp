@@ -191,7 +191,7 @@ CI release notes.
 
 ### Try it in your browser
 
-Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 31 screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
+Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 43 screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
 
 ### Real firmware in your browser
 
@@ -204,6 +204,21 @@ Preview without a board: `node tools/simulator/sim.js examples/counter/app.js`, 
 checkout is available. The browser replays prelude UI messages, updates on save, and sends
 button clicks back to the app. Final visual and performance checks still need the device;
 see [simulator details](docs/build.md#host-simulator).
+
+### Headless network acceptance (esp-emu)
+
+[esp-emu](https://github.com/espressif/esp-emulator) (Espressif's official
+emulator, v1.2.0+) boots the **same merged flash image** with a virtual
+WPA2 soft AP and user-mode NAT: `tools/emu-net/run.sh examples/net_check`
+builds the image, runs the firmware headless, and asserts a fixed serial
+protocol (`[NETCHECK] init/connect/ip PASS`) — so WiFi stack changes get a
+repeatable acceptance gate without a board. The `net_check` app
+([examples/net_check](examples/net_check/app.js)) prints each step as
+`[NETCHECK] <step> <PASS|FAIL>`; any failure exits non-zero with the serial
+log under `artifacts/emu-net/`. Division of labor: **esp32sim** owns visual
+acceptance (CO5300 frame PNGs), **esp-emu** owns functional/network
+acceptance (WiFi, TF card). Install: see
+[tools/emu-net/README.md](tools/emu-net/README.md).
 
 ## Examples
 
@@ -343,9 +358,9 @@ components are in progress.
 | Milestone | State |
 |---|---|
 | **M1 — minimal loop** (engine, touch→JS, declarative UI, hot reload) | ✅ code complete |
-| **M2 — hardware API surface** (GPIO/PWM/ADC, power, IMU, WiFi+HTTP, KV, files, audio) | ✅ code complete |
+| **M2 — hardware API surface** (GPIO/PWM/ADC, power, IMU, WiFi+HTTP, KV, files, audio, TF card, crypto, compress, FFT) | ✅ code complete |
 | **M3 — declarative UI completeness** (flex, styles, animation, canvas, gestures, lifecycle, themes, virtualized lists, images) | ✅ code complete |
-| **M4 — tooling** (`lume` CLI ✅, host simulator ✅, WiFi OTA code complete / board check pending) | 🚧 |
+| **M4 — tooling** (`lume` CLI ✅, host simulator ✅, WiFi OTA code complete + HMAC auth ✅, esp-emu network acceptance ✅ / on-device radio check pending) | 🚧 |
 | **M5 — ecosystem** (component library, launcher shell, board abstraction) | 🚧 optional JS shell components + bilingual docs site landed; board abstraction not started |
 
 > **Honesty note**: "code complete" means compiles green, host-tested, and reviewed.

@@ -132,6 +132,19 @@ WiFi 后，同一个 bundle 也能走 TCP：`node tools/lume/lume.js deploy my-a
 浏览器会重放 prelude 的 UI 消息、保存即更新，并把按钮点击回传给应用。
 最终的视觉与性能验证仍然要在真机上做；见[模拟器细节](docs/build.md#host-simulator)。
 
+### 无头网络验收（esp-emu）
+
+[esp-emu](https://github.com/espressif/esp-emulator)（乐鑫官方模拟器，v1.2.0+）
+用**同一份合并固件镜像**启动，内置虚拟 WPA2 soft AP 与 user-mode NAT：
+`tools/emu-net/run.sh examples/net_check` 会构建镜像、无头运行固件、按固定串口
+协议断言（`[NETCHECK] init/connect/ip PASS`）——WiFi 协议栈改动从此有了可重复
+的验收门禁，不再依赖接板。`net_check` 应用
+（[examples/net_check](examples/net_check/app.js)）每步打印
+`[NETCHECK] <步骤> <PASS|FAIL>`，任一失败以非零码退出，串口日志在
+`artifacts/emu-net/`。分工：**esp32sim** 负责视觉验收（CO5300 逐帧 PNG），
+**esp-emu** 负责功能/网络验收（WiFi、TF 卡）。安装见
+[tools/emu-net/README.md](tools/emu-net/README.md)。
+
 ## 示例
 
 ### 1. Hello Lume —— signals 驱动的计数器
@@ -267,7 +280,7 @@ lume.power.sleepNow();                // touch the screen to wake up
 | **M1 —— 最小闭环**（引擎、触摸→JS、声明式 UI、热重载） | ✅ 代码完成 |
 | **M2 —— 硬件 API 面**（GPIO/PWM/ADC、电源、IMU、WiFi+HTTP、KV、文件、音频） | ✅ 代码完成 |
 | **M3 —— 声明式 UI 完整性**（flex、样式、动画、canvas、手势、生命周期、主题、虚拟化列表、图片） | ✅ 代码完成 |
-| **M4 —— 工具链**（`lume` CLI ✅、宿主模拟器 ✅、WiFi OTA 代码完成 / 待真机确认） | 🚧 |
+| **M4 —— 工具链**（`lume` CLI ✅、宿主模拟器 ✅、WiFi OTA 代码完成 + HMAC 鉴权 ✅、esp-emu 网络验收 ✅ / 真机射频待确认） | 🚧 |
 | **M5 —— 生态**（组件库、启动器壳层、板抽象） | 🚧 可选的 JS 壳层组件与双语文档站已落地；板抽象未开始 |
 
 > **如实说明**：“代码完成”意味着编译通过、宿主测试通过并已复审。真机验收（视觉、触摸手感、
