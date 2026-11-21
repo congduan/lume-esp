@@ -27,7 +27,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/archive_view/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '4e00954'; // r140: firmware changed deliberately for lume.perf
+const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
 
 // ---- independent expected plaintexts (same synthetic samples the app embeds)
 const PLAIN_A = '[Lume] boot log sample (synthetic)\n' +

@@ -28,7 +28,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/crypto_check/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '4e00954'; // r140: firmware changed deliberately for lume.perf
+const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
 
 // ---- independent host implementations (the injected `options.crypto`) ----
 const CRC_TABLE = new Int32Array(256);

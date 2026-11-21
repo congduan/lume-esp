@@ -20,7 +20,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/adc_meter/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '4e00954'; // r140: firmware changed deliberately for lume.perf
+const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
 
 function literals(s) {
   return [...s.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g)]
