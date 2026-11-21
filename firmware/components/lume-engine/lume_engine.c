@@ -29,6 +29,7 @@
 #include "esp_heap_caps.h"
 #include "esp_netif_sntp.h"  /* r128: bounded SNTP sync for lume.system.setTimeNtp() */
 #include "lume_engine.h"
+#include "lume_perf_binding.h"   /* r140: profile-only lume.perf name contract */
 #include "lume_ui_bridge.h"
 #include "lume_scripts.h"
 #include "lume_gpio.h"
@@ -3176,6 +3177,39 @@ static JSValue js_mp3_id3v2(JSContext *ctx, JSValueConst self, int argc, JSValue
     return obj;
 }
 
+#if CONFIG_LUME_PERF_PROFILE
+/* r140: profile-only read-only mirrors of engine-task-owned OOM/allocator
+ * state. Both natives run on the sole engine task; they never call into the
+ * RX task and never lock the hot path (see the r139 cross-task contract).
+ * Result objects are null-prototype so a profile probe sees only the fields
+ * declared in lume_perf_binding.h, with no inherited property surprises. */
+static JSValue js_perf_oom_state(JSContext *ctx, JSValueConst this_val,
+                                 int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    JSValue obj = JS_NewObjectProto(ctx, JS_NULL);
+    JS_SetPropertyStr(ctx, obj, LUME_PERF_OOM_F_ACTIVE,
+                      JS_NewBool(ctx, s_oom_active));
+    JS_SetPropertyStr(ctx, obj, LUME_PERF_OOM_F_DENIALS,
+                      JS_NewUint32(ctx, s_oom_denials));
+    return obj;
+}
+
+static JSValue js_perf_alloc_stats(JSContext *ctx, JSValueConst this_val,
+                                   int argc, JSValueConst *argv)
+{
+    (void)this_val; (void)argc; (void)argv;
+    size_t net = 0, live = 0;
+    lume_engine_alloc_stats(&net, &live);
+    JSValue obj = JS_NewObjectProto(ctx, JS_NULL);
+    JS_SetPropertyStr(ctx, obj, LUME_PERF_ALLOC_F_NET,
+                      JS_NewInt64(ctx, (int64_t)net));
+    JS_SetPropertyStr(ctx, obj, LUME_PERF_ALLOC_F_LIVE,
+                      JS_NewInt64(ctx, (int64_t)live));
+    return obj;
+}
+#endif /* CONFIG_LUME_PERF_PROFILE */
+
 static void register_bindings(JSContext *ctx)
 {
     extern void lume_math_register(JSContext *ctx, JSValue lume);
@@ -3191,6 +3225,17 @@ static void register_bindings(JSContext *ctx)
     lume_imgscale_register(ctx, lume);
     lume_crypto_register(ctx, lume);
     lume_compress_register(ctx, lume);
+#if CONFIG_LUME_PERF_PROFILE
+    /* r140: profile-only, read-only lume.perf namespace (null prototype). */
+    JSValue perf = JS_NewObjectProto(ctx, JS_NULL);
+    JS_SetPropertyStr(ctx, perf, LUME_PERF_OOM_STATE_NAME,
+                      JS_NewCFunction(ctx, js_perf_oom_state,
+                                      LUME_PERF_OOM_STATE_NAME, 0));
+    JS_SetPropertyStr(ctx, perf, LUME_PERF_ALLOC_STATS_NAME,
+                      JS_NewCFunction(ctx, js_perf_alloc_stats,
+                                      LUME_PERF_ALLOC_STATS_NAME, 0));
+    JS_SetPropertyStr(ctx, lume, LUME_PERF_NS_NAME, perf);
+#endif
     JSValue raycast = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, raycast, "setMap", JS_NewCFunction(ctx, js_raycast_set_map, "setMap", 3));
     JS_SetPropertyStr(ctx, raycast, "setTextures", JS_NewCFunction(ctx, js_raycast_set_textures, "setTextures", 1));

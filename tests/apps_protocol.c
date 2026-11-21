@@ -19,11 +19,15 @@
  *   4. CRC / resync behaviour is unchanged for both frame kinds;
  *   5. r139 OOM verb profile gate: accepted with an arm delay when compiled
  *      with -DCONFIG_LUME_PERF_PROFILE=1, absent (CMD ERR verb) otherwise.
+ *   6. r140 profile-only `lume.perf` binding contract: namespace, method and
+ *      result-field tokens from the shared lume_perf_binding.h descriptor;
+ *      absent (no new assertions) in default mode.
  *
  * Compile twice to exercise BOTH gates; the firmware build defines the same
- * macro from sdkconfig.h. Installing/launching on a board, and the cross-task
- * allocator failure window itself (lume_engine.c, ESP-IDF-only), are NOT
- * covered here -- the esp32sim drill tools/emu/check_oom_inject.py covers that.
+ * macro from sdkconfig.h. Installing/launching on a board, the cross-task
+ * allocator failure window itself (lume_engine.c, ESP-IDF-only), and the
+ * runtime JS shape of lume.perf are NOT covered here -- the esp32sim drill
+ * tools/emu/check_oom_inject.py and profile firmware cover those layers.
  */
 #include <stdio.h>
 #include <string.h>
@@ -31,6 +35,7 @@
 #include <stdlib.h>
 #include "lume_frame.h"
 #include "lume_cmd.h"
+#include "lume_perf_binding.h"   /* r140: profile-only lume.perf token contract */
 
 static int g_fail;
 static int g_checks;
@@ -272,6 +277,31 @@ static void test_oom_verb(void)
 #endif
 }
 
+/* ---------------- 2c. r140 profile-only lume.perf binding contract ------ */
+#if CONFIG_LUME_PERF_PROFILE
+static void test_perf_binding(void)
+{
+    printf("[lume.perf binding]\n");
+    /* These tokens come from the SAME header the firmware registration uses
+     * to build lume.perf, so the CHECKs pin the binding's existence and the
+     * exact shapes of its two read-only natives against the spec literals. */
+    CHECK(strcmp(LUME_PERF_NS_NAME, "perf") == 0,
+          "profile: lume.perf namespace token");
+    CHECK(strcmp(LUME_PERF_OOM_STATE_NAME, "oomState") == 0,
+          "profile: oomState method token");
+    CHECK(strcmp(LUME_PERF_ALLOC_STATS_NAME, "allocStats") == 0,
+          "profile: allocStats method token");
+    CHECK(LUME_PERF_METHOD_COUNT == 2,
+          "profile: exactly two lume.perf methods");
+    CHECK(strcmp(LUME_PERF_OOM_F_ACTIVE, "active") == 0 &&
+          strcmp(LUME_PERF_OOM_F_DENIALS, "denials") == 0,
+          "profile: oomState() -> { active, denials } shape");
+    CHECK(strcmp(LUME_PERF_ALLOC_F_NET, "net") == 0 &&
+          strcmp(LUME_PERF_ALLOC_F_LIVE, "live") == 0,
+          "profile: allocStats() -> { net, live } shape");
+}
+#endif /* CONFIG_LUME_PERF_PROFILE */
+
 /* ---------------- 3. CLI/device round trip (byte level) ---------------- */
 static void test_round_trip(void)
 {
@@ -311,6 +341,9 @@ int main(void)
     test_frames();
     test_cmd_parse();
     test_oom_verb();
+#if CONFIG_LUME_PERF_PROFILE
+    test_perf_binding();
+#endif
     test_round_trip();
     printf("\n%d checks, %d failure(s)\n", g_checks, g_fail);
     return g_fail == 0 ? 0 : 1;

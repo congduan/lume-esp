@@ -23,7 +23,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/vec_demo/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = 'd91a038'; // r139: firmware changed deliberately for the OOM verb
+const BASE = '4e00954'; // r140: firmware changed deliberately for lume.perf
 
 // ---- independent reference integrator (NOT copied from the host stub) -----
 // One step with plain doubles for every arithmetic op; Float32Array.from()

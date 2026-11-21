@@ -2864,3 +2864,46 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送）**：`d91a038 feat(firmware): profile-gated OOM injection verb for check_oom_inject`；`1f2cd1e test(r139): OOM verb gate assertions and re-pin firmware-immutability guards`；docs(r139): append result and known simplifications（本提交）。收尾删 `firmware/build/` 与 `firmware/build-r54-profile/`（各约 337M），日志仅留 `/tmp`，测试临时物未进仓；ASCII 纪律：新增日志与 harness 输出全 ASCII。未跑 codex review（主控轮负责）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r139 节。
+
+### r140 result — OOM drill denial-positive 收口刀 + profile-only `lume.perf` 只读绑定
+
+**开工纪律**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓`，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r140-wt`（分支 `r140-oom-denial-positive`，基线 `3e93fd5`）。
+
+**实证纠偏（假设可能错，先实证）**：
+- 读 `lume_engine.c` 确认窗口引擎 task 独占状态为 `static bool s_oom_active` / `static uint32_t s_oom_denials`（跨 task volatile 仅 `s_oom_gen / s_oom_open_us / s_oom_end_us`）；`lume_engine_alloc_stats(size_t *net_bytes, size_t *live)` 始终编译、profile 开才返回真实值；prelude namespace 先例为 `register_bindings()` 里 `JS_NewObject` + `JS_SetPropertyStr(ctx, obj, ..., JS_NewCFunction(...))`；QuickJS-NG 提供 `JS_NewObjectProto(ctx, JS_NULL)` 与 `JS_NewBool/JS_NewUint32/JS_NewInt64`，满足 null-prototype 返回形状。
+- drill 实跑两次暴露**两个环境实证纠偏**（任务书未预告，详见 KNOWN-SIMPLIFICATIONS r140 节）：(1) 窗口内推 LUME reload 帧会在 `__lume_shutdown` 触发 `InternalError: out of memory` → watchdog 重启，丢失 `window closed` 日志；改用 LUMR REPL 表达式（同为直推 source、不回收 runtime）后干净拿到 N≥1；(2) 固件 +600 B 后 esp32sim 丢弃原 3445 B 的 `clock.frame`，最终 recycle 校验改用 10 B 的 LUME source 帧，`RELOAD OK \d+` 断言不变。
+
+**实现（两刀）**：
+- **固件刀（feat `4e00954`）**：新增 profile 门控只读绑定 `lume.perf.oomState()` → `{active:boolean, denials:number}`（读 `s_oom_active` / `s_oom_denials`）与 `lume.perf.allocStats()` → `{net:number, live:number}`（复用 `lume_engine_alloc_stats()`），namespace 与返回对象均 null-prototype，纯引擎 task 读。共享可移植 token 头 `lume_perf_binding.h` 让固件注册与 host harness 同源。全部包在 `#if CONFIG_LUME_PERF_PROFILE`：default 零增量，**不进 `.d.ts`**（profile-only 调试面），未碰 vendored（QuickJS/LVGL）。
+- **drill/app 刀（test 提交）**：`check_oom_inject.py` 加 `--case {counter,denial-positive,all}`（默认 `all`）与 `--denial-positive` 别名；denial-positive 在 t=5.2 / 5.5 推 REPL source 帧，窗口闭合后断言 `window closed after [1-9]\d* denials`（N≥1），零拒绝 FAIL；counter case 其余行为不变。`tests/apps_protocol.c` profile mode 补 6 条 `lume.perf` token/形状断言，default mode 不新增。
+
+**验证（原始输出；真机 deferred，不声称真机验证）**：
+- default 固件完整构建 + size（命令 `env -u VIRTUAL_ENV IDF_PYTHON_ENV_PATH=.../idf5.5_py3.12_env`）：`BUILD_EXIT=0` / `SIZE_EXIT=0`，`Flash Code 2041168` / `Flash Data 853084` / `DIRAM 247491 (72.42%, Remain 94269)` / `IRAM 16384 (100.0%, Remain 0)` / `Total image size: 3036023 bytes`。与 r139 基线**逐字节一致**（Flash/DIRAM/IRAM 增量 0 B）；`strings build/lume.elf | grep -c oom-inject` = **0**。
+- profile 构建 `idf.py -B build-r54-profile -D SDKCONFIG=sdkconfig.r54-profile build`：`BUILD_EXIT=0`；`strings build-r54-profile/lume.elf | grep -c "oom-inject\|lume.perf"` = **40**（`oom-inject` 3 / `lume.perf` 37）；`sdkconfig.r54-profile` 自动 normalize（+15 行）已 `git checkout --` 撤销。
+- **`python3 tools/emu/check_oom_inject.py`（含新 denial-positive case）全文输出**：
+  ```
+  === case: counter ===
+  I (2688) lume-engine: oom-inject: armed 2500 ms
+  CMD OK oom 2500
+  I (5207) lume-engine: oom-inject: ACTIVE
+  I (6208) lume-engine: oom-inject: window closed after 0 denials
+  CMD OK list 0
+  RELOAD OK 10
+  PASS: engine survived the OOM window ...
+  === case: denial-positive ===
+  I (2688) lume-engine: oom-inject: armed 2500 ms
+  CMD OK oom 2500
+  I (5207) lume-engine: oom-inject: ACTIVE
+  I (6189) lume-engine: oom-inject: window closed after 6 denials
+  CMD OK list 0
+  RELOAD OK 10
+  PASS: denial-positive window closed with >=1 allocation denials ...
+  ```
+  `DRILL_EXIT=0`。**主验收绿**：denial-positive 窗口闭合 `after 6 denials`，N=6 ≥ 1；r139 的 `denials=0` 边界已真实收口。
+- host harness 双门编译（`gcc -std=c11 -Wall -Wextra -Werror`，profile 加 `-DCONFIG_LUME_PERF_PROFILE=1`）：default `47 checks, 0 failure(s)`；profile `57 checks, 0 failure(s)`（含 6 条 `lume.perf` 断言）。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**。11 个 app-only 守卫的 firmware-immutability BASE 按先例重钉到本轮 feat 提交 `4e00954`（语义不变，非放宽）。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0`，`NPM_EXIT=0`；`python3 scripts/check_website.py` → missing/invented/duplicates/signatures 均 none，`WEBSITE_EXIT=0`；`node tools/lume/lume.js check examples/counter --no-emu` → `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+
+**commits（未推送）**：`4e00954 feat(firmware): profile-only lume.perf read-only JS bindings (r140)`；test(r140) denial-positive drill case + `lume.perf` host assertions + BASE re-pin；docs(r140) append result and known simplifications（本提交）。收尾删 `firmware/build/` 与 `firmware/build-r54-profile/`，日志仅留 `/tmp`；ASCII 纪律全满足。未跑 codex review（主控轮负责）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r140 节。

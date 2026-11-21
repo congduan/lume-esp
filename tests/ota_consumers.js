@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'd91a038'; // r139: firmware changed deliberately for the OOM verb
+const BASE = '4e00954'; // r140: firmware changed deliberately for lume.perf
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -137,8 +137,8 @@ const ALLOWED = [
   'website/playground/apps/vec_demo.js',
   'website/playground/sources/vec_demo.js',
   'website/playground/runtime.js',
-  // r139: the OOM verb round deliberately changes firmware (firmware commit
-  // d91a038 is the new BASE) and re-pins these app-only guard baselines.
+  // r140: the lume.perf round deliberately changes firmware (firmware commit
+  // 4e00954 is the new BASE) and re-pins these app-only guard baselines.
   'tests/apps_protocol.c',
   'tests/adc_meter.js',
   'tests/archive_view.js',
@@ -151,6 +151,9 @@ const ALLOWED = [
   'tests/sntp_consumers2.js',
   'tests/vec_demo.js',
   'tests/weather_sntp.js',
+  // r140: the denial-positive drill script changes too; it is a test tool,
+  // not firmware/runtime/CLI tooling, so it is allowlisted here as well.
+  'tools/emu/check_oom_inject.py',
 ];
 
 // --- checks -----------------------------------------------------------------
