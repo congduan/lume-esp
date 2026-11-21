@@ -154,6 +154,18 @@ const ALLOWED = [
   // r140: the denial-positive drill script changes too; it is a test tool,
   // not firmware/runtime/CLI tooling, so it is allowlisted here as well.
   'tools/emu/check_oom_inject.py',
+  // r142: esp-emu network acceptance infrastructure. tools/emu-net is a NEW
+  // standalone entry (esp32sim in tools/emu stays untouched); net_check is a
+  // consumer app; README documents the emulator split; fw-sync republishes
+  // the browser firmware trio as usual. firmware/ is NOT in this diff range.
+  'tools/emu-net/README.md',
+  'tools/emu-net/prepare.py',
+  'tools/emu-net/run.sh',
+  'examples/net_check/app.js',
+  'examples/nettest_open/app.js',
+  'docs/r142-emu-net-report.md',
+  'README.md',
+  'README.zh-CN.md',
 ];
 
 // --- checks -----------------------------------------------------------------
