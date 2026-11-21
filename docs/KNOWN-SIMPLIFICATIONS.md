@@ -2283,3 +2283,15 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   bytes` + 50 sources + 50 apps。`git diff 7c47db1 HEAD -- firmware/ runtime/ tools/lume/`
   与工作树 diff 均为空，固件零改动故未跑 `idf.py build`；磁盘 88%，本轮日志落 `/tmp`，
   测试临时物未进仓。未跑 codex review（主控轮负责）。
+
+## r138 / allocator tracker 实证纠偏与 host-only OOM 注入
+
+- **立项落点已被 r54 覆盖（不是本轮产出）**：roadmap P1 第 1 条的净分配计数、`lume-perf: alloc.net/alloc.live` profile 行、esp32sim 稳态断言，均在 r54（commit `775566aa`）与 `605785c` 落地于基线。本轮读码实证后**不重复实现**，避免重复计数/回归；result 里按真实代码写明偏差。
+- **跨任务读口径**：`s_alloc_net_bytes` / `s_alloc_live` 与 host harness 的 `net_bytes` / `live` 均为单任务/单线程访问、O(1) 无锁；QuickJS runtime、eval、回调、GC、teardown 全在 engine task，LVGL task 只投递事件、不调 JS 分配器。若将来新增跨任务读（如诊断任务轮询），必须加原子/锁或明确「快照非一致」口径——本轮读 API `lume_engine_alloc_stats()` 标注 engine-task-only，host harness 为单线程进程。
+- **字节口径与边界**：计数只覆盖经过 Lume `JSMallocFunctions` 的 PSRAM 块，字节用 `heap_caps_get_allocated_size`（host harness 用 `malloc_usable_size` 作等价口径）；不含直接 C 分配的 canvas PSRAM、LVGL buffer、其他 native 分配与任务栈。增长是「JS 分配器保留内存」的证据，不等于不可达对象泄漏或物理 PSRAM 碎片。
+- **阈值依据（本轮复测）**：counter app 稳态 9 个采样点 `alloc.net=363536` 恒定 → 增长 **0 B**；故意泄漏 app 从 421472 → 740788 → 增长 **319316 B**；阈值 **32768 B** 介于 0 与 319 kB 之间（r54 用 0 / 319300 校准出 32768，本轮正对照漂移 16 B）。该阈值绑定当前固件/app/模拟器时钟，任何运行时或 app 改动后需重新采样校准。采样自最后一次 `app eval ok` 后 +2 s 起，~10 s 稳态窗口。
+- **注入仅 host、不进固件路径**：`tests/alloc_inject_host.c` 的倒计时失败只在 host 编译的 QuickJS runtime 生效，固件源码/配置/二进制零改动；与 r77 的固件侧 `LUME_CMD_OOM` verb（只在未合入的 `r77-oom-wip` 分支）有意区分。host 注入通过先编译 app 函数、再 arm、再调用，让拒绝落在 app 分配而非脚本编译；QuickJS 的 OOM 在本环境**无法被 JS `try/catch` 捕获**（实测仍是 `JS_Call` 抛 `InternalError: out of memory`），故 harness 在 C/引擎边界断言确定性异常，并选择 `JS_FreeRuntime` 后校验 net/live 归零，而不是在 OOM 后重入 JS（该状态 QuickJS 设计上不可用）。
+- **既有 OOM drill 的存量失败**：`tools/emu/check_oom_inject.py` 在基线实跑得 `CMD ERR verb` → `EXIT=1`，因其依赖的固件 OOM verb 未合入主线（`git grep` HEAD 无 `LUME_CMD_OOM`，`r77-oom-wip` 有）。这是**存量失败、非 r138 回归**；本轮不复活固件注入路径，改以 host-only harness 满足「确定性失败 + 计数器一致」的验收。若将来合并 r77 固件路径，需重跑该 drill 并重新校准。
+- **harness 位置/形态偏差**：任务书要求 `tests/` 下 CommonJS；但本仓 emu 断言先例是 `tools/emu/*.py`（`check_alloc_leak.py` 用 esp32sim serial log），故稳态断言留在 `tools/emu`（Python），仅新增的 host OOM 注入按 `tests/fft.js` 先例落 `tests/*.js` + `tests/*_host.c`（CommonJS driver + host C）。
+- **验证环境事实**：worktree 缺 gitignore 的 `tools/lume/bin/qjsc` 与 esp32sim cache，分别软链主仓只读二进制以对齐基线；首轮 `npm test` 因 qjsc 缺失为 49/0/1（跳过字节码用例），软链后 50/0/0，源码零改动。`idf.py` 构建 profile 固件时自动-normalize `sdkconfig.r54-profile`（+15 行）并重生成 `clock.frame`，两者已 `git checkout --` 撤销，不进提交。
+- **真机与收尾**：所有板级项（显示/触摸/音频/睡眠电流/radio/持久化）仍 deferred；本轮证据为 host harness + esp32sim，不是真机验收。固件 C 零 diff，构建 size 与 r137 基线逐字节一致（2041168 / 853084 / 247491 / IRAM 16384 Remain 0 / Total 3036023），IRAM 硬线未破。磁盘 before 5.4G → after 6.0G，已删两个 337M build 目录，日志仅留 `/tmp`。未跑 codex review（主控轮负责）。

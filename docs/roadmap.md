@@ -2767,3 +2767,59 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
   测试临时物未进仓。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r137 节。本轮未跑 codex review（主控轮负责）。
+
+### r138 result — 分配器泄漏检测 / host OOM 故障注入（实证纠偏；host 新增，固件零改动）
+
+**开工纪律**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: model=hy4flash-free ✓`，无 429，未在 `/home/ubuntu/lume` 写任何文件。
+新 worktree `/tmp/lume-r138-wt`（分支 `r138-alloc-tracker`，基线 `766e4c4`）。
+
+**实证纠偏（立项假设与真实代码不符，按真实代码走）**：roadmap「推进路线」第 1 条（P1）在 **r54**（commit `775566aa`，2026-11-16）已全部落地，本轮**不重复实现**：
+- `firmware/components/lume-engine/lume_engine.c:150-228`：`s_psram_mf` 四个分配钩子（calloc/malloc/free/realloc）已维护 `s_alloc_live` / `s_alloc_net_bytes`，字节口径复用 `heap_caps_get_allocated_size`（`js_usable_size_psram`），O(1) 无锁、engine-task-only；读 API `lume_engine_alloc_stats()` 在 `include/lume_engine.h:9`。
+- `lume_engine.c:4431-4434`：`CONFIG_LUME_PERF_PROFILE=y` 下每秒 `I (t) lume-perf: alloc.net=... alloc.live=...`，消费者是 `tools/emu/check_alloc_leak.py`（解析 serial log），非新建通道。
+- `tools/emu/check_alloc_leak.py`（commit `605785c`）：esp32sim 稳态断言 harness，`THRESHOLD=32768`，用 counter（负对照，0 B）与故意泄漏 app（正对照，~319 kB）双向校准；落点是 `tools/emu/*.py` 而非任务书写的 `tests/*.js`，因该仓 emu 断言先例就是 Python 脚本，跟随先例。
+真实缺口只有「**host runner 内、仅 host 不进固件路径**的 OOM 注入」：基线主线仅有 `tools/emu/check_oom_inject.py`，其依赖的固件侧 `LUME_CMD_OOM` verb 只存在于未合入的 `r77-oom-wip` 分支；基线实跑该 drill 得 `CMD ERR verb` → 脚本 `EXIT=1`（**既有存量失败，非本轮回归**）。r77 的 commit message 虽写 "host OOM fault injection"，实际注入在固件路径，不满足「不进固件路径」。
+
+**本轮实际新增（host-only，2 文件）**：
+- `tests/alloc_inject_host.c`：vendored QuickJS-NG 在 host 编译，用自定义 `JSMallocFunctions` 包装倒计时失败注入（arm_at/window/denied）+ net/live 计数（`malloc_usable_size`，host 版 `heap_caps_get_allocated_size`）；单线程、O(1)、无锁。先编译 app 函数再 arm，避免把脚本编译分配误判为注入。
+- `tests/alloc_inject.js`：CommonJS driver（跟随 `tests/fft.js` 编译/退出码/临时目录清理先例），断言确定性失败、注入计数、恢复记账与计数器归零。
+
+**验证**（原始输出；真机 deferred，不声称真机验证）：
+- `node tests/alloc_inject.js`（新 harness）：
+  ```
+  setup: calls=69 net=167632 live=54
+  inject: armed-at=83 window=1
+  engine: exception=InternalError: out of memory
+  inject: denied=1 calls=83
+  resume: malloc-after-window ok net=167720 live=55
+  teardown: net=0 live=0
+  RESULT: PASS
+  PASS alloc_inject: countdown OOM -> deterministic failure, counter consistent, no crash
+  ```
+  `EXIT=0`。注入触发时引擎得到确定性 `InternalError: out of memory`（异常而非 crash）；`denied=1` 与计数器一致；窗口关闭后分配恢复且记账；`JS_FreeRuntime` 后 net/live 均回 0。
+- `python3 tools/emu/check_alloc_leak.py`（本轮实跑，`EXIT=0`；计数绝对值与 r54 不同，是 app/时钟差异，增长口径与阈值不变）：
+  ```
+  counter: I (4954) lume-perf: alloc.net=363536 alloc.live=129
+  ...（5955/6956/7957/8958/9959/10960/11961 均 363536/129）
+  counter: I (12962) lume-perf: alloc.net=363536 alloc.live=129
+  counter: steady-growth=0 threshold=32768 PASS
+  leak: I (4955) lume-perf: alloc.net=421472 alloc.live=143
+  ...（每拍递增，13013 时 740788/221）
+  leak: steady-growth=319316 threshold=32768 FAIL
+  ```
+  counter 基线实测 net=363536 B、稳态增长 **0 B**；故意泄漏正对照增长 **319316 B**；阈值 **32768 B** 介于两者之间（r54 校准 0 / 319300 → 32768，本轮复测漂移 16 B，阈值仍有效）。两个 case 均按预期判定，harness 总退出 0。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # skipped 0`。worktree 缺 gitignore 的 `tools/lume/bin/qjsc`，从主仓软链该测试工具后对齐基线（源码零改动；与 r128/r137 记录同一环境事实）。
+- `python3 scripts/check_website.py` → `API missing: none` / `API invented: none` / `API duplicates: none` / `API signatures not found in lume.d.ts: none`。
+- `node tools/lume/lume.js check examples/counter --no-emu` → `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- **固件完整构建（本轮固件 C 零 diff，仍按纪律跑）**：
+  ```
+  cd /opt/esp/esp-idf && env -u VIRTUAL_ENV IDF_PYTHON_ENV_PATH=/home/ubuntu/.espressif/python_env/idf5.5_py3.12_env bash -c '. ./export.sh >/dev/null 2>&1; idf.py -C /tmp/lume-r138-wt/firmware build'
+  ```
+  `BUILD_EXIT=0`，末尾 `Project build complete.` / `Generated .../build/lume.bin` / `lume.bin binary size 0x2e53f0 bytes ... 0x35ac10 bytes (54%) free`。
+  `idf.py size` 原始表关键行：`Flash Code 2041168` / `Flash Data 853084` / `DIRAM 247491 (72.42%, Remain 94269)` / `IRAM 16384 (100.0%, Remain 0)` / `Total image size 3036023 bytes`。
+  **增量说明**：与最近在册基线（`docs/roadmap.md` r128 result 节记录的 2041168 / 853084 / 247491 / 3036023；r137 为 host-only 刀，固件未变故同值）**逐字节一致，Flash/DIRAM 增量 0 B**；本轮仅加 host 测试文件，未触碰 `firmware/`，故 IRAM 16384 硬线 Remain 0 原样守住。为跑 emu 另建 `build-r54-profile`（`CONFIG_LUME_PERF_PROFILE=y`，`lume.bin 0x2e5d10`），属测试输入。
+- `python3 tools/emu/check_oom_inject.py`（既有 drill，非本轮新增）基线实跑 `CMD ERR verb` → `EXIT=1`；原因：固件侧 OOM verb 未合入主线（只在 r77 WIP 分支）。已登记 KNOWN-SIMPLIFICATIONS，不视为本轮回归。
+- 磁盘：`/` before `5.4G avail (89%)` → after `6.0G avail (88%)`；收尾删 `firmware/build/` 与 `firmware/build-r54-profile/`（各 337M），日志仅留 `/tmp`，测试临时物未进仓。
+- 红线：未改 vendored（QuickJS/LVGL）、未改 JS API 契约与 `.d.ts`、未改 `firmware/`、`runtime/`、`tools/lume/`；既有一切 harness 零回归。commits 拆 feat/test/docs，未推送；**未跑 codex review（主控轮负责）**。ASCII 纪律：新增 host harness 输出全 ASCII，无 app 可见文案改动。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r138 节。
