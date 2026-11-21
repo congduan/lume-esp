@@ -13,7 +13,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 
 ## M2 — hardware API surface
 - [x] GPIO / PWM / ADC bindings（r6/r7 代码完成 + Codex review 通过；实机采样精度/驱动能力验收待接板）
-- [x] AXP2101 power bindings (battery telemetry, power off/reboot)（r8 代码完成 + Codex review P-with-fixes，两条 follow-up 已修并复测；实机电池读数/powerOff 验收待接板。reboot 绑定归 lume.system，后续轮）
+- [x] AXP2101 power bindings (battery telemetry, power off/reboot)（r8 代码完成 + Codex review P-with-fixes，两条 follow-up 已修并复测；实机电池读数/powerOff 验收待接板。reboot 绑定归 lume.system，已由 r141 落地为 `lume.system.reboot()`（真机重启验收仍缺））
 - [x] QMI8658 IMU bindings (poll + motion interrupt)（r9 代码完成 + Codex review P-with-fixes（唯一发现：ODR 文档命名 vs 6DOF 有效速率，已修）+ 主控独立复测通过后勾选。polled-only：lume_pins.h 无 IMU INT 定义，运动/数据就绪 INT 中断留接板轮；验收 = 编译绿 + size 达标 + Waveshare 官方例程自查；真机读数验收留接板轮）
 - [ ] WiFi + HTTP client bindings（r11 代码完成：新组件 `lume-net` + `lume.net` / `lume.net.http` 绑定，station/WPA2-PSK/同步 httpGet/status 状态机；验收 = 编译绿 + IRAM 16384 不超 + 逐条对照 ESP-IDF v5.5.5 头文件与官方 station/esp_http_client example 自查。WiFi IRAM_OPT/RX_IRAM_OPT=n 压住 IRAM；Flash Code 844742→1398890（+554148，WiFi 栈传递链接 libnet80211/libpp/liblwip/wpa_supplicant/mbedtls，r10 基线被 gc 掉，见 KNOWN-SIMPLIFICATIONS r11 归因）。真机连 WiFi / HTTP 实测留主控接板轮，故整行保持未勾选）
 - [ ] NVS KV store + LittleFS partition（r10 Kv（`lume.storage.kv`）**代码完成 + Codex review N→必修（5 发现：map_err 吞 ESP_OK、string 边界值读写不对称、内嵌 NUL key、keys() 吞异常、get() 负值判别歧义）→ 主控已修 + 复审 P-with-fixes（1 发现已修）+ 独立复测绿（IRAM 16384 不变，Flash Code 824086→844742，其中 libnvs_flash.a 首链 14537B / liblume-storage.a 1723B）+ 已推送**。r12 LittleFS / `lume.storage.Fs` 代码完成（组件固定 1.22.3，分区 subtype 改为 littlefs，首挂失败自动格式化；构建与尺寸见 r12 战报）；真机首次挂载、读写和掉电持久性验收留主控接板轮，故整行保持未勾选）
@@ -2907,3 +2907,39 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送）**：`4e00954 feat(firmware): profile-only lume.perf read-only JS bindings (r140)`；test(r140) denial-positive drill case + `lume.perf` host assertions + BASE re-pin；docs(r140) append result and known simplifications（本提交）。收尾删 `firmware/build/` 与 `firmware/build-r54-profile/`，日志仅留 `/tmp`；ASCII 纪律全满足。未跑 codex review（主控轮负责）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r140 节。
+
+### r141 result — `lume.system.reboot()` 绑定（收口 r8 遗留，appended, milestone checkboxes untouched）
+
+**开工纪律**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓`，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r141-wt`（分支 `r141-system-reboot`，基线 `ddde5c9`）。
+
+**实证纠偏（假设可能错，先实证）**：
+- 读 `lume_engine.c` 确认 r128 system 先例：`_systemTime` / `_systemSetTimeNtp` 以 `_` 前缀注册在 `lume` 上，再由 `lume_scripts.c` 的 prelude 包成 `lume.system.time/setTimeNtp`；参数校验用 `JS_ThrowTypeError`，日志用 `TAG="lume-engine"` 的 ESP_LOGW。`lume.system` 对象在 prelude（非 `register_bindings()`）组装，故 reboot 必须同时落 C native + prelude 一行。
+- 读 ESP-IDF v5.5.5 `esp_system.h:71-79`：`esp_restart()` 标 `__noreturn__`、可从任一 CPU/任务调用、`esp_system.c:47-63` 仅跑 shutdown handlers 后 `vTaskSuspendAll()` + `esp_restart_noos()`；IDF 惯例**不要求**先 flush stdio 或 `vTaskDelay`（ESP_LOG 同步写 UART）。据此在引擎 task 直接调用，未在 native 里加冗余延时。
+- 实证 prelude 直接把 native 赋给 `lume.system.reboot`（同 `log: lume.log`），使多余 JS 参数真实到达 native 的 `argc > 0` 校验并抛 TypeError；若用转发包装函数则参数会被吞掉。
+
+**实现（两刀 + 文档刀）**：
+- **固件刀（feat `2e192d5`）**：新增无参 `lume.system.reboot()` native，打一条 ASCII 日志 `lume.system: reboot requested` 后 `esp_restart()`；`@c` 返回 `JS_UNDEFINED` 仅为签名形式（不可达），语义在 `.d.ts` 标 `never`。新增可移植 token 头 `lume_system_binding.h`（仿 r140 `lume_perf_binding.h`，但 default 可见、无门控）。更新 r8 遗留注释。`website/api.html` 重生成（153 行），playground prelude 快照同步重生成。default 可见 API，小幅增长；未碰 vendored（QuickJS/LVGL）、未碰 profile-only 面（lume.perf/OOM 不动）。
+- **契约**：`lume.d.ts` system 块加 `reboot(): never` + JSDoc（不返回、未保存 JS 状态即失、LittleFS 已 journal 但 open 写句柄会断、WiFi/SNTP 重启后重建、KV 持久）。
+- **测试刀（test `1f44017`）**：`tests/apps_protocol.c` default mode 补 5 条 token/契约断言（namespace/method/native/log/ASCII），profile mode 不动（57 checks 不回归）；11 个 app-only 守卫 BASE 从 `4e00954` 重钉到 feat `2e192d5`（语义不变、非放宽）；新增 `tools/emu/check_reboot.py` 并加入 `ota_consumers.js` ALLOWED。
+
+**验证（原始输出；真机 deferred，不声称真机验证）**：
+- default 完整构建 + size：`BUILD_EXIT=0`、日志 `error:` 计数 0；`Flash Code 2041288`（r140 2041168，+120）、`Flash Data 853292`（853084，+208）、`DIRAM 247491 (72.42%, Remain 94269)`（±0）、`IRAM 16384 (100.0%, Remain 0)`（**硬线未破**）、`Total image size: 3036351`（3036023，+328）。
+- `strings firmware/build/lume.elf | grep -c "reboot requested"` = **1**。
+- `gcc -std=c11 -Wall -Wextra -Werror` 双门编译 `tests/apps_protocol.c`：default `52 checks, 0 failure(s)`（47 + 5），profile `57 checks, 0 failure(s)`（未回归）。
+- `for t in tests/*.js; do node "$t" ...; done; echo done` → `done`，**0 FAIL**（补齐 gitignore 的 `tools/lume/node_modules` 与 `bin/qjsc` 软链后）。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0`，`NPM_EXIT=0`。
+- `python3 scripts/check_website.py` → 153 catalog / 153 declarations，missing/invented/duplicates/signatures 均 none，`WEBSITE_EXIT=0`。
+- `node tools/lume/lume.js check examples/counter --no-emu` → `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- **可选 emu 加分项达成**：`python3 tools/emu/check_reboot.py` → `REBOOT_CHECK_EXIT=0`，原始串口证据：
+  ```
+  I (2688) lume-engine: lume.system: reboot requested
+  [script] t=2.500s serial-file (33 bytes)
+  [emu] chip reset at t=2.502s: cause 0xc (RTC_SW_CPU_RESET)
+  rst:0xc (RTC_SW_CPU_RST),boot:0xf (SPI_FAST_FLASH_BOOT)
+  I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433700 bytes
+  ```
+  断言链：native 日志 → 软件复位 → 引擎重启，全部命中。模拟器证据，非真机。
+
+**commits（未推送）**：`2e192d5 feat(firmware): add lume.system.reboot() binding (r141)`（含契约与重生成的 api.html/playground prelude）；`1f44017 test(r141): reboot token contract + re-pin immutability guards`；docs(r141) 本提交。收尾删 `firmware/build/`，日志仅留 `/tmp`，worktree 净空。ASCII 纪律全满足。未跑 codex review（主控轮负责）。不做消费方 app（留后续刀，同 r125→r126 节奏）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r141 节。
