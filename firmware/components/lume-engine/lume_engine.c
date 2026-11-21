@@ -28,8 +28,10 @@
 #include "esp_timer.h"
 #include "esp_heap_caps.h"
 #include "esp_netif_sntp.h"  /* r128: bounded SNTP sync for lume.system.setTimeNtp() */
+#include "esp_system.h"      /* r141: esp_restart() for lume.system.reboot() */
 #include "lume_engine.h"
 #include "lume_perf_binding.h"   /* r140: profile-only lume.perf name contract */
+#include "lume_system_binding.h" /* r141: lume.system.reboot token contract */
 #include "lume_ui_bridge.h"
 #include "lume_scripts.h"
 #include "lume_gpio.h"
@@ -803,6 +805,23 @@ static JSValue js_system_set_time_ntp(JSContext *ctx, JSValueConst self, int arg
 done:
     free(server_copy);
     return JS_NewInt32(ctx, rc);
+}
+
+/* ---- r141: lume.system.reboot() ----
+ * No-argument API: any extra JS argument throws TypeError (same validation
+ * style as r128's setTimeNtp). One ASCII log line is emitted, then
+ * esp_restart(). IDF esp_system.h:71-79 declares esp_restart() __noreturn__,
+ * callable from either CPU / the engine task, with no stdio flush or task
+ * delay required -- ESP_LOG writes to UART synchronously. Returns undefined
+ * only as an unreachable C formality; the JS contract is "never returns". */
+static JSValue js_system_reboot(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argv;
+    if (argc > 0)
+        return JS_ThrowTypeError(ctx, "lume.system.reboot: takes no arguments");
+    ESP_LOGI(TAG, "%s", LUME_SYSTEM_REBOOT_LOG);
+    esp_restart();                  /* does not return */
+    return JS_UNDEFINED;            /* unreachable */
 }
 
 static JSValue js_power_sleep_now(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
@@ -3279,6 +3298,11 @@ static void register_bindings(JSContext *ctx)
                       JS_NewCFunction(ctx, js_system_time, "_systemTime", 0));
     JS_SetPropertyStr(ctx, lume, "_systemSetTimeNtp",
                       JS_NewCFunction(ctx, js_system_set_time_ntp, "_systemSetTimeNtp", 2));
+    /* r141: the prelude exposes this native directly as lume.system.reboot()
+     * (mirroring `log: lume.log`), so extra JS args reach the argc guard. */
+    JS_SetPropertyStr(ctx, lume, LUME_SYSTEM_REBOOT_NATIVE_NAME,
+                      JS_NewCFunction(ctx, js_system_reboot,
+                                      LUME_SYSTEM_REBOOT_NATIVE_NAME, 0));
     JSValue power = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, power, "_sleepNow", JS_NewCFunction(ctx, js_power_sleep_now, "_sleepNow", 0));
     JS_SetPropertyStr(ctx, power, "_wake", JS_NewCFunction(ctx, js_power_wake, "_wake", 0));

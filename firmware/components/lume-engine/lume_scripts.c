@@ -470,6 +470,8 @@ const char lume_prelude_js[] =
 "   * _systemTime/_systemSetTimeNtp. setTimeNtp BLOCKS the engine task. */\n"
 "  time: function () { return lume._systemTime(); },\n"
 "  setTimeNtp: function (server, timeoutMs) { return lume._systemSetTimeNtp(server, timeoutMs); },\n"
+"  /* r141: reboot() is the native itself, so extra args reach its argc guard. */\n"
+"  reboot: lume._systemReboot,\n"
 "  log: lume.log\n"
 "};\n"
 "/* Wake callbacks run after panel sleep-out and full-redraw scheduling. */\n"
