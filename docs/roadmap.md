@@ -2943,3 +2943,43 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送）**：`2e192d5 feat(firmware): add lume.system.reboot() binding (r141)`（含契约与重生成的 api.html/playground prelude）；`1f44017 test(r141): reboot token contract + re-pin immutability guards`；docs(r141) 本提交。收尾删 `firmware/build/`，日志仅留 `/tmp`，worktree 净空。ASCII 纪律全满足。未跑 codex review（主控轮负责）。不做消费方 app（留后续刀，同 r125→r126 节奏）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r141 节。
+
+### r143 result — `lume.system.reboot()` 消费方刀：settings Reboot 入口（appended, milestone checkboxes untouched）
+
+**开工纪律**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r143-wt`（分支 `r143-reboot-consumers`，基线 `92b6f29`）。
+
+**实证纠偏（假设可能错，先实证）**：
+- 读 `examples/settings/app.js` 全文确认 r132 OTA `rotateOtaToken()` 的两段门精确结构：`if (!otaConfirm())` → `otaConfirm.set(true)` + `clearTimeout(otaArmTimer)` + `setTimeout(...3000)` + `return;`；第二拍 `otaConfirm.set(false)` + 清 timer + 实际操作。r141 reboot 契约块在 `lume.d.ts:376-392`（`function reboot(): never`、不可达返回、未持久化状态即失）。`tests/ota_consumers.js` 提供「slice 标记 + 顺序断言 + mutation 实证 + 字节一致 + gitChanged」家族范式，新 harness 照此精简。
+- **任务书前提被实证推翻**：`tools/playground/build.mjs` 的 50-app 清单里**根本没有 settings**（`git log -S"'settings'"` 无任何命中，从无生成物）。但验证项要求 `PASS bundle settings` 与 `sources/settings.js` 字节一致，故按 r133–r137 新消费方 app 的既有先例把 settings 注册为第 51 个 app：清单 50→51，8 个 harness 的 `length === 50` 计数、`sd_files.js` 的清单变异串、`sntp_consumers.js` 的 NTP row slice 终点全部同步；`ota_consumers.js` ALLOWED 预加 3 个新文件（commit 前 `git diff` 看不见 untracked，先加防提交后转红）。**这些只是断言口径同步，不改任何生产行为**；`firmware/ runtime/ tools/lume/` 仍零 diff。详见 KNOWN-SIMPLIFICATIONS r143 节。
+
+**实现（feat `7e0cef4`，纯 app 层）**：
+- `examples/settings/app.js` General 页新增 3 节点 Reboot 行（View + Text + Button）：按钮标题在 `'Reboot'` / `'Confirm reboot?'` 间翻转，首次点按 arm 3 s 超时回退，窗口内第二拍才动作；`rebootNow()` 完全仿 OTA 两段门（先 arm + `setTimeout(...3000)` + `return`，再 disarm + 清 timer）。防御性守卫 `if (!lume.system || typeof lume.system.reboot !== 'function')` 命中则只写 ASCII note `'reboot n/a'` 并返回，playground stub 无绑定时 eval 不崩。新增文案全 ASCII（r64）。静态树 +3 节点（~98→~101），仍在 `LUME_MAX_NODES = 128` 内。
+- playground 重建纳入 feat：`PASS bundle settings 13967 bytes` / `PASS esbuild-wasm assets and 51 editable sources` / `PASS prelude 67428 bytes; 51 apps`，生成物 `sources/settings.js`（与示例逐字节一致）、`apps/settings.js`、`sources.js` 随 feat 提交。
+
+**验证（原始输出；真机 deferred，不声称真机验证）**：
+- `node tests/reboot_consumers.js` → 9 条断言 + 9 条 mutation 全绿，`ALL REBOOT CONSUMERS HARNESS CASES PASSED`，`RC_EXIT=0`。关键断言行：
+  ```
+  PASS reboot_consumers: two-stage gate: first tap arms a 3 s confirm and returns before reboot
+  PASS reboot_consumers: typeof guard precedes reboot; stub without binding degrades to ASCII note
+  PASS reboot_consumers: firmware/ runtime/ CLI tooling identical to 92b6f29
+  PASS reboot_consumers mutation: drop the typeof guard -> FAIL as expected
+  PASS reboot_consumers mutation: a firmware file changes vs 92b6f29 -> FAIL as expected
+  ```
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**（首轮暴露 `sd_files.js` 清单变异串与 `sntp_consumers.js` NTP slice 终点两处存量假设，按实证修正后复跑 0 FAIL；新增文件 staged 后再次复跑仍 `done`，确认提交后不回归）。
+- `npm test --prefix tools/lume` → `# tests 50 / # suites 0 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0 / # todo 0`，`NPM_EXIT=0`。worktree 缺 gitignore 的 `tools/lume/bin/qjsc` 与 `node_modules`，软链主仓只读物后对齐基线（r128/r137/r138/r141 同一环境事实，源码零改动）。
+- `python3 scripts/check_website.py` → `API: 153 catalog entries, 153 type declarations, 34 function namespaces` / `API missing: none` / `API invented: none` / `API duplicates: none` / `API signatures not found in lume.d.ts: none`，`WEBSITE_EXIT=0`。
+- `node tools/lume/lume.js check examples/settings --no-emu` → `[PASS] bundle 13967 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle settings 13967 bytes` / `PASS esbuild-wasm assets and 51 editable sources` / `PASS prelude 67428 bytes; 51 apps`，`BUILD_PG_EXIT=0`。
+- **固件零改动**：`git diff 92b6f29 HEAD -- firmware/ runtime/ tools/lume/` 与工作树 diff 均为空（命令与空输出贴于验证记录），故**未跑 `idf.py build`**。
+- **可选 emu 加分项达成**：软链 `firmware/build` 与 `tools/emu/.cache` 只读物后 `EMU_SKIP_BUILD=1 EMU_SECONDS=10 tools/emu/run.sh examples/settings` → `EMU_EXIT=0`，关键串口行：
+  ```
+  I (2695) lume-engine: engine recv RELOAD -> recycle runtime
+  I (2925) lume-engine: runtime up; eval app '<embedded-demo>' (13967 bytes)
+  I (3076) lume-engine: app eval ok; entering event loop
+  [emu] stop: Halted ... emulated 10.000s ...
+  ```
+  日志中 `lume-ble: BLE stack not initialized`、`i2s ... allocate DMA buffer failed`、`battPercent: no battery connected` 是模拟器环境噪声，非 JS eval 失败；`eval failed` / `RELOAD ERR` 零命中。仍是模拟器证据，非真机。
+
+**commits（未推送）**：`7e0cef4 feat(settings): add two-stage Reboot row to General page`（含 playground 生成物与清单）；`b0d94fd test(r143): reboot consumer harness and guard updates for 51-app manifest`；docs(r143) 本提交。日志仅留 `/tmp/r143-*.txt` 与 `/tmp/r143-emu-settings/`，artifacts 只留最终日志；worktree 保留 gitignore 软链，未进提交。ASCII 纪律全满足。未跑 codex review（主控轮负责）。真机重启、USB 断连/串口重枚举、3 s 窗口手感全部 deferred。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r143 节。
