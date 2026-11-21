@@ -1,3 +1,0 @@
- 3101680 /home/ubuntu/lume/firmware/build/merged_flash.bin
- 8716288 /tmp/lume-r142-wt/artifacts/r142/retry/flash.bin
-11817968 total

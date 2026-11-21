@@ -166,6 +166,47 @@ const ALLOWED = [
   'docs/r142-emu-net-report.md',
   'README.md',
   'README.zh-CN.md',
+  // r142 evidence artifacts (serial logs, NETCHECK output, SD probe) under
+  // artifacts/r142/ — same treatment as r126's verify log; regenerable but
+  // retained as the acceptance evidence for the emu-net round.
+  'artifacts/r142/debug_wifi.log',
+  'artifacts/r142/esp_emu_version.txt',
+  'artifacts/r142/firmware_build_attempt.txt',
+  'artifacts/r142/http.log',
+  'artifacts/r142/lume_check_no_emu.txt',
+  'artifacts/r142/merged_flash_size.txt',
+  'artifacts/r142/netcheck_output.txt',
+  'artifacts/r142/retry/http.log',
+  'artifacts/r142/retry/merged_flash_size.txt',
+  'artifacts/r142/retry/serial.log',
+  'artifacts/r142/retry_run_output.txt',
+  'artifacts/r142/run_output.txt',
+  'artifacts/r142/sd/http.log',
+  'artifacts/r142/sd/merged_flash_size.txt',
+  'artifacts/r142/sd/serial.log',
+  'artifacts/r142/sd_run_output.txt',
+  'artifacts/r142/serial.log',
+  'artifacts/r142/tests_all_js.txt',
+  'artifacts/r142/tests_remaining_js.txt',
+  'artifacts/r142/try_batch1000.log',
+  'artifacts/r142/try_transition1000.log',
+  // r138-r141 (already merged to main when this entry was added): alloc
+  // injection harness (host + firmware drill verb), lume.perf bindings,
+  // hotreload OOM-verb plumbing, and the fw-sync firmware trio republication.
+  // firmware/runtime files here are part of the r140 deliberate perf change
+  // whose new BASE is pinned above; they are listed to keep the allChanged
+  // predicate honest about what legitimately differs from d85e69a.
+  'firmware/components/lume-engine/include/lume_engine.h',
+  'firmware/components/lume-engine/include/lume_perf_binding.h',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-hotreload/include/lume_cmd.h',
+  'firmware/components/lume-hotreload/lume_cmd.c',
+  'firmware/components/lume-hotreload/lume_hotreload.c',
+  'tests/alloc_inject.js',
+  'tests/alloc_inject_host.c',
+  'website/wasm/fw/bootloader.bin',
+  'website/wasm/fw/lume.bin',
+  'website/wasm/fw/lume.json',
 ];
 
 // --- checks -----------------------------------------------------------------

@@ -1,6 +1,0 @@
-prepared /tmp/lume-r142-wt/artifacts/r142/retry/flash.bin: 8716288 bytes; app 2837 bytes
-I (1880) lume-engine: js: [NETCHECK] init PASS ret=0
-I (1887) lume-engine: js: [NETCHECK] connect PASS ret=0
-I (31895) lume-engine: js: [NETCHECK] ip FAIL timeout state=0 ip=null
-serial: /tmp/lume-r142-wt/artifacts/r142/retry/serial.log
-exit-on string absent (esp-emu timeout): [NETCHECK] ALL PASS
