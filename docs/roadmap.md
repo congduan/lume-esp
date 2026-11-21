@@ -2995,3 +2995,35 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **验证（原始输出；真机 deferred，不声称真机验证）**：`for t in tests/*.js` → `done`，0 FAIL；`npm test --prefix tools/lume` → `pass 50 / fail 0 / skipped 0`（软链 gitignore 的 `bin/qjsc` 与 `node_modules` 后对齐基线）；`check_website.py` → missing/invented/duplicates 均 none；`lume check examples/net_check --no-emu` 与 `counter --no-emu` 均 `RESULT: PASS`。全链 `tools/emu-net/run.sh examples/net_check` **exit 1**，`[NETCHECK] init PASS` / `connect PASS` / `ip FAIL timeout`，无 `ALL PASS`（负结果）。`git diff 254c096 HEAD -- firmware/` 为空，未跑 `idf.py build/size`。
 
 **commits（未推送）**：infra `tools/emu-net/run.sh` 失败诊断 + docs(r144) 本轮报告/roadmap/KNOWN-SIMPLIFICATIONS。worktree `/tmp` 实验产物不进仓；ASCII 纪律满足；未跑 codex review（主控轮负责）。详见 KNOWN-SIMPLIFICATIONS r144 节。
+
+### r146 result — `lume.ble` 消费刀：examples/hr_monitor BLE 外设心跳广播器（appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r146-wt`（分支 `r146-biometrics`，基线 `27541bb`）。
+
+**实证纠偏（主控已采信，先读源码复核）**：`lume.ble`（r25 NimBLE GATT server，`lume.d.ts:1002-1058`）是**外设角色**——广播「Lume」、Nordic-UART-shaped 服务（RX write / TX notify）、20 字节包上限、无 central/scan/connect 能力。故不存在「BLE 心率计 central 扫描」场景；本刀把 hr_monitor 做成设备侧的**心跳遥测广播器**：连接且 central 订阅 TX 后每秒 `write('HR 072')`，HUD 显示连接/订阅/收发状态。`examples/ble_uart`（BLE 生命周期 + 两段命名）与 `examples/heart_curve`（Canvas 脉搏曲线）作为参照，不复制粘贴。
+
+**manifest 纠偏（同 r143 先例）**：实证 `tools/playground/build.mjs` 清单为 51 个 app，**无 hr_monitor**（ble_uart 亦从未注册），故按先例注册为第 52 个 app：清单 51→52，10 个 harness 的计数断言（`ota_consumers` / `weather_sntp` / `sntp_consumers2` / `vec_demo` / `img_view` / `archive_view` / `adc_meter` / `crypto_check` / `reboot_consumers` + 本刀 harness）、`sd_files.js` 清单变异串、`ota_consumers.js` ALLOWED 预加 4 个新文件全部同步（commit 前 untracked 对 `git diff` 不可见，先加防提交后转红）。只同步口径，不改生产行为；`firmware/ runtime/ tools/lume/` 仍零 diff。
+
+**实现（纯 app 层）**：`examples/hr_monitor/app.js` 全 ASCII UI。广播启停两段门 `toggleAdvert()`（首拍 arm + `setTimeout(...3000)` + `return`，第二拍才 `lume.ble.stop()`/`start()`）；`poll()` 由 `lume.system.setInterval(poll, 200)` 驱动，`status()` 负错误码以 `typeof s === 'object'` 判别，HUD 显示 state/subscribed/pending/mtu；`read()` 收到 string（≠ null）显示最近指令并 `.slice(0, 20)` 截断；`sendHr()` 由 `setInterval(sendHr, 1000)` 节流（≥1s），仅在 `CONNECTED && subscribed` 时写定宽 ASCII `'HR ' + ('00' + n).slice(-3)`（≤20B）；无 BLE 栈时 `typeof lume.ble !== 'undefined'` 守卫降级为 ASCII note `'BLE n/a (no stack)'`，不崩。Canvas 滚动脉搏线参照 heart_curve。playground 重建：`PASS bundle hr_monitor 3397 bytes` / `PASS esbuild-wasm assets and 52 editable sources` / `PASS prelude 67428 bytes; 52 apps`。
+
+**验证（原始输出；真机 deferred，不声称真机验证）**：
+- `node tests/hr_monitor.js` → 12 条断言 + 12 条 mutation 全绿，`ALL HR MONITOR HARNESS CASES PASSED`，退出码 0。关键行：
+  ```
+  PASS hr_monitor: two-stage gate arms a 3 s confirm and returns before start/stop
+  PASS hr_monitor: status() negative-number error discriminated via typeof === object
+  PASS hr_monitor: firmware/ runtime/ CLI tooling identical to 27541bb
+  PASS hr_monitor mutation: drop the typeof lume.ble guard -> FAIL as expected
+  PASS hr_monitor mutation: drop the first-tap arm gate -> FAIL as expected
+  ```
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**（83 个 harness）。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # skipped 0`（worktree 缺 gitignore 的 `tools/lume/bin/qjsc`，从主仓拷贝只读构建物后对齐基线，源码零改动，同 r128/r137/r143 环境事实）。
+- `python3 scripts/check_website.py` → `API: 153 catalog entries, 153 type declarations, 34 function namespaces` / `API missing: none` / `API invented: none` / `API duplicates: none`。
+- `node tools/lume/lume.js check examples/hr_monitor --no-emu` 与 `counter --no-emu` → 均 `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle hr_monitor 3397 bytes` / `PASS esbuild-wasm assets and 52 editable sources` / `PASS prelude 67428 bytes; 52 apps`。
+- **固件零改动**：`git diff 27541bb HEAD -- firmware/ runtime/` 与工作树 diff 均为空（命令与空输出贴于验证记录），故**未跑 `idf.py build`**。IRAM 16384 硬线未触碰。
+
+**Part B（M5 Board abstraction 首刀）取舍**：本轮未做。Part A 的零固件 diff 不变量与本刀 harness 的 `firmware/ runtime/ tools/lume/` 零 diff 守卫直接冲突；做 Part B 会触发多 harness 基线重钉级联 + 全量 `idf.py build`（磁盘/环境成本）。按任务书「都允许只完成部分」「Part B 可选」的口径，Part B 留独立固件刀，详见 KNOWN-SIMPLIFICATIONS r146 节。
+
+**commits（未推送）**：`feat(hr_monitor app + playground 清单)` / `test(hr_monitor harness + 52-app 口径同步)` / `docs(r146)`。实验产物仅留 `/tmp`，仓库只进源码 + docs。ASCII 纪律全满足；未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）。真机 BLE 广播/GATT 发现/notify 吞吐/WiFi+BLE 共存/睡眠电流全部 deferred，统一为「模拟器/宿主证据，非真机」。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r146 节。
