@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 50-app manifest, all UI literals are ASCII (r64), and only the
+//     in the 51-app manifest, all UI literals are ASCII (r64), and only the
 //     known r132-r136 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 50-app playground manifest is the source of truth for "in清单".
+// 51-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -157,6 +157,13 @@ const ALLOWED = [
   // r141: the emu reboot check is a test tool, not firmware/runtime/CLI
   // tooling; it exercises the shipped default image via esp32sim.
   'tools/emu/check_reboot.py',
+  // r143: reboot consumer adds three new files (one host harness and the two
+  // generated playground artifacts). Staged here BEFORE commit because
+  // `git diff` does not see untracked files; without this the allowlist turns
+  // red once the feat/test commits land. The manifest entry already above.
+  'tests/reboot_consumers.js',
+  'website/playground/apps/settings.js',
+  'website/playground/sources/settings.js',
   // r142: esp-emu network acceptance infrastructure. tools/emu-net is a NEW
   // standalone entry (esp32sim in tools/emu stays untouched); net_check is a
   // consumer app; README documents the emulator split; fw-sync republishes
@@ -272,8 +279,8 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 50-app playground manifest', [playgroundApps,
-    list => list.length === 50 && list.includes('dashboard')]],
+  ['dashboard is in the 51-app playground manifest', [playgroundApps,
+    list => list.length === 51 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
@@ -349,7 +356,7 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 50-app playground manifest', playgroundApps);
+  'dashboard is in the 51-app playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
