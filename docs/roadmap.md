@@ -2983,3 +2983,15 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送）**：`7e0cef4 feat(settings): add two-stage Reboot row to General page`（含 playground 生成物与清单）；`b0d94fd test(r143): reboot consumer harness and guard updates for 51-app manifest`；docs(r143) 本提交。日志仅留 `/tmp/r143-*.txt` 与 `/tmp/r143-emu-settings/`，artifacts 只留最终日志；worktree 保留 gitignore 软链，未进提交。ASCII 纪律全满足。未跑 codex review（主控轮负责）。真机重启、USB 断连/串口重枚举、3 s 窗口手感全部 deferred。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r143 节。
+
+### r144 result — emu-net WiFi 关联收口刀（appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → 两行 `model=hy4flash-free ✓`，无 429，未在 `/home/ubuntu/lume` 写文件。新 worktree `/tmp/lume-r144-wt`（分支 `r144-emu-wifi`，基线 `254c096`）。
+
+**实证纠偏（任务书「上游限制 or Lume 配置」二分被进一步收敛）**：同一 IDF v5.5.5 / esp-emu v1.2.0 / 同一 `--wifi-auth wpa2-psk` 参数下，上游 stock `examples/wifi/getting_started/station` **关联成功并拿到 IP**（`got ip:192.168.4.2`，exit 0）→ 根因**不在模拟器/宿主侧**。随后 6 个 stock 差量变体（config-after-start、raw netif、IRAM off、SoftAP on、全套 SPIRAM、240 MHz）全部关联成功；Lume 侧 6 个变体（transition AP、显式 PSRAM、`WIFI_PS_NONE`、延迟 connect、显式 scan、UART0 console）全部失败。`RUST_LOG=debug` 的 AP 侧日志给出决定性证据：Lume 打印 `wifi:m f assoc req l=221` 但**总线从未触发该帧的 TX**，AP 无 `assoc request received`，1 s 后 `assoc -> init (0x400)` = ASSOC_EXPIRE；stock 同窗口有完整 `subtype=11 auth → subtype=0 assoc → 4-way handshake`。即关联请求帧在固件内部构造却未进入 esp-emu WiFi TX 通路，**不是密码/认证/扫描/省电/配置值问题**。
+
+**取舍（诚实负结果）**：不硬造修复、不放宽 runner 退出断言、不改固件（E10 的 `WIFI_PS_NONE` 实验无改善已回退，未触发 BASE 重钉）；M4 WiFi OTA 行保持不勾。runner 仅加失败诊断快照 `failure-diag.txt`（esp-emu 版本、非敏感参数摘要、密码仅记长度、镜像 sha256、串口关键行），零固件改动。完整实验矩阵、命令、串口原始行、上游文档/issues 线索与复验条件见 `docs/r144-emu-wifi-report.md`。
+
+**验证（原始输出；真机 deferred，不声称真机验证）**：`for t in tests/*.js` → `done`，0 FAIL；`npm test --prefix tools/lume` → `pass 50 / fail 0 / skipped 0`（软链 gitignore 的 `bin/qjsc` 与 `node_modules` 后对齐基线）；`check_website.py` → missing/invented/duplicates 均 none；`lume check examples/net_check --no-emu` 与 `counter --no-emu` 均 `RESULT: PASS`。全链 `tools/emu-net/run.sh examples/net_check` **exit 1**，`[NETCHECK] init PASS` / `connect PASS` / `ip FAIL timeout`，无 `ALL PASS`（负结果）。`git diff 254c096 HEAD -- firmware/` 为空，未跑 `idf.py build/size`。
+
+**commits（未推送）**：infra `tools/emu-net/run.sh` 失败诊断 + docs(r144) 本轮报告/roadmap/KNOWN-SIMPLIFICATIONS。worktree `/tmp` 实验产物不进仓；ASCII 纪律满足；未跑 codex review（主控轮负责）。详见 KNOWN-SIMPLIFICATIONS r144 节。
