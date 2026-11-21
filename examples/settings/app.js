@@ -99,6 +99,8 @@ var timeSyncLine = signal('TIME SYNC: --');  /* r129: General-page NTP status */
 var otaLine = signal('ota off');             /* r132: General-page OTA status */
 var otaNote = signal('');                    /* r132: transient setToken result */
 var otaConfirm = signal(false);              /* r132: New-token two-stage confirm */
+var rebootConfirm = signal(false);           /* r143: Reboot two-stage confirm */
+var rebootNote = signal('');                 /* r143: transient reboot guard note */
 
 var savedNets = signal(loadSaved());
 var autoSsid = signal(function () {
@@ -451,6 +453,31 @@ function rotateOtaToken() {
 }
 /* ---- r132: OTA status + token rotation END ---- */
 
+/* ---- r143: reboot consumer (pure app layer) BEGIN -----------------------------
+ * lume.system.reboot() is `never`: on device it kills the JS task via
+ * esp_restart(), so state not already persisted is lost. Two-stage arm/confirm
+ * mirrors the r132 setToken gate (first tap arms a 3 s window, second tap acts).
+ * The playground browser stub may not expose the binding, so the call is
+ * guarded with typeof and degrades to an ASCII note instead of throwing. */
+var rebootArmTimer = null;
+function rebootNow() {
+  if (!rebootConfirm()) {                     /* first tap: arm, do not reboot */
+    rebootConfirm.set(true);
+    rebootNote.set('');
+    if (rebootArmTimer !== null) lume.system.clearTimeout(rebootArmTimer);
+    rebootArmTimer = lume.system.setTimeout(function () { rebootConfirm.set(false); }, 3000);
+    return;
+  }
+  rebootConfirm.set(false);                   /* second tap: reboot */
+  if (rebootArmTimer !== null) { lume.system.clearTimeout(rebootArmTimer); rebootArmTimer = null; }
+  if (!lume.system || typeof lume.system.reboot !== 'function') {
+    rebootNote.set('reboot n/a');              /* stub without the binding */
+    return;
+  }
+  lume.system.reboot();                       /* never returns on device */
+}
+/* ---- r143: reboot consumer END ---- */
+
 /* ---- polling ------------------------------------------------------------------ */
 
 function pollWifi() {
@@ -715,6 +742,23 @@ var generalPage = View({ style: {
     Button({ title: 'Sync now', onPress: syncTimeNow,
       style: { width: 92, height: 34, borderRadius: 8 } })
   ]),
+  /* r143 REBOOT ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
+   * The button title flips during the 3 s arm window; the Text is status only
+   * and the guarded note is the sole feedback when the binding is absent. */
+  View({ style: {
+    width: '100%', height: 44, background: 'surface',
+    display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', padding: 8, gap: 8, scroll: 'none'
+  } }, [
+    Text({ text: function () {
+      return rebootNote() === '' ? 'Restart the device' : rebootNote();
+    }, style: {} }),
+    Button({ title: function () {
+      return rebootConfirm() ? 'Confirm reboot?' : 'Reboot';
+    }, onPress: rebootNow,
+      style: { width: 132, height: 34, borderRadius: 8 } })
+  ]),
+  /* r143 REBOOT ROW END */
   actionRow([
     bigButton('Sleep now', function () { lume.power.sleepNow(); }),
     bigButton(function () {

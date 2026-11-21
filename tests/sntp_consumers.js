@@ -26,7 +26,7 @@ function sliceBetween(s, startMarker, endMarker) {
 const clockSync = sliceBetween(clock, 'function syncNetTime() {', '\n/** wall-clock Date; epochOffsetMs');
 const clockWall = sliceBetween(clock, 'function wallDate() {', '\nfunction tick()');
 const settingsSyncHelpers = sliceBetween(settings, '/* ---- r129: time sync', '/* ---- polling');
-const settingsSyncRow = sliceBetween(settings, '/* r129: NTP sync row', '\n  actionRow([');
+const settingsSyncRow = sliceBetween(settings, '/* r129: NTP sync row', '/* r143 REBOOT ROW BEGIN');
 
 // ASCII-only UI copy (r64): comments may be Chinese; only string literals
 // (the UI-copy surface) must be ASCII. No string literals live in comments.
