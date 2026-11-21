@@ -174,6 +174,8 @@ const ALLOWED = [
   'examples/net_check/app.js',
   'examples/nettest_open/app.js',
   'docs/r142-emu-net-report.md',
+  // r144: emu-net WiFi isolation report (docs only; run.sh already allowlisted).
+  'docs/r144-emu-wifi-report.md',
   'README.md',
   'README.zh-CN.md',
   // r142 evidence artifacts (serial logs, NETCHECK output, SD probe) under
