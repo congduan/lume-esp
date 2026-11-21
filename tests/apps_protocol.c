@@ -22,6 +22,9 @@
  *   6. r140 profile-only `lume.perf` binding contract: namespace, method and
  *      result-field tokens from the shared lume_perf_binding.h descriptor;
  *      absent (no new assertions) in default mode.
+ *   7. r141 default-visible `lume.system.reboot()` contract: namespace, method,
+ *      native and log tokens from the shared lume_system_binding.h descriptor;
+ *      absent (no new assertions) in profile mode.
  *
  * Compile twice to exercise BOTH gates; the firmware build defines the same
  * macro from sdkconfig.h. Installing/launching on a board, the cross-task
@@ -36,6 +39,7 @@
 #include "lume_frame.h"
 #include "lume_cmd.h"
 #include "lume_perf_binding.h"   /* r140: profile-only lume.perf token contract */
+#include "lume_system_binding.h" /* r141: default lume.system.reboot token contract */
 
 static int g_fail;
 static int g_checks;
@@ -302,6 +306,32 @@ static void test_perf_binding(void)
 }
 #endif /* CONFIG_LUME_PERF_PROFILE */
 
+/* ---------------- 2d. r141 default lume.system.reboot contract ----------- */
+#if !CONFIG_LUME_PERF_PROFILE
+static void test_reboot_binding(void)
+{
+    printf("[lume.system.reboot binding]\n");
+    /* Tokens come from the SAME header the firmware uses to register the
+     * native, so these pin the binding's compile-time contract. This harness
+     * does not run QuickJS: runtime existence is covered by the firmware
+     * build (ELF string) and, for the real restart, board bring-up. */
+    CHECK(strcmp(LUME_SYSTEM_NS_NAME, "system") == 0,
+          "default: lume.system namespace token");
+    CHECK(strcmp(LUME_SYSTEM_REBOOT_NAME, "reboot") == 0,
+          "default: reboot method token");
+    CHECK(strcmp(LUME_SYSTEM_REBOOT_NATIVE_NAME, "_systemReboot") == 0,
+          "default: _systemReboot native token");
+    CHECK(strcmp(LUME_SYSTEM_REBOOT_LOG, "lume.system: reboot requested") == 0,
+          "default: pre-restart ASCII log token");
+    const char *p = LUME_SYSTEM_REBOOT_LOG;
+    int ascii = 1;
+    for (; *p != '\0'; ++p) {
+        if ((unsigned char)*p > 0x7f) { ascii = 0; break; }
+    }
+    CHECK(ascii, "default: reboot log token is ASCII-only");
+}
+#endif /* !CONFIG_LUME_PERF_PROFILE */
+
 /* ---------------- 3. CLI/device round trip (byte level) ---------------- */
 static void test_round_trip(void)
 {
@@ -343,6 +373,8 @@ int main(void)
     test_oom_verb();
 #if CONFIG_LUME_PERF_PROFILE
     test_perf_binding();
+#else
+    test_reboot_binding();
 #endif
     test_round_trip();
     printf("\n%d checks, %d failure(s)\n", g_checks, g_fail);

@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4e00954'; // r140: firmware changed deliberately for lume.perf
+const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -137,8 +137,8 @@ const ALLOWED = [
   'website/playground/apps/vec_demo.js',
   'website/playground/sources/vec_demo.js',
   'website/playground/runtime.js',
-  // r140: the lume.perf round deliberately changes firmware (firmware commit
-  // 4e00954 is the new BASE) and re-pins these app-only guard baselines.
+  // r141: this round deliberately changes firmware (feat commit 2e192d5 is
+  // the new BASE) and re-pins these app-only guard baselines.
   'tests/apps_protocol.c',
   'tests/adc_meter.js',
   'tests/archive_view.js',
@@ -154,6 +154,9 @@ const ALLOWED = [
   // r140: the denial-positive drill script changes too; it is a test tool,
   // not firmware/runtime/CLI tooling, so it is allowlisted here as well.
   'tools/emu/check_oom_inject.py',
+  // r141: the emu reboot check is a test tool, not firmware/runtime/CLI
+  // tooling; it exercises the shipped default image via esp32sim.
+  'tools/emu/check_reboot.py',
   // r142: esp-emu network acceptance infrastructure. tools/emu-net is a NEW
   // standalone entry (esp32sim in tools/emu stays untouched); net_check is a
   // consumer app; README documents the emulator split; fw-sync republishes

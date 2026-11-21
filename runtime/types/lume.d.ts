@@ -372,6 +372,24 @@ declare namespace lume.system {
    * Real on-device SNTP exchange is deferred to board bring-up.
    */
   function setTimeNtp(server?: string, timeoutMs?: number): number;
+  /**
+   * r141: reboot the SoC through esp_restart(). NEVER RETURNS -- the JS task is
+   * killed mid-call, so any JS state not already persisted is lost. Takes no
+   * arguments; passing any throws a TypeError. One ASCII firmware log line
+   * (`lume.system: reboot requested`) is emitted immediately before restart.
+   *
+   * Persistence / state semantics across the restart:
+   *   - LittleFS is journaled, so committed writes survive, but an OPEN write
+   *     handle is severed and its buffered bytes are NOT guaranteed flushed.
+   *     Close/flushed writes before calling reboot().
+   *   - WiFi / SNTP state is not preserved; it is rebuilt by the app after the
+   *     next boot (call setTimeNtp() again if wall-clock sync is needed).
+   *   - KV (NVS) writes are durable; see lume.storage.kv.
+   *
+   * The C native returns `undefined` only as an unreachable formality; the
+   * type is `never` to reflect that control flow never resumes here.
+   */
+  function reboot(): never;
 }
 
 declare namespace lume.power {
@@ -496,8 +514,8 @@ declare namespace lume.adc {
  *
  * Charging parameters (voltages, currents, target voltage, fuel-gauge config)
  * are NEVER written — only measurement-channel enables at init and the single
- * shutdown bit in powerOff(). No reboot/restart binding this round: esp_restart
- * belongs to the lume.system namespace (next round).
+ * shutdown bit in powerOff(). Reboot is exposed as `lume.system.reboot()`
+ * (r141); powerOff() remains the only register write in this namespace.
  */
 declare namespace lume.pmic {
   /** battery voltage in mV (H5L8 of REG 34h/35h, 1 mV/LSB), or -3 / negative error. */
