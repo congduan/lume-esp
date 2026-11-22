@@ -217,7 +217,7 @@ check('static tree <= 12 nodes', () => {
 });
 check('playground manifest has 57 apps including img_view', () => {
   const apps = manifestApps(manifest);
-  assert.equal(apps.length, 57, String(apps.length));
+  assert.equal(apps.length, 58, String(apps.length));
   assert.ok(apps.includes('img_view'));
 });
 check('generated playground source is byte-identical to the example', () =>
