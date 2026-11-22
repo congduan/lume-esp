@@ -1,6 +1,10 @@
 /*
  * r160: launcher_grid -- first real consumer of shell.Launcher.
- * Pure app layer: no firmware / runtime / tools/lume / .d.ts change.
+ * r162: first consumer of shell.Launcher's onEditingChange observable edit
+ * state; the status line reads EDIT while editing and restores the prior
+ * action on exit (host-only evidence, no real touch).
+ * Pure app layer: no firmware / runtime / tools/lume / .d.ts change by r160;
+ * r162 adds the callback prop to runtime/ (separate runtime knife).
  *
  * SHELL CONSUMPTION (the last zero-consumer component):
  *   - shell.Launcher renders a 3x3 icon grid with an explicit curated app
@@ -17,6 +21,10 @@
  *   switch apps -- real runtime switching stays a firmware-round topic.
  *   onBack is the non-editing fallback; Launcher consumes editing-mode back
  *   itself before calling it, so the host only sees the plain back case.
+ *   r162: onEditingChange mirrors Launcher's internal editing signal into the
+ *   app's `editing` signal; the status Text shows EDIT while editing and
+ *   restores lastAction() on exit. No effect subscription / no first-frame
+ *   false report -- the callback is the single source of edit-state truth.
  *
  * Layout is a full-bleed 480x480 square (not round: no SafeArea needed).
  * Text uses only the 14/20/32 bridge faces and all UI copy is ASCII (r64:
@@ -46,6 +54,7 @@ var ICON_PX = 48;
 var ICON_AREA = ICON_PX * ICON_PX;          /* 2304 px per icon */
 var FRAME_AREA = 480 * 480;                 /* 230400 px full frame */
 var lastAction = signal('READY');
+var editing = signal(false);   /* driven by Launcher.onEditingChange (r162) */
 
 var root = lume.ui.shell.Launcher({
   title: 'GRID',
@@ -54,11 +63,13 @@ var root = lume.ui.shell.Launcher({
   indicator: false,
   right: '9 APPS',
   onLaunch: function (id) { lastAction.set('launch ' + id); },
+  onEditingChange: function (v) { editing.set(v); },
   onBack: function () { lastAction.set('BACK'); return true; },
 });
 
-/* Status hint sits in the 24px strip below the 288px list (y 456..480). */
-Text({ parent: root, text: function () { return lastAction(); },
+/* Status hint sits in the 24px strip below the 288px list (y 456..480).
+ * r162: EDIT while editing, otherwise the last launch/back action. */
+var statusText = Text({ parent: root, text: function () { return editing() ? 'EDIT' : lastAction(); },
   style: { x: 24, y: 458, width: 432, height: 18, fontSize: 14,
     color: '#8FA6C8', scroll: 'none' } });
 
@@ -66,6 +77,8 @@ Text({ parent: root, text: function () { return lastAction(); },
 globalThis.lgApi = {
   root: root,
   status: lastAction,
+  statusNode: statusText,
+  editing: editing,
   appList: APPS,
   ICON_PX: ICON_PX,
   ICON_AREA: ICON_AREA,
