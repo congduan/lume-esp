@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 54-app manifest, all UI literals are ASCII (r64), and only the
+//     in the 57-app manifest, all UI literals are ASCII (r64), and only the
 //     known r132-r136 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 54-app playground manifest is the source of truth for "in清单".
+// 57-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -327,6 +327,15 @@ const ALLOWED = [
   'artifacts/r152/lume-check-no-emu.txt',
   'artifacts/r152/npm-ci.txt',
   'artifacts/r152/playground-build.txt',
+  // r157: timer_kit (first consumer of the r151 shell form controls). All four
+  // new paths are staged here BEFORE the feat/test commits because `git diff`
+  // does not see untracked files; without them the allChanged allowlist turns
+  // red once the app / harness / generated playground artifacts land. No
+  // firmware/ runtime/ tools/lume/ change: the zero-diff guards stay unweakened.
+  'examples/timer_kit/app.js',
+  'tests/timer_kit.js',
+  'website/playground/apps/timer_kit.js',
+  'website/playground/sources/timer_kit.js',
   'artifacts/r152/regression-summary.txt',  // r156: skycombat 3D dogfight app + harness + evidence.
   'examples/skycombat/app.js',
   'tests/skycombat.js',
@@ -415,7 +424,7 @@ const checks = [
     s === dashboard]],
 
   ['dashboard is in the playground manifest', [playgroundApps,
-    list => list.length === 56 && list.includes('dashboard')]],
+    list => list.length === 57 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],

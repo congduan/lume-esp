@@ -11,7 +11,7 @@
 //   - HR telemetry is throttled by a >=1 s setInterval and only written while
 //     connected AND subscribed; inbound commands are truncated to 20 bytes.
 //   - all UI literals are ASCII (r64), the generated playground source is
-//     byte-identical, hr_monitor is in the 56-app manifest, and firmware/
+//     byte-identical, hr_monitor is in the 57-app manifest, and firmware/
 //     runtime/ CLI tooling are identical to the 5ca3e66 baseline.
 // Real on-device advertising / notify / coexistence are deferred to board
 // bring-up (docs/KNOWN-SIMPLIFICATIONS.md r146); no hardware proof here.
@@ -116,8 +116,8 @@ const checks = [
   ['playground sources/hr_monitor.js byte-identical to example', [playgroundSrc, s =>
     s === app]],
 
-  ['hr_monitor is in the 56-app playground manifest', [playgroundApps,
-    list => list.length === 56 && list.includes('hr_monitor')]],
+  ['hr_monitor is in the 57-app playground manifest', [playgroundApps,
+    list => list.length === 57 && list.includes('hr_monitor')]],
 
   ['firmware/ runtime/ CLI tooling identical to 5ca3e66', [fwChanged, c => c.length === 0]],
 ];
@@ -170,7 +170,7 @@ must('playground generated source drifts from the example',
   'playground sources/hr_monitor.js byte-identical to example', playgroundSrc);
 must('playground manifest drops hr_monitor',
   list => list.filter(x => x !== 'hr_monitor'),
-  'hr_monitor is in the 56-app playground manifest', playgroundApps);
+  'hr_monitor is in the 57-app playground manifest', playgroundApps);
 must('a firmware file changes vs 27541bb',
   () => ['firmware/components/lume-engine/lume_engine.c'],
   'firmware/ runtime/ CLI tooling identical to 5ca3e66', fwChanged);
