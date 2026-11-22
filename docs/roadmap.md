@@ -3386,3 +3386,34 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `a18a83a`（app + playground 生成物） / test `cbf4422`（新 harness + 两个既有 harness 同步） / docs（本节 + KNOWN-SIMPLIFICATIONS r163 节）。磁盘 `/` 余约 5 G，日志只留 `/tmp`。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r163 节。
+
+### r164 result — 两段式 confirm 收官刀：settings Power off + hr_monitor BLE gate Dialog 化（纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r164-wt`（分支 `r164-confirm-sweep`，基线 `8b46c00`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 只读软链对齐主仓、软链不入 git。
+
+**实证纠偏（假设以源码为准）**：
+1. `grep -rn 'powerConfirm\|toggleArm\|Confirm off\|Confirm adv\|Confirm stop' examples/*/app.js` 实证两段式残留恰两处：settings `powerConfirm`(:100) + `armTimer`(:377) + 3 s `setTimeout` + title 翻转(:773)；hr_monitor `toggleArm`/`toggleArmTimer`(:37-38) + r146 TWO-STAGE GATE(:101-117) + `Confirm adv?` title(:176)。`examples/files` 的 Dialog 是单向弹窗、非 confirm gate，未动。收官后同一 grep 无输出。
+2. `runtime/shell.js:85-111` 实证 Dialog 契约：按钮 style 仅 plain/primary/danger，press 先 `closeDialog` 再调 `button.onPress`；plain Cancel 的 handler 挂在父 `View`，label `Text` 无 handler。
+3. **hr_monitor 原本没有 `import '../../runtime/shell.js'`**（对照 settings / files / wordle 等消费方均有）。实证若不补 import，`lume.ui.shell.Dialog` 为 undefined，Dialog 调用永远走 typeof guard 写 note、弹窗根本不出现；本刀补上该 import 后 bundle 由 3568 → 23003 bytes（与 r163 settings 同一坑）。
+4. r163 教训沿用：live harness 按 `[mask, cancelView, dangerButton, card]` 的 press 消息序取 handler 节点派发，不按 label id；并以「给 Cancel 注入 onPress → live 断言转红」自证 load-bearing。
+5. settings 以 `powerNote` signal 替掉 `powerConfirm` 原位作 ASCII note 载体，guard 失败时写 `power off n/a` / `power off n/a (no dialog)`，并在 Power off 按钮 title 的错误态显示，不新增节点。
+
+**实现（纯 app 层）**：两处各开 `shell.Dialog({title, message, buttons:[Cancel plain, danger]})`，删除两段式 signal / arm timer / 3 s 超时 / title 翻转；`lume.pmic.powerOff` 与 BLE binding 的 typeof 防御移入 danger 回调内，Cancel / mask / card / 无 Dialog 的 stub 阶段绝不触碰 binding。`lume.pmic.powerOff()` 与 `startAdv()`/`stopAdv()` 本体零改动；hr_monitor 只动信号声明、r146 gate 块、按钮行与顶部 import；note / advertising / HR 渲染链路零改动。`firmware/`、`runtime/`、`.d.ts`、vendored、`examples/files` 全未动。
+
+**harness 同步（不改断言语义）**：新建 `tests/confirm_sweep.js`（10 静态 + 10 静态 mutation + 12 live + 2 live mutation）；`tests/settings_dialog.js` 的 Dialog guard 计数 2→3 并同步文案与 live mutation 切片（powerOff 的 Cancel 现在在文件更前面，裸 `app.replace` 会改错目标）；`tests/hr_monitor.js` 的 gate slice/check/mutation 改 Dialog 口径；`tests/ota_consumers.js` ALLOWED 预加 `tests/confirm_sweep.js` 防 untracked 提交后转红。
+
+**验证（原始输出见 `/tmp/r164-final-verify.txt`；宿主/编译证据，非真机）**：
+- `node tests/confirm_sweep.js` → 10 静态 + 10 静态 mutation + 12 live + 2 live mutation 全绿，末行 `ALL CONFIRM SWEEP HARNESS CASES PASSED`，`CONFIRM_SWEEP_EXIT=0`。live 实证：power Cancel / mask → 0 powerOff、danger → 1 次 powerOff、无 pmic binding → `power off n/a` 且 0 动作、无 Dialog → `power off n/a (no dialog)`；BLE Cancel → 0 start/stop、idle danger → 1 startAdv、advertising danger → 1 stopAdv、无 BLE binding → `BLE n/a (no stack)` 且 0 动作、无 Dialog → `BLE n/a (no dialog)`；两处 Cancel 注入 onPress 均转红。
+- `timeout 600 bash -c 'for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done'` → 仅 `done`，**0 FAIL**（`FULL_LOOP_EXIT=0`）；本轮未触发 wordle flake。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0`，`NPM_TEST_EXIT=0`。
+- `python3 scripts/check_website.py` → `API missing: none` / `API invented: none` / `API duplicates: none` / `API signatures not found in lume.d.ts: none`。
+- `node tools/lume/lume.js check examples/settings --no-emu` → `[PASS] bundle 33860 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；`examples/hr_monitor --no-emu` → `[PASS] bundle 23003 bytes` / `RESULT: PASS`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle settings 33860 bytes` / `PASS bundle hr_monitor 23003 bytes` / `PASS esbuild-wasm assets and 61 editable sources` / `PASS prelude 67428 bytes; 61 apps`，幂等。
+- **固件/runtime 零改动，未跑 `idf.py build`**：`git diff 8b46c00 HEAD -- firmware/ runtime/` 与工作树版 `git diff 8b46c00 -- firmware/ runtime/` 原始输出均为空；IRAM 16384 硬线未触碰。
+- ASCII 纪律：`grep -Pn '[^\x00-\x7F]' examples/settings/app.js examples/hr_monitor/app.js tests/confirm_sweep.js` → `NONE`。
+
+**里程碑口径**：examples/ 的两段式 confirm 信号清零、Modal 消费方增至 settings + hr_monitor + files，但组件被消费 ≠ 真机验收；真关机与 BLE 广播的真实行为、danger 配色在 CO5300 AMOLED 上的对比度、模态命中率与两段式→模态手感差异**全部 deferred，不声称真机验证**。未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）；未推送。磁盘紧张，最终日志只留 `/tmp/r164-final-verify.txt`。
+
+**commits（未推送，拆分）**：feat `c3ca253`（app + playground 生成物） / test `4472867`（新 harness + 三个既有 harness 同步） / docs（本节 + KNOWN-SIMPLIFICATIONS r164 节）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r164 节。
