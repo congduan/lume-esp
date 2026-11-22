@@ -21,7 +21,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'd49fb81'; // r151: shell form-primitives feat commit (runtime/ shell + types + api)
+const BASE = '5ca3e66'; // r151: shell form-primitives feat commit (runtime/ shell + types + api)
 const HEAD_BASE = '31adb96'; // r150 trunk: firmware/ must be byte-identical
 
 const app = read('examples/controls_demo/app.js');
@@ -91,12 +91,12 @@ const checks = [
 
   ['every node registered for cleanup, dispose idempotent', [shell, s =>
     s.includes('cleanups[root] = function () { nodes.forEach') &&
-    s.includes('cleanups[canvas] = function ()') &&
+    s.slice(0, s.indexOf('function ClickWheel(p)')).includes('cleanups[canvas] = function ()') &&
     s.includes('if (fn) { delete cleanups[id]; fn(); }')]],
 
   ['gesture unsubscribers run on Slider dispose', [shell, s =>
     s.includes('offs.push(lume.gesture.on(canvas,') &&
-    s.includes('cleanups[canvas] = function () {\n      offs.forEach(function (off) { off(); });\n      lume.removeChild(canvas);\n    };')]],
+    s.slice(0, s.indexOf('function ClickWheel(p)')).includes('cleanups[canvas] = function () {\n      offs.forEach(function (off) { off(); });\n      lume.removeChild(canvas);\n    };')]],
 
   ['Progress updates only fill width ATTR_WIDTH via a bound numeric style', [shell, s =>
     s.includes('width: function () { return Math.round(fraction() * width); }') &&

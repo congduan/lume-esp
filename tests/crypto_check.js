@@ -28,7 +28,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/crypto_check/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = 'd49fb81'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
+const BASE = '5ca3e66'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
 
 // ---- independent host implementations (the injected `options.crypto`) ----
 const CRC_TABLE = new Int32Array(256);
@@ -243,7 +243,7 @@ check('playground manifest has 55 apps including crypto_check', () => {
 });
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/crypto_check.js'), source));
-check('firmware/ runtime/ tools/lume/ byte-identical to baseline d49fb81', () =>
+check('firmware/ runtime/ tools/lume/ byte-identical to baseline 5ca3e66', () =>
   assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']), []));
 
 // ---- mutation proof: key predicates MUST fail on a bad input --------------

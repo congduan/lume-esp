@@ -24,7 +24,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'd49fb81'; // r148: shell Keyboard feat commit; firmware/runtime/CLI still pinned
+const BASE = '5ca3e66'; // r148: shell Keyboard feat commit; firmware/runtime/CLI still pinned
 const source = read('examples/wordle/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -502,7 +502,7 @@ const checks = [
   ['wordle is in the 55-app playground manifest', [apps,
     list => list.length === 55 && list.includes('wordle')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to d49fb81', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to 5ca3e66', [fwChanged, c => c.length === 0]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -530,7 +530,7 @@ const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
 const MANIFEST = 'wordle is in the 55-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to d49fb81';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 5ca3e66';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop shell.Keyboard registration',
