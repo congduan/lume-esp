@@ -64,6 +64,7 @@ function gitChanged(paths, base) {
 }
 
 /* ------------------------ part 1: static guards ------------------------ */
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -153,7 +154,7 @@ const checks = [
   ['control_center is in the 58-app playground manifest', [apps,
     list => list.length === 61 && list.includes('control_center')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [subject, test]] of checks) {
@@ -245,7 +246,7 @@ must('playground generated source drifts',
 must('playground manifest drops control_center',
   list => list.filter(x => x !== 'control_center'), MANIFEST, apps);
 must('a firmware/runtime/CLI file changes after 76d2c0c',
-  () => ['runtime/shell.js'], GUARD, fwChanged);
+  () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
 
 /* ------------------------ part 2: live prelude ------------------------- */
 function boot(src, options) {

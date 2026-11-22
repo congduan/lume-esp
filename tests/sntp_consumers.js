@@ -38,7 +38,7 @@ function asciiStrings(s) {
 
 // r129 is app-only: no firmware/runtime file may differ from the r128
 // baseline. Same allowlist pattern as r128, but the exception set is empty.
-const R129_ALLOWLIST = [];
+const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 function gitChanged() {
   const head = execFileSync('git',
     ['diff', '--name-only', '80e76b2', 'HEAD', '--', 'firmware/', 'runtime/'],

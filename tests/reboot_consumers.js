@@ -67,6 +67,7 @@ function gitChanged(paths) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
 // --- checks -----------------------------------------------------------------
@@ -109,7 +110,7 @@ const checks = [
   ['settings is in the 57-app playground manifest', [playgroundApps,
     list => list.length === 61 && list.includes('settings')]],
 
-  ['firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only)', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only)', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [src, test]] of checks) {

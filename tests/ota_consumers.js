@@ -89,9 +89,27 @@ function gitChanged(paths) {
  * firmware/runtime/CLI-tooling surface is still pinned. Scope the diff to
  * tools/lume/ so manifest registration is not misreported as a tooling
  * behaviour change. */
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
+  // r166: ColorPicker runtime/types, consumer, generated docs and shell bundles.
+  'examples/color_demo/app.js',
+  'tests/colorpicker.js',
+  'tests/color_demo.js',
+  'docs/r166-colorpicker-report.md',
+  'website/playground/apps/controls_demo.js',
+  'artifacts/r166/api-check.log',
+  'artifacts/r166/cli-tests.log',
+  'artifacts/r166/color-demo-applied.png',
+  'artifacts/r166/color_demo.log',
+  'artifacts/r166/colorpicker-full.png',
+  'artifacts/r166/colorpicker.log',
+  'artifacts/r166/host-logs.tar.gz',
+  'artifacts/r166/host-summary.log',
+  'artifacts/r166/lume-check.log',
+  'artifacts/r166/playground-build.log',
+  'artifacts/r166/website.log',
   'examples/settings/app.js',
   'examples/dashboard/app.js',
   'tests/ota_consumers.js',
@@ -478,7 +496,7 @@ const checks = [
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ CLI tooling identical to 80e76b2', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ CLI tooling identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
   ['only known r132 + r133 + r134 + r135 + r136 files differ from 80e76b2', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f))]],

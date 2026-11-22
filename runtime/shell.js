@@ -562,6 +562,111 @@
     };
     return canvas;
   }
+  function hsvToHex(h, s, v) {
+    h = ((h % 360) + 360) % 360;
+    s = Math.max(0, Math.min(1, s)); v = Math.max(0, Math.min(1, v));
+    var c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+    var rgb = h < 60 ? [c,x,0] : h < 120 ? [x,c,0] : h < 180 ? [0,c,x] :
+      h < 240 ? [0,x,c] : h < 300 ? [x,0,c] : [c,0,x];
+    return '#' + rgb.map(function (n) { return Math.round((n + m) * 255).toString(16).padStart(2, '0'); }).join('').toUpperCase();
+  }
+  function hexToHsv(hex) {
+    if (typeof hex !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(hex)) return null;
+    var r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255;
+    var b = parseInt(hex.slice(5,7),16)/255, hi = Math.max(r,g,b), lo = Math.min(r,g,b), d = hi-lo, h = 0;
+    if (d) {
+      if (hi === r) h = 60 * (((g-b)/d + 6) % 6);
+      else if (hi === g) h = 60 * ((b-r)/d + 2);
+      else h = 60 * ((r-g)/d + 4);
+    }
+    return {h:h, s:hi ? d/hi : 0, v:hi};
+  }
+  function pickerInk(hex) {
+    var light = 0.299*parseInt(hex.slice(1,3),16) + 0.587*parseInt(hex.slice(3,5),16) + 0.114*parseInt(hex.slice(5,7),16);
+    return light >= 145 ? '#07111D' : '#FFFFFF';
+  }
+  /* r166: one Canvas; local HSV state, gesture subscriptions and disposal. */
+  function ColorPicker(p) {
+    p = p || {};
+    callback('ColorPicker onChange', p.onChange);
+    callback('ColorPicker onConfirm', p.onConfirm);
+    callback('ColorPicker onDismiss', p.onDismiss);
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    var x = p.x === undefined ? Math.floor((screen.w-300)/2) : p.x;
+    var y = p.y === undefined ? 8 : p.y;
+    if (![x,y].every(function (n) { return typeof n === 'number' && isFinite(n) && Math.floor(n) === n; }))
+      throw new RangeError('lume: ColorPicker x/y must be integer pixels');
+    var hsv = hexToHsv(p.initialHex === undefined ? '#40D8B0' : p.initialHex);
+    if (!hsv) {
+      if (typeof console !== 'undefined' && console.warn) console.warn('lume: ColorPicker invalid initialHex; using #40D8B0');
+      hsv = hexToHsv('#40D8B0');
+    }
+    var h = hsv.h, s = hsv.s, v = hsv.v, revision = signal(0);
+    var lastEmit = -Infinity, pending = false, lastHex = hsvToHex(h,s,v), offs = [], closed = false;
+    function redraw() { revision.set(revision()+1); }
+    function emit(force) {
+      var now = Date.now();
+      if (p.onChange && (force || now-lastEmit >= 100)) { p.onChange(lastHex); lastEmit = now; pending = false; }
+      else pending = true;
+    }
+    function set(nextH, nextS, nextV, immediate) {
+      var next = hsvToHex(nextH,nextS,nextV);
+      h = nextH; s = nextS; v = nextV;
+      if (next !== lastHex) { lastHex = next; redraw(); emit(!!immediate); }
+    }
+    /* Local ring centre (150,110), annulus 82..98; strips x=30..270. */
+    function hit(e) {
+      if (!e || !isFinite(e.x) || !isFinite(e.y)) return null;
+      var px=e.x-x, py=e.y-y, dx=px-150, dy=py-110, radius=Math.sqrt(dx*dx+dy*dy);
+      if (radius >= 82 && radius <= 98) return {kind:'h', value:(Math.atan2(dy,dx)*180/Math.PI+360)%360};
+      if (px >= 30 && px <= 270 && py >= 213 && py <= 249) return {kind:'s',value:(px-30)/240};
+      if (px >= 30 && px <= 270 && py >= 263 && py <= 299) return {kind:'v',value:(px-30)/240};
+      if (px >= 205 && px <= 282 && py >= 312 && py <= 356) return {kind:'confirm'};
+      if (px >= 18 && px <= 88 && py >= 312 && py <= 356) return {kind:'dismiss'};
+      return null;
+    }
+    function select(e, immediate) {
+      var target=hit(e);
+      if (!target) return;
+      if (target.kind === 'h') set(target.value,s,v,immediate);
+      else if (target.kind === 's') set(h,target.value,v,immediate);
+      else if (target.kind === 'v') set(h,s,target.value,immediate);
+    }
+    var canvas = Canvas({parent:p.parent,width:300,height:360,
+      style:{position:'absolute',x:x,y:y,scroll:'none'},onDraw:function (c) {
+        revision();
+        c.fillColor('#132435'); c.fillRect(0,0,300,360);
+        for (var i=0;i<24;i++) c.arc(150,110,90,i*15,i*15+15,16,hsvToHex(i*15,1,1));
+        var a=h*Math.PI/180;
+        c.fillCircle(Math.round(150+90*Math.cos(a)),Math.round(110+90*Math.sin(a)),7,'#FFFFFF');
+        c.fillCircle(150,110,55,lastHex);
+        c.text(107,102,'COLOR',pickerInk(lastHex));
+        c.text(12,224,'S','#F2F7FB');
+        c.text(12,274,'V','#F2F7FB');
+        for (var j=0;j<24;j++) {
+          c.fillColor(hsvToHex(h,j/23,v)); c.fillRect(30+j*10,213,10,36);
+          c.fillColor(hsvToHex(h,s,j/23)); c.fillRect(30+j*10,263,10,36);
+        }
+        c.fillColor('#FFFFFF'); c.fillRect(Math.round(30+s*240)-2,211,4,40);
+        c.fillRect(Math.round(30+v*240)-2,261,4,40);
+        c.fillColor(lastHex); c.fillRect(101,308,96,48);
+        c.text(105,324,lastHex,pickerInk(lastHex));
+        c.fillColor('#30445A'); c.fillRect(18,312,70,44); c.text(27,327,'CLOSE','#FFFFFF');
+        c.fillColor('#40D8B0'); c.fillRect(205,312,77,44); c.text(220,327,'SAVE','#07111D');
+      }});
+    offs.push(lume.gesture.on(canvas,'tap',function (e) {
+      var target=hit(e);
+      if (!target) return;
+      if (target.kind === 'confirm') { if (pending) emit(true); if (p.onConfirm) p.onConfirm(lastHex); }
+      else if (target.kind === 'dismiss') { dispose(canvas); if (p.onDismiss) p.onDismiss(); }
+      else select(e,true);
+    }));
+    offs.push(lume.gesture.on(canvas,'pan',select));
+    offs.push(lume.gesture.on(canvas,'panend',function () { if (pending) emit(true); }));
+    var offPause = lume.app.onPause(function () { if (!closed) dispose(canvas); });
+    cleanups[canvas]=function () { closed=true; offPause(); offs.forEach(function (off) { off(); }); lume.removeChild(canvas); };
+    return canvas;
+  }
   function Progress(p) {
     p = p || {};
     var height = positive('Progress height', p.height, 12, 128);
@@ -663,6 +768,9 @@
   shell.Keyboard = Keyboard;
   shell.Switch = Switch;
   shell.ClickWheel = ClickWheel;
+  shell.ColorPicker = ColorPicker;
+  shell.hsvToHex = hsvToHex;
+  shell.hexToHsv = hexToHsv;
   shell.Slider = Slider;
   shell.Progress = Progress;
   shell.SafeArea = SafeArea;
