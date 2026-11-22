@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 53-app manifest, all UI literals are ASCII (r64), and only the
+//     in the 54-app manifest, all UI literals are ASCII (r64), and only the
 //     known r132-r136 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 53-app playground manifest is the source of truth for "in清单".
+// 54-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -193,6 +193,14 @@ const ALLOWED = [
   'runtime/shell.js',
   'runtime/types/lume.d.ts',
   'website/api.html',
+  // r149: full Wordle app (pure app layer). New files are added here BEFORE
+  // commit because `git diff` does not see untracked files; without these the
+  // allChanged allowlist turns red once the feat/test commits land. No
+  // firmware/ runtime/ tools/lume/ change: those guards stay pinned/unweakened.
+  'examples/wordle/app.js',
+  'tests/wordle.js',
+  'website/playground/apps/wordle.js',
+  'website/playground/sources/wordle.js',
   // r142: esp-emu network acceptance infrastructure. tools/emu-net is a NEW
   // standalone entry (esp32sim in tools/emu stays untouched); net_check is a
   // consumer app; README documents the emulator split; fw-sync republishes
@@ -334,8 +342,8 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 53-app playground manifest', [playgroundApps,
-    list => list.length === 53 && list.includes('dashboard')]],
+  ['dashboard is in the 54-app playground manifest', [playgroundApps,
+    list => list.length === 54 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
@@ -411,7 +419,7 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 53-app playground manifest', playgroundApps);
+  'dashboard is in the 54-app playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
