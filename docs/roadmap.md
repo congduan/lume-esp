@@ -947,7 +947,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 | 候选 | 价值 | 缺口（诚实原则） |
 |---|---|---|
-| **猜词游戏（Wordle 类）** | 热度高、每日一题适合「每天看一眼圆屏」粘性叙事 | 🟡 r149：键盘直输完整版已落地（`examples/wordle`，5×6 网格 / 绿黄灰反馈 / 屏上键盘 + 字母态条 / KV 连胜），原 🔴 blocked「无键盘组件」缺口已解除（r148 `shell.Keyboard` + r149 消费）。本行仍不标完成：真机输入手感、圆屏安全区与每日一题/HTML 完整词表 deferred（详见 r149 result 与 KNOWN-SIMPLIFICATIONS r149）。变体 `examples/wordring` 保留 |
+| **猜词游戏（Wordle 类）** | 热度高、每日一题适合「每天看一眼圆屏」粘性叙事 | 🟡 r149：键盘直输完整版已落地（`examples/wordle`，5×6 网格 / 绿黄灰反馈 / 屏上键盘 + 字母态条 / KV 连胜），原 🔴 blocked「无键盘组件」缺口已解除（r148 `shell.Keyboard` + r149 消费）。r165：原「无 RTC → 无墙钟」blocker 已由 r128 `lume.system.time()` 解除，**app 层每日一题机制已落地**（日序号确定性选词 / 同日同词跨日换词 / `DAY #N` / `wr.day` 跨日连胜规则）。本行仍不标完成：真机输入手感、圆屏安全区、每日一题真机验收（冷启动未 SNTP 的 dayIndex=0 与校时跳词边界、跨日 KV 持久化）与 HTML 完整词表 deferred（详见 r149 / r165 result 与 KNOWN-SIMPLIFICATIONS r149 / r165）。变体 `examples/wordring` 保留 |
 | **按住说话语音伴侣** | playStream/recordStream 的终极演示，与语音助手路线（见上节）E 刀合并 | 🔴 blocked：`audio.recordStream`（C 刀）未落地；实时对话链路时延是真机硬仗 |
 | **全屏精灵卷轴游戏**（横向卷轴平台跳跃完整版） | mario 单屏已证明玩法链路；r83 已交 blit 卷轴 POC（`examples/scroller/`，含性能口径），钥匙已解除 | 🟡 r83 POC 落地（8 槽精灵全 drawImage、4 脏矩形/帧、20fps 模拟侧可行）；完整版仍需接板帧率/触摸验收与关卡/敌人系统，非纯复刻可照搬 |
 | **真·指南针（磁北 / 地理方位）** | 要的是绝对地理方位，而非 r67 惯性方位仪表给的相对航向 | 🔴 blocked：QMI8658 是加速度计+陀螺仪六轴 IMU，**板子没有磁力计**，物理上无法测磁北；需外接磁力计硬件 + 固件刀（新 I2C 传感器绑定、校准/倾斜补偿），非 app 层可解。r67 仪表只登记为「惯性方位/相对航向」，README/UI 均不承诺指北 |
@@ -3417,3 +3417,36 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `c3ca253`（app + playground 生成物） / test `4472867`（新 harness + 三个既有 harness 同步） / docs（本节 + KNOWN-SIMPLIFICATIONS r164 节）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r164 节。
+
+### r165 result — wordle「每日一题」：`lume.system.time()` 日序号确定性选词（纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r165-wt`（分支 `r165-wordle-daily`，基线 `ca6719a`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 只读软链对齐主仓、软链不入 git。
+
+**实证先行（假设以源码为准）**：通读 `examples/wordle/app.js` 全文——旧 `wdPick(rnd)` 为 `rnd ? rnd() : Math.random()` 再 clamp；`wdNewGame(answer, rnd)` 在 :138；KV `hisc.wordle`(11)/`wordle.cur`(10) ≤15 字符；`wdEmit` 推调试串。读 `tests/wordle.js` 三部分（Part 1 裸 vm 逻辑 / Part 2 真 prelude live / Part 3 静态 + mutation）、`BASE='80e76b2'` 重钉先例、`tests/lib/prelude_runner.js:275` 的 `_systemTime: () => Date.now()` 注入点。干净基线 `node tests/wordle.js` 全绿（EXIT=0）后再动手。读 `runtime/types/lume.d.ts` r128 契约原文「a small number near zero ... treat small values as 'clock not set' on a cold boot」，确认冷启动小值诚实口径。实证 `tests/sntp.js` 把 `_systemTime: () => Date.now()` 字面量锁死在 host stub 与 `website/playground/runtime.js` browser stub 上——故不在共享 runner / stub 上动刀。
+
+**决策（取舍见 KNOWN-SIMPLIFICATIONS r165）**：
+1. 日序号口径：`wdDayIndex() = Math.floor(lume.system.time() / 86400000)`，对 `typeof !== 'number' / !isFinite` 防御回 0；`time()` 契约是 number 且不 throw。选词 `wdPick(day) = WORDS[day % WORDS.length]`（简报的 `ANSWERS` 在源码里叫 `WORDS`；300 词表不变，负数环绕）。
+2. 固定时钟注入：只在 `tests/wordle.js` 内于 app eval 前注入 `lume._systemTime`（prelude 动态读该属性）；Part 1 用可写 `mockNowMs`，Part 2/3 用 `probe(clockMs)` 前缀。`tests/lib/prelude_runner.js` 与 playground stub 零改动（保留被 sntp harness 锁定的 `Date.now()` 字面量）。
+3. 连胜/每日新局关系：KV 新增 `wr.day`（7 字符）记**最后一次赢的 dayIndex**；`wdNewGame` 发现 `day - wr.day >= 2` 才清零 `wordle.cur`（漏一天断连胜），同日/次日续连胜；`hisc.wordle` 永不降。
+4. HUD 增 `DAY #N`（N=绝对 dayIndex，与词表长度无关，避开 `%300` 口径歧义）；`WIN IN n - TAP NEW` / `LOST - WORD - TAP NEW` 等存量文案未动。
+5. 冷启动诚实：未 SNTP 时 dayIndex=0 → `WORDS[0]`='about'，UI 不伪装；真机 SNTP 后自动切真实日序号，同日内可能跳词，如实登记。
+
+**实现（纯 app 层）**：仅 `examples/wordle/app.js` + playground 生成物（4 个 `website/playground/` 文件）。`firmware/`、`runtime/`、`.d.ts`、vendored、`tools/`、`examples/wordring` 零改动；未跑 `idf.py build`。
+
+**harness 同步（不改断言语义）**：`tests/wordle.js` 增 2 条逻辑（日序号/确定性选词含冷启动 0 + 连胜跨日 gap）、1 条 live（同钟两次同词 / +1 日换词 / `DAY #N` 随钟推进）、4 条静态 + 4 条 mutation（random 回退、时钟改 0、KV_DAY 超长、HUD 丢 DAY 全部转红）；BASE 从 `80e76b2` 重钉到本轮 feat `6dddec1`，零 diff / allowlist 语义完全保留（未自比较、未删守卫）。
+
+**验证（原始输出见 `/tmp/r165-final-verify.txt`；宿主/编译证据，非真机）**：
+- `node tests/wordle.js` → 16 逻辑 + 7 live + 14 静态 + 14 mutation 全绿（52 条 PASS 行，smoke 双行打印），末行 `ALL WORDLE HARNESS CASES PASSED`，`WORDLE_EXIT=0`。live 实证：注入固定钟两次 `wdNewGame` 同词，钟推进 86400000 ms 后换词且 `DAY #N` 同步推进。
+- `timeout 600 bash -c 'for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done'` → 仅 `done`，**0 FAIL**（`FULL_LOOP_EXIT=0`）；本轮未触发 wordle 存量 flake。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0`，`NPM_TEST_EXIT=0`。
+- `python3 scripts/check_website.py` → `API missing: none` / `API invented: none` / `API duplicates: none` / `API signatures not found in lume.d.ts: none`，`WEBSITE_EXIT=0`。
+- `node tools/lume/lume.js check examples/wordle --no-emu` → `[PASS] bundle 29867 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle wordle 29867 bytes` / `PASS esbuild-wasm assets and 61 editable sources` / `PASS prelude 67428 bytes; 61 apps`；二次构建后 `git status --short` 空（幂等）。
+- **固件/runtime/tools 零改动，未跑 `idf.py build`**：`git diff ca6719a HEAD -- firmware/ runtime/ tools/` 与工作树版 `git diff ca6719a -- firmware/ runtime/ tools/` 原始输出均为空。
+- ASCII 纪律：`grep -Pn '[^\x00-\x7F]' examples/wordle/app.js` → NONE。
+
+**里程碑口径**：P2 wordle 行的「每日一题」blocker（无 RTC→无墙钟）由 r128 `lume.system.time()` 解除，本刀落地 app 层日序号机制；但真机输入手感、圆屏安全区、每日一题真机验收（冷启动未 SNTP 的 dayIndex=0、校时跳词、跨日 KV 持久化）与 HTML 完整词表仍 deferred，**本行仍不标完成**，不声称真机验证。未改 vendored（QuickJS/LVGL）、未跑 codex review（主控轮负责）、未推送。磁盘紧张，最终日志只留 `/tmp/r165-final-verify.txt`。
+
+**commits（未推送，拆分）**：feat `6dddec1`（app + playground 生成物） / test `674d461`（harness + BASE 重钉） / docs（本节 + KNOWN-SIMPLIFICATIONS r165 节）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r165 节。
