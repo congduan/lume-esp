@@ -1,9 +1,0 @@
-lume check examples/counter
-
-[PASS] bundle   2160 bytes (22 ms)
-[PASS] eval     2x "app eval ok; entering event loop"
-[PASS] layout   R1 PASS  R2 PASS  R3 PASS  R4 PASS  R5 PASS  R6 PASS  R7 PASS
-[SKIP] perf     profile disabled
-
-screenshot: artifacts/check/counter/tft.png
-RESULT: PASS (4 steps, 0 failed; exit 0)

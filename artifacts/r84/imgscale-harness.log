@@ -1,8 +1,0 @@
-PASS nearest 2x upsample, exact RGB565 bits: 0xf800 0xf800 0x07e0 0x07e0 ...
-PASS nearest 2x downsample, centre taps = 0x0006 0x0008 0x000e 0x0010
-PASS bilinear hand case 3x1->2x1 = 0xb800 0x05e0
-PASS bilinear 2x2->3x3, centre=0x8410 (channel separation)
-PASS bilinear 5x4->9x7 reference + omitted-mode defaults to nearest
-PASS subarray offset views, guards intact
-PASS error codes -1/-2 and identical-view in-place allowance
-PERF 64x64->128x128 bilinear mean over 200 calls: JS=17.8550 ms native=0.4000 ms (host single sample; not ESP32-S3)

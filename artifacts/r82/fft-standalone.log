@@ -1,6 +1,0 @@
-PASS 8/16-point known DFT, Float32 bit patterns, packed magnitude
-PASS 1kHz peak bin 64/1024 and Parseval
-PASS 4096-point inclusive upper bound
-PASS offset views, guards, split magnitude
-PASS error codes for type, length, non-power-of-two, limit, overlap
-PERF 1024-point mean over 1000 calls: JS butterflies=2.0930 ms native=0.0270 ms (host single sample; not ESP32-S3)
