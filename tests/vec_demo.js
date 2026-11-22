@@ -23,7 +23,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/vec_demo/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = 'ba5156e'; // r153 rebase: pinned to round-start main // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
+const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
 
 // ---- independent reference integrator (NOT copied from the host stub) -----
 // One step with plain doubles for every arithmetic op; Float32Array.from()

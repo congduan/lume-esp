@@ -24,7 +24,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5ca3e66'; // r148: shell Keyboard feat commit; firmware/runtime/CLI still pinned
+const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
 const source = read('examples/wordle/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -277,16 +277,19 @@ check('KV keys <= 15 chars, storage failures non-fatal', () => {
   mockLume.storage.kv.set = s0;
 });
 
-// 13. canvas budget + geometry (keyboard geometry is asserted live below)
-check('canvas budget 109440/230400 px, grid and bar in bounds', () => {
+// 13. canvas budget + geometry (keyboard geometry is asserted live below).
+// r153 removed the self-drawn 26-letter bar: letter verdicts now tint the
+// shell keyboard keys via keyStates, so the grid only has to fit the canvas
+// and the canvas must clear the keyboard.
+check('canvas budget 109440/230400 px, grid in bounds', () => {
   assert.equal(s.IW * s.CANVAS_H, 109440);
   assert.ok(s.IW * s.CANVAS_H <= 230400);
   const gridRight = s.GX + 5 * (s.CELL + s.GAP) - s.GAP;
   const gridBottom = s.GY + 6 * (s.CELL + s.GAP) - s.GAP;
   assert.ok(gridRight <= s.IW, 'grid right inside canvas');
-  assert.ok(gridBottom < s.BAR_Y, 'grid clears the letter bar');
-  assert.ok(s.BAR_Y + s.BAR_H <= s.CANVAS_H, 'bar inside canvas');
-  assert.ok(6 + 26 * s.BAR_CELL <= s.IW, '26 letter cells fit the row');
+  assert.ok(gridBottom <= s.CANVAS_H, 'grid bottom inside canvas');
+  assert.ok(s.CANVAS_Y + s.CANVAS_H <= 300, 'canvas clears the keyboard at y 300');
+  assert.ok(300 + 4 * 40 + 2 * 4 <= 480, '4-row keyboard fits the 480 px screen');
 });
 
 /* ------------------------ part 2: live prelude ------------------------- */
@@ -486,9 +489,11 @@ const checks = [
   ['Keyboard geometry: 40 px key, gap 0, y 300', [wiring, x =>
     x.includes('keySize: 40, gap: 0, y: 300')]],
 
-  ['letter state bar consumes wdLetterMarks', [source, x =>
+  ['keyStates consume wdLetterMarks (r153 tint replaces the letter bar)', [source, x =>
     x.includes('var marks = wdLetterMarks(state)') &&
-    x.includes("mk === 'G' ? COL.GREEN_B")]],
+    x.includes("marks[ch] === 'G' ? 'hit'") &&
+    x.includes("'Y' ? 'present'") &&
+    x.includes("'miss'")]],
 
   ['native nodes carry QWERTY + SPACE/BKSP/ENTER', [labelString, x =>
     x === QWERTY + 'SPACEBKSPENTER']],
@@ -502,7 +507,7 @@ const checks = [
   ['wordle is in the 57-app playground manifest', [apps,
     list => list.length === 57 && list.includes('wordle')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 5ca3e66', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to 5d02549', [fwChanged, c => c.length === 0]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -525,12 +530,12 @@ function must(name, mutation, checkName, sourceForCheck) {
 const REG = 'Keyboard registered on lume.ui.shell';
 const WIRE = 'app wires onKey/onBackspace/onSubmit into game logic';
 const GEO = 'Keyboard geometry: 40 px key, gap 0, y 300';
-const BAR = 'letter state bar consumes wdLetterMarks';
+const TINT = 'keyStates consume wdLetterMarks (r153 tint replaces the letter bar)';
 const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
 const MANIFEST = 'wordle is in the 57-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 5ca3e66';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 5d02549';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop shell.Keyboard registration',
@@ -539,8 +544,8 @@ must('app stops forwarding onKey',
   x => x.replace('wdKey(state, ch)', 'null'), WIRE, wiring);
 must('shrink the keyboard touch target',
   x => x.replace('keySize: 40, gap: 0, y: 300', 'keySize: 40, gap: 8, y: 300'), GEO, wiring);
-must('letter bar drops feedback marks',
-  x => x.replace('var marks = wdLetterMarks(state)', 'var marks = {}'), BAR, source);
+must('keyStates drop feedback marks',
+  x => x.replace('var marks = wdLetterMarks(state)', 'var marks = {}'), TINT, source);
 must('a key label drifts from QWERTY',
   x => x.slice(0, -1) + 'X', LABELS, labelString);
 must('a non-ASCII UI literal slips in',

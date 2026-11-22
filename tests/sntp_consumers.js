@@ -41,10 +41,10 @@ function asciiStrings(s) {
 const R129_ALLOWLIST = [];
 function gitChanged() {
   const head = execFileSync('git',
-    ['diff', '--name-only', 'ba5156e', 'HEAD', '--', 'firmware/', 'runtime/'],
+    ['diff', '--name-only', '5d02549', 'HEAD', '--', 'firmware/', 'runtime/'],
     { cwd: root, encoding: 'utf8' }).trim();
   const work = execFileSync('git',
-    ['diff', '--name-only', 'ba5156e', '--', 'firmware/', 'runtime/'],
+    ['diff', '--name-only', '5d02549', '--', 'firmware/', 'runtime/'],
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }

@@ -22,7 +22,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '0d1111c'; // r153: Keyboard keyStates feat commit (runtime/ shell + types)
+const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
 const shell = read('runtime/shell.js');
 const types = read('runtime/types/lume.d.ts');
 

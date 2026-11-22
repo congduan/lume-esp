@@ -20,7 +20,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5ca3e66'; // r148: shell Keyboard feat commit (runtime/ shell + types + api)
+const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
 
 const app = read('examples/keyboard_demo/app.js');
 const shell = read('runtime/shell.js');

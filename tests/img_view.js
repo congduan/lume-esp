@@ -24,7 +24,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/img_view/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = 'ba5156e'; // r153 rebase: pinned to round-start main // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
+const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
 const SW = 24, SH = 24, FACTORS = [2, 4, 8];
 
 // ---- independent reference scalers (NOT copied from the host stub) --------

@@ -27,7 +27,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/archive_view/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = 'ba5156e'; // r153 rebase: pinned to round-start main // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
+const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
 
 // ---- independent expected plaintexts (same synthetic samples the app embeds)
 const PLAIN_A = '[Lume] boot log sample (synthetic)\n' +

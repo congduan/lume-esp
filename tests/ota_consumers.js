@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '0d1111c'; // r153: re-pinned past the Keyboard keyStates shell round
+const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -336,6 +336,19 @@ const ALLOWED = [
   'tests/timer_kit.js',
   'website/playground/apps/timer_kit.js',
   'website/playground/sources/timer_kit.js',
+  // r158: BASE re-pinned to the r153 merge point 5d02549 (runtime/ unchanged
+  // since). These are the exact r156/r157 paths that now fall inside the diff
+  // window; each is allowlisted by its precise path, never by a wildcard.
+  'artifacts/r156/gateway-solo.txt',
+  'artifacts/r156/host-batch-0.txt',
+  'artifacts/r156/host-batch-1.txt',
+  'artifacts/r156/host-batch-2.txt',
+  'artifacts/r156/npm-ci.txt',
+  'artifacts/r156/ota-guard.txt',
+  'artifacts/r156/playwright.txt',
+  'artifacts/r156/website-check.txt',
+  'website/playground/index.html',
+  'website/playground/page.js',
   'artifacts/r152/regression-summary.txt',  // r156: skycombat 3D dogfight app + harness + evidence.
   'examples/skycombat/app.js',
   'tests/skycombat.js',
@@ -358,8 +371,8 @@ const ALLOWED = [
   // already allowlisted above (regenerated because shell.js is embedded in the
   // bundle); the new per-key tint harness is staged here BEFORE commit because
   // `git diff` does not see untracked files, which would otherwise turn the
-  // allChanged allowlist red once the test commit lands. All 15 guard BASEs are
-  // re-pinned to the r153 feat commit 0d1111c (runtime/ diff stays pinned).
+  // allChanged allowlist red once the test commit lands. All guard BASEs are
+  // re-pinned to the r153 merge point 5d02549 (runtime/ diff stays pinned).
   'tests/keyboard_states.js',
 ];
 

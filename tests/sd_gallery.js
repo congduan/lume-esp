@@ -90,7 +90,7 @@ const R128_FIRMWARE_FILES = [
   'firmware/sdkconfig.defaults',
   'runtime/types/lume.d.ts',
 ];
-const diffFiles = execFileSync('git', ['diff', '--name-only', 'ba5156e',
+const diffFiles = execFileSync('git', ['diff', '--name-only', '5d02549',
   '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
 const changed = diffFiles ? diffFiles.split('\n') : [];
 assert.ok(changed.every(f => R128_FIRMWARE_FILES.includes(f)),

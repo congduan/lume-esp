@@ -21,7 +21,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'ba5156e'; // r153 rebase: pinned to round-start main // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
+const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
 const HEAD_BASE = '31adb96'; // r150 trunk: firmware/ must be byte-identical
 
 const app = read('examples/controls_demo/app.js');
@@ -273,9 +273,9 @@ must('drop the Switch onChange dispatch',
 must('lower the touch floor on one component',
   s => s.replace('lume: Slider height must be 40..128 pixels', 'lume: Slider height must be 1..128 pixels'), FLOOR, shell);
 must('drop the Canvas cleanup registration',
-  s => s.replace('cleanups[canvas] = function ()', '/* no cleanup */'), CLEAN, shell);
+  s => s.replaceAll('cleanups[canvas] = function ()', '/* no cleanup */'), CLEAN, shell);
 must('drop the gesture unsubscriber call',
-  s => s.replace('cleanups[canvas] = function () {\n      offs.forEach(function (off) { off(); });\n      lume.removeChild(canvas);\n    };',
+  s => s.replaceAll('cleanups[canvas] = function () {\n      offs.forEach(function (off) { off(); });\n      lume.removeChild(canvas);\n    };',
                  'cleanups[canvas] = function () { lume.removeChild(canvas); };'), GESTURE, shell);
 must('make Progress re-create its fill on every value change',
   s => s.replace('width: function () { return Math.round(fraction() * width); }', 'width: 1'), PROGRESS, shell);
