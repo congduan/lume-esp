@@ -21,7 +21,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'd49fb81'; // r151: shell form-primitives feat commit (runtime/ shell + types + api)
+const BASE = '0d1111c'; // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
 const HEAD_BASE = '31adb96'; // r150 trunk: firmware/ must be byte-identical
 
 const app = read('examples/controls_demo/app.js');

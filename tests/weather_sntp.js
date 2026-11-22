@@ -23,7 +23,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'd49fb81'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
+const BASE = '0d1111c'; // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
 const BEGIN = '/* ---- r131: SNTP-first BEGIN ---- */';
 const END = '/* ---- r131: SNTP-first END ---- */';
 
@@ -120,7 +120,7 @@ const checks = [
   ['weather is in the 55-app playground manifest', [playgroundApps,
     list => list.length === 55 && list.includes('weather')]],
 
-  ['firmware/ runtime/ CLI tooling identical to d49fb81 (manifest excluded)',
+  ['firmware/ runtime/ CLI tooling identical to 0d1111c (manifest excluded)',
     [changed, c => c.length === 0]],
 ];
 
@@ -184,6 +184,6 @@ must('playground manifest drops weather',
   'weather is in the 55-app playground manifest', playgroundApps);
 must('a firmware file changes vs 1dc7c76',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to d49fb81 (manifest excluded)', changed);
+  'firmware/ runtime/ CLI tooling identical to 0d1111c (manifest excluded)', changed);
 
 console.log('ALL WEATHER SNTP HARNESS CASES PASSED');

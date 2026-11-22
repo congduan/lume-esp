@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'd49fb81'; // r152: re-pinned past the Switch/Slider/Progress shell round
+const BASE = '0d1111c'; // r153: re-pinned past the Keyboard keyStates shell round
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -331,8 +331,15 @@ const ALLOWED = [
   'artifacts/r152/playwright-production-page.txt',
   'docs/r152-flapdot-ghost-report.md',
   // r151 (shell form primitives round) landed its controls_demo harness on
-  // main after d49fb81 was pinned; it is a test-only addition.
+  // main after 0d1111c was pinned; it is a test-only addition.
   'tests/controls_demo.js',
+  // r153: Keyboard keyStates round. The wordle playground generated files are
+  // already allowlisted above (regenerated because shell.js is embedded in the
+  // bundle); the new per-key tint harness is staged here BEFORE commit because
+  // `git diff` does not see untracked files, which would otherwise turn the
+  // allChanged allowlist red once the test commit lands. All 15 guard BASEs are
+  // re-pinned to the r153 feat commit 0d1111c (runtime/ diff stays pinned).
+  'tests/keyboard_states.js',
 ];
 
 // --- checks -----------------------------------------------------------------

@@ -20,7 +20,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'd49fb81'; // r148: shell Keyboard feat commit (runtime/ shell + types + api)
+const BASE = '0d1111c'; // r153: Keyboard keyStates feat commit (runtime/ shell + types + api)
 
 const app = read('examples/keyboard_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -132,7 +132,7 @@ const checks = [
   ['keyboard_demo is in the 55-app playground manifest', [apps,
     list => list.length === 55 && list.includes('keyboard_demo')]],
 
-  ['firmware/ and runtime/ identical to d49fb81', [fwChanged, c => c.length === 0]],
+  ['firmware/ and runtime/ identical to 0d1111c', [fwChanged, c => c.length === 0]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -216,7 +216,7 @@ const LABELS = 'native nodes carry the 26 letters + SPACE + BKSP + ENTER labels'
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/keyboard_demo.js byte-identical to example';
 const MANIFEST = 'keyboard_demo is in the 55-app playground manifest';
-const GUARD = 'firmware/ and runtime/ identical to d49fb81';
+const GUARD = 'firmware/ and runtime/ identical to 0d1111c';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop the shell.Keyboard registration',

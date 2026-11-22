@@ -20,7 +20,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/adc_meter/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = 'd49fb81'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
+const BASE = '0d1111c'; // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
 
 function literals(s) {
   return [...s.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g)]
@@ -137,7 +137,7 @@ check('playground manifest has 55 apps including adc_meter', () => {
 });
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/adc_meter.js'), source));
-check('firmware/ and runtime/ byte-identical to baseline d49fb81', () =>
+check('firmware/ and runtime/ byte-identical to baseline 0d1111c', () =>
   assert.deepEqual(gitChanged(['firmware/', 'runtime/']), []));
 
 // ---- mutation proof: every key predicate must fail on a bad input --------
