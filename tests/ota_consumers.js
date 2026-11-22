@@ -406,6 +406,11 @@ const ALLOWED = [
   // cannot see untracked files; without it the allChanged allowlist turns red
   // once the test commit lands. No firmware / runtime / tools/lume change.
   'tests/settings_dialog.js',
+  // r164: the two-stage confirm sweep harness is staged BEFORE the feat/test
+  // commits because `git diff` cannot see untracked files; without it the
+  // allChanged allowlist turns red once the test commit lands. No firmware /
+  // runtime / tools/lume change in this round.
+  'tests/confirm_sweep.js',
 ];
 
 // --- checks -----------------------------------------------------------------

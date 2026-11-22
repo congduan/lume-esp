@@ -7,7 +7,8 @@
 // examples/hr_monitor/app.js and the generated playground wiring instead.
 //   - the app degrades to an ASCII note when lume.ble is absent (typeof guard).
 //   - status() failure (negative number) is discriminated via typeof === object.
-//   - advertising start/stop sit behind a two-stage arm -> 3 s -> act gate.
+//   - advertising start/stop sit behind a shell.Dialog confirmation (r164
+//     replaces the old two-stage arm -> 3 s -> act gate); Cancel never acts.
 //   - HR telemetry is throttled by a >=1 s setInterval and only written while
 //     connected AND subscribed; inbound commands are truncated to 20 bytes.
 //   - all UI literals are ASCII (r64), the generated playground source is
@@ -42,7 +43,7 @@ const ui = sliceBetween(app,
   '/* ---- r146: UI END ---- */');
 const pollSlice = sliceBetween(app, '/* r146 STATUS POLL BEGIN */', '/* r146 STATUS POLL END */');
 const streamSlice = sliceBetween(app, '/* r146 HR STREAM BEGIN */', '/* r146 HR STREAM END */');
-const gateSlice = sliceBetween(app, '/* r146 TWO-STAGE GATE BEGIN */', '/* r146 TWO-STAGE GATE END */');
+const gateSlice = sliceBetween(app, '/* r164: BLE advertise/stop gate BEGIN', '/* r164: BLE advertise/stop gate END */');
 
 // String literals are the UI copy surface (comments here are English anyway).
 function literals(s) {
@@ -83,13 +84,14 @@ const checks = [
     s.includes("typeof s === 'object'") &&
     s.includes("note.set('status err ' + s)")]],
 
-  ['two-stage gate arms a 3 s confirm and returns before start/stop', [gateSlice, s => {
-    const g = s.indexOf('if (!toggleArm())');
-    const arm = s.indexOf('toggleArm.set(true);', g);
-    const timer = s.indexOf('}, 3000);', g);
-    const ret = s.indexOf('return;', g);
-    const act = s.indexOf('if (advertising()) stopAdv(); else startAdv();', g);
-    return g >= 0 && arm > g && timer > arm && ret > timer && act > ret;
+  ['shell.Dialog gate: Cancel is plain, danger calls startAdv/stopAdv', [gateSlice, s => {
+    const dlg = s.indexOf('shell.Dialog({');
+    const cancel = s.indexOf("{ label: 'Cancel', style: 'plain' }");
+    const danger = s.indexOf("style: 'danger', onPress: function ()");
+    const act = s.indexOf('if (advertising()) stopAdv(); else startAdv();', danger);
+    return dlg >= 0 && cancel > dlg && danger > cancel && act > danger &&
+      s.slice(cancel, danger).indexOf('onPress') < 0 &&
+      !/toggleArm|toggleArmTimer/.test(s);
   }]],
 
   ['both lume.ble.start and lume.ble.stop are wired through the gate', [logic, s =>
@@ -144,9 +146,9 @@ must('drop the typeof lume.ble guard',
 must('truthy test replaces typeof === object discrimination',
   s => s.replace("typeof s === 'object'", 's'),
   'status() negative-number error discriminated via typeof === object', pollSlice);
-must('drop the first-tap arm gate',
-  s => s.replace('if (!toggleArm()) {', 'if (false) {'),
-  'two-stage gate arms a 3 s confirm and returns before start/stop', gateSlice);
+must('drop the BLE Dialog gate',
+  s => s.replace('shell.Dialog({', 'void ({'),
+  'shell.Dialog gate: Cancel is plain, danger calls startAdv/stopAdv', gateSlice);
 must('stop() no longer wired through the gate',
   s => s.replace('lume.ble.stop();', ';'),
   'both lume.ble.start and lume.ble.stop are wired through the gate', logic);

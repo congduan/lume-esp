@@ -3,11 +3,12 @@
  *
  *   node tests/settings_dialog.js
  *
- * Part 1 (static, every predicate mutation-proven): the two dangerous actions
- * (OTA token rotation, system reboot) open a shell.Dialog with a plain Cancel
- * and a danger Rotate/Reboot button; the old 3 s arm/confirm signals and timers
- * are gone; the typeof shell.Dialog and typeof lume.system.reboot guards stay;
- * firmware/ runtime/ are byte-identical to the r162 baseline; UI copy is ASCII.
+ * Part 1 (static, every predicate mutation-proven): the three dangerous actions
+ * (OTA token rotation, system reboot, real power off) open a shell.Dialog with a
+ * plain Cancel and a danger Rotate/Reboot/Power off button; the old 3 s
+ * arm/confirm signals and timers are gone; the typeof shell.Dialog and binding
+ * guards stay; firmware/ runtime/ are byte-identical to the r162 baseline; UI
+ * copy is ASCII.
  *
  * Part 2 (live): run the REAL app against the firmware prelude + shell.js and
  * press the generated dialog buttons. Cancel must not execute either action;
@@ -103,10 +104,11 @@ const checks = [
       s.includes('!lume.system ||') && s.includes("rebootNote.set('reboot n/a')");
   }]],
 
-  ['both Dialog guards degrade to ASCII notes (no silent dangerous fallback)', [app, s =>
-    (s.match(/typeof shell\.Dialog !== 'function'/g) || []).length === 2 &&
+  ['all three Dialog guards degrade to ASCII notes (no silent dangerous fallback)', [app, s =>
+    (s.match(/typeof shell\.Dialog !== 'function'/g) || []).length === 3 &&
     s.includes("otaNote.set('rotate n/a (no dialog)')") &&
-    s.includes("rebootNote.set('reboot n/a (no dialog)')")]],
+    s.includes("rebootNote.set('reboot n/a (no dialog)')") &&
+    s.includes("powerNote.set('power off n/a (no dialog)')")]],
 
   ['no two-stage confirm signals or arm timers survive', [app, s =>
     !/otaConfirm|rebootConfirm|otaArmTimer|rebootArmTimer|Confirm new token\?|Confirm reboot\?/.test(s)]],
@@ -166,9 +168,9 @@ must('delete the reboot Dialog danger Reboot button',
 must('move reboot() before the typeof guard',
   s => s.replace("typeof lume.system.reboot !== 'function'", 'false'),
   'reboot() sits inside the danger onPress, after the typeof guard', REBOOT);
-must('harden the Dialog guard (drop both fallbacks)',
+must('harden the Dialog guard (drop all three fallbacks)',
   s => s.replace(/typeof shell\.Dialog !== 'function'/g, 'false'),
-  'both Dialog guards degrade to ASCII notes (no silent dangerous fallback)', app);
+  'all three Dialog guards degrade to ASCII notes (no silent dangerous fallback)', app);
 must('resurrect the two-stage confirm signal',
   s => s.replace('var otaNote', 'var otaConfirm = signal(false); var otaNote'),
   'no two-stage confirm signals or arm timers survive', app);
@@ -272,9 +274,12 @@ assert.equal(stubRun.ctx.__r163OtaNote(), 'rotate n/a (no dialog)');
 assert.equal(stubRun.ctx.__r163RebootNote(), 'reboot n/a (no dialog)');
 console.log('PASS settings_dialog live: Dialog stub -> ASCII notes, no auto action');
 
-// live mutation proof: a Cancel with an onPress really would execute the action
-const bad = app.replace("{ label: 'Cancel', style: 'plain' }",
+// live mutation proof: a Cancel with an onPress really would execute the action.
+// Scope the edit to the ROTATE slice: powerOff now also owns a plain Cancel and
+// sits earlier in the file, so a bare app.replace() would mutate the wrong one.
+const badRotate = ROTATE.replace("{ label: 'Cancel', style: 'plain' }",
   "{ label: 'Cancel', style: 'plain', onPress: function () { lume.ota.setToken('bad'); } }");
+const bad = app.replace(ROTATE, badRotate);
 assert.notEqual(bad, app, 'live mutation did not change source');
 const badRun = live(bad);
 let badCalls = 0;
