@@ -514,7 +514,10 @@
       remainder += delta;
       var steps = remainder > 0 ? Math.floor((remainder + 1e-9) / stepAngle)
                                 : Math.ceil((remainder - 1e-9) / stepAngle);
-      if (steps) { remainder -= steps * stepAngle; if (p.onRotate) p.onRotate(steps); }
+      if (steps) {
+        remainder -= steps * stepAngle;
+        if (p.onRotate) for (var i = 0; i < Math.abs(steps); i++) p.onRotate(steps > 0 ? 1 : -1);
+      }
     }));
     offs.push(lume.gesture.on(canvas, 'panend', function () { last = null; remainder = 0; }));
     offs.push(lume.gesture.on(canvas, 'tap', function (e) {
