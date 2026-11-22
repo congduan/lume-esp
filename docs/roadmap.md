@@ -3341,7 +3341,7 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 
 **验证（原始输出；宿主/编译证据，非真机）**：
 - `node tests/launcher_grid.js` → 20 静态 + 25 静态 mutation + 6 live + 9 live mutation 全绿，末行 `ALL LAUNCHER GRID HARNESS CASES PASSED`，`EXIT=0`。新增 live 实证：tap edit → 回调 true / 渲染 `EDIT`、back → false / 恢复 `READY`、无回调变体不炸且保持旧语义；新增 shell 侧 live mutation「删掉通知调用 → app editing 仍 false」证明通知 load-bearing。
-- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → 仅 `done`，**0 FAIL**（feat 后、test commit 后各跑一次）。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → 仅 `done`，**0 FAIL**（feat 后、test commit 后各跑一次；最终又连跑 4 次均 0 FAIL）。一次早期全量跑曾出现 `FAIL tests/wordle.js`，单独复跑即绿；实证 `tests/wordle.js:428-431` 的 smoke 用 `Math.random()` 掷键，断言 `a green or yellow cell fill was drawn`（:388）在随机序列未命中绿/黄格时会偶发失败。干净基线 worktree `f6d5853` 同法 40 次跑出 2 次失败（本轮 worktree 30 次 1 次失败），**确认为存量 flake、非本轮引入**；本轮对 `wordle.js` 的改动只有 BASE/标签重钉，未碰 smoke 与断言。
 - `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # skipped 0`。
 - `python3 scripts/check_website.py` → `HTML pages: 7` / `API: 158 catalog entries, 158 type declarations, 34 function namespaces` / `API missing/invented/duplicates/signatures not found: none`。
 - `node tools/lume/lume.js check examples/launcher_grid --no-emu` → `[PASS] bundle 20683 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
