@@ -3027,3 +3027,29 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送）**：`feat(hr_monitor app + playground 清单)` / `test(hr_monitor harness + 52-app 口径同步)` / `docs(r146)`。实验产物仅留 `/tmp`，仓库只进源码 + docs。ASCII 纪律全满足；未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）。真机 BLE 广播/GATT 发现/notify 吞吐/WiFi+BLE 共存/睡眠电流全部 deferred，统一为「模拟器/宿主证据，非真机」。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r146 节。
+
+### r147 result — M5 Board abstraction 首刀：`lume-board-hal` 运行时单例桩（appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，无 429，未在 `/home/ubuntu/lume` 写文件。新 worktree `/tmp/lume-r147-wt`（分支 `r147-board-hal`，基线 `4155d15`）。
+
+**实证纠偏（任务书前提错误，先读源码复核）**：任务书要求新增 `firmware/components/lume-board/{include/lume_board.h,lume_board.c,CMakeLists.txt}`，并断言「无人引用也编译干净」。实证这三个文件**在基线 4155d15 已存在且被 git 跟踪**：`lume-board` 是 r27/r44/r45 收口的**板级驱动组件**，内含 `lume_board.c/h`（`lume_board_init` / I2C / LVGL / 显示睡眠唤醒 / capture）、`lume_display.c`、`lume_touch.c`、`lume_pmic.c`、`lume_pins.h` 与自己的 CMake 注册；`firmware/main/CMakeLists.txt:4` 已把 `lume-board` 列入 `REQUIRES`。直接按任务书路径写会覆盖工作代码、破坏固件，并违反「不改任何既有文件」硬约束。故按任务书的**意图**（纯新增、零既有改动、无人引用也编译干净的运行时分发桩）新建**同级组件** `firmware/components/lume-board-hal/`，头文件/实现用 `lume_board_hal.h` / `lume_board_hal.c` 避免与现有 `lume_board.h` 撞名；符号名 `lume_board_t` / `lume_board_get` / `lume_board_not_supported` 与任务书一致。现有 `lume-board` 组件一字未动。
+
+**ESP-IDF v5.5.5 自动发现实证**：`build.cmake:532-533` 原文「If not specified, all components known to the build system are processed」，`build.cmake:386-404` 把每个已发现 component 加入 `__BUILD_COMPONENTS`；`component.cmake:445` 的 `idf_component_register` 注册 SRCS/INCLUDE_DIRS。故 `firmware/components/` 下新目录自动纳入构建，**无需 main 加 REQUIRES**（任务书预判正确，未加）。构建日志实证 `[100%] Built target __idf_lume-board-hal`，产物 `build/esp-idf/lume-board-hal/liblume-board-hal.a`（8214 B）——证明桩组件确实被编译，但因无人引用未进入最终镜像链接。
+
+**实现**：`lume_board_t` = 4 个函数指针（`panel_init` / `touch_init` / `touch_read` / `power_init`）+ `const char *board_id`；签名按实证的驱动调用形状定型（`panel_init <- lume_display_init(lv_display_t **)`、`touch_init <- lume_touch_init(bus, disp)`、`touch_read <- 点读(x,y,pressed)`、`power_init <- lume_pmic_display_power_on(bus)`），ESP/LVGL 类型擦成 `void *` 以保持头文件 freestanding（宿主 gcc 可直接编译）；`int` 错误码约定（0 成功、负数失败，桩返回 `LUME_BOARD_ERR_NOT_SUPPORTED = -1`）。单例 `lume_board_get()` 返回静态 `s_lume_board_generic`，四个指针指向同一个 `lume_board_not_supported` 桩的四个带类型 face（避免函数指针互转 UB），`board_id = "generic"`。编译期 profile 仍是参数真源，本组件只是运行时分发桩——两处文件头均写明。
+
+**验证（原始输出；编译/宿主证据，非真机）**：
+- `idf.py build`（规定 wrapper，`env -u VIRTUAL_ENV IDF_PYTHON_ENV_PATH=.../idf5.5_py3.12_env`）→ `BUILD_EXIT=0` / `error:` 零命中；`lume.bin binary size 0x2e5540 bytes`。
+- `idf.py size` → `SIZE_EXIT=0`，关键行：`Flash Code 2041288` / `Flash Data 853292` / `DIRAM 247491 (72.42%, Remain 94269)` / `IRAM 16384 (100.0%, Remain 0)` / `Total image size: 3036351 bytes`。与最近有固件构建的基线 r141（`ddde5c9`，Flash Code 2041288 / Flash Data 853292 / DIRAM 247491 / IRAM 16384 Remain 0 / Total 3036351）**逐字节一致，增量 0 B**；IRAM 16384 硬线未破。原因：新组件编译成 `.a` 但无引用方，静态库目标文件未进链接闭包，镜像尺寸不变。r146 为零固件 diff 轮，未构建，故用 r141 战报数字对照（任务书允许）。
+- `node tests/board_abi.js` → 8 条源码/守卫断言 + 7 条 C 断言全绿，`board_abi: ALL CHECKS PASSED`，`BOARD_ABI_EXIT=0`。C harness `tests/board_abi.c` 以 `_Static_assert` 锁 4 个前导函数指针字段 + `board_id` 尾字段布局、单例非 NULL 且稳定、四 op 全返回 -1。
+- `for t in tests/*.js; do timeout 120 node "$t" ...; done; echo done` → `done`，**0 FAIL**。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # skipped 0`，`NPM_TEST_EXIT=0`（worktree 缺 gitignore 的 `node_modules` / `bin/qjsc`，软链/拷贝主仓只读物后对齐基线，源码零改动，同 r128/r143/r146 环境事实）。
+- `python3 scripts/check_website.py` → `API: 153 catalog entries, 153 type declarations, 34 function namespaces` / `API missing: none` / `API invented: none` / `API duplicates: none` / `WEBSITE_EXIT=0`。
+- `node tools/lume/lume.js check examples/counter --no-emu` → `RESULT: PASS (4 steps, 0 failed; exit 0)`。
+- **零改动守卫**：基线实证 `git diff 4155d15 HEAD -- ...` 空。提交前原始命令（排除现有 `lume-board` / `board_abi.*` / `docs`）输出**空**，`GUARD_EXIT=0`；附加排除新同级组件的 post-commit-safe 版本亦空，`GUARD2_EXIT=0`。`git status --short` 仅三行新路径：`?? firmware/components/lume-board-hal/`、`?? tests/board_abi.c`、`?? tests/board_abi.js`。
+- **磁盘**：build 后 `df -h /` = `43G used / 4.6G avail / 91%`；立即 `rm -rf firmware/build` 后 = `43G used / 5.0G avail / 90%`，build 目录已移除。artifacts 只留 `/tmp/lume-r147-*.log`。
+
+- **提交后实证（如实记录）**：提交后原样命令的输出只剩 `firmware/components/lume-board-hal/` 三个新文件（`git diff` 对 untracked 不可见的窗口已结束），属预期新组件；`tests/board_abi.js` 因内置扩展守卫仍全绿。全量 `tests/*.js` 复跑有 13 个存量 harness 转红（`adc_meter` / `archive_view` / `crypto_check` / `hr_monitor` / `img_view` / `ota_consumers` / `reboot_consumers` / `sd_files` / `sd_gallery` / `sntp_consumers` / `sntp_consumers2` / `vec_demo` / `weather_sntp`），原因是它们以旧 BASE 对 `firmware/` 做零 diff / 已知文件 allowlist 断言——需主控按 r143/r146 先例重钉到 feat 提交 `6176790`。本轮验证按任务书顺序在提交前完成（0 FAIL），未改这些 harness 的 BASE 以守住「零既有改动」。
+- **M5 Board abstraction checkbox 不勾**：无第二块板目标、无运行时切换、无真机验收——本刀只是给未来第二板 / 运行时探测留的桩。板级项（显示/触摸/sleep current/radio/第二板探测）全部 deferred，**不声称真机验证**，统一为「编译/宿主证据，非真机」。ASCII 纪律全满足；未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；commits 拆 feat / test / docs，**未推送**，未跑 codex review（主控轮负责）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r147 节。
