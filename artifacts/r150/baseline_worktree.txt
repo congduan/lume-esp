@@ -1,0 +1,2 @@
+Preparing worktree (detached HEAD ca4ba35)
+HEAD is now at ca4ba35 test(r148-followup): re-pin board_abi/ota_consumers guards for stale artifacts cleanup (e4f2d47)

@@ -1,0 +1,2 @@
+PASS files before: DEL -> status confirmation -> DEL -> remove
+PASS files after: DEL -> Dialog -> Delete -> remove -> Toast

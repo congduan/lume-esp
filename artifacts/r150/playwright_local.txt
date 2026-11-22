@@ -1,0 +1,3 @@
+PASS index.html English/Chinese new copy visible
+PASS guide.html English/Chinese new copy visible
+PASS faq.html English/Chinese new copy visible
