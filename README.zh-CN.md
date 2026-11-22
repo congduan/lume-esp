@@ -125,6 +125,14 @@ WiFi 后，同一个 bundle 也能走 TCP：`node tools/lume/lume.js deploy my-a
 （`--ota` 同样可用；见[调试截图](docs/build.md#debug-screenshot-lume-screenshot)）。
 协议细节、控制键与 WiFi OTA / CI 发布说明见[构建与开发](docs/build.md)。
 
+### 在浏览器中体验
+
+[Playground](https://congduan.github.io/lume-esp/playground/) 收录 53 个屏幕应用，可直接在浏览器中试用。这里是带硬件桩的 prelude 语义模拟；触摸手感、时序和硬件行为仍需真机验收。
+
+### 浏览器中的真实固件
+
+Playground 的 Firmware 标签页通过 [esp32sim](https://mikroverk.github.io/esp32sim/) WebAssembly 模拟器启动未经修改的 Lume 固件，使用与开发板相同的 QuickJS-NG 和 LVGL 渲染链路。已验证启动到桌面；此模式不支持热重载。
+
 ### 宿主模拟器
 
 不接板子也能预览：`node tools/simulator/sim.js examples/counter/app.js`，然后打开
@@ -142,7 +150,7 @@ WiFi 后，同一个 bundle 也能走 TCP：`node tools/lume/lume.js deploy my-a
 （[examples/net_check](examples/net_check/app.js)）每步打印
 `[NETCHECK] <步骤> <PASS|FAIL>`，任一失败以非零码退出，串口日志在
 `artifacts/emu-net/`。分工：**esp32sim** 负责视觉验收（CO5300 逐帧 PNG），
-**esp-emu** 负责功能/网络验收（WiFi、TF 卡）。安装见
+**esp-emu** 覆盖虚拟网络路径与可选 TF 探测。已记录的 r144 运行仍在 WiFi 关联阶段失败，r142 TF 探测在卡初始化阶段失败；两者均不构成真机验收。安装见
 [tools/emu-net/README.md](tools/emu-net/README.md)。
 
 ## 示例
@@ -257,6 +265,11 @@ lume.power.sleepNow();                // touch the screen to wake up
 - **手势** —— tap / swipe / longpress / pan 事件流，与滚动共存
 - **生命周期** —— onStart/onPause/onResume/onBack；热重载时 bundle 被完整释放
 - **主题** —— 具名颜色 token，一次调用切换明暗并重绘引用到的属性
+- **网络校时** —— WiFi 获得 IP 后用 `lume.system.setTimeNtp()` 同步墙钟；clock、clock_round、watchface、weather 已接入，各应用有各自的失败回退逻辑
+- **存储与工具 API** —— TF 卡 `lume.storage.Sd`，以及 `lume.crypto`、`lume.compress`、`lume.fft`
+- **圆屏布局** —— 可选的 `lume.ui.shell.SafeArea` 把内容放在圆内接正方形中
+- **事件驱动渲染循环** —— LVGL 任务等待定时器或通知唤醒；省电幅度仍需真机测量
+- **网络工具** —— WiFi OTA 使用 HMAC 鉴权；`tools/emu-net/run.sh` 提供虚拟 WiFi 无头门禁，但已记录的 esp-emu v1.2.0 运行仍卡在关联阶段
 - **自动息屏** —— 空闲超时进入 light sleep，触摸唤醒（触摸 INT 引脚上的 ext0）
 - **截图调试** —— `lume screenshot` 通过同一条 USB/WiFi 推送通道抓取实时画面并写成
   经 CRC 校验的 BMP，不需要额外工具
@@ -278,10 +291,10 @@ lume.power.sleepNow();                // touch the screen to wake up
 | 里程碑 | 状态 |
 |---|---|
 | **M1 —— 最小闭环**（引擎、触摸→JS、声明式 UI、热重载） | ✅ 代码完成 |
-| **M2 —— 硬件 API 面**（GPIO/PWM/ADC、电源、IMU、WiFi+HTTP、KV、文件、音频） | ✅ 代码完成 |
-| **M3 —— 声明式 UI 完整性**（flex、样式、动画、canvas、手势、生命周期、主题、虚拟化列表、图片） | ✅ 代码完成 |
-| **M4 —— 工具链**（`lume` CLI ✅、宿主模拟器 ✅、WiFi OTA 代码完成 + HMAC 鉴权 ✅、esp-emu 网络验收 ✅ / 真机射频待确认） | 🚧 |
-| **M5 —— 生态**（组件库、启动器壳层、板抽象） | 🚧 可选的 JS 壳层组件与双语文档站已落地；板抽象未开始 |
+| **M2 —— 硬件 API 面**（GPIO/PWM/ADC、电源、IMU、WiFi+HTTP、KV、文件、音频、TF 卡、crypto、compress、FFT、SNTP） | ✅ 代码完成 |
+| **M3 —— 声明式 UI 完整性**（flex、样式、动画、canvas、手势、生命周期、主题、虚拟化列表、图片、SafeArea） | ✅ 代码完成 |
+| **M4 —— 工具链**（`lume` CLI ✅、宿主模拟器 ✅、WiFi OTA 代码完成 + HMAC 鉴权 ✅、esp-emu 网络 runner 已具备（r144 关联仍失败）/ 真机射频待确认） | 🚧 |
+| **M5 —— 生态**（组件库、含 SafeArea 的启动器壳层、板抽象） | 🚧 可选的 JS 壳层组件与双语文档站已落地；板抽象未开始 |
 
 > **如实说明**：“代码完成”意味着编译通过、宿主测试通过并已复审。真机验收（视觉、触摸手感、
 > 睡眠电流、射频距离）仍待接板，逐项跟踪在 [docs/roadmap.md](docs/roadmap.md)。

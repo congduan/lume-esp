@@ -191,7 +191,7 @@ CI release notes.
 
 ### Try it in your browser
 
-Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 43 screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
+Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 54 screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
 
 ### Real firmware in your browser
 
@@ -216,8 +216,9 @@ repeatable acceptance gate without a board. The `net_check` app
 ([examples/net_check](examples/net_check/app.js)) prints each step as
 `[NETCHECK] <step> <PASS|FAIL>`; any failure exits non-zero with the serial
 log under `artifacts/emu-net/`. Division of labor: **esp32sim** owns visual
-acceptance (CO5300 frame PNGs), **esp-emu** owns functional/network
-acceptance (WiFi, TF card). Install: see
+acceptance (CO5300 frame PNGs), **esp-emu** exercises the virtual network path and optional TF probe. The recorded r144
+run still fails WiFi association, and the r142 TF probe fails at card initialization;
+neither is accepted on hardware. Install: see
 [tools/emu-net/README.md](tools/emu-net/README.md).
 
 ## Examples
@@ -334,6 +335,11 @@ code, and every failure mode is documented in [`runtime/types/lume.d.ts`](runtim
 - **Gestures** — tap / swipe / longpress / pan streams with scroll coexistence
 - **Lifecycle** — onStart/onPause/onResume/onBack; bundles are fully disposed on hot reload
 - **Themes** — named color tokens, one-call dark/light switch that repaints referenced attrs
+- **Network time** — `lume.system.setTimeNtp()` syncs the wall clock after WiFi gets an IP; clock, clock_round, watchface, and weather use it, with app-specific fallback behavior
+- **Storage and utilities** — TF card access through `lume.storage.Sd`, plus `lume.crypto`, `lume.compress`, and `lume.fft` APIs
+- **Round-screen layout** — optional `lume.ui.shell.SafeArea` places content inside the inscribed square on a round display
+- **Event-driven rendering loop** — the LVGL task waits for its timer or a notification; power savings still require board measurement
+- **Network tooling** — WiFi OTA uses HMAC authentication; `tools/emu-net/run.sh` provides a headless virtual WiFi gate, whose association is still failing in the recorded esp-emu v1.2.0 run
 - **Auto-sleep** — idle timeout into light sleep, touch wakes the screen (ext0 on the
   touch INT pin)
 - **Screenshot debugging** — `lume screenshot` grabs the live panel frame over the
@@ -358,10 +364,10 @@ components are in progress.
 | Milestone | State |
 |---|---|
 | **M1 — minimal loop** (engine, touch→JS, declarative UI, hot reload) | ✅ code complete |
-| **M2 — hardware API surface** (GPIO/PWM/ADC, power, IMU, WiFi+HTTP, KV, files, audio, TF card, crypto, compress, FFT) | ✅ code complete |
-| **M3 — declarative UI completeness** (flex, styles, animation, canvas, gestures, lifecycle, themes, virtualized lists, images) | ✅ code complete |
-| **M4 — tooling** (`lume` CLI ✅, host simulator ✅, WiFi OTA code complete + HMAC auth ✅, esp-emu network acceptance ✅ / on-device radio check pending) | 🚧 |
-| **M5 — ecosystem** (component library, launcher shell, board abstraction) | 🚧 optional JS shell components + bilingual docs site landed; board abstraction not started |
+| **M2 — hardware API surface** (GPIO/PWM/ADC, power, IMU, WiFi+HTTP, KV, files, audio, TF card, crypto, compress, FFT, SNTP) | ✅ code complete |
+| **M3 — declarative UI completeness** (flex, styles, animation, canvas, gestures, lifecycle, themes, virtualized lists, images, SafeArea) | ✅ code complete |
+| **M4 — tooling** (`lume` CLI ✅, host simulator ✅, WiFi OTA code complete + HMAC auth ✅, esp-emu network runner available (r144 association still failing) / on-device radio check pending) | 🚧 |
+| **M5 — ecosystem** (component library, launcher shell including SafeArea, board abstraction) | 🚧 optional JS shell components + bilingual docs site landed; board abstraction not started |
 
 > **Honesty note**: "code complete" means compiles green, host-tested, and reviewed.
 > On-device acceptance (visuals, touch feel, sleep current, radio range) is pending

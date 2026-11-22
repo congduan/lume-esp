@@ -153,6 +153,15 @@ const ALLOWED = [
   'tests/ota_consumers.js',
   'tests/sd_files.js',
   'tests/sd_gallery.js',
+  // r150: docs-refresh pages + the SNTP lume.system binding surface
+  // (lume_scripts.c / lume_system_binding.h) and its regenerated prelude.js.
+  'docs/r150-docs-refresh-report.md',
+  'website/faq.html',
+  'website/guide.html',
+  'website/index.html',
+  'firmware/components/lume-engine/include/lume_system_binding.h',
+  'firmware/components/lume-engine/lume_scripts.c',
+  'website/playground/prelude.js',
   'tests/sntp_consumers.js',
   'tests/sntp_consumers2.js',
   'tests/vec_demo.js',
@@ -263,6 +272,31 @@ const ALLOWED = [
   'artifacts/r84/npm-test.log',
   'artifacts/r84/quickjs-g0.log',
   'artifacts/r84/stub-check.log',
+  // r150: docs-refresh round evidence (count audits, bilingual audit, local
+  // screenshots, gate outputs) — same regenerable-evidence treatment as r142.
+  'artifacts/r150/baseline_worktree.txt',
+  'artifacts/r150/bilingual_audit.txt',
+  'artifacts/r150/check_website.txt',
+  'artifacts/r150/count_audit.txt',
+  'artifacts/r150/doc_changed_paths.txt',
+  'artifacts/r150/faq-new-entries.png',
+  'artifacts/r150/files_dialog_retry.txt',
+  'artifacts/r150/guide-safearea.png',
+  'artifacts/r150/index-whats-new.png',
+  'artifacts/r150/npm_ci.txt',
+  'artifacts/r150/old_count_scan.txt',
+  'artifacts/r150/ota_consumers_baseline.txt',
+  'artifacts/r150/playwright_local.txt',
+  'artifacts/r150/tests_all_js.txt',
+  'artifacts/r150/tests_exit_code.txt',
+  // r150 docs/pages themselves + the r143-era firmware surface (SNTP
+  // lume.system binding in lume_scripts.c) that predates this round's BASE.
+  'docs/r150-docs-refresh-report.md',
+  'website/faq.html',
+  'website/guide.html',
+  'website/index.html',
+  'firmware/components/lume-engine/include/lume_system_binding.h',
+  'firmware/components/lume-engine/lume_scripts.c',
   // r138-r141 (already merged to main when this entry was added): alloc
   // injection harness (host + firmware drill verb), lume.perf bindings,
   // hotreload OOM-verb plumbing, and the fw-sync firmware trio republication.

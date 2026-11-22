@@ -1,0 +1,5 @@
+README.md 53=True setTimeNtp=True lume.storage.Sd=True lume.crypto=True lume.compress=True lume.fft=True SafeArea=True HMAC=True emu-net=True
+README.zh-CN.md 53=True setTimeNtp=True lume.storage.Sd=True lume.crypto=True lume.compress=True lume.fft=True SafeArea=True HMAC=True emu-net=True
+website/index.html data-en= 40 data-zh= 40
+website/guide.html data-en= 23 data-zh= 23
+website/faq.html data-en= 18 data-zh= 18
