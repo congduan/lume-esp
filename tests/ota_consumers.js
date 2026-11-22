@@ -9,9 +9,9 @@
 //     with typeof === 'object' discrimination (a number is an error code).
 //   - the 32-hex key is NEVER read: no `.token` / ['token'] anywhere in either
 //     app, so it cannot reach a Text or canvas text render path.
-//   - New token is two-stage (first tap arms a 3 s confirm, second tap rotates)
-//     and generates 32 lowercase hex chars with Math.random (non-CSPRNG,
-//     registered in the header + KNOWN-SIMPLIFICATIONS.md r132).
+//   - the "New token" button opens a shell.Dialog; its danger Rotate action
+//     generates 32 lowercase hex chars with Math.random (non-CSPRNG, registered
+//     in the header + KNOWN-SIMPLIFICATIONS.md r132; modal gate added in r163).
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
@@ -401,6 +401,11 @@ const ALLOWED = [
   'website/playground/sources/minigolf.js',
   'website/playground/apps/ipod_music.js',
   'website/playground/sources/ipod_music.js',
+  // r163: settings danger actions moved to shell.Dialog (pure app layer). The
+  // new host harness is staged BEFORE the feat/test commits because `git diff`
+  // cannot see untracked files; without it the allChanged allowlist turns red
+  // once the test commit lands. No firmware / runtime / tools/lume change.
+  'tests/settings_dialog.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -420,22 +425,21 @@ const checks = [
   ['OTA row is exactly View + Text + Button (3 nodes)', [otaRow, s =>
     /View\(\{/.test(s) && /Text\(\{ text: function \(\)/.test(s) && /Button\(\{/.test(s)]],
 
-  ['row Text shows only status; New-token title flips on confirm', [otaRow, s =>
+  ['row Text shows only status; New-token opens a Dialog', [otaRow, s =>
     s.includes('otaLine()') &&
-    s.includes("otaConfirm() ? 'Confirm new token?' : 'New token'") &&
+    s.includes("title: 'New token', onPress: rotateOtaToken") &&
     noTokenRead(s)]],
 
-  ['setToken sits after the two-stage confirm gate', [settingsOta, s =>
-    s.includes('if (!otaConfirm())') &&
-    s.indexOf('if (!otaConfirm())') < s.indexOf('lume.ota.setToken(')]],
-
-  ['first tap arms a 3 s confirm and returns before setToken', [settingsOta, s => {
-    const gate = s.indexOf('if (!otaConfirm())');
-    const ret = s.indexOf('return;', gate);
+  ['setToken sits in the danger Rotate onPress of a Dialog', [settingsOta, s => {
+    const danger = s.indexOf("{ label: 'Rotate', style: 'danger', onPress: function ()");
     const call = s.indexOf('lume.ota.setToken(');
-    const timer = s.indexOf('otaConfirm.set(false); }, 3000)', gate);
-    return gate >= 0 && ret > gate && call > ret && timer > gate && timer < call;
+    return s.includes('shell.Dialog({') && danger >= 0 && call > danger;
   }]],
+
+  ['Dialog guard degrades to an ASCII note; no 3 s arm timer remains', [settingsOta, s =>
+    s.includes("typeof shell.Dialog !== 'function'") &&
+    s.includes("otaNote.set('rotate n/a (no dialog)')") &&
+    !s.includes('otaArmTimer')]],
 
   ['replacement token is 32 lowercase hex chars from Math.random', [settingsOta, s =>
     s.includes("'0123456789abcdef'") && s.includes('Math.random() * 16') &&
@@ -503,17 +507,16 @@ must('render the full token straight into the status text',
 must('drop the OTA row Text',
   s => s.replace('Text({ text: function ()', 'Dummy({ text: function ()'),
   'OTA row is exactly View + Text + Button (3 nodes)', otaRow);
-must('New-token button never flips to Confirm',
-  s => s.replace("otaConfirm() ? 'Confirm new token?' : 'New token'", "'New token'"),
-  'row Text shows only status; New-token title flips on confirm', otaRow);
-must('setToken moves before the confirm gate',
-  s => s.replace('if (!otaConfirm())',
-                 'lume.ota.setToken(newOtaToken()); if (false)'),
-  'setToken sits after the two-stage confirm gate', settingsOta);
-must('first tap no longer returns before setToken',
-  s => s.replace('    return;\n  }\n  otaConfirm.set(false);',
-                 '  }\n  otaConfirm.set(false);'),
-  'first tap arms a 3 s confirm and returns before setToken', settingsOta);
+must('New-token button no longer opens a Dialog',
+  s => s.replace("title: 'New token', onPress: rotateOtaToken", "title: 'New token'"),
+  'row Text shows only status; New-token opens a Dialog', otaRow);
+must('danger Rotate button downgraded',
+  s => s.replace("{ label: 'Rotate', style: 'danger', onPress: function ()",
+                 "{ label: 'Rotate', onPress: function ()"),
+  'setToken sits in the danger Rotate onPress of a Dialog', settingsOta);
+must('Dialog guard hardened (no ASCII fallback)',
+  s => s.replace("typeof shell.Dialog !== 'function'", 'false'),
+  'Dialog guard degrades to an ASCII note; no 3 s arm timer remains', settingsOta);
 must('token length shrinks from 32 to 16 hex chars',
   s => s.replace('i < 32', 'i < 16'),
   'replacement token is 32 lowercase hex chars from Math.random', settingsOta);

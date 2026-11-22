@@ -5,9 +5,10 @@
 // is NO board / real esp_restart() on the host: `lume.system.reboot()` is
 // `never` and kills the JS task, so this harness asserts the SOURCE of
 // examples/settings/app.js and the generated playground wiring instead.
-//   - the General page owns a 3-node Reboot row; its title flips on a 3 s
-//     two-stage arm/confirm gate (first tap arms, second tap acts).
-//   - the reboot() call sits AFTER the confirm gate and AFTER a defensive
+//   - the General page owns a 3-node Reboot row; its button opens a
+//     shell.Dialog whose danger "Reboot" button performs the call (r163
+//     replaces the old 3 s arm/confirm gate).
+//   - the reboot() call sits INSIDE that danger onPress and AFTER a defensive
 //     typeof guard, so a playground stub without the binding cannot throw.
 //   - all UI literals are ASCII (r64), the generated playground source is
 //     byte-identical to the example, and settings is in the manifest.
@@ -72,20 +73,18 @@ const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 // Each entry: [name, [sourceToTest, predicate]]. Mutation proof calls the same
 // predicate on a mutated copy, so every assertion is load-bearing.
 const checks = [
-  ['two-stage gate: first tap arms a 3 s confirm and returns before reboot', [rebootSlice, s => {
-    const gate = s.indexOf('if (!rebootConfirm())');
-    const arm = s.indexOf('rebootConfirm.set(true);', gate);
-    const timer = s.indexOf('rebootConfirm.set(false); }, 3000)', gate);
-    const ret = s.indexOf('return;', gate);
+  ['Dialog confirmation replaces the 3 s arm gate', [rebootSlice, s => {
+    const dlg = s.indexOf('shell.Dialog({');
+    const cancel = s.indexOf("{ label: 'Cancel', style: 'plain' }");
+    const danger = s.indexOf("{ label: 'Reboot', style: 'danger', onPress: function ()");
     const call = s.indexOf(CALL);
-    return gate >= 0 && arm > gate && timer > arm && ret > timer && call > ret;
+    return dlg >= 0 && cancel > dlg && danger > cancel && call > danger &&
+      !s.includes('rebootArmTimer');
   }]],
 
-  ['second tap disarms the timer before the reboot call', [rebootSlice, s => {
-    const clear = s.indexOf('lume.system.clearTimeout(rebootArmTimer); rebootArmTimer = null;');
-    const call = s.indexOf(CALL);
-    return s.split('rebootConfirm.set(false);').length >= 3 && clear >= 0 && clear < call;
-  }]],
+  ['no two-stage confirm signal or arm timer remains', [rebootSlice, s =>
+    !/rebootConfirm|rebootArmTimer/.test(s) &&
+    s.includes("title: 'Reboot device?'")]],
 
   ['typeof guard precedes reboot; stub without binding degrades to ASCII note', [rebootSlice, s => {
     const guard = s.indexOf("typeof lume.system.reboot !== 'function'");
@@ -94,10 +93,9 @@ const checks = [
       s.includes('!lume.system ||') && s.includes("rebootNote.set('reboot n/a')");
   }]],
 
-  ['row is exactly View + Text + Button; title flips while armed', [rebootRow, s =>
+  ['row is exactly View + Text + Button; Reboot opens a Dialog', [rebootRow, s =>
     /View\(\{/.test(s) && /Text\(\{ text: function \(\)/.test(s) && /Button\(\{/.test(s) &&
-    s.includes("rebootConfirm() ? 'Confirm reboot?' : 'Reboot'") &&
-    s.includes('onPress: rebootNow')]],
+    s.includes("title: 'Reboot', onPress: rebootNow")]],
 
   ['row status is the guarded ASCII default or the note', [rebootRow, s =>
     s.includes("rebootNote() === '' ? 'Restart the device' : rebootNote()")]],
@@ -130,18 +128,22 @@ function must(name, mutation, checkName, sourceForCheck) {
   console.log('PASS reboot_consumers mutation: ' + name + ' -> FAIL as expected');
 }
 
-must('drop the first-tap arm gate',
-  s => s.replace('if (!rebootConfirm()) {', 'if (false) {'),
-  'two-stage gate: first tap arms a 3 s confirm and returns before reboot', rebootSlice);
-must('second tap no longer disarms the timer',
-  s => s.replace('lume.system.clearTimeout(rebootArmTimer); rebootArmTimer = null;', ''),
-  'second tap disarms the timer before the reboot call', rebootSlice);
+must('drop the reboot Dialog',
+  s => s.replace('shell.Dialog({', 'void ({'),
+  'Dialog confirmation replaces the 3 s arm gate', rebootSlice);
+must('downgrade the Reboot button to plain',
+  s => s.replace("{ label: 'Reboot', style: 'danger', onPress: function ()",
+                 "{ label: 'Reboot', onPress: function ()"),
+  'Dialog confirmation replaces the 3 s arm gate', rebootSlice);
+must('resurrect the two-stage reboot signal',
+  s => s.replace('function rebootNow() {', 'var rebootConfirm = signal(false);\nfunction rebootNow() {'),
+  'no two-stage confirm signal or arm timer remains', rebootSlice);
 must('drop the typeof guard',
   s => s.replace("typeof lume.system.reboot !== 'function'", 'true'),
   'typeof guard precedes reboot; stub without binding degrades to ASCII note', rebootSlice);
-must('button never flips to Confirm',
-  s => s.replace("rebootConfirm() ? 'Confirm reboot?' : 'Reboot'", "'Reboot'"),
-  'row is exactly View + Text + Button; title flips while armed', rebootRow);
+must('Reboot button no longer opens a Dialog',
+  s => s.replace("title: 'Reboot', onPress: rebootNow", "title: 'Reboot'"),
+  'row is exactly View + Text + Button; Reboot opens a Dialog', rebootRow);
 must('row status drops its guarded ASCII default',
   s => s.replace("rebootNote() === '' ? 'Restart the device' : rebootNote()", "'Restart the device'"),
   'row status is the guarded ASCII default or the note', rebootRow);
