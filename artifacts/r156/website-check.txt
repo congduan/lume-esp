@@ -1,0 +1,6 @@
+HTML pages: 7; internal href/src and anchors checked
+API: 158 catalog entries, 158 type declarations, 34 function namespaces
+API missing: none
+API invented: none
+API duplicates: none
+API signatures not found in lume.d.ts: none
