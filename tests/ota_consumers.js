@@ -392,6 +392,15 @@ const ALLOWED = [
   // allChanged allowlist red once the test commit lands. All guard BASEs are
   // re-pinned to the r153 merge point 5d02549 (runtime/ diff stays pinned).
   'tests/keyboard_states.js',
+  // r161: minigolf + ipod_music join the playground manifest (59 -> 61 apps).
+  // New generated artifacts; staged BEFORE the feat/test commits because
+  // `git diff` cannot see untracked files. apps/ipod_music.js and
+  // sources/ipod_music.js already exist in the baseline and are modified/
+  // unchanged respectively; only the two minigolf artifacts are brand new.
+  'website/playground/apps/minigolf.js',
+  'website/playground/sources/minigolf.js',
+  'website/playground/apps/ipod_music.js',
+  'website/playground/sources/ipod_music.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -455,7 +464,7 @@ const checks = [
     s === dashboard]],
 
   ['dashboard is in the playground manifest', [playgroundApps,
-    list => list.length === 59 && list.includes('dashboard')]],
+    list => list.length === 61 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],

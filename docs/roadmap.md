@@ -3272,3 +3272,56 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat（app + 59-app playground 生成物） / test（launcher_grid harness + 15 处计数同步 + sd_files 变异串 + ota ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS r160 节）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r160 节。
+
+### r161 result — playground 补清单刀：minigolf + ipod_music 入列（61 apps，纯工具清单层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r161-wt`（分支 `r161-playground-gap`，基线 `362af44`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 已只读软链对齐，源码零改动、软链不入 git。干净基线全量 `tests/*.js` = 0 FAIL，基线 `npm test` = 50/0/0，`check_website.py` 三项 none，均留存。
+
+**实证纠偏（假设以源码为准）**：
+1. 简报称计数断言「16 处」——实证 `grep -rn 'length === 59' tests/*.js` 为 **11 处**，`grep -rn 'apps.length, 59' tests/*.js` 为 **5 处**，合计确 16 处，全部 61 化；只改一种语法会留 5 个红灯。`tests/control_center.js:10/130/164` 与 `tests/launcher_grid.js:10/130/164` 的「59-app」是**文案标签**（含 mutation 查找键），按纪律未动；`tests/shell_components.js:18` 的 `56` 是 IconButton 高度 attr（r157 教训），未动。
+2. 简报称差集初核 15 app + 两个待入列 app——实证 `examples/` 带 `app.js` 的目录 **77 个**、`build.mjs` 清单 **61 个**，差集 **16 个**：`ai_chat, app_manager, ble_uart, device_monitor, gestures, imu_poll, launcher, mochi, net_check, nettest_open, shell_demo, spectrum, svg_icon, typewriter_min, web_config, ws_echo`。简报初核**漏列 `mochi`**（gesture 依赖，见下），已实证补入登记；`minigolf` / `ipod_music` 入列后差额恰为 16，无悬案。清单中无「无对应 example」的幽灵条目（`manifest-without-example: none`）。
+3. r155 遗留实证：基线 `HEAD` 已跟踪 `website/playground/apps/ipod_music.js` 与 `website/playground/sources/ipod_music.js`（r155 一次性构建产物）；重跑 `build.mjs` 不会删文件，但 `sources.js` 不再含其键——这就是「一重跑即丢失」的真因。本刀把 app 正式入列后，两份生成物与新增的 minigolf 两份一并随 feat commit 落仓；`apps/ipod_music.js` 再次构建仅 esbuild 压缩变量名变化（`d/x` → `h/k`），功能等价，`sources/ipod_music.js` 与 example 字节一致。
+4. `svg_icon` / `typewriter_min` 弹性范围实证后**不入列**：`svg_icon` 是 r58 的 `Image` + SVG 栅格化渲染能力探针（`examples/svg_icon/app.js` 只画一个静态勾选图标，配套 `tests/lume_svg_test.c`），r98 报告明确其「单独注册为 bundle 但在选择列表展示 38 个、不含它」；浏览器 playground stub 不保证 SVG 栅格化，入列会得到一个无交互且可能空白的条目。`typewriter_min` 是 6 行 emu smoke 复现 fixture（commit `03fafb8`，与已入列的 `typewriter` 重复，无任何 harness/docs 引用）。两者都不属「被遗漏的展示 app」，保持不入列。
+
+**实现**：`tools/playground/build.mjs` 的 `apps` 数组尾部按同款格式追加 `'minigolf', 'ipod_music'`（59→61），构建逻辑零改动。重建生成物：`website/playground/sources.js`（61 keys）、`website/playground/sources/minigolf.js`（新）、`website/playground/apps/minigolf.js`（新）、`website/playground/apps/ipod_music.js`（重生成）、`website/playground/sources/ipod_music.js`（字节不变）。bundle 尺寸 `minigolf 9711 bytes` / `ipod_music 22468 bytes`，均非 0、非超大。
+
+**级联同步（不改生产行为）**：16 处清单计数断言全部 59→61（11 + 5 两种语法）；`sd_files.js` 清单变异串尾部精确追加 `'minigolf', 'ipod_music'`，mutation `drop image_gallery from playground manifest` 仍转红；`ota_consumers.js` ALLOWED 在 feat/test commit 前预加 4 个新路径（两 app 的 `apps/` + `sources/` 生成物；16 个被改的 `tests/*.js` 与 `docs/*.md`、`sources.js`、`build.mjs` 均已在既有 ALLOWED 中）。
+
+**差集 16 app 的不入列登记（逐个实证，原因大类：硬件依赖 / 内部演示 / 协议对端）**：
+
+| app | 实证 API 依赖 | 不入列原因 |
+|---|---|---|
+| `ai_chat` | `lume.ai.chat`, `lume.net.connect/status` | 依赖在线 AI 端点 + WiFi，浏览器 gallery 离线无意义 |
+| `app_manager` | `lume.apps.entries/home/remove` | 设备端 app 安装/卸载管理，非展示型 |
+| `ble_uart` | `lume.ble.start/read/write/status` | BLE 外设角色硬件依赖（r25 实证） |
+| `device_monitor` | `lume.ble.status`, `lume.imu.read`, `lume.net.status`, `lume.pmic.*` | PMIC/IMU/BLE/网络多硬件依赖 |
+| `gestures` | `lume.gesture.on` | IMU/手势硬件依赖 |
+| `imu_poll` | `lume.imu.read` | IMU 硬件依赖 |
+| `launcher` | `lume.apps.launch/setBoot/entries` | 设备端启动器（真机 boot 语义），gallery 已有 `launcher_grid` 作展示替代 |
+| `mochi` | `lume.gesture.on`, `onPause/onResume` | 手势/触摸硬件依赖（简报初核漏列，本刀实证补登） |
+| `net_check` | `lume.net.init/connect/httpRequest/status`, `lume.storage.Sd` | WiFi + HTTP + SD 硬件依赖 |
+| `nettest_open` | `lume.net.init/connect/status` | WiFi 硬件依赖 |
+| `shell_demo` | `lume.ui.shell` | 内部 shell 组件演示，roadmap 早已记「gallery does not list `shell_demo`」 |
+| `spectrum` | `lume.audio.recordStream/stopStream` | 麦克风（I2S/PSRAM 环）硬件依赖 |
+| `svg_icon` | `Image({src: svgBytes.buffer})` | r58 SVG 栅格化渲染探针，r98 起故意不进选择列表；浏览器 stub 不保证栅格化 |
+| `typewriter_min` | `signal` + `lume.system.setInterval` | 6 行 emu smoke 复现 fixture，与已入列 `typewriter` 重复 |
+| `web_config` | `lume.net.web`, `lume.storage.kv` | 内置 web 服务器依赖 |
+| `ws_echo` | `lume.net.ws` | WebSocket 协议对端依赖，离线 gallery 无对端 |
+
+无「该入列而被遗漏」的 app；后续若要做纯展示补入，候选只有 `svg_icon` / `typewriter_min`，已如上说明为何本刀不动。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `npm run build:playground --prefix tools/lume` → `PASS bundle minigolf 9711 bytes` / `PASS bundle ipod_music 22468 bytes` / `PASS esbuild-wasm assets and 61 editable sources` / `PASS prelude 67428 bytes; 61 apps`；二次/三次构建输出逐字一致，`git status` 干净（幂等）。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → 仅 `done`，改前/改后均 **0 FAIL**。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # skipped 0`。
+- `python3 scripts/check_website.py` → `HTML pages: 7` / `API: 158 catalog entries, 158 type declarations, 34 function namespaces` / `API missing/invented/duplicates/signatures not found: none`。
+- `node tools/lume/lume.js check examples/minigolf --no-emu` → `[PASS] bundle 9711 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；`examples/ipod_music` → `[PASS] bundle 22468 bytes` / `RESULT: PASS`；哨兵 `examples/counter` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `grep -rn 'length === 59\|apps.length, 59' tests/*.js` → 无输出（grep exit 1）；`node -e` 解析 `website/playground/sources.js` → `keys: 61 | has minigolf: true | has ipod_music: true`。
+- **源码零改动，未跑 `idf.py build`**：`git diff 362af44 HEAD -- firmware/ runtime/ examples/` 原始输出为空；本刀只动 `tools/playground/build.mjs`、`website/playground/`、`tests/`、`docs/`。
+- 磁盘 `/` 余 4.9G；构建日志只留 `/tmp/r161-playground-build{1,2,3}.txt`，未在主仓 artifacts 新增日志；不声称真机验证。
+
+**里程碑口径**：纯清单刀，无里程碑 checkbox 变化；真机显示/触控/无线电/persistence 全部 deferred，**不声称真机验证**。未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）；未推送。
+
+**commits（未推送，拆分）**：feat `4f12d4e`（build.mjs + 61-app playground 生成物） / test `caa12f2`（16 处计数同步 + sd_files 变异串 + ota ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS r161 节）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r161 节。

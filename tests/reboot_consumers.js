@@ -109,7 +109,7 @@ const checks = [
     s === settings]],
 
   ['settings is in the 57-app playground manifest', [playgroundApps,
-    list => list.length === 59 && list.includes('settings')]],
+    list => list.length === 61 && list.includes('settings')]],
 
   ['firmware/ runtime/ CLI tooling untouched vs ba5156e (shell.js/types only)', [fwChanged, c => c.length === 0]],
 ];
