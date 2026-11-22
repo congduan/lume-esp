@@ -461,6 +461,81 @@
     };
     return canvas;
   }
+  /* r155: polar gesture translation. The app owns selection and playback state. */
+  function ClickWheel(p) {
+    p = p || {};
+    callback('ClickWheel onRotate', p.onRotate);
+    callback('ClickWheel onCenterTap', p.onCenterTap);
+    callback('ClickWheel onOuterTap', p.onOuterTap);
+    var cx = p.cx, cy = p.cy, outerR = p.outerR, innerR = p.innerR;
+    if (![cx, cy, outerR, innerR].every(function (n) { return typeof n === 'number' && isFinite(n); }) ||
+        outerR < 40 || innerR < 1 || innerR >= outerR ||
+        Math.floor(cx) !== cx || Math.floor(cy) !== cy ||
+        Math.floor(outerR) !== outerR || Math.floor(innerR) !== innerR)
+      throw new RangeError('lume: ClickWheel requires integer cx/cy and 1 <= innerR < outerR, outerR >= 40');
+    var size = outerR * 2, stepAngle = Math.PI / 8;
+    var canvas = Canvas({ parent: p.parent, width: size, height: size,
+      style: { position: 'absolute', x: cx - outerR, y: cy - outerR, borderRadius: outerR, scroll: 'none' },
+      onDraw: function (c) {
+        var colors = lume.theme.get().colors;
+        var track = colors.surfaceAlt || '#1C3449';
+        var center = colors.surface || '#132435';
+        var split = colors.textDim || '#9EB3C6';
+        c.fillCircle(outerR, outerR, outerR, track);
+        c.fillCircle(outerR, outerR, innerR, center);
+        for (var i = 0; i < 4; i++) {
+          var a = (i * 90 + 45) * Math.PI / 180;
+          c.line(Math.round(outerR + Math.sin(a) * (innerR + 8)), Math.round(outerR - Math.cos(a) * (innerR + 8)),
+            Math.round(outerR + Math.sin(a) * (outerR - 8)), Math.round(outerR - Math.cos(a) * (outerR - 8)), split, 2);
+        }
+      } });
+    var last = null, remainder = 0, offs = [];
+    function polar(e) {
+      if (!e || !isFinite(e.x) || !isFinite(e.y)) return null;
+      var dx = e.x - cx, dy = e.y - cy, radius = Math.sqrt(dx * dx + dy * dy);
+      if (radius < innerR || radius > outerR) return null;
+      return Math.atan2(dx, -dy); /* clockwise from 12 o'clock */
+    }
+    offs.push(lume.gesture.on(canvas, 'panstart', function (e) {
+      last = e && isFinite(e.dx) && isFinite(e.dy) ?
+        polar({x:e.x-e.dx,y:e.y-e.dy}) : polar(e);
+      remainder = 0;
+    }));
+    offs.push(lume.gesture.on(canvas, 'pan', function (e) {
+      var angle = polar(e);
+      if (angle === null) { last = null; remainder = 0; return; }
+      if (last === null) { last = angle; return; }
+      var delta = angle - last;
+      if (delta > Math.PI) delta -= 2 * Math.PI;
+      if (delta < -Math.PI) delta += 2 * Math.PI;
+      last = angle;
+      /* Reject sparse, ambiguous jumps (half a turn or more). */
+      if (Math.abs(delta) >= Math.PI) { remainder = 0; return; }
+      remainder += delta;
+      var steps = remainder > 0 ? Math.floor((remainder + 1e-9) / stepAngle)
+                                : Math.ceil((remainder - 1e-9) / stepAngle);
+      if (steps) {
+        remainder -= steps * stepAngle;
+        if (p.onRotate) for (var i = 0; i < Math.abs(steps); i++) p.onRotate(steps > 0 ? 1 : -1);
+      }
+    }));
+    offs.push(lume.gesture.on(canvas, 'panend', function () { last = null; remainder = 0; }));
+    offs.push(lume.gesture.on(canvas, 'tap', function (e) {
+      if (!e || !isFinite(e.x) || !isFinite(e.y)) return;
+      var dx = e.x - cx, dy = e.y - cy, radius = Math.sqrt(dx * dx + dy * dy);
+      if (radius <= innerR) { if (p.onCenterTap) p.onCenterTap(); return; }
+      if (radius > outerR) return;
+      var degrees = ((Math.atan2(dx, -dy) * 180 / Math.PI) + 360) % 360;
+      var quadrant = Math.floor((degrees + 45) / 90) % 4;
+      var distance = Math.abs(((degrees - quadrant * 90 + 540) % 360) - 180);
+      if (distance <= 22.5 + 1e-7 && p.onOuterTap) p.onOuterTap(quadrant);
+    }));
+    cleanups[canvas] = function () {
+      offs.forEach(function (off) { off(); });
+      lume.removeChild(canvas);
+    };
+    return canvas;
+  }
   function Progress(p) {
     p = p || {};
     var height = positive('Progress height', p.height, 12, 128);
@@ -555,6 +630,7 @@
   shell.StatusBar = StatusBar;
   shell.Keyboard = Keyboard;
   shell.Switch = Switch;
+  shell.ClickWheel = ClickWheel;
   shell.Slider = Slider;
   shell.Progress = Progress;
   shell.SafeArea = SafeArea;

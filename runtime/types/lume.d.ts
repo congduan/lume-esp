@@ -280,6 +280,20 @@ declare namespace lume.ui.shell {
   /** Boolean toggle: track + knob Views with theme-token state colours.
    * A press anywhere on the root emits onChange(!value); no internal state. */
   function Switch(props?: SwitchProps): lume.ui.Node;
+  interface ClickWheelProps {
+    parent?: lume.ui.Node;
+    /** Absolute screen center and radii in pixels. outerR >= 40; 1 <= innerR < outerR. */
+    cx: number; cy: number; outerR: number; innerR: number;
+    /** Signed 1/16-turn steps from an annular pan; clockwise is positive. */
+    onRotate?: (deltaSteps: number) => void;
+    /** Tap at radius <= innerR. */
+    onCenterTap?: () => void;
+    /** Tap in a 45-degree cardinal sector: 0 top, 1 right, 2 bottom, 3 left. */
+    onOuterTap?: (quadrant: 0 | 1 | 2 | 3) => void;
+  }
+  /** Theme-token annulus and center button; pure gesture-to-callback translation.
+   * Returns its Canvas node; dispose(node) unregisters all gesture handlers. */
+  function ClickWheel(props: ClickWheelProps): lume.ui.Node;
   interface SliderProps {
     parent?: lume.ui.Node;
     min?: number; max?: number; step?: number;
