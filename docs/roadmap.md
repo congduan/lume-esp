@@ -3112,3 +3112,37 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat（wordle app + 54-app playground 生成物） / test（wordle harness + 53→54 计数同步 + ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r149 节。
+
+### r151 result — M5 Component library 第三片：shell 表单控件 `Switch` / `Slider` / `Progress`（runtime/ + 纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r151-wt`（分支 `r151-shell-controls`，基线 `31adb96`）。开场 `pgrep` 实证唯一同场 r151 引擎为自身（PID 2958164）；另有一个眠了 1 天 16h 的 r126 残留引擎（不同 worktree / 分支 / 任务，非同场），按 429 纪律排除后继续。
+
+**实证先行（假设以源码为准）**：通读 `runtime/shell.js` 全文——组件在闭包内 `shell.X = X`，末尾一次性 `lume.ui.shell = shell`；cleanup 统一走 `cleanups[id]` + `shell.dispose(id)`（先 `delete` 再调 fn，故幂等）；`__lume_dispatchRemove` 同步清 `spaced`/`declared`。prelude 实证 `ATTR_WIDTH = 2`（`lume_scripts.c:235`），`size()` 对函数型 `width` 走 `__bindNumeric` → owned effect → `setAttr(id, ATTR_WIDTH, px)`，随节点 dispose 自动回收；Canvas `onDraw` 同为 owned effect（信号读取即订阅）；`lume.gesture.on(target,type,cb)` 返回注销函数，做的是从 `__gestureHandlers[id][type]` 里 `splice(cb)`——**实证后果**：dispose 不调注销函数时，随后向该节点派发 pan 仍会触发 onChange（宿主复现 `bright` 从 50 被改成 60），调了则不触发，故 harness 对该后果做 load-bearing 断言。`pan` 事件的 `dx/dy` 是「相对按下点位移」（`__gestureStep` 的 `inp.x - s.sx`），非绝对坐标，故 Slider 用 `startValue + dx*(max-min)/width` 映射，对齐 `examples/piano/app.js` 的 pan 用法。**纠偏**：任务书允许「pan 在 Canvas 命中/坐标有坑则降级 Button 步进」；实证 Canvas 是普通 node id、可直接做手势目标、`dx` 映射无坑，故按首选路线落地 Canvas+pan，未降级。
+
+**实现**：`runtime/shell.js` 新增三组件（全受控，不自持状态；theme token 配色；全节点注册 `cleanups[id]`）：
+- `Switch`：轨道 + 滑块两个 View（+ 可选 label Text），整块 `onPress` 发 `onChange(!value)`；高度 40..128（默认 48）、轨宽 48..480，满足 r148 的 40 px 触控下限；滑块 `x` 为绑定函数随信号移动。
+- `Slider`：`Canvas`（默认 432×40 = 17,280 px，远低于 480×480 预算）自绘轨道/填充/滑块；`panstart` 捕获当前值、`pan` 按 `startValue + dx*(range/width)` 映射并取整到 `step`，**仅在量化值变化时发 onChange**（每帧不抖、有实时反馈），`panend` 只收尾不补发；`off()` 注销 + 移除 canvas 节点都进 cleanup。
+- `Progress`：外轨 + 内填充两个 View，无 Canvas；`value` 钳制 0..1，填充 `width` 为绑定函数，变化只改 `ATTR_WIDTH`（实证 0.2×432=86 → 0.75×432=324 → 越界钳到 432）；label 作为兄弟 Text 置于条上方（避开负 y 像素属性非法）。
+`runtime/types/lume.d.ts` 追加三个 Props 接口 + JSDoc；`python3 scripts/gen_api_docs.py` 重生成 `website/api.html`（154→157 行 API entry）。`examples/controls_demo/app.js`（`import ../../runtime/shell.js`）一屏展示音效 Switch / 亮度 Slider(0..100 step 5) / 充电 Progress，值全走 signal，文案 ASCII-only；`examples/settings` / `keyboard_demo` / `files` 源文件未动（三者 bundle 因内嵌 shell.js 重生成，属预期）。
+
+**宿主 harness**：`tests/controls_demo.js`（CommonJS，仿 keyboard_demo）跑真 app + prelude_runner：13 条静态断言（三注册 / 受控模式 / 40 px 下限 / cleanup 全量 / gesture 注销 / Progress 只改宽度 / app signal 接线 / ASCII / 字节一致 / 55-app 清单 / BASE / 固件 trunk / prelude）+ 10 条 live（真 press、dx→量化、越界钳制、每步一次回调、ATTR_WIDTH 更新、信号驱动重渲染、dispose 幂等 8 节点、注销后无悬空回调、非受控用法证自持状态缺失）+ 13 条 mutation 反例（每例证明断言 load-bearing，含「注销后仍触发」的实证）。
+
+**级联同步（照 r148/r149 精确执行）**：
+- 清单 54→55：`tools/playground/build.mjs` 注册 `controls_demo`（第 55 个）；按 `grep` 实证同步 12 个 harness 的 `=== 54` / `apps.length, 54` 与文案（`reboot_consumers` / `hr_monitor` / `weather_sntp` / `ota_consumers` / `sntp_consumers2` / `keyboard_demo` / `adc_meter` / `archive_view` / `crypto_check` / `img_view` / `vec_demo` / `wordle`）；`sd_files.js` 清单变异串同步加 `'controls_demo'`。`invaders`(aliveCount) / `style_mapping` / `bridge_protocol.c` 的 `54` 非清单计数，未动。
+- **BASE 重钉（断言不放宽）**：本轮合法改 `runtime/shell.js` / `runtime/types/lume.d.ts` / `website/api.html`，14 个 runtime/firmware 守卫 harness 因此转红（重钉前实证 FAIL：`keyboard_demo` / `wordle` / `ota_consumers` 的清单计数，`sd_files` / `sntp_consumers` 的 runtime diff）。test commit 把 15 个守卫的 BASE 从 r148 feat `bbd8627` 重钉到本轮 feat `d49fb81`，零 diff / allowlist 语义完全保留（未自比较、未删守卫）；重钉后全量 0 FAIL。
+- `tests/ota_consumers.js` ALLOWED 在 test commit 前预加本轮全部新路径（app / harness / 两个 playground 生成物），避免 untracked 对 `git diff` 不可见导致提交后转红；并修正 `keyboard_demo.js` 一条因新组件复用同款 cleanup 字符串而变装饰性的 mutation（改为移除全部同型串）。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/controls_demo.js` → 13 静态 + 10 live + 13 mutation 全绿，末行 `ALL CONTROLS DEMO HARNESS CASES PASSED`，`EXIT=0`。
+- `for t in tests/*.js; do timeout 120 node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**（87 个 harness：r149 基线 86 + 本轮新增 1）。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0 / # todo 0`，`EXIT=0`（worktree 缺 gitignore 的 `tools/lume/node_modules` 与 `bin/qjsc`，从主仓只读软链后对齐基线，源码零改动）。
+- `python3 scripts/check_website.py` → `HTML pages: 7; internal href/src and anchors checked` / `API: 157 catalog entries, 157 type declarations, 34 function namespaces` / `API missing/invented/duplicates/signatures not found: none`，`EXIT=0`；`python3 scripts/gen_api_docs.py --check` → `api.html is up to date with lume.d.ts (157 entries)`，`EXIT=0`。
+- `node tools/lume/lume.js check examples/controls_demo --no-emu` → `[PASS] bundle 18698 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle controls_demo 18698 bytes` / `PASS esbuild-wasm assets and 55 editable sources` / `PASS prelude 67428 bytes; 55 apps`。
+- **固件零改动，未跑 `idf.py build`**：`git diff 31adb96 -- firmware/` 原始输出为空；`git diff 31adb96 HEAD -- firmware/ runtime/types/` 仅含本轮 `.d.ts` 新增（`runtime/` 允许），`firmware/` 段为空；`git diff dafa1ed -- firmware/components/lume-engine/lume_scripts.c` 与 HEAD 版亦空（prelude 未动）。shell.js 是 CLI 打包 JS、`.d.ts` 是类型契约，均不进固件构建；IRAM 16384 硬线未触碰；磁盘紧张，artifacts / 日志只留 `/tmp`。
+
+**里程碑口径**：M5 Component library 行仍不勾（三控件仍需真机触控/渲染验收）；真机 Slider 拖动手感、Switch 命中率、Progress 渲染、圆屏安全区全部 deferred，**不声称真机验证**。ASCII 纪律全满足；未改 vendored（QuickJS/LVGL）；未跑 codex review（主控轮负责）。
+
+**commits（未推送，拆分）**：feat `d49fb81`（三 shell 控件 + 三 Props 类型 + api.html + controls_demo app + 55-app playground） / test `ae7cfd6`（controls_demo harness + 守卫 BASE 重钉 + 54→55 计数同步 + ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r151 节。

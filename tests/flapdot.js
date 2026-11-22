@@ -7,7 +7,7 @@
  * comes from a seeded PRNG of the index), so the whole run is replayable on
  * the host; the device touch path is exercised through the real prelude's
  * gesture pipeline, not on hardware. The render replay pins the dirty-band
- * budget (pipes band + ground strip + bird box; HUD is native Text).
+ * budget (pipes band + ground strip + bird path; HUD is native Text).
  */
 'use strict';
 const assert = require('node:assert/strict');
@@ -269,6 +269,49 @@ const ROOT_ID = 1;
   /* one canvas of 480x400 = 192,000 px < 230,400 budget */
   assert.ok(total <= 230400, 'canvas within pixel budget');
   console.log('PASS flapdot dirty-band discipline + canvas pixel budget (max inc ' + maxInc + ' px)');
+}
+
+/* 10a. Eight logic ticks before one draw must clear the entire bird path. */
+{
+  const drawnY = c.prevDrawnY;
+  const drawnS = c.prevDrawnS;
+  const sync = c.sync;
+  const mark = ui.messages.length;
+  let lastTickY = drawnY;
+  c.sync = () => {};
+  try {
+    for (let i = 0; i < 8; i++) {
+      lastTickY = c.state.y;
+      c.tick();
+    }
+  } finally { c.sync = sync; }
+  assert.equal(c.state.phase, 'run', 'frame-skip window stays in run phase');
+  assert.equal(c.prevDrawnY, drawnY, 'ticks do not advance last drawn bird position');
+  assert.equal(c.prevDrawnS, drawnS, 'ticks do not advance last drawn pipe position');
+  assert.equal(ui.messages.length, mark, 'eight ticks emitted no draw traffic');
+  const yLo = Math.min(drawnY, c.state.y) - g.BIRD_R - 8;
+  const yHi = Math.max(drawnY, c.state.y) + g.BIRD_R + 8;
+  const path = { x: g.BIRD_X - g.BIRD_R - 5, y: Math.floor(yLo),
+    w: 2 * g.BIRD_R + 10, h: Math.floor(yHi) - Math.floor(yLo) };
+  const contains = (outer, inner) => outer.x <= inner.x && outer.y <= inner.y &&
+    outer.x + outer.w >= inner.x + inner.w && outer.y + outer.h >= inner.y + inner.h;
+  const birdBox = y => ({ x: path.x, y: Math.floor(y - g.BIRD_R - 6),
+    w: path.w, h: Math.floor(y + g.BIRD_R + 6) - Math.floor(y - g.BIRD_R - 6) });
+  const oldA = birdBox(lastTickY), oldB = birdBox(c.state.y);
+  const oldUnion = { x: path.x, y: Math.min(oldA.y, oldB.y), w: path.w,
+    h: Math.max(oldA.y + oldA.h, oldB.y + oldB.h) - Math.min(oldA.y, oldB.y) };
+  assert.ok(!contains(oldUnion, path), 'old single-tick union leaves a nonempty path difference');
+  c.sync();
+  const invs = ui.messages.slice(mark).filter(m => m[0] === 'invalidate');
+  assert.ok(invs.length > 0, 'one draw invalidated the canvas');
+  const drawCount = ui.messages.slice(mark).filter(m => m[0] === 'draw').length;
+  assert.ok(drawCount <= 250, 'frame-skip paint stays within 250 draw calls: ' + drawCount);
+  const dirty = invs.map(([, , x, y, w, h]) => ({ x, y, w, h }));
+  assert.ok(dirty.some(r => contains(r, path)), 'dirty rect covers all eight ticks of bird travel');
+  assert.equal(c.prevDrawnY, c.state.y, 'draw advances last drawn bird position');
+  assert.equal(c.prevDrawnS, c.state.s, 'draw advances last drawn pipe position');
+  console.log('PASS flapdot eight-tick frame skip clears full bird path; old union misses ' +
+    (path.h - oldUnion.h) + ' vertical px; draw calls=' + drawCount);
 }
 
 /* 11. death is reachable through the real prelude: fly past a few pipes with

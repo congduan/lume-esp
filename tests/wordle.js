@@ -9,7 +9,7 @@
  * Part 2 boots the REAL app against the firmware prelude with runtime/shell.js
  * prepended (the CLI bundles it; Node cannot eval the import) and drives the
  * QWERTY keyboard through native Button presses.
- * Part 3 covers ASCII copy, byte-identical playground source, the 54-app
+ * Part 3 covers ASCII copy, byte-identical playground source, the 55-app
  * manifest, and the firmware/runtime zero-diff guard. Every source predicate
  * has a mutation proof. No hardware touch calibration: deferred to board
  * bring-up (docs/KNOWN-SIMPLIFICATIONS.md r149).
@@ -24,7 +24,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'bbd8627'; // r148: shell Keyboard feat commit; firmware/runtime/CLI still pinned
+const BASE = 'd49fb81'; // r148: shell Keyboard feat commit; firmware/runtime/CLI still pinned
 const source = read('examples/wordle/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -499,10 +499,10 @@ const checks = [
   ['playground sources/wordle.js byte-identical to example', [playgroundSrc, x =>
     x === source]],
 
-  ['wordle is in the 54-app playground manifest', [apps,
-    list => list.length === 54 && list.includes('wordle')]],
+  ['wordle is in the 55-app playground manifest', [apps,
+    list => list.length === 55 && list.includes('wordle')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to bbd8627', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to d49fb81', [fwChanged, c => c.length === 0]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -529,8 +529,8 @@ const BAR = 'letter state bar consumes wdLetterMarks';
 const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
-const MANIFEST = 'wordle is in the 54-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to bbd8627';
+const MANIFEST = 'wordle is in the 55-app playground manifest';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to d49fb81';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop shell.Keyboard registration',

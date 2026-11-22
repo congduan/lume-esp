@@ -7,7 +7,7 @@
  * observes the native message stream: four rows / 29 keys, QWERTY labels, 40 px
  * touch targets, and onKey / onBackspace / onSubmit routing through real Button
  * presses. Static checks cover ASCII copy, the byte-identical playground source,
- * the 54-app manifest, and the BASE guard. Every source predicate has a mutation
+ * the 55-app manifest, and the BASE guard. Every source predicate has a mutation
  * proof below. There is NO hardware touch calibration here: deferred to
  * board bring-up (docs/KNOWN-SIMPLIFICATIONS.md r148).
  */
@@ -20,7 +20,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'bbd8627'; // r148: shell Keyboard feat commit (runtime/ shell + types + api)
+const BASE = 'd49fb81'; // r148: shell Keyboard feat commit (runtime/ shell + types + api)
 
 const app = read('examples/keyboard_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -129,10 +129,10 @@ const checks = [
   ['playground sources/keyboard_demo.js byte-identical to example', [playgroundSrc, s =>
     s === app]],
 
-  ['keyboard_demo is in the 54-app playground manifest', [apps,
-    list => list.length === 54 && list.includes('keyboard_demo')]],
+  ['keyboard_demo is in the 55-app playground manifest', [apps,
+    list => list.length === 55 && list.includes('keyboard_demo')]],
 
-  ['firmware/ and runtime/ identical to bbd8627', [fwChanged, c => c.length === 0]],
+  ['firmware/ and runtime/ identical to d49fb81', [fwChanged, c => c.length === 0]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -215,8 +215,8 @@ const WIRING = 'app wires onKey / onBackspace / onSubmit to its signals';
 const LABELS = 'native nodes carry the 26 letters + SPACE + BKSP + ENTER labels';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/keyboard_demo.js byte-identical to example';
-const MANIFEST = 'keyboard_demo is in the 54-app playground manifest';
-const GUARD = 'firmware/ and runtime/ identical to bbd8627';
+const MANIFEST = 'keyboard_demo is in the 55-app playground manifest';
+const GUARD = 'firmware/ and runtime/ identical to d49fb81';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop the shell.Keyboard registration',
@@ -237,7 +237,7 @@ must('drop onBackspace dispatch',
 must('drop SPACE dispatch',
   s => s.replace("if (p.onKey) p.onKey(' ');", ''), DISPATCH, shell);
 must('drop the cleanup registration',
-  s => s.replace('cleanups[root] = function () { nodes.forEach(function (id) { lume.removeChild(id); }); };', ''), CLEAN, shell);
+  s => s.split('cleanups[root] = function () { nodes.forEach(function (id) { lume.removeChild(id); }); };').join(''), CLEAN, shell);
 must('app stops forwarding onKey',
   s => s.replace('onKey: function (ch) { typed.set(typed() + ch); }', 'onKey: null'), WIRING, wiring);
 must('a key label drifts from QWERTY',

@@ -349,6 +349,152 @@
     cleanups[root] = function () { nodes.forEach(function (id) { lume.removeChild(id); }); };
     return root;
   }
+  /* r151: controlled form primitives. All three keep state in the app's
+   * signals (the component never stores it), use theme tokens for colour, and
+   * register every node + gesture unsubscriber through the shell dispose chain.
+   * Touch feel / on-device hit calibration is deferred to board bring-up. */
+  function boolValue(name, value, fallback) {
+    var v = value === undefined ? fallback : value;
+    if (typeof v !== 'function' && typeof v !== 'boolean')
+      throw new TypeError('lume: ' + name + ' must be a boolean or a signal function');
+    return v;
+  }
+  function readBool(v) { return typeof v === 'function' ? !!v() : v; }
+  function Switch(p) {
+    p = p || {};
+    callback('Switch onChange', p.onChange);
+    var height = p.height === undefined ? 48 : p.height;
+    if (!isFinite(height) || Math.floor(height) !== height || height < 40 || height > 128)
+      throw new RangeError('lume: Switch height must be 40..128 pixels');
+    var trackWidth = p.trackWidth === undefined ? 72 : p.trackWidth;
+    if (!isFinite(trackWidth) || Math.floor(trackWidth) !== trackWidth || trackWidth < 48 || trackWidth > 480)
+      throw new RangeError('lume: Switch trackWidth must be 48..480 pixels');
+    var value = boolValue('Switch value', p.value, false);
+    var onColor = color('accent', '#40D8B0'), offColor = color('surfaceAlt', '#1C3449');
+    var knobColor = color('text', '#F2F7FB');
+    function isOn() { return readBool(value); }
+    function toggle() { if (p.onChange) p.onChange(!isOn()); }
+    var trackHeight = height - 8, knobSize = height - 8, inset = 4;
+    var travel = trackWidth - knobSize - 2 * inset;
+    var labelWidth = p.label === undefined ? 0 : 200;
+    var root = View({ parent: p.parent, style: {
+      x: p.x === undefined ? 24 : p.x, y: p.y === undefined ? 24 : p.y,
+      width: trackWidth + labelWidth, height: height, scroll: 'none' }, onPress: toggle }, []);
+    var nodes = [root];
+    nodes.push(View({ parent: root, style: { position: 'absolute', x: 0, y: inset,
+      width: trackWidth, height: trackHeight, borderRadius: Math.floor(trackHeight / 2),
+      background: function () { return isOn() ? onColor() : offColor(); }, scroll: 'none' } }));
+    nodes.push(View({ parent: root, style: { position: 'absolute', y: inset,
+      width: knobSize, height: knobSize, borderRadius: Math.floor(knobSize / 2),
+      x: function () { return isOn() ? inset + travel : inset; },
+      background: knobColor, scroll: 'none' } }));
+    if (p.label !== undefined) nodes.push(Text({ parent: root,
+      text: typeof p.label === 'function' ? p.label : String(p.label),
+      style: { position: 'absolute', x: trackWidth + 12, y: 0,
+        width: Math.max(1, labelWidth - 12), height: height, fontSize: 16,
+        color: color('text', '#F2F7FB'), scroll: 'none' } }));
+    cleanups[root] = function () { nodes.forEach(function (id) { lume.removeChild(id); }); };
+    return root;
+  }
+  function Slider(p) {
+    p = p || {};
+    callback('Slider onChange', p.onChange);
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    var width = positive('Slider width', p.width, Math.max(40, screen.w - 48), 16384);
+    var height = p.height === undefined ? 40 : p.height;
+    if (!isFinite(height) || Math.floor(height) !== height || height < 40 || height > 128)
+      throw new RangeError('lume: Slider height must be 40..128 pixels');
+    var min = p.min === undefined ? 0 : p.min, max = p.max === undefined ? 100 : p.max;
+    if (!isFinite(min) || !isFinite(max) || max <= min)
+      throw new RangeError('lume: Slider requires finite min < max');
+    var step = p.step === undefined ? 1 : p.step;
+    if (!isFinite(step) || step <= 0 || (max - min) / step > 4096)
+      throw new RangeError('lume: Slider step must be positive and yield <=4096 steps');
+    var value = p.value === undefined ? min : p.value;
+    if (typeof value !== 'function' && (typeof value !== 'number' || !isFinite(value)))
+      throw new TypeError('lume: Slider value must be a number or a signal function');
+    function current() {
+      var v = typeof value === 'function' ? value() : value;
+      if (!isFinite(v)) v = min;
+      return Math.max(min, Math.min(max, v));
+    }
+    function quantize(raw) {
+      if (!isFinite(raw)) raw = min;
+      var q = min + Math.round((raw - min) / step) * step;
+      q = Math.round(q * 1e6) / 1e6;                 /* kill float drift */
+      return Math.max(min, Math.min(max, q));
+    }
+    var knob = Math.min(24, Math.max(8, Math.floor(height / 2)));
+    var mid = Math.floor(height / 2);
+    var trackColor = color('surfaceAlt', '#1C3449'), fillColor = color('accent', '#40D8B0');
+    var knobColor = color('text', '#F2F7FB');
+    var canvas = Canvas({ parent: p.parent, width: width, height: height,
+      style: { x: p.x === undefined ? Math.floor((screen.w - width) / 2) : p.x,
+        y: p.y === undefined ? 24 : p.y, scroll: 'none' },
+      onDraw: function (c) {
+        c.clear();
+        var frac = (current() - min) / (max - min);
+        var kx = Math.round(frac * (width - knob));
+        c.fillColor(trackColor()); c.fillRect(0, mid - 2, width, 4);
+        c.fillColor(fillColor()); c.fillRect(0, mid - 2, kx + knob, 4);
+        c.fillColor(knobColor()); c.fillRect(kx, mid - Math.floor(knob / 2), knob, knob);
+      } });
+    /* dx is displacement from press start (prelude gesture state machine), so a
+     * pan maps startValue + dx*(range/width) back into the value domain. onChange
+     * fires only when the step-quantised value CHANGES during a drag: live
+     * feedback with no per-move jitter. panend only ends the drag, no extra emit.
+     * On LVGL a Canvas is a normal node id, so it can be a gesture target; the
+     * piano overlay (transparent View + absolute e.x) is kept as a fallback. */
+    var offs = [], startValue = min, lastQ = min, active = false;
+    offs.push(lume.gesture.on(canvas, 'panstart', function () {
+      active = true; startValue = current(); lastQ = quantize(startValue);
+    }));
+    offs.push(lume.gesture.on(canvas, 'pan', function (e) {
+      if (!active) return;
+      var q = quantize(startValue + (e.dx || 0) * (max - min) / width);
+      if (q !== lastQ) { lastQ = q; if (p.onChange) p.onChange(q); }
+    }));
+    offs.push(lume.gesture.on(canvas, 'panend', function () { active = false; }));
+    cleanups[canvas] = function () {
+      offs.forEach(function (off) { off(); });
+      lume.removeChild(canvas);
+    };
+    return canvas;
+  }
+  function Progress(p) {
+    p = p || {};
+    var height = positive('Progress height', p.height, 12, 128);
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    var width = positive('Progress width', p.width, Math.max(40, screen.w - 48), 16384);
+    var value = p.value === undefined ? 0 : p.value;
+    if (typeof value !== 'function' && (typeof value !== 'number' || !isFinite(value)))
+      throw new TypeError('lume: Progress value must be a number or a signal function');
+    function fraction() {
+      var v = typeof value === 'function' ? value() : value;
+      if (!isFinite(v)) v = 0;
+      return Math.max(0, Math.min(1, v));
+    }
+    var nodes = [];
+    var root = View({ parent: p.parent, style: {
+      x: p.x === undefined ? 24 : p.x, y: p.y === undefined ? 24 : p.y,
+      width: width, height: height, borderRadius: Math.floor(height / 2),
+      background: color('surfaceAlt', '#1C3449'), scroll: 'none' } }, []);
+    nodes.push(root);
+    /* width is a bound numeric style: the prelude's owned effect calls
+     * setAttr(fill, ATTR_WIDTH=2, px) on every signal change. No Canvas, no
+     * pixel budget, and the effect dies with the node on dispose. */
+    nodes.push(View({ parent: root, style: { position: 'absolute', x: 0, y: 0,
+      height: height, borderRadius: Math.floor(height / 2),
+      width: function () { return Math.round(fraction() * width); },
+      background: color('accent', '#40D8B0'), scroll: 'none' } }));
+    if (p.label !== undefined) nodes.push(Text({ parent: p.parent,
+      text: typeof p.label === 'function' ? p.label : String(p.label),
+      style: { x: p.x === undefined ? 24 : p.x,
+        y: (p.y === undefined ? 24 : p.y) - 24, width: width, height: 20,
+        fontSize: 14, color: color('textDim', '#9EB3C6'), scroll: 'none' } }));
+    cleanups[root] = function () { nodes.forEach(function (id) { lume.removeChild(id); }); };
+    return root;
+  }
   function Launcher(p) {
     p = p || {};
     /* Default source: the installed app set (lume.apps.entries()). Passing
@@ -408,6 +554,9 @@
   }
   shell.StatusBar = StatusBar;
   shell.Keyboard = Keyboard;
+  shell.Switch = Switch;
+  shell.Slider = Slider;
+  shell.Progress = Progress;
   shell.SafeArea = SafeArea;
   shell.safeInsets = safeInsets;
   shell.Card = Card;

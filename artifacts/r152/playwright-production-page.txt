@@ -1,0 +1,33 @@
+{
+  "url": "https://congduan.github.io/lume-esp/playground/",
+  "bundleSubstitution": "https://congduan.github.io/lume-esp/playground/apps/flapdot.js",
+  "results": [
+    {
+      "shot": "flapdot-fixed-frame-1.png",
+      "pixels": {
+        "width": 480,
+        "height": 400,
+        "groups": [
+          [
+            49,
+            65
+          ]
+        ]
+      }
+    },
+    {
+      "shot": "flapdot-fixed-frame-2.png",
+      "pixels": {
+        "width": 480,
+        "height": 400,
+        "groups": [
+          [
+            3,
+            19
+          ]
+        ]
+      }
+    }
+  ],
+  "pageErrors": []
+}
