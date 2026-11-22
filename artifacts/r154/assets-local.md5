@@ -1,0 +1,6 @@
+c2a88529562d6f6f3ac77cef352bded7  bootloader/bootloader.bin
+d378eab1bb888344d7b900edd15d47fd  partition_table/partition-table.bin
+1e946e5aedfa6ecd9250ef719cd1e965  lume.bin
+34f1a03c8b5aa84dababaeedcfda09b7  flash_args
+95b3cfb135b5f473aa57e7d41e671970  README-flash.txt
+40848d21f3bc3625db8029ababd6ee7f  merged_flash.bin

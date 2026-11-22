@@ -1,0 +1,10 @@
+bootloader.bin HTTP 200
+partition-table.bin HTTP 200
+lume.bin HTTP 200
+flash_args HTTP 200
+README-flash.txt HTTP 200
+bootloader.bin local_md5=c2a88529562d6f6f3ac77cef352bded7 downloaded_md5=c2a88529562d6f6f3ac77cef352bded7
+partition-table.bin local_md5=d378eab1bb888344d7b900edd15d47fd downloaded_md5=d378eab1bb888344d7b900edd15d47fd
+lume.bin local_md5=1e946e5aedfa6ecd9250ef719cd1e965 downloaded_md5=1e946e5aedfa6ecd9250ef719cd1e965
+flash_args local_md5=34f1a03c8b5aa84dababaeedcfda09b7 downloaded_md5=34f1a03c8b5aa84dababaeedcfda09b7
+README-flash.txt local_md5=95b3cfb135b5f473aa57e7d41e671970 downloaded_md5=95b3cfb135b5f473aa57e7d41e671970
