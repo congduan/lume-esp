@@ -92,7 +92,7 @@ for (const a of APPS) {
     s.includes('lume._nowMs() >= ' + next[n])]]);
 }
 checks.push(['all three migrated apps are in the 57-app playground manifest',
-  [playgroundApps, list => list.length === 58 &&
+  [playgroundApps, list => list.length === 59 &&
     ['clock_round', 'aurora_clock', 'watchface'].every(x => list.includes(x))]]);
 checks.push(['worldclock absent (no example dir, not in manifest)',
   [playgroundApps, list => !list.includes('worldclock') &&
