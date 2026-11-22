@@ -3146,3 +3146,31 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `d49fb81`（三 shell 控件 + 三 Props 类型 + api.html + controls_demo app + 55-app playground） / test `ae7cfd6`（controls_demo harness + 守卫 BASE 重钉 + 54→55 计数同步 + ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r151 节。
+
+### r153 result — M5 Component library 第四片：`shell.Keyboard` per-key 状态染色（runtime/ 刀）+ wordle 真键帽消费（appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r153-wt`（分支 `r153-key-cap-tint`，基线 `ba5156e`）。实证主仓 main 已推进至 r155 ClickWheel（r154/r155 worktree 另存），但按简报基线从 `ba5156e` 起刀，未并入后续轮次。
+
+**实证先行（假设以源码为准）**：通读 `runtime/shell.js:287-351` —— r148 `Keyboard` 的字母键经 `key(ch.toUpperCase(), keySize, onPress)` 生成（回调收到**小写**字母），键帽背景固定 `color('surface','#132435')`，`SPACE` / `BKSP` / `ENTER` 分别用默认 / `danger` / `accent`，**无 per-key 注入口**；`cleanups[root]` 一次移除 33 个节点，`shell.dispose(id)` 先 `delete` 再调 fn（幂等）。实证 prelude `ATTR_BG_COLOR = 1`（`lume_scripts.c:46`），`__applyStyle` 对**函数型 background** 建 owned effect（`effect(() => lume.setAttr(id, 1, color(bg())))`），随节点 dispose 回收；`signal.set` 有 `v === value` 相等短路。`wordle` 的 `wdLetterMarks()` 返回**小写字母 → G/Y/X**（G>Y>X 最高态），旧自绘 26 字母条用大写查询该表（潜在大小写失配），本轮移除该条后此问题不再存在。据此确定最小接口：`keyStates` 接受小写字母 → `'hit'|'present'|'miss'`（绿/黄/灰）的对象**或信号 getter**，每个字母键绑定自己的背景 getter，状态发布只重写该键 `ATTR_BG_COLOR`、不重建节点；缺省返回 r148 同一 helper，未知键 / 控制键忽略。
+
+**实现**：`runtime/shell.js` 增 `KEY_STATE_TINTS`（hit `#166B3E` / present `#8A6A12` / miss `#30343E`，与 wordle 格子填充同色）、`keyStates` 类型校验（对象或函数，否则 `TypeError`）、`letterBackground(ch)` 绑定 getter；控制键与 cleanup 链零改动。`runtime/types/lume.d.ts` 增 `KeyboardKeyState` / `KeyboardKeyStates` 与 `keyStates?` JSDoc；`python3 scripts/gen_api_docs.py` 重生成 `website/api.html`（行数 157 不变，类型别名不产生 API entry），`--check` 新鲜。`examples/wordle/app.js` 增 `keyStatesSig` + `refreshKeyStates()`（G/Y/X → hit/present/miss），在 submit 与 NEW 时发布，`keyStates: keyStatesSig` 喂给 Keyboard；移除 `paintBar()` / `BAR_*` / `COL.RING`；`NEW` / 胜负结算 / KV 连胜逻辑未动；`wdKb` / `wdKeyStates` 等 harness 句柄保留。
+
+**宿主 harness**：新增 `tests/keyboard_states.js`（CommonJS）—— 9 静态 + 8 mutation + 7 live + 2 live-mutation：三态染色、未知/大写键忽略、缺省=默认色、getter 形态、信号发布只改背景 ATTR 且零 `create`、dispose 后重挂状态正确且幂等、非对象/函数拒绝；**mutation 反例含「改错键名（`ch.toUpperCase()`）」与「丢状态映射」两条 live 反例**，证明断言 load-bearing。`tests/wordle.js` 同步：字母条断言改为 keyStates 传递断言（G/Y/X→hit/present/miss、键帽 `ATTR_BG_COLOR`、NEW 清空），canvas 预算断言去掉 `BAR_*`，保留 21 逻辑/live + 10 静态 + 11 mutation。
+
+**级联同步（照 r151/r148 先例）**：本轮合法改 `runtime/shell.js` / `runtime/types/lume.d.ts`，15 个 runtime/firmware 守卫 harness 的零 diff 断言转红（重钉前实证 16 FAIL：13 app-only + controls_demo + keyboard_demo + wordle；`board_abi.js` 排除 `runtime/` 故始终绿）。test commit 把 BASE 从 r148 feat `d49fb81` 重钉到本轮 feat `0d1111c`，零 diff / allowlist 语义完全保留（未自比较、未删守卫），重钉后全量 0 FAIL。`tests/ota_consumers.js` ALLOWED 预加 `tests/keyboard_states.js`（wordle playground 生成物已在册）；`sd_files.js` 清单变异串因无新 app 不改。未新增 app，清单仍 55。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/keyboard_states.js` → 9 静态 + 8 mutation + 7 live + 2 live-mutation 全绿，末行 `ALL KEYBOARD STATES HARNESS CASES PASSED`，`EXIT=0`。
+- `node tests/wordle.js` → 21 逻辑/live + 10 静态 + 11 mutation 全绿，末行 `ALL WORDLE HARNESS CASES PASSED`，`EXIT=0`。
+- `for t in tests/*.js; do timeout 120 node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**（88 个 harness，新增 1）。
+- `npm test --prefix tools/lume` → `# tests 50` / `# pass 50` / `# fail 0` / `# cancelled 0` / `# skipped 0` / `# todo 0`，`EXIT=0`。
+- `python3 scripts/check_website.py` → `HTML pages: 7` / `API: 157 catalog entries, 157 type declarations, 34 function namespaces` / `API missing/invented/duplicates/signatures not found: none`；`python3 scripts/gen_api_docs.py --check` → `api.html is up to date with lume.d.ts (157 entries)`。
+- `node tools/lume/lume.js check examples/wordle --no-emu` → `[PASS] bundle 27422 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle wordle 27422 bytes` / `PASS esbuild-wasm assets and 55 editable sources` / `PASS prelude 67428 bytes; 55 apps`；再跑一次 `git status` 空（生成物已随 feat commit 落定）。
+- **固件零改动，未跑 `idf.py build`**：`git diff ba5156e HEAD -- firmware/` 与 `git diff ba5156e -- firmware/` 均空；`git diff ba5156e HEAD -- firmware/components/lume-engine/lume_scripts.c` 与工作树版亦空（prelude 未动）。shell.js 是 CLI 打包 JS、`.d.ts` 是类型契约，均不进固件构建；IRAM 16384 硬线未触碰。
+
+**里程碑口径**：M5 Component library 行仍不勾（键帽染色仍需真机触控/渲染验收）；真机键帽配色对比度、误触/连打、圆屏安全区全部 deferred，**不声称真机验证**。ASCII 纪律全满足；未改 vendored（QuickJS/LVGL）；未跑 codex review（主控轮负责）。
+
+**commits（未推送，拆分）**：feat `0d1111c`（Keyboard keyStates + 三态映射 + lume.d.ts + wordle 消费 + 55-app playground 生成物） / test `899751b`（keyboard_states harness + wordle 断言同步 + 15 守卫 BASE 重钉 + ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r153 节。
