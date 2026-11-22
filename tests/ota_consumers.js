@@ -415,7 +415,7 @@ const checks = [
     s === dashboard]],
 
   ['dashboard is in the playground manifest', [playgroundApps,
-    list => list.length === 55 && list.includes('dashboard')]],
+    list => list.length === 56 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
