@@ -3174,3 +3174,36 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `0d1111c`（Keyboard keyStates + 三态映射 + lume.d.ts + wordle 消费 + 55-app playground 生成物） / test `899751b`（keyboard_states harness + wordle 断言同步 + 15 守卫 BASE 重钉 + ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r153 节。
+
+### r157 result — M5 Component library 第五片：timer_kit 倒计时+秒表（r151 三控件的第一个消费刀，纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r157-wt`（分支 `r157-timer-kit`，基线 `6426f7b`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 从主仓只读软链对齐（r148/r151 先例，源码零改动）。
+
+**实证纠偏（方案与实际代码不符处，以源码为准）**：
+1. 简报写 `lume.system.now()`，但 `runtime/types/lume.d.ts` 无此成员，prelude 实际为 `lume.system.time()`（`lume_scripts.c:471` → `lume._systemTime()` → gettimeofday 毫秒）。app 用 `tkNow()` 封装 `lume.system.time()`，harness 通过覆盖 `lume._systemTime` 注入假时钟。已写进 app JSDoc 与 KNOWN-SIMPLIFICATIONS。
+2. 简报期望「零 canvas」，但 `shell.Slider` 实现本体就是 `Canvas`（`runtime/shell.js:457`，432×40）。改用**画布预算锁**：唯一画布为 Slider 的 17,280 px，≤ 230,400 px 全帧预算；无环形进度画布。静态断言与 live 断言都锁死这一点。
+3. 简报称 14 个 harness 含 56 计数，实证 `grep` 后 `tests/shell_components.js:18` 的 `m[3] === 56` 是控件几何 attr 值（IconButton 高度 56），非清单计数，**未动**。实际同步 13 个计数断言。
+4. **基线存量红灯（非本轮引入）**：在干净主仓 `6426f7b` 上跑全量 `tests/*.js` 已有 17 个 FAIL（13 个 app-only 计数守卫 + `keyboard_states` / `sd_files` / `sd_gallery` / `sntp_consumers`），根因是 r151/r153 改了 `runtime/shell.js` 与 `.d.ts` 而守卫 BASE 仍钉在更早提交；`git diff --name-only ba5156e 6426f7b -- firmware/ runtime/ tools/lume/` 实证两文件变更。按「先查自己是否越界、确认是清单计数类才同步、断言语义绝不放宽」的纪律，**不重钉这些 BASE、不放宽断言**。本轮改前/改后全量 FAIL 集合逐项一致（均为基线那 17 个），新增 `tests/timer_kit.js` 全绿，**0 个新增 FAIL**。
+
+**实现**：`examples/timer_kit/app.js`（单文件、保守 var/function、唯一一行 shell.js import）。倒计时：Slider(0..60 step 1) 设定 → START/PAUSE/RESET；Progress 显示剩余占比（r151 首消费）；`mm:ss` 用 32 档 Text；归零用 40 ms 立体声 PCM 包络响铃（piano 先例的 attack+exp decay，try/catch 静默）+ `DONE - NN MIN` 结算。秒表：START(→PAUSE/RESUME)/LAP/RESET；`mm:ss.cc`（10 ms 显示）；最近 3 行 LAP 用原生 View/Text。Switch 切模式，非活动面板用绑定 `x` getter 移到屏外（`__pixel` 要求非负，故 x=1000 而非 -1000）。所有值 signal 驱动；暂停记 now 快照、resume 重锚，墙钟暂停时长不计入。
+
+**记录口径（JSDoc + harness 双写）**：`hisc.timer` = 真正走到 0 的倒计时中**最短的设定分钟数**（只认真实归零，不记中途 RESET）；`timer.best` = **3 LAP 钻**在 60 s 内完成的秒表用时（ms，越小越好），第 3 次 LAP 才结算。两键均 10 字符 ≤ NVS 15 上限，读写全包 try/catch、只接受非负有限 number。若后续认为 3-LAP 口径牵强，可只保留前者——本轮两口径都实现且可证。
+
+**宿主 harness**：新增 `tests/timer_kit.js`（CommonJS，仿 controls_demo/wordle）：19 静态断言（三控件真实调用、绝对时基、pause 快照/重锚、KV/bell try/catch、键长、LAP_LIMIT、ASCII、字号三档、画布预算、字节一致、57 清单、固件零 diff）+ 18 静态 mutation + 10 live（真 prelude + 假时钟：Slider pan 量化 5→12、Switch 切视图、now 差推进、pause 冻结、归零结算响铃、LAP 仅留最近 3、KV 错型/抛异常、dispose/cleanup）+ 3 live mutation，全部 load-bearing。
+
+**级联同步（照 r149/r151 精确执行）**：`tools/playground/build.mjs` 清单 56→57（`timer_kit` 第 57 个，命令实证 57 editable sources / 57 apps）；13 个 harness 的计数断言与文案按 `grep` 实证逐个同步；`sd_files.js` 清单变异串追加 `'timer_kit'`（已实证 needle 与 build.mjs 精确匹配）；`tests/ota_consumers.js` ALLOWED 在 commit 前预加 4 个新路径（app / harness / 两个 playground 生成物），防 untracked 对 `git diff` 不可见导致提交后转红。本轮 firmware/runtime 零 diff，13 个 app-only 守卫的 BASE 未重钉（其红灯为基线存量，非本轮清单计数）。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/timer_kit.js` → 末行 `ALL TIMER KIT HARNESS CASES PASSED`，`EXIT=0`。
+- 全量 `for t in tests/*.js; ...` → 92 个 harness（基线 91 + 本轮 1）；`done` 行的 FAIL 清单与干净主仓 `6426f7b` **逐项一致**（17 个基线存量红灯），**本轮新增 FAIL = 0**；`timer_kit.js` 自身 PASS。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0 / # todo 0`。
+- `python3 scripts/check_website.py` → `HTML pages: 7` / `API: 158 catalog entries, 158 type declarations, 34 function namespaces` / `API missing/invented/duplicates/signatures not found: none`。
+- `node tools/lume/lume.js check examples/timer_kit --no-emu` → `[PASS] bundle 25583 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle timer_kit 25583 bytes` / `PASS esbuild-wasm assets and 57 editable sources` / `PASS prelude 67428 bytes; 57 apps`。
+- **固件零改动，未跑 `idf.py build`**：`git diff 6426f7b HEAD -- firmware/ runtime/ tools/lume/` 原始输出为空（`.d.ts` 亦未动）；IRAM 16384 硬线未触碰；artifacts / 临时产物只留 `/tmp`，未清主仓 build/。
+
+**里程碑口径**：M5 Component library 行仍不勾——三控件被消费 ≠ 真机验收；真机触控命中、Slider 拖感、计时精度、响听听感、圆屏安全区全部 deferred，**不声称真机验证**。ASCII 纪律全满足（全文件非 ASCII 字节 0，字号仅 14/20/32）；未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）。
+
+**commits（未推送，拆分）**：feat（timer_kit app + 57-app playground 生成物） / test（timer_kit harness + 56→57 计数同步 + sd_files 变异串 + ota ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS r157 节）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r157 节。
