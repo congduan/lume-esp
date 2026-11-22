@@ -97,6 +97,7 @@ const ALLOWED = [
   'tools/playground/build.mjs', 'website/playground/apps/skycombat.js',
   'website/playground/sources/skycombat.js', 'website/playground/sources.js',
   'docs/r156-skycombat-report.md',
+  'artifacts/r156/skycombat-harness.txt',
   'artifacts/r156/website-check.txt',
   'artifacts/r156/cli-tests.txt',
   'artifacts/r156/ota-guard.txt',
