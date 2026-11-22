@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 55-app manifest, all UI literals are ASCII (r64), and only the
+//     in the 54-app manifest, all UI literals are ASCII (r64), and only the
 //     known r132-r136 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'd49fb81'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
+const BASE = 'bbd8627'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 55-app playground manifest is the source of truth for "in清单".
+// 54-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -138,7 +138,7 @@ const ALLOWED = [
   'website/playground/sources/vec_demo.js',
   'website/playground/runtime.js',
   // r147: this round deliberately adds the lume-board-hal skeleton component
-  // (feat commit d49fb81 is the new BASE) and re-pins these app-only guard
+  // (feat commit bbd8627 is the new BASE) and re-pins these app-only guard
   // baselines.
   'firmware/components/lume-board-hal/CMakeLists.txt',
   'firmware/components/lume-board-hal/include/lume_board_hal.h',
@@ -210,15 +210,6 @@ const ALLOWED = [
   'tests/wordle.js',
   'website/playground/apps/wordle.js',
   'website/playground/sources/wordle.js',
-  // r151: shell form-primitive slice. The four new files are staged here BEFORE
-  // commit because `git diff` does not see untracked files; without this the
-  // allChanged allowlist turns red once the feat/test commits land. The feat
-  // commit (d49fb81) is the new guard BASE, so runtime/shell.js + lume.d.ts
-  // are already pinned there; runtime/ and tools/lume/ guards stay empty.
-  'examples/controls_demo/app.js',
-  'tests/controls_demo.js',
-  'website/playground/apps/controls_demo.js',
-  'website/playground/sources/controls_demo.js',
   // r142: esp-emu network acceptance infrastructure. tools/emu-net is a NEW
   // standalone entry (esp32sim in tools/emu stays untouched); net_check is a
   // consumer app; README documents the emulator split; fw-sync republishes
@@ -385,8 +376,8 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 55-app playground manifest', [playgroundApps,
-    list => list.length === 55 && list.includes('dashboard')]],
+  ['dashboard is in the 54-app playground manifest', [playgroundApps,
+    list => list.length === 54 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
@@ -462,7 +453,7 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 55-app playground manifest', playgroundApps);
+  'dashboard is in the 54-app playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
