@@ -65,6 +65,11 @@ const guardOut = execFileSync('git', [
   ':!firmware/components/lume-board',
   ':!firmware/components/lume-board-hal',
   ':!runtime/', ':!website/', ':!examples/', ':!tools/', ':!tests/', ':!docs',
+  // r150: docs-refresh round lands README.md / README.zh-CN.md (43->53 apps,
+  // SNTP/TF/SafeArea/esp-emu sections). Root READMEs live outside docs/, so
+  // they need their own exclusion; everything else outside the listed surfaces
+  // still fails the guard.
+  ':!README.md', ':!README.zh-CN.md',
   // r148 controller follow-up: stale r82/r84/r92 host-run evidence logs were
   // deliberately removed (disk hygiene, e4f2d47); artifacts/ is regenerable
   // evidence, not source, so the guard no longer pins its contents.
