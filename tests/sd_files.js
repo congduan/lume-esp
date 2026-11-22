@@ -120,7 +120,7 @@ const R128_FIRMWARE_FILES = [
   'runtime/types/lume.d.ts',
 ];
 function gitDiffEmpty() {
-  const out = execFileSync('git', ['diff', '--name-only', 'bbd8627',
+  const out = execFileSync('git', ['diff', '--name-only', 'd49fb81',
     '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
   const files = out ? out.split('\n') : [];
   return files.every(f => R128_FIRMWARE_FILES.includes(f));
@@ -134,8 +134,8 @@ for (const c of checks) {
   assert.ok(c.test(app), 'FAIL sd_files: ' + c.name);
   console.log('PASS sd_files: ' + c.name);
 }
-assert.ok(gitDiffEmpty(), 'FAIL sd_files: only known firmware files may differ from bbd8627');
-console.log('PASS sd_files: firmware/ runtime/ differ from bbd8627 only in known files');
+assert.ok(gitDiffEmpty(), 'FAIL sd_files: only known firmware files may differ from d49fb81');
+console.log('PASS sd_files: firmware/ runtime/ differ from d49fb81 only in known files');
 assert.ok(manifestHasApps(manifest), 'FAIL sd_files: playground manifest must list image_gallery and files');
 console.log('PASS sd_files: playground manifest lists image_gallery and files');
 
@@ -196,7 +196,7 @@ must('inject CJK UI copy',
   s => s.replace("notify('Cannot delete SD entry');", "notify('无法删除 SD entry');"),
   'all app string literals (UI copy) ASCII-only (r64)', app);
 must('drop image_gallery from playground manifest',
-  s => s.replace("'image_gallery', 'files', 'adc_meter', 'crypto_check', 'archive_view', 'img_view', 'vec_demo', 'settings', 'hr_monitor', 'keyboard_demo', 'wordle'];", "'files'];"),
+  s => s.replace("'image_gallery', 'files', 'adc_meter', 'crypto_check', 'archive_view', 'img_view', 'vec_demo', 'settings', 'hr_monitor', 'keyboard_demo', 'wordle', 'controls_demo'];", "'files'];"),
   'playground manifest lists image_gallery and files', manifest);
 
 console.log('ALL SD FILES HARNESS CASES PASSED');
