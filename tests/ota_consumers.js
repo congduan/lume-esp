@@ -92,6 +92,37 @@ function gitChanged(paths) {
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
+  // r156 skycombat app, generated registration, host proof, and evidence.
+  'examples/skycombat/app.js', 'tests/skycombat.js',
+  'tools/playground/build.mjs', 'website/playground/apps/skycombat.js',
+  'website/playground/sources/skycombat.js', 'website/playground/sources.js',
+  'docs/r156-skycombat-report.md',
+  'artifacts/r156/cli-tests.txt',
+  'artifacts/r156/ota-guard.txt',
+  'artifacts/r156/gateway-solo.txt',
+  'artifacts/r156/host-batch-0.txt',
+  'artifacts/r156/host-batch-1.txt',
+  'artifacts/r156/host-batch-2.txt',
+  'tests/adc_meter.js',
+  'tests/controls_demo.js',
+  'tests/archive_view.js',
+  'tests/crypto_check.js',
+  'tests/hr_monitor.js',
+  'tests/img_view.js',
+  'tests/keyboard_demo.js',
+  'tests/reboot_consumers.js',
+  'tests/sntp_consumers2.js',
+  'tests/vec_demo.js',
+  'tests/weather_sntp.js',
+  'tests/wordle.js',
+  'artifacts/r156/npm-ci.txt',
+  'artifacts/r156/playground-build.txt',
+  'artifacts/r156/lume-check.txt',
+  'artifacts/r156/host-tests.txt',
+  'artifacts/r156/playwright.txt',
+  'artifacts/r156/far.png',
+  'artifacts/r156/near.png',
+
   // r155: guard baseline is the ClickWheel feat commit. The following test,
   // generated-site, report, and evidence files are this round's known delta.
   'tests/adc_meter.js', 'tests/archive_view.js', 'tests/controls_demo.js',
@@ -432,7 +463,7 @@ const checks = [
     s === dashboard]],
 
   ['dashboard is in the playground manifest', [playgroundApps,
-    list => list.length === 55 && list.includes('dashboard')]],
+    list => list.length === 56 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],

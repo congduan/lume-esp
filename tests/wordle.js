@@ -9,7 +9,7 @@
  * Part 2 boots the REAL app against the firmware prelude with runtime/shell.js
  * prepended (the CLI bundles it; Node cannot eval the import) and drives the
  * QWERTY keyboard through native Button presses.
- * Part 3 covers ASCII copy, byte-identical playground source, the 55-app
+ * Part 3 covers ASCII copy, byte-identical playground source, the 56-app
  * manifest, and the firmware/runtime zero-diff guard. Every source predicate
  * has a mutation proof. No hardware touch calibration: deferred to board
  * bring-up (docs/KNOWN-SIMPLIFICATIONS.md r149).
@@ -499,8 +499,8 @@ const checks = [
   ['playground sources/wordle.js byte-identical to example', [playgroundSrc, x =>
     x === source]],
 
-  ['wordle is in the 55-app playground manifest', [apps,
-    list => list.length === 55 && list.includes('wordle')]],
+  ['wordle is in the 56-app playground manifest', [apps,
+    list => list.length === 56 && list.includes('wordle')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 5ca3e66', [fwChanged, c => c.length === 0]],
 
@@ -529,7 +529,7 @@ const BAR = 'letter state bar consumes wdLetterMarks';
 const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
-const MANIFEST = 'wordle is in the 55-app playground manifest';
+const MANIFEST = 'wordle is in the 56-app playground manifest';
 const GUARD = 'firmware/ runtime/ tools/lume/ identical to 5ca3e66';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
