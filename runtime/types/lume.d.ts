@@ -242,6 +242,25 @@ declare namespace lume.ui.shell {
     onPageSwipe?: (dir: 'left' | 'right') => void;
     edgeWidth?: number; indicator?: boolean; width?: number; height?: number;
   }
+  interface KeyboardProps {
+    parent?: lume.ui.Node;
+    /** Receives one lowercase ASCII character for each letter, plus ' ' for SPACE. */
+    onKey?: (char: string) => void;
+    onBackspace?: () => void;
+    onSubmit?: () => void;
+    /** Logical width; defaults to the screen width. */
+    width?: number;
+    /** Gap between keys, derived from theme.spacing and clamped to fit 40 px keys. */
+    gap?: number;
+    /** Key side in px (40..128); defaults to the largest size that fits the row. */
+    keySize?: number;
+    x?: number; y?: number;
+    style?: lume.ui.Style;
+  }
+  /** QWERTY soft keyboard (three letter rows + SPACE / BKSP / ENTER). Returns the
+   * root node; dispose(id) removes its rows and keys through the shell cleanup chain.
+   * Pure JS — no native input method, no on-device touch calibration on this slice. */
+  function Keyboard(props?: KeyboardProps): lume.ui.Node;
   interface LauncherApp { id: string; label: string; color?: string; icon?: string; glyph?: string }
   interface LauncherProps {
     parent?: lume.ui.Node;

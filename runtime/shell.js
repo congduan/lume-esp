@@ -284,6 +284,71 @@
     };
     return strips[0];
   }
+  /* r148: QWERTY soft keyboard. Pure JS shell component: letter/control keys
+   * are Buttons driven by the existing press pipeline, rows are shell Views so
+   * theme.spacing still feeds unstyled children. All labels are ASCII (r64);
+   * prelude / native ATTR semantics are untouched, touch feel is deferred to
+   * board bring-up. */
+  var KEY_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+  function Keyboard(p) {
+    p = p || {};
+    callback('Keyboard onKey', p.onKey);
+    callback('Keyboard onBackspace', p.onBackspace);
+    callback('Keyboard onSubmit', p.onSubmit);
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    var width = positive('Keyboard width', p.width, screen.w, 16384);
+    var columns = KEY_ROWS[0].length;                 /* 10 letters on the top row */
+    var maxGap = Math.floor((width - columns * 40) / (columns - 1));
+    if (maxGap < 0) throw new RangeError('lume: Keyboard width too narrow for 40px keys');
+    /* theme.spacing is the default key gap, clamped so ten columns keep the
+     * 40 px touch target; an explicit gap wins and can fail validation loudly. */
+    var gap = p.gap === undefined ? Math.min(spacing === undefined ? 8 : spacing, maxGap) : p.gap;
+    if (typeof gap !== 'number' || !isFinite(gap) || Math.floor(gap) !== gap || gap < 0 || gap > 32)
+      throw new RangeError('lume: Keyboard gap must be 0..32 pixels');
+    var fitted = Math.floor((width - (columns - 1) * gap) / columns);
+    var keySize = p.keySize === undefined ? fitted : p.keySize;
+    if (typeof keySize !== 'number' || !isFinite(keySize) || Math.floor(keySize) !== keySize ||
+        keySize < 40 || keySize > 128)
+      throw new RangeError('lume: Keyboard keySize must be 40..128 pixels');
+    var pad = 4;
+    var height = 4 * keySize + 3 * gap + 2 * pad;
+    var style = { x: p.x === undefined ? Math.floor((screen.w - width) / 2) : p.x,
+      y: p.y === undefined ? Math.max(0, screen.h - height - 24) : p.y,
+      width: width, height: height, display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: gap, padding: pad,
+      background: color('surfaceAlt', '#1C3449'), borderRadius: 12, scroll: 'none' };
+    Object.keys(p.style || {}).forEach(function (key) { style[key] = p.style[key]; });
+    var nodes = [], root = View({ parent: p.parent, style: style }, []);
+    function row(children) {
+      var id = View({ parent: root, style: { display: 'flex', flexDirection: 'row',
+        alignItems: 'center', justifyContent: 'center', gap: gap, padding: 0,
+        scroll: 'none' } }, []);
+      nodes.push(id);
+      children.forEach(function (child) { child(id); });
+      return id;
+    }
+    function key(label, keyWidth, onPress, background) {
+      return function (parent) {
+        nodes.push(Button({ parent: parent, title: label,
+          style: { width: keyWidth, height: keySize, borderRadius: 8,
+            background: background || color('surface', '#132435') },
+          onPress: onPress }));
+      };
+    }
+    KEY_ROWS.forEach(function (chars) {
+      row(chars.split('').map(function (ch) {
+        return key(ch.toUpperCase(), keySize, function () { if (p.onKey) p.onKey(ch); });
+      }));
+    });
+    var spaceWidth = 4 * keySize + 3 * gap;
+    row([
+      key('SPACE', spaceWidth, function () { if (p.onKey) p.onKey(' '); }),
+      key('BKSP', keySize, function () { if (p.onBackspace) p.onBackspace(); }, color('danger', '#FF6B79')),
+      key('ENTER', keySize, function () { if (p.onSubmit) p.onSubmit(); }, color('accent', '#40D8B0')),
+    ]);
+    cleanups[root] = function () { nodes.forEach(function (id) { lume.removeChild(id); }); };
+    return root;
+  }
   function Launcher(p) {
     p = p || {};
     /* Default source: the installed app set (lume.apps.entries()). Passing
@@ -342,6 +407,7 @@
     return root;
   }
   shell.StatusBar = StatusBar;
+  shell.Keyboard = Keyboard;
   shell.SafeArea = SafeArea;
   shell.safeInsets = safeInsets;
   shell.Card = Card;

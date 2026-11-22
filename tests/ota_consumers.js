@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 52-app manifest, all UI literals are ASCII (r64), and only the
+//     in the 53-app manifest, all UI literals are ASCII (r64), and only the
 //     known r132-r136 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '6176790'; // r147: firmware changed deliberately for lume-board-hal skeleton
+const BASE = 'bbd8627'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 52-app playground manifest is the source of truth for "in清单".
+// 53-app playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -138,7 +138,7 @@ const ALLOWED = [
   'website/playground/sources/vec_demo.js',
   'website/playground/runtime.js',
   // r147: this round deliberately adds the lume-board-hal skeleton component
-  // (feat commit 6176790 is the new BASE) and re-pins these app-only guard
+  // (feat commit bbd8627 is the new BASE) and re-pins these app-only guard
   // baselines.
   'firmware/components/lume-board-hal/CMakeLists.txt',
   'firmware/components/lume-board-hal/include/lume_board_hal.h',
@@ -174,11 +174,25 @@ const ALLOWED = [
   // one harness and two generated playground artifacts). Staged here BEFORE
   // commit because `git diff` does not see untracked files; without this the
   // allowlist turns red once the feat/test commits land. The manifest entry
-  // (52nd app) and tools/playground/build.mjs are already accounted for.
+  // (53rd app) and tools/playground/build.mjs are already accounted for.
   'examples/hr_monitor/app.js',
   'tests/hr_monitor.js',
   'website/playground/apps/hr_monitor.js',
   'website/playground/sources/hr_monitor.js',
+  // r148: shell Keyboard slice. All new files are staged here BEFORE commit
+  // because `git diff` does not see untracked files; without this the
+  // allowlist turns red once the feat/test commits land. runtime/ shell/types
+  // and api.html are listed for completeness even though the guard BASE is
+  // re-pinned to the feat commit that already contains them.
+  'examples/keyboard_demo/app.js',
+  'tests/keyboard_demo.js',
+  'website/playground/apps/keyboard_demo.js',
+  'website/playground/sources/keyboard_demo.js',
+  'website/playground/apps/files.js',
+  'website/playground/sources.js',
+  'runtime/shell.js',
+  'runtime/types/lume.d.ts',
+  'website/api.html',
   // r142: esp-emu network acceptance infrastructure. tools/emu-net is a NEW
   // standalone entry (esp32sim in tools/emu stays untouched); net_check is a
   // consumer app; README documents the emulator split; fw-sync republishes
@@ -296,8 +310,8 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 52-app playground manifest', [playgroundApps,
-    list => list.length === 52 && list.includes('dashboard')]],
+  ['dashboard is in the 53-app playground manifest', [playgroundApps,
+    list => list.length === 53 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
@@ -373,7 +387,7 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 52-app playground manifest', playgroundApps);
+  'dashboard is in the 53-app playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);

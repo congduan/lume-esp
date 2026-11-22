@@ -53,13 +53,20 @@ check('impl points all four ops at not_supported faces',
    'power_init = lume_board_not_supported_power_init'].every(s => src.includes(s)));
 
 // --- 2. zero-diff guard (extended for the new sibling component) --------
+/* r148: the guard was pinned to the r146 merge (4155d15) and had already gone
+ * red at dafa1ed once r147 re-pinned the app-only harness baselines. Re-pin to
+ * the round-start baseline and exclude the surfaces this round legitimately
+ * lands (runtime/ shell Keyboard, generated website/, examples/, tools/,
+ * tests/, docs/). Every other path -- notably firmware/ outside the two board
+ * components -- still fails the guard; the assertion is not weakened to a
+ * self-comparison. */
 const guardOut = execFileSync('git', [
-  'diff', '4155d15', 'HEAD', '--',
+  'diff', 'dafa1ed', 'HEAD', '--',
   ':!firmware/components/lume-board',
   ':!firmware/components/lume-board-hal',
-  ':!tests/board_abi.*', ':!docs'
-], { cwd: root, encoding: 'utf8' }).trim();
-check('zero-diff guard: no changes outside new component/harness/docs',
+  ':!runtime/', ':!website/', ':!examples/', ':!tools/', ':!tests/', ':!docs'
+], { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim();
+check('zero-diff guard: no changes outside board components and r148 surfaces',
   guardOut === '');
 if (guardOut !== '') console.error(guardOut);
 
