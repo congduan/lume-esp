@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'bbd8627'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
+const BASE = 'd49fb81'; // r152: re-pinned past the Switch/Slider/Progress shell round
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -314,6 +314,25 @@ const ALLOWED = [
   'website/wasm/fw/bootloader.bin',
   'website/wasm/fw/lume.bin',
   'website/wasm/fw/lume.json',
+  // r152: flapdot ghost fix — dirty-rect covers the full bird path across
+  // skipped draw frames (user-visible ghosting evidence), plus round evidence.
+  'examples/flapdot/app.js',
+  'tests/flapdot.js',
+  'website/playground/apps/flapdot.js',
+  'website/playground/sources/flapdot.js',
+  'artifacts/r152/flapdot-fixed-frame-1.png',
+  'artifacts/r152/flapdot-fixed-frame-2.png',
+  'artifacts/r152/flapdot-harness.txt',
+  'artifacts/r152/host-regression.txt',
+  'artifacts/r152/lume-check-no-emu.txt',
+  'artifacts/r152/npm-ci.txt',
+  'artifacts/r152/playground-build.txt',
+  'artifacts/r152/regression-summary.txt',
+  'artifacts/r152/playwright-production-page.txt',
+  'docs/r152-flapdot-ghost-report.md',
+  // r151 (shell form primitives round) landed its controls_demo harness on
+  // main after d49fb81 was pinned; it is a test-only addition.
+  'tests/controls_demo.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -376,8 +395,8 @@ const checks = [
   ['playground sources/dashboard.js byte-identical to example', [playgroundSrc, s =>
     s === dashboard]],
 
-  ['dashboard is in the 54-app playground manifest', [playgroundApps,
-    list => list.length === 54 && list.includes('dashboard')]],
+  ['dashboard is in the playground manifest', [playgroundApps,
+    list => list.length === 55 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
@@ -453,7 +472,7 @@ must('playground generated source drifts from the example',
   'playground sources/dashboard.js byte-identical to example', playgroundSrc);
 must('playground manifest drops dashboard',
   list => list.filter(x => x !== 'dashboard'),
-  'dashboard is in the 54-app playground manifest', playgroundApps);
+  'dashboard is in the playground manifest', playgroundApps);
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
