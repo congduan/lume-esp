@@ -1,0 +1,7 @@
+tests/*.js: 87 scripts attempted, 86 passed, 1 failed.
+Initial run completed scripts 1-26, then command exited 143.
+Batch 27-45: exit 0.
+Batch 46-65: exit 1, tests/ota_consumers.js historic ALLOWED-file guard.
+Batch 66-87: exit 0.
+The only non-allowlisted git diff paths are the four r152 flapdot source/test/generated files.
+See host-regression.txt for raw output.

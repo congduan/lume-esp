@@ -254,7 +254,7 @@ function unionBox(a, b) {
 }
 
 var CANVAS_X = 0, CANVAS_Y = FY;
-var painted = false, prevS = 0, prevY = FH / 2;
+var painted = false, prevDrawnS = 0, prevDrawnY = FH / 2;
 var scene = Canvas({ parent: root, width: FW, height: FH,
   style: { position: 'absolute', x: CANVAS_X, y: CANVAS_Y },
   onDraw: function (ctx) {
@@ -267,16 +267,21 @@ var scene = Canvas({ parent: root, width: FW, height: FH,
       drawGround(ctx, state.s, a);
       drawBird(ctx, state, a);
       painted = true;
+      prevDrawnS = state.s;
+      prevDrawnY = state.y;
       return [a];
     }
     /* incremental: pipes band (old scroll + new scroll), ground strip, bird */
     var band = pipeBand(state.s, 10);
-    var oldBand = pipeBand(prevS, 10);
+    var oldBand = pipeBand(prevDrawnS, 10);
     if (band && oldBand) band = unionBox(band, oldBand);
     else if (oldBand) band = oldBand;
     if (band) rects.push(band);
     rects.push(box(0, FH - GROUND_H, FW, GROUND_H));
-    rects.push(unionBox(birdBox(state), birdBox({ y: prevY })));
+    var yLo = Math.min(prevDrawnY, state.y) - BIRD_R - 8;
+    var yHi = Math.max(prevDrawnY, state.y) + BIRD_R + 8;
+    var birdPath = unionBox(box(BIRD_X - BIRD_R - 5, yLo, 2 * BIRD_R + 10, yHi - yLo), birdBox(state));
+    rects.push(clipRect(birdPath, box(0, 0, FW, FH)));
     var used = [];
     for (var i = 0; i < rects.length; i++) {
       var r = rects[i];
@@ -286,8 +291,8 @@ var scene = Canvas({ parent: root, width: FW, height: FH,
       drawBird(ctx, state, r);
       used.push(r);
     }
-    prevS = state.s;
-    prevY = state.y;
+    prevDrawnS = state.s;
+    prevDrawnY = state.y;
     return used;
   } });
 
@@ -325,8 +330,6 @@ function tick() {
     }
   }
   if (state.score !== lastScore) lastScore = state.score;
-  prevS = state.s;
-  prevY = state.y;
   sync();
 }
 lume.app.onPause(function () {});
