@@ -23,7 +23,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
+const BASE = '6176790'; // r147: firmware changed deliberately for lume-board-hal skeleton
 const BEGIN = '/* ---- r131: SNTP-first BEGIN ---- */';
 const END = '/* ---- r131: SNTP-first END ---- */';
 
@@ -120,7 +120,7 @@ const checks = [
   ['weather is in the 52-app playground manifest', [playgroundApps,
     list => list.length === 52 && list.includes('weather')]],
 
-  ['firmware/ runtime/ CLI tooling identical to 1dc7c76 (manifest excluded)',
+  ['firmware/ runtime/ CLI tooling identical to 6176790 (manifest excluded)',
     [changed, c => c.length === 0]],
 ];
 
@@ -184,6 +184,6 @@ must('playground manifest drops weather',
   'weather is in the 52-app playground manifest', playgroundApps);
 must('a firmware file changes vs 1dc7c76',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to 1dc7c76 (manifest excluded)', changed);
+  'firmware/ runtime/ CLI tooling identical to 6176790 (manifest excluded)', changed);
 
 console.log('ALL WEATHER SNTP HARNESS CASES PASSED');

@@ -6,7 +6,7 @@
 //     only a 0 return enables wall-time rendering, failure copy is ASCII,
 //     sync is cadence-gated in the tick (not every frame).
 //   - worldclock absence (no dir, not in the 52-app playground manifest).
-//   - firmware/ runtime/ tools/ are byte-identical to baseline ffdd757.
+//   - firmware/ runtime/ tools/ are byte-identical to baseline 6176790.
 // There is NO radio and NO board on the host: nothing here proves a real SNTP
 // exchange. Host net.status() is DISCONNECTED, so the GOT_IP gate is inert.
 const fs = require('node:fs');
@@ -16,7 +16,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
+const BASE = '6176790'; // r147: firmware changed deliberately for lume-board-hal skeleton
 const BEGIN = '/* ---- r130: SNTP sync BEGIN ---- */';
 const END = '/* ---- r130: SNTP sync END ---- */';
 
@@ -97,7 +97,7 @@ checks.push(['all three migrated apps are in the 52-app playground manifest',
 checks.push(['worldclock absent (no example dir, not in manifest)',
   [playgroundApps, list => !list.includes('worldclock') &&
     !fs.existsSync(path.join(root, 'examples/worldclock/app.js'))]]);
-checks.push(['firmware/ runtime/ CLI tooling identical to ffdd757 (manifest excluded)',
+checks.push(['firmware/ runtime/ CLI tooling identical to 6176790 (manifest excluded)',
   [changed, c => c.length === 0]]);
 
 for (const [name, [source, test]] of checks) {
@@ -142,6 +142,6 @@ must('playground manifest gains worldclock',
   'worldclock absent (no example dir, not in manifest)', playgroundApps);
 must('a firmware file changes vs ffdd757',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to ffdd757 (manifest excluded)', changed);
+  'firmware/ runtime/ CLI tooling identical to 6176790 (manifest excluded)', changed);
 
 console.log('ALL SNTP CONSUMERS2 HARNESS CASES PASSED');

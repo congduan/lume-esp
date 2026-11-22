@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
+const BASE = '6176790'; // r147: firmware changed deliberately for lume-board-hal skeleton
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -137,8 +137,14 @@ const ALLOWED = [
   'website/playground/apps/vec_demo.js',
   'website/playground/sources/vec_demo.js',
   'website/playground/runtime.js',
-  // r141: this round deliberately changes firmware (feat commit 2e192d5 is
-  // the new BASE) and re-pins these app-only guard baselines.
+  // r147: this round deliberately adds the lume-board-hal skeleton component
+  // (feat commit 6176790 is the new BASE) and re-pins these app-only guard
+  // baselines.
+  'firmware/components/lume-board-hal/CMakeLists.txt',
+  'firmware/components/lume-board-hal/include/lume_board_hal.h',
+  'firmware/components/lume-board-hal/lume_board_hal.c',
+  'tests/board_abi.c',
+  'tests/board_abi.js',
   'tests/apps_protocol.c',
   'tests/adc_meter.js',
   'tests/archive_view.js',

@@ -23,7 +23,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/vec_demo/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
+const BASE = '6176790'; // r147: firmware changed deliberately for lume-board-hal skeleton
 
 // ---- independent reference integrator (NOT copied from the host stub) -----
 // One step with plain doubles for every arithmetic op; Float32Array.from()
@@ -266,7 +266,7 @@ check('playground manifest has 52 apps including vec_demo', () => {
 });
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/vec_demo.js'), source));
-check('firmware/ runtime/ tools/lume/ byte-identical to baseline 7c47db1', () =>
+check('firmware/ runtime/ tools/lume/ byte-identical to baseline 6176790', () =>
   assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']), []));
 
 // ---- mutation proof: key predicates MUST fail on a bad input --------------

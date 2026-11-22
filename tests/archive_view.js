@@ -27,7 +27,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/archive_view/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '2e192d5'; // r141: firmware changed deliberately for lume.system.reboot
+const BASE = '6176790'; // r147: firmware changed deliberately for lume-board-hal skeleton
 
 // ---- independent expected plaintexts (same synthetic samples the app embeds)
 const PLAIN_A = '[Lume] boot log sample (synthetic)\n' +
@@ -208,7 +208,7 @@ check('playground manifest has 52 apps including archive_view', () => {
 });
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/archive_view.js'), source));
-check('firmware/ runtime/ tools/lume/ byte-identical to baseline 9d1849f', () =>
+check('firmware/ runtime/ tools/lume/ byte-identical to baseline 6176790', () =>
   assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']), []));
 
 // ---- mutation proof: key predicates MUST fail on a bad input --------------
