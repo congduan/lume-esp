@@ -3354,3 +3354,35 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `80e76b2`（runtime + 契约 + app + playground 生成物） / test `690cb07`（launcher_grid 断言扩展 + 20 个 runtime 守卫 BASE 重钉） / docs（本节 + KNOWN-SIMPLIFICATIONS r162 节）。未跑 codex review（主控轮负责）。磁盘 `/` 余 4.9G，日志只留 `/tmp`。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r162 节。
+
+### r163 result — `shell.Dialog` 消费刀：settings 两处危险操作 Dialog 化（纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r163-wt`（分支 `r163-settings-dialog`，基线 `9fb12d7`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 只读软链对齐主仓、软链不入 git。
+
+**实证纠偏（假设以源码为准）**：
+1. `grep -n` 实证 `examples/settings/app.js` 的 OTA/reboot 两段式为 signal `otaConfirm`/`rebootConfirm`（:101-102）+ `otaArmTimer`/`rebootArmTimer` + 3 s `setTimeout`；按钮 title 在 arm 窗口翻转（原 :730 / :757），note 文案 `otaNote`/`rebootNote` 走状态 Text（原 :727 / :754）。`powerConfirm`（Power off）是另一处两段式，不在本刀范围、未动。
+2. `runtime/shell.js:85-111` 实证 Dialog：`dialogs` 栈、遮罩 `p.modal !== false` 时点按关闭、按钮 style 仅接受 plain/primary/danger、danger 用 `Button` + `background:danger`、press 时先关栈再调 `button.onPress`；`runtime/types/lume.d.ts:216-229` 契约一致。
+3. `examples/settings/app.js` 原**未** import shell.js（对照 `examples/files/app.js:22` 等消费方均 `import '../../runtime/shell.js';`），故本刀补上该 import；esbuild 打包后 `lume.ui.shell.Dialog` 在 playground 与宿主均为 function（live 实证）。
+4. **stub 降级决策：显示 ASCII note，绝不直接执行危险动作**。playground stub 因 shell.js 被编进 app 而自带 Dialog，但为防「无 Dialog 的假 stub」场景，两处调用前加 `typeof lume.ui.shell.Dialog === 'function'` 防御；缺失时分别写 `rotate n/a (no dialog)` / `reboot n/a (no dialog)`，不静默轮换 token 或重启。取舍见 KNOWN-SIMPLIFICATIONS.md r163 节。
+5. **`lume.system.reboot` 防御保留并移入 danger 回调内**：原 `typeof lume.system.reboot !== 'function'` + `rebootNote.set('reboot n/a')` 原样留在 Reboot 的 onPress 里，Cancel 与模态阶段都不触碰它。
+6. **live harness 曾踩「假绿」**：初版用 label Text 的 node id 调 `press`，而 plain Cancel 的 handler 挂在父 `View` 上，press 落到 Text 上什么也没发生——Cancel 断言是摆设。实证 `press` 消息序为 `[mask, cancelView, dangerButton, card]` 后改按 handler 节点派发，并用「给 Cancel 注入 onPress → live 断言转红」自证 load-bearing，不摆设。
+
+**实现**：`examples/settings/app.js` 纯 app 层：两处危险操作各开一个 `shell.Dialog({title, message, buttons:[Cancel plain, Rotate/Reboot danger]})`；删除 `otaConfirm`/`rebootConfirm` signal、`otaArmTimer`/`rebootArmTimer` 与 3 s 超时、button title 翻转；保留 setToken 错误码 → `otaNote`、成功 `refreshOta()`、`reboot n/a` 防御。UI 两行仍 View+Text+Button，title 改静态 `New token` / `Reboot`。`examples/files` 未动；`firmware/`、`runtime/` 零改动。
+
+**既有 harness 同步（不改断言语义）**：`tests/ota_consumers.js`（3 个检查 + 3 个 mutation 改 Dialog 口径）、`tests/reboot_consumers.js`（2 个检查 + 3 个 mutation 改 Dialog 口径）；`tests/settings_dialog.js` 新文件，并在 `ota_consumers.js` ALLOWED 预加防 untracked 提交后转红。`tests/settings.js` 不存在（实证 `ls tests/settings*.js` 无输出）。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/settings_dialog.js` → 14 静态 + 10 静态 mutation + 7 live + 1 live mutation 全绿，末行 `ALL SETTINGS DIALOG HARNESS CASES PASSED`，`EXIT=0`。live 实证：Cancel → 0 setToken / 0 reboot；Rotate → 1 次 setToken(32 lowercase hex)；setToken -7 → `setToken err -7`；Reboot → 1 次 reboot；无 reboot binding → `reboot n/a`；无 Dialog → 两条 `(no dialog)` note 且 0 动作；给 Cancel 注入 onPress → 转红。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → 仅 `done`，**0 FAIL**（唯一一次默认 timeout 被 SIGTERM 后用 600 s 重跑即 0 FAIL；本刀未触发 wordle flake）。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0`。
+- `python3 scripts/check_website.py` → `API missing: none` / `API invented: none` / `API duplicates: none` / `API signatures not found in lume.d.ts: none`。
+- `node tools/lume/lume.js check examples/settings --no-emu` → `[PASS] bundle 33621 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle settings 33621 bytes` / `PASS esbuild-wasm assets and 61 editable sources` / `PASS prelude 67428 bytes; 61 apps`。
+- **固件/runtime 零改动，未跑 `idf.py build`**：`git diff 9fb12d7 HEAD -- firmware/ runtime/` 与工作树版 `git diff 9fb12d7 -- firmware/ runtime/` 原始输出均为空。
+- ASCII 纪律：`grep -Pn '[^\x00-\x7F]' examples/settings/app.js tests/settings_dialog.js` → `NONE`（新 harness 的变异载荷用 `String.fromCharCode(0x4E2D)` 运行时构造，源码全 ASCII）。
+
+**里程碑口径**：Dialog 获得第二个真实消费方（files + settings），但组件被消费 ≠ 真机验收；危险按钮 danger 配色在 AMOLED 上的对比度、模态命中率、两段式→模态手感差异**全部 deferred，不声称真机验证**。未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）；未推送。
+
+**commits（未推送，拆分）**：feat `a18a83a`（app + playground 生成物） / test `cbf4422`（新 harness + 两个既有 harness 同步） / docs（本节 + KNOWN-SIMPLIFICATIONS r163 节）。磁盘 `/` 余约 5 G，日志只留 `/tmp`。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r163 节。
