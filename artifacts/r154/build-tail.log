@@ -1,0 +1,100 @@
+[100%] Linking C static library liblume-imu.a
+[100%] Built target __idf_lume-imu
+[100%] Building C object esp-idf/lume-pmic/CMakeFiles/__idf_lume-pmic.dir/lume_pmic_hw.c.obj
+[100%] Linking C static library liblume-pmic.a
+[100%] Built target __idf_lume-pmic
+[100%] Building C object esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/lume_board.c.obj
+[100%] Building C object esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/lume_display.c.obj
+[100%] Building C object esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/lume_pmic.c.obj
+[100%] Building C object esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/lume_touch.c.obj
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r154-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r154-wt/firmware/components/lume-board/lume_board.c:25:
+/tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r154-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r154-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r154-wt/firmware/components/lume-board/lume_touch.c:36:
+/tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r154-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r154-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r154-wt/firmware/components/lume-board/lume_board_internal.h:6,
+                 from /tmp/lume-r154-wt/firmware/components/lume-board/lume_pmic.c:31:
+/tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r154-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r154-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r154-wt/firmware/components/lume-board/lume_display.c:39:
+/tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r154-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+/tmp/lume-r154-wt/firmware/components/lume-board/lume_pmic.c:58:18: warning: 'axp_set_voltage' defined but not used [-Wunused-function]
+   58 | static esp_err_t axp_set_voltage(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t step)
+      |                  ^~~~~~~~~~~~~~~
+[100%] Linking C static library liblume-board.a
+[100%] Built target __idf_lume-board
+[100%] Building C object esp-idf/lume-ui-bridge/CMakeFiles/__idf_lume-ui-bridge.dir/lume_ui_bridge.c.obj
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r154-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r154-wt/firmware/components/lume-ui-bridge/lume_ui_bridge.c:21:
+/tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r154-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r154-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+[100%] Linking C static library liblume-ui-bridge.a
+[100%] Built target __idf_lume-ui-bridge
+[100%] Building C object esp-idf/lume-hotreload/CMakeFiles/__idf_lume-hotreload.dir/lume_hotreload.c.obj
+[100%] Building C object esp-idf/lume-hotreload/CMakeFiles/__idf_lume-hotreload.dir/lume_cmd.c.obj
+[100%] Building C object esp-idf/lume-hotreload/CMakeFiles/__idf_lume-hotreload.dir/lume_frame.c.obj
+[100%] Linking C static library liblume-hotreload.a
+[100%] Built target __idf_lume-hotreload
+[100%] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/lume_main.c.obj
+[100%] Linking C static library libmain.a
+[100%] Built target __idf_main
+[100%] Generating esp-idf/esp_system/ld/sections.ld
+[100%] Built target __ldgen_output_sections.ld
+[100%] Building C object CMakeFiles/lume.elf.dir/project_elf_src_esp32s3.c.obj
+[100%] Linking CXX executable lume.elf
+[100%] Built target lume.elf
+[100%] Generating binary image from built executable
+esptool.py v4.13.0
+Creating esp32s3 image...
+Merged 3 ELF sections
+Successfully created esp32s3 image.
+Generated /tmp/lume-r154-wt/firmware/build/lume.bin
+[100%] Built target gen_project_binary
+lume.bin binary size 0x2e5540 bytes. Smallest app partition is 0x640000 bytes. 0x35aac0 bytes (54%) free.
+[100%] Built target app_check_size
+[100%] Built target app
+
+Project build complete. To flash, run:
+ idf.py flash
+or
+ idf.py -p PORT flash
+or
+ python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/lume.bin
+or from the "/tmp/lume-r154-wt/firmware/build" directory
+ python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"

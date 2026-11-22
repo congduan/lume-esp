@@ -1,0 +1,3 @@
+esptool.py v4.13.0
+SHA digest in image updated
+Wrote 0x2f5540 bytes to file merged_flash.bin, ready to flash to offset 0x0
