@@ -7,7 +7,7 @@
  * observes the native message stream: four rows / 29 keys, QWERTY labels, 40 px
  * touch targets, and onKey / onBackspace / onSubmit routing through real Button
  * presses. Static checks cover ASCII copy, the byte-identical playground source,
- * the 56-app manifest, and the BASE guard. Every source predicate has a mutation
+ * the 57-app manifest, and the BASE guard. Every source predicate has a mutation
  * proof below. There is NO hardware touch calibration here: deferred to
  * board bring-up (docs/KNOWN-SIMPLIFICATIONS.md r148).
  */
@@ -129,8 +129,8 @@ const checks = [
   ['playground sources/keyboard_demo.js byte-identical to example', [playgroundSrc, s =>
     s === app]],
 
-  ['keyboard_demo is in the 56-app playground manifest', [apps,
-    list => list.length === 56 && list.includes('keyboard_demo')]],
+  ['keyboard_demo is in the 57-app playground manifest', [apps,
+    list => list.length === 57 && list.includes('keyboard_demo')]],
 
   ['firmware/ and runtime/ identical to 5ca3e66', [fwChanged, c => c.length === 0]],
 
@@ -215,7 +215,7 @@ const WIRING = 'app wires onKey / onBackspace / onSubmit to its signals';
 const LABELS = 'native nodes carry the 26 letters + SPACE + BKSP + ENTER labels';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/keyboard_demo.js byte-identical to example';
-const MANIFEST = 'keyboard_demo is in the 56-app playground manifest';
+const MANIFEST = 'keyboard_demo is in the 57-app playground manifest';
 const GUARD = 'firmware/ and runtime/ identical to 5ca3e66';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
