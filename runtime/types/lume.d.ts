@@ -261,6 +261,55 @@ declare namespace lume.ui.shell {
    * root node; dispose(id) removes its rows and keys through the shell cleanup chain.
    * Pure JS — no native input method, no on-device touch calibration on this slice. */
   function Keyboard(props?: KeyboardProps): lume.ui.Node;
+  /** r151 form primitives. All three are controlled: state lives in the app's
+   * signal and is passed back in via `value`; the component holds no copy. */
+  interface SwitchProps {
+    parent?: lume.ui.Node;
+    /** Boolean state, or a signal getter returning one. Defaults to false. */
+    value?: boolean | (() => boolean);
+    /** Called with the negated value on a press of the whole >=40 px row. */
+    onChange?: (value: boolean) => void;
+    /** Optional label string or signal getter, rendered to the right. */
+    label?: string | (() => string);
+    /** Row / touch-target height in px (40..128, default 48). */
+    height?: number;
+    /** Track width in px (48..480, default 72); the knob is height-8. */
+    trackWidth?: number;
+    x?: number; y?: number;
+  }
+  /** Boolean toggle: track + knob Views with theme-token state colours.
+   * A press anywhere on the root emits onChange(!value); no internal state. */
+  function Switch(props?: SwitchProps): lume.ui.Node;
+  interface SliderProps {
+    parent?: lume.ui.Node;
+    min?: number; max?: number; step?: number;
+    /** Numeric value, or a signal getter; clamped to [min, max]. */
+    value?: number | (() => number);
+    /** Called with a step-quantised number when a drag changes the value. */
+    onChange?: (value: number) => void;
+    /** Track width in px (default screen width - 48); height in px (40..128, default 40). */
+    width?: number; height?: number;
+    x?: number; y?: number;
+  }
+  /** Canvas + pan slider. dx from the press start maps back through
+   * startValue + dx*(max-min)/width, rounded to `step`. onChange fires only
+   * when the quantised value changes during a drag (no per-move jitter);
+   * panend ends the drag without an extra emit. Gesture unsubscribers run on
+   * dispose. Touch calibration is deferred to board bring-up. */
+  function Slider(props?: SliderProps): lume.ui.Node;
+  interface ProgressProps {
+    parent?: lume.ui.Node;
+    /** 0..1 fraction, or a signal getter; clamped. Emits nothing. */
+    value?: number | (() => number);
+    /** Optional label string or signal getter, drawn above the bar. */
+    label?: string | (() => string);
+    /** Bar height in px (12..128, default 12) and width in px (default screen - 48). */
+    height?: number; width?: number;
+    x?: number; y?: number;
+  }
+  /** Two-View determinate bar. Value changes only update the fill View's
+   * ATTR_WIDTH via a bound numeric style (no Canvas, no pixel budget). */
+  function Progress(props?: ProgressProps): lume.ui.Node;
   interface LauncherApp { id: string; label: string; color?: string; icon?: string; glyph?: string }
   interface LauncherProps {
     parent?: lume.ui.Node;
