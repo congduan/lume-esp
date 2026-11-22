@@ -947,7 +947,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 | 候选 | 价值 | 缺口（诚实原则） |
 |---|---|---|
-| **猜词游戏（Wordle 类）** | 热度高、每日一题适合「每天看一眼圆屏」粘性叙事 | 🔴 blocked：无键盘硬件 + Input/键盘组件未建（M5 组件缺口已登记）。变体路线：字母环选字（tap 旋转+确认）可绕开键盘，但输入体验打折 |
+| **猜词游戏（Wordle 类）** | 热度高、每日一题适合「每天看一眼圆屏」粘性叙事 | 🟡 r149：键盘直输完整版已落地（`examples/wordle`，5×6 网格 / 绿黄灰反馈 / 屏上键盘 + 字母态条 / KV 连胜），原 🔴 blocked「无键盘组件」缺口已解除（r148 `shell.Keyboard` + r149 消费）。本行仍不标完成：真机输入手感、圆屏安全区与每日一题/HTML 完整词表 deferred（详见 r149 result 与 KNOWN-SIMPLIFICATIONS r149）。变体 `examples/wordring` 保留 |
 | **按住说话语音伴侣** | playStream/recordStream 的终极演示，与语音助手路线（见上节）E 刀合并 | 🔴 blocked：`audio.recordStream`（C 刀）未落地；实时对话链路时延是真机硬仗 |
 | **全屏精灵卷轴游戏**（横向卷轴平台跳跃完整版） | mario 单屏已证明玩法链路；r83 已交 blit 卷轴 POC（`examples/scroller/`，含性能口径），钥匙已解除 | 🟡 r83 POC 落地（8 槽精灵全 drawImage、4 脏矩形/帧、20fps 模拟侧可行）；完整版仍需接板帧率/触摸验收与关卡/敌人系统，非纯复刻可照搬 |
 | **真·指南针（磁北 / 地理方位）** | 要的是绝对地理方位，而非 r67 惯性方位仪表给的相对航向 | 🔴 blocked：QMI8658 是加速度计+陀螺仪六轴 IMU，**板子没有磁力计**，物理上无法测磁北；需外接磁力计硬件 + 固件刀（新 I2C 传感器绑定、校准/倾斜补偿），非 app 层可解。r67 仪表只登记为「惯性方位/相对航向」，README/UI 均不承诺指北 |
@@ -3083,3 +3083,32 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送）**：feat `bbd8627`（shell Keyboard + 类型 + api.html + keyboard_demo app + 53-app playground） / test `c68d5a2`（keyboard_demo harness + 守卫 BASE 重钉 + 53-app 口径同步 + board_abi 存量守卫修复） / docs（本节）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r148 节。
+
+### r149 result — 完整 Wordle 类猜词游戏 `examples/wordle`（纯 app 层；appended, P2 行不勾）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r149-wt`（分支 `r149-wordle`，基线 `ca4ba35`）。
+
+**实证先行（假设以源码为准）**：通读 `runtime/shell.js:287-351` —— `Keyboard` 的字母键由 `key(ch.toUpperCase(), ..., function(){ if(p.onKey) p.onKey(ch); })` 生成，`onKey` 收到的是**小写字母**（`KEY_ROWS` 为小写串），`SPACE` 传 `' '`；`onBackspace` / `onSubmit` **无参数**，只回调不携带提交语义，胜负/字典校验必须由 app 自己做。`key()` 的背景固定为 `color('surface','#132435')`，**没有逐键背景注入口**——因此键态染色改用键盘上方的自绘 26 字母状态条（取舍见 KNOWN-SIMPLIFICATIONS r149）。`shell.dispose(root)` 经 `cleanups[root]` 一次移除 33 个节点。键尺寸：`keySize` 必须 40..128、`gap` 0..32；`y:300` + `keySize:40` + `gap:0` → 键盘高 `4*40+3*0+2*4=168` px，落在 y=300..468。KV 签名实证于 `runtime/types/lume.d.ts:631-674`：key ≤15 字符、返回 0/负码、`get()` 失败返回 null 或负数，故 `hisc.wordle`（11）/ `wordle.cur`（10）合法且读写全包 `try/catch`。Canvas 预算为独立 app 口径：单画布 `480x228=109,440 px` ≤ 230,400（watchface 五面 228,544 是另一 app 的预算，不混算）。
+
+**实现**：`examples/wordle/app.js`（`import runtime/shell.js`，纯 app）。5 字母 × 6 次尝试；两遍判定（先钉绿并统计答案剩余字母，再从左到右发黄）实现标准 Wordle 重复字母规则；300 个内嵌 ASCII 五字母词，答案表与可接受猜测表**合并**（非字典词拒绝，如实登记）；`shell.Keyboard` QWERTY 直输 + `NEW` 再来一局；胜负 HUD 结算行；`wdLetterMarks()` 取每字母 G>Y>X 的最高态，驱动键盘上方自绘字母态条；KV 记最长连胜 `hisc.wordle` 与当前连胜 `wordle.cur`。单画布 480x228（109,440 px），5x7 手工字形预计算成 run-length spans（26 个，eval 时一次解码），硬边 `fillRect` 整数像素。UI 文案 ASCII-only（r64）。固件/prelude/runtime 零改动；未动 `wordring` / `files` / `keyboard_demo`。
+
+**宿主 harness**：`tests/wordle.js`（CommonJS）—— 20 条逻辑/live 检查（字典、字形、绿黄灰与重复字母、胜负迁移、连胜、键态、KV、canvas 预算、真 prelude 启动、键盘回调注入、反馈色进入 draw 流、NEW、dispose、~60 s smoke）+ 10 条静态守卫 + 10 条 mutation 反例（每条都证明对应断言 load-bearing）。
+
+**级联同步（照 r148 执行）**：
+- 清单 53→54：`tools/playground/build.mjs` 注册 `wordle`（第 54 个）；按 `grep -rn '=== 53' tests/` 实证后，同步 11 个 harness 的计数断言与文案（`reboot_consumers` / `hr_monitor` / `weather_sntp` / `ota_consumers` / `sntp_consumers2` / `keyboard_demo` 的 `=== 53`，以及 `adc_meter` / `archive_view` / `crypto_check` / `img_view` / `vec_demo` 的 `apps.length, 53`），`sd_files.js` 的清单变异串同步加 `'wordle'`。
+- **守卫无需重钉、断言不放宽**：本轮 firmware/ runtime/ tools/lume/ 零 diff，13 个 app-only 守卫的零 diff 断言与 `board_abi.js`（已含 `:!artifacts/` 排除）全绿；`ota_consumers.js` 的 `allChanged` allowlist 在 **test commit 前**预加 4 个新路径（`examples/wordle/app.js` / `tests/wordle.js` / `website/playground/apps/wordle.js` / `website/playground/sources/wordle.js`），避免 untracked 对 `git diff` 不可见导致提交后转红；firmware 守卫未松动，未改成自比较。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/wordle.js` → 14 条逻辑 + 6 条 live + 10 条静态 + 10 条 mutation 全绿，末行 `ALL WORDLE HARNESS CASES PASSED`，退出码 0。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0 / # todo 0`（新 worktree 缺 gitignore 的 `tools/lume/bin/qjsc`，先报 49 pass / 1 skip；从主仓拷贝只读构建物后对齐基线，源码零改动）。
+- `python3 scripts/check_website.py` → `HTML pages: 7; internal href/src and anchors checked` / `API: 154 catalog entries, 154 type declarations, 34 function namespaces` / `API missing: none` / `API invented: none` / `API duplicates: none` / `API signatures not found in lume.d.ts: none`。
+- `node tools/lume/lume.js check examples/wordle --no-emu` → `[PASS] bundle 22571 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`（22,571 B ≪ 256 KiB=262,144 B 热更新硬上限）；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle wordle 22571 bytes` / `PASS esbuild-wasm assets and 54 editable sources` / `PASS prelude 67428 bytes; 54 apps`。
+- **固件零改动，未跑 `idf.py build`**：`git diff --name-only ca4ba35 HEAD -- firmware/ runtime/` 与 `git diff --name-only ca4ba35 -- firmware/ runtime/` 原始输出均为空；`git diff --name-only ca4ba35 HEAD -- firmware/components/lume-engine/lume_scripts.c` 亦空（prelude 未动）。IRAM 16384 硬线未触碰；无 build/ 负担，临时产物只留 `/tmp`，测试 scratch `artifacts/r82/` 已清除，不进仓。
+
+**里程碑口径**：P2 表「猜词游戏（Wordle 类）」行**不勾**，仅更新缺口措辞指向 r149——键盘直输完整版已落地，原 🔴 blocked 缺口已解除；剩余 deferred：真机输入手感/误触/圆屏安全区、每日一题与更大字典/_allowed guess_ 表。真机显示/触摸/sleep current/radio 全部 deferred，**不声称真机验证**。ASCII 纪律全满足；未改 vendored（QuickJS/LVGL）；未跑 codex review（主控轮负责）。
+
+**commits（未推送，拆分）**：feat（wordle app + 54-app playground 生成物） / test（wordle harness + 53→54 计数同步 + ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r149 节。
