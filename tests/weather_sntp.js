@@ -118,7 +118,7 @@ const checks = [
     [playgroundSrc, s => s === source]],
 
   ['weather is in the 57-app playground manifest', [playgroundApps,
-    list => list.length === 57 && list.includes('weather')]],
+    list => list.length === 58 && list.includes('weather')]],
 
   ['firmware/ runtime/ CLI tooling untouched vs ba5156e (shell.js/types only) (manifest excluded)',
     [changed, c => c.length === 0]],

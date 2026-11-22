@@ -3207,3 +3207,35 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat（timer_kit app + 57-app playground 生成物） / test（timer_kit harness + 56→57 计数同步 + sd_files 变异串 + ota ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS r157 节）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r157 节。
+
+### r159 result — M5 Component library 第六片：control_center 控制中心（Card / IconButton / SafeArea 三个零消费组件的首个消费刀，纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r159-wt`（分支 `r159-control-center`，基线 `76d2c0c`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 从主仓只读软链对齐，源码零改动、软链不入 git。干净基线全量 `tests/*.js` = 0 FAIL（r158 重钉后存量红灯已清零）。
+
+**实证纠偏（方案与实际代码不符处，以源码为准）**：
+1. 简报称三个组件「零 canvas」——逐行读 `runtime/shell.js` 证实：`Card`（:62-68）/`IconButton`（:69-75）/`SafeArea`（:153-178）确实只是 `View` / `Button` 包装，无 `Canvas`；本 app 实跑 `create` 消息 21 个节点、其中 `kind=3`（Canvas）0 个。无需降级为画布预算锁。
+2. `SafeArea(round, size=480)` 的 `safeInsets` 实证为 top=70/right=71/bottom=71/left=70，安全方形边长 **339 px**（`Math.floor(480/√2)=339`）。四张卡与 RESET 全部按 339 内接方形排布（卡 163×122，两列 x=0/176，行 y=38/166，RESET y=290），并以 `padding:8/gap:4` 覆盖 Card 默认 16/12 才装得下；harness live 断言无 `SafeArea child exceeds` 警告。
+3. 简报称「13 个 harness 清单计数 57→58」——`grep -rn 'length === 57\|length, 57' tests/*.js` 实证 **14 处**（adc_meter / archive_view / controls_demo / crypto_check / hr_monitor / img_view / keyboard_demo / ota_consumers / reboot_consumers / sntp_consumers2 / timer_kit / vec_demo / weather_sntp / wordle），已逐个同步；`tests/shell_components.js:18` 的 `56` 是 IconButton 高度 attr（r157 教训），未动。`sd_files.js:199` 的 needle 精确匹配 build.mjs 列表尾部，追加 `'control_center'` 后 mutation 仍 load-bearing。
+4. 本轮 firmware/runtime/tools 零改动，`git diff 76d2c0c HEAD -- firmware/ runtime/` 与工作树版均空，**无任何 BASE 重钉**；改前/改后全量 suite 均 0 FAIL，符合简报预期。
+
+**实现**：`examples/control_center/app.js`（单文件、保守 var/function、唯一一行 shell.js import）。`SafeArea(round,480)` 包根 + 标题；4 张 `Card`：WiFi / Bluetooth 各用 1 个 `IconButton` 切换模拟态（开=accent、关=surfaceAlt，标题 `ON`/`OFF`），音量/亮度用原生 View/Text 条与分档 Text（VOL 0..10 tap 循环 +1，BRT 1..5 循环），**不消费 Slider**（r157 专属）；底部第 3 个 `IconButton`（RESET）恢复全部默认。四值全 signal 驱动，每次变更经 `lume.storage.kv` 写入，启动读回（flag 只收 0/1，step 只收合法整数），读写全包 try/catch，NVS 失效退化为易失默认值。WiFi/BT 是**本地模拟态，不调 lume.net/lume.ble**；亮度不驱动真实背光。静态树 21 节点（预算 60 / 固件上限 128），字号仅 14/20/32，全文件非 ASCII 字节 0。
+
+**宿主 harness**：新增 `tests/control_center.js`（CommonJS，仿 timer_kit）：21 静态断言（三组件真实消费、signal 图、KV 键 ≤15、两种 get 与 set 的 try/catch、启动读回、循环边界、RESET、零 Slider、零 Canvas、ASCII、字号、节点上限、playground 字节一致、58 清单、固件零 diff）+ 19 静态 mutation + 8 live（真 prelude + 真 shell.js：IconButton tap 写 KV、音量/亮度循环、RESET、非法值/抛异常退化、dispose/shutdown effects+timers 归零）+ 3 live mutation，全部 load-bearing。
+
+**级联同步**：`tools/playground/build.mjs` 清单 57→58（`control_center` 第 58 个，命令实证 `58 editable sources` / `58 apps`）；14 个 harness 计数断言同步；`sd_files.js` 变异串追加 `'control_center'`；`ota_consumers.js` ALLOWED 在 commit 前预加 4 个新路径（app / harness / 两个 playground 生成物）。二次构建 md5 三项 OK，生成物幂等。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/control_center.js` → 末行 `ALL CONTROL CENTER HARNESS CASES PASSED`，`EXIT=0`。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → 仅 `done`，**0 FAIL**。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # skipped 0`。
+- `python3 scripts/check_website.py` → `HTML pages: 7` / `API: 158 catalog entries, 158 type declarations, 34 function namespaces` / `API missing/invented/duplicates/signatures not found: none`。
+- `node tools/lume/lume.js check examples/control_center --no-emu` → `[PASS] bundle 23510 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle control_center 23510 bytes` / `PASS esbuild-wasm assets and 58 editable sources` / `PASS prelude 67428 bytes; 58 apps`。
+- **固件零改动，未跑 `idf.py build`**：`git diff 76d2c0c HEAD -- firmware/ runtime/` 与 `git diff 76d2c0c -- firmware/ runtime/` 原始输出均为空；IRAM 16384 硬线未触碰。
+- `grep -Pn '[^\x00-\x7F]' examples/control_center/app.js tests/control_center.js` → 无输出（NONE）；`grep -rn 'length === 57\|length, 57' tests/*.js` → 无输出。
+
+**里程碑口径**：M5 Component library 行仍不勾（三控件被消费 ≠ 真机验收）；真机触控命中、圆屏安全区遮挡、背光联动、radio 状态、滑动/循环手感全部 deferred，**不声称真机验证**。未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）；磁盘紧张，临时产物只留 `/tmp`，未清主仓 build/。
+
+**commits（未推送，拆分）**：feat `c78e4f1`（app + 58-app playground 生成物） / test `42963ac`（control_center harness + 14 处计数同步 + sd_files 变异串 + ota ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS r159 节）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r159 节。
