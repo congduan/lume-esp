@@ -28,16 +28,20 @@
  *    probed once (same as examples/device_monitor).
  *  - r132 OTA consumer: lume.ota.status() is a LOCAL snapshot (running /
  *    wifiReady / tokenReady / hmac / port / token). The 32-hex token appears
- *    only on the serial log and is NEVER rendered on screen. The two-stage
- *    "New token" button generates its replacement with Math.random() -- the
- *    device has no crypto.getRandomValues, so the key is NOT cryptographically secure.
- *    The channel still has HMAC challenge-response and a LAN boundary.
- *    See docs/KNOWN-SIMPLIFICATIONS.md r132.
+ *    only on the serial log and is NEVER rendered on screen. The "New token"
+ *    button opens a shell.Dialog; its danger "Rotate" action generates the
+ *    replacement with Math.random() -- the device has no crypto.getRandomValues,
+ *    so the key is NOT cryptographically secure. The channel still has HMAC
+ *    challenge-response and a LAN boundary. See docs/KNOWN-SIMPLIFICATIONS.md
+ *    r132 (token generation) and r163 (Dialog confirmation).
  *
  *  On-device acceptance (advertising, association, real scan results,
  *  coexistence, sleep current) is deferred to the board bring-up round -- a
  *  green host run does NOT mean the radios work on hardware.
  */
+
+import '../../runtime/shell.js';
+
 var settingsTheme = { colors: {
   primary: '#08111C',
   surface: '#132436',
@@ -98,8 +102,6 @@ var wifiBusy = signal('');         /* ssid while a connect attempt is running */
 var timeSyncLine = signal('TIME SYNC: --');  /* r129: General-page NTP status */
 var otaLine = signal('ota off');             /* r132: General-page OTA status */
 var otaNote = signal('');                    /* r132: transient setToken result */
-var otaConfirm = signal(false);              /* r132: New-token two-stage confirm */
-var rebootConfirm = signal(false);           /* r143: Reboot two-stage confirm */
 var rebootNote = signal('');                 /* r143: transient reboot guard note */
 
 var savedNets = signal(loadSaved());
@@ -436,45 +438,55 @@ function newOtaToken() {
   return out;
 }
 
-var otaArmTimer = null;
 function rotateOtaToken() {
-  if (!otaConfirm()) {                       /* first tap: arm, do not rotate */
-    otaConfirm.set(true);
-    if (otaArmTimer !== null) lume.system.clearTimeout(otaArmTimer);
-    otaArmTimer = lume.system.setTimeout(function () { otaConfirm.set(false); }, 3000);
+  var shell = lume.ui && lume.ui.shell;
+  if (!shell || typeof shell.Dialog !== 'function') {
+    /* r163: a stub without Dialog must not silently execute a dangerous op. */
+    otaNote.set('rotate n/a (no dialog)');
     return;
   }
-  otaConfirm.set(false);                     /* second tap: rotate */
-  if (otaArmTimer !== null) { lume.system.clearTimeout(otaArmTimer); otaArmTimer = null; }
-  var r = lume.ota.setToken(newOtaToken());   /* token never rendered on screen */
-  if (r !== 0) { otaNote.set('setToken err ' + r); return; }
-  otaNote.set('');
-  refreshOta();
+  shell.Dialog({
+    title: 'Rotate OTA token?',
+    message: 'A new 32-hex token replaces the current one on this device.',
+    buttons: [
+      { label: 'Cancel', style: 'plain' },
+      { label: 'Rotate', style: 'danger', onPress: function () {
+        var r = lume.ota.setToken(newOtaToken());   /* token never rendered on screen */
+        if (r !== 0) { otaNote.set('setToken err ' + r); return; }
+        otaNote.set('');
+        refreshOta();
+      } }
+    ]
+  });
 }
 /* ---- r132: OTA status + token rotation END ---- */
 
 /* ---- r143: reboot consumer (pure app layer) BEGIN -----------------------------
  * lume.system.reboot() is `never`: on device it kills the JS task via
- * esp_restart(), so state not already persisted is lost. Two-stage arm/confirm
- * mirrors the r132 setToken gate (first tap arms a 3 s window, second tap acts).
- * The playground browser stub may not expose the binding, so the call is
- * guarded with typeof and degrades to an ASCII note instead of throwing. */
-var rebootArmTimer = null;
+ * esp_restart(), so state not already persisted is lost. r163 replaces the old
+ * 3 s arm/confirm gate with a shell.Dialog modal whose danger "Reboot" button
+ * performs the call. The playground browser stub may not expose the binding,
+ * so the call is guarded with typeof and degrades to an ASCII note. */
 function rebootNow() {
-  if (!rebootConfirm()) {                     /* first tap: arm, do not reboot */
-    rebootConfirm.set(true);
-    rebootNote.set('');
-    if (rebootArmTimer !== null) lume.system.clearTimeout(rebootArmTimer);
-    rebootArmTimer = lume.system.setTimeout(function () { rebootConfirm.set(false); }, 3000);
+  var shell = lume.ui && lume.ui.shell;
+  if (!shell || typeof shell.Dialog !== 'function') {
+    rebootNote.set('reboot n/a (no dialog)');  /* stub without Dialog: never auto-reboot */
     return;
   }
-  rebootConfirm.set(false);                   /* second tap: reboot */
-  if (rebootArmTimer !== null) { lume.system.clearTimeout(rebootArmTimer); rebootArmTimer = null; }
-  if (!lume.system || typeof lume.system.reboot !== 'function') {
-    rebootNote.set('reboot n/a');              /* stub without the binding */
-    return;
-  }
-  lume.system.reboot();                       /* never returns on device */
+  shell.Dialog({
+    title: 'Reboot device?',
+    message: 'Unsaved state is lost; the device restarts immediately.',
+    buttons: [
+      { label: 'Cancel', style: 'plain' },
+      { label: 'Reboot', style: 'danger', onPress: function () {
+        if (!lume.system || typeof lume.system.reboot !== 'function') {
+          rebootNote.set('reboot n/a');        /* stub without the binding */
+          return;
+        }
+        lume.system.reboot();                  /* never returns on device */
+      } }
+    ]
+  });
 }
 /* ---- r143: reboot consumer END ---- */
 
@@ -726,9 +738,7 @@ var generalPage = View({ style: {
     Text({ text: function () {
       return otaLine() + (otaNote() === '' ? '' : ' ' + otaNote());
     }, style: {} }),
-    Button({ title: function () {
-      return otaConfirm() ? 'Confirm new token?' : 'New token';
-    }, onPress: rotateOtaToken,
+    Button({ title: 'New token', onPress: rotateOtaToken,
       style: { width: 132, height: 34, borderRadius: 8 } })
   ]),
   /* r132 OTA ROW END */
@@ -743,8 +753,8 @@ var generalPage = View({ style: {
       style: { width: 92, height: 34, borderRadius: 8 } })
   ]),
   /* r143 REBOOT ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
-   * The button title flips during the 3 s arm window; the Text is status only
-   * and the guarded note is the sole feedback when the binding is absent. */
+   * The button opens a shell.Dialog; the Text is status only and the guarded
+   * note is the sole feedback when a binding is absent. */
   View({ style: {
     width: '100%', height: 44, background: 'surface',
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
@@ -753,9 +763,7 @@ var generalPage = View({ style: {
     Text({ text: function () {
       return rebootNote() === '' ? 'Restart the device' : rebootNote();
     }, style: {} }),
-    Button({ title: function () {
-      return rebootConfirm() ? 'Confirm reboot?' : 'Reboot';
-    }, onPress: rebootNow,
+    Button({ title: 'Reboot', onPress: rebootNow,
       style: { width: 132, height: 34, borderRadius: 8 } })
   ]),
   /* r143 REBOOT ROW END */
