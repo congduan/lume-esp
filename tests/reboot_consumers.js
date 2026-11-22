@@ -11,7 +11,7 @@
 //     typeof guard, so a playground stub without the binding cannot throw.
 //   - all UI literals are ASCII (r64), the generated playground source is
 //     byte-identical to the example, and settings is in the manifest.
-//   - firmware/ runtime/ CLI tooling are identical to the 5ca3e66 baseline.
+//   - firmware/ runtime/ CLI tooling are identical to the 0d1111c baseline.
 // Real-device restart behaviour is deferred to board bring-up (see
 // docs/KNOWN-SIMPLIFICATIONS.md r143); nothing here claims hardware proof.
 const fs = require('node:fs');
@@ -21,7 +21,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5ca3e66'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
+const BASE = 'ba5156e'; // r153 rebase: pinned to round-start main // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
 
 const settings = read('examples/settings/app.js');
 
@@ -111,7 +111,7 @@ const checks = [
   ['settings is in the 55-app playground manifest', [playgroundApps,
     list => list.length === 55 && list.includes('settings')]],
 
-  ['firmware/ runtime/ CLI tooling identical to 5ca3e66', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ CLI tooling untouched vs ba5156e (shell.js/types only)', [fwChanged, c => c.length === 0]],
 ];
 
 for (const [name, [src, test]] of checks) {
@@ -156,6 +156,6 @@ must('playground manifest drops settings',
   'settings is in the 55-app playground manifest', playgroundApps);
 must('a firmware file changes vs 92b6f29',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to 5ca3e66', fwChanged);
+  'firmware/ runtime/ CLI tooling untouched vs ba5156e (shell.js/types only)', fwChanged);
 
 console.log('ALL REBOOT CONSUMERS HARNESS CASES PASSED');

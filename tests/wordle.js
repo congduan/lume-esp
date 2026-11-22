@@ -24,7 +24,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5ca3e66'; // r148: shell Keyboard feat commit; firmware/runtime/CLI still pinned
+const BASE = 'ba5156e'; // r153 rebase: pinned to round-start main // r153: Keyboard keyStates feat commit; firmware/runtime/CLI pinned
 const source = read('examples/wordle/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -241,7 +241,7 @@ check('streak transitions: best is the longest run', () => {
   assert.equal(kvStore['hisc.wordle'], 2, 'new shorter run does not lower best');
 });
 
-// 11. letter-state bar uses highest verdict seen, G > Y > X
+// 11. keyStates uses highest verdict seen, G > Y > X
 check('letter marks: highest feedback priority G > Y > X', () => {
   kvStore = {};
   const st = s.wdNewGame('crane', null);
@@ -278,15 +278,13 @@ check('KV keys <= 15 chars, storage failures non-fatal', () => {
 });
 
 // 13. canvas budget + geometry (keyboard geometry is asserted live below)
-check('canvas budget 109440/230400 px, grid and bar in bounds', () => {
+check('canvas budget 109440/230400 px, grid in bounds', () => {
   assert.equal(s.IW * s.CANVAS_H, 109440);
   assert.ok(s.IW * s.CANVAS_H <= 230400);
   const gridRight = s.GX + 5 * (s.CELL + s.GAP) - s.GAP;
   const gridBottom = s.GY + 6 * (s.CELL + s.GAP) - s.GAP;
   assert.ok(gridRight <= s.IW, 'grid right inside canvas');
-  assert.ok(gridBottom < s.BAR_Y, 'grid clears the letter bar');
-  assert.ok(s.BAR_Y + s.BAR_H <= s.CANVAS_H, 'bar inside canvas');
-  assert.ok(6 + 26 * s.BAR_CELL <= s.IW, '26 letter cells fit the row');
+  assert.ok(gridBottom <= s.CANVAS_H, 'grid bottom inside canvas (letter bar removed in r153)');
 });
 
 /* ------------------------ part 2: live prelude ------------------------- */
@@ -370,11 +368,10 @@ check('keyboard injection: onKey -> state, BKSP, SPACE ignored, ENTER submit', (
   assert.equal(uiKv['hisc.wordle'], 1, 'real prelude KV write on win');
 });
 
-// 16. feedback colors actually reach the draw stream (grid + letter bar)
-check('feedback colors reach draw stream after a submitted guess', () => {
+// 16. feedback colors reach the grid draw stream + keyStates tint the key caps
+check('feedback colors + keyStates reach native stream after a guess', () => {
   const p = probe();
-  const st = vm.runInContext('wdGetGame()', p.s.ctx);
-  const answer = st.answer;
+  const answer = vm.runInContext('wdGetGame()', p.s.ctx).answer;
   const guess = answer === 'slate' ? 'crane' : 'slate';
   const before = p.s.messages.length;
   typeWord(p, guess);
@@ -385,8 +382,20 @@ check('feedback colors reach draw stream after a submitted guess', () => {
   assert.ok(inks.has(rgb('#166B3E')) || inks.has(rgb('#8A6A12')),
     'a green or yellow cell fill was drawn');
   assert.ok(inks.has(rgb('#30343E')), 'a grey cell fill was drawn');
-  assert.ok(inks.has(rgb('#4FE08A')) || inks.has(rgb('#F2CE45')),
-    'letter-state bar ink was drawn');
+  // r153: the highest per-letter verdict now reaches the physical key caps as
+  // keyStates (hit/present/miss) instead of the removed self-drawn letter bar.
+  const kmap = JSON.parse(vm.runInContext('JSON.stringify(wdKeyStates())', p.s.ctx));
+  const marks = JSON.parse(vm.runInContext('JSON.stringify(wdLetterMarks(wdGetGame()))', p.s.ctx));
+  assert.ok(Object.keys(kmap).length > 0, 'keyStates published after submit');
+  for (const ch of Object.keys(marks)) {
+    const expected = marks[ch] === 'G' ? 'hit' : marks[ch] === 'Y' ? 'present' : 'miss';
+    assert.equal(kmap[ch], expected, 'keyStates maps ' + ch + ' -> ' + expected);
+  }
+  const firstCh = Object.keys(kmap)[0];
+  const keyId = p.keys[p.labels.indexOf(firstCh.toUpperCase())];
+  const bg = p.s.messages.filter(x => x[0] === 'attr' && x[1] === keyId && x[2] === 1).pop()[3];
+  const tint = { hit: 0x166B3E, present: 0x8A6A12, miss: 0x30343E }[kmap[firstCh]];
+  assert.equal(bg, tint, 'key cap ATTR_BG_COLOR reflects keyStates');
 });
 
 // 17. NEW button starts a fresh round after a win
@@ -402,6 +411,8 @@ check('NEW button resets board after win', () => {
   assert.equal(fresh.attempt, 0);
   assert.equal(fresh.current, '');
   assert.equal(fresh.rows.length, 0);
+  assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(wdKeyStates())', p.s.ctx)), {},
+    'keyStates cleared on NEW');
 });
 
 // 18. dispose chain removes all 33 keyboard nodes once; second call is a no-op
@@ -460,7 +471,7 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/', ':!runtime/shell.js', ':!runtime/types/lume.d.ts']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
 
 function literals(x) {
@@ -486,9 +497,11 @@ const checks = [
   ['Keyboard geometry: 40 px key, gap 0, y 300', [wiring, x =>
     x.includes('keySize: 40, gap: 0, y: 300')]],
 
-  ['letter state bar consumes wdLetterMarks', [source, x =>
-    x.includes('var marks = wdLetterMarks(state)') &&
-    x.includes("mk === 'G' ? COL.GREEN_B")]],
+  ['keyStates consumes wdLetterMarks and maps G/Y/X to hit/present/miss', [source, x =>
+    x.includes('keyStates: keyStatesSig') &&
+    x.includes('var marks = wdLetterMarks(state), out = {}, ch;') &&
+    x.includes("marks[ch] === 'G' ? 'hit' : marks[ch] === 'Y' ? 'present' : 'miss'") &&
+    !x.includes('function paintBar')]],
 
   ['native nodes carry QWERTY + SPACE/BKSP/ENTER', [labelString, x =>
     x === QWERTY + 'SPACEBKSPENTER']],
@@ -502,7 +515,7 @@ const checks = [
   ['wordle is in the 55-app playground manifest', [apps,
     list => list.length === 55 && list.includes('wordle')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 5ca3e66', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ untouched vs ba5156e (shell.js/types only)', [fwChanged, c => c.length === 0]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -525,12 +538,12 @@ function must(name, mutation, checkName, sourceForCheck) {
 const REG = 'Keyboard registered on lume.ui.shell';
 const WIRE = 'app wires onKey/onBackspace/onSubmit into game logic';
 const GEO = 'Keyboard geometry: 40 px key, gap 0, y 300';
-const BAR = 'letter state bar consumes wdLetterMarks';
+const KEYSTATES = 'keyStates consumes wdLetterMarks and maps G/Y/X to hit/present/miss';
 const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
 const MANIFEST = 'wordle is in the 55-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 5ca3e66';
+const GUARD = 'firmware/ runtime/ tools/lume/ untouched vs ba5156e (shell.js/types only)';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop shell.Keyboard registration',
@@ -539,8 +552,10 @@ must('app stops forwarding onKey',
   x => x.replace('wdKey(state, ch)', 'null'), WIRE, wiring);
 must('shrink the keyboard touch target',
   x => x.replace('keySize: 40, gap: 0, y: 300', 'keySize: 40, gap: 8, y: 300'), GEO, wiring);
-must('letter bar drops feedback marks',
-  x => x.replace('var marks = wdLetterMarks(state)', 'var marks = {}'), BAR, source);
+must('wordle stops passing keyStates to the keyboard',
+  x => x.replace('keyStates: keyStatesSig', 'keyStates: null'), KEYSTATES, source);
+must('wordle drops the verdict -> key-state mapping',
+  x => x.replace("marks[ch] === 'G' ? 'hit' : marks[ch] === 'Y' ? 'present' : 'miss'", 'marks[ch]'), KEYSTATES, source);
 must('a key label drifts from QWERTY',
   x => x.slice(0, -1) + 'X', LABELS, labelString);
 must('a non-ASCII UI literal slips in',

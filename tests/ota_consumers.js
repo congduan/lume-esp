@@ -16,7 +16,7 @@
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
 //     in the 54-app manifest, all UI literals are ASCII (r64), and only the
-//     known r132-r136 files differ from the 5ca3e66 baseline.
+//     known r132-r136 files differ from the d85e69a baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
 const fs = require('node:fs');
@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5ca3e66'; // r152: re-pinned past the Switch/Slider/Progress shell round
+const BASE = '0d1111c'; // r153: re-pinned past the Keyboard keyStates shell round
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -92,25 +92,6 @@ function gitChanged(paths) {
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
-  // r155: guard baseline is the ClickWheel feat commit. The following test,
-  // generated-site, report, and evidence files are this round's known delta.
-  'tests/adc_meter.js', 'tests/archive_view.js', 'tests/controls_demo.js',
-  'tests/crypto_check.js', 'tests/hr_monitor.js', 'tests/img_view.js',
-  'tests/keyboard_demo.js', 'tests/ota_consumers.js', 'tests/reboot_consumers.js',
-  'tests/sd_files.js', 'tests/sd_gallery.js', 'tests/sntp_consumers.js',
-  'tests/sntp_consumers2.js', 'tests/vec_demo.js', 'tests/weather_sntp.js',
-  'tests/wordle.js', 'tests/clickwheel.js', 'tests/ipod_music.js',
-  'website/playground/apps/controls_demo.js', 'website/playground/apps/files.js',
-  'website/playground/apps/wordle.js', 'website/playground/apps/keyboard_demo.js',
-  'website/playground/index.html', 'website/playground/page.js',
-  'website/playground/apps/ipod_music.js', 'website/playground/sources/ipod_music.js',
-  'docs/r155-clickwheel-report.md',
-  'artifacts/r155/api-docs.txt', 'artifacts/r155/list.png',
-  'artifacts/r155/play.png', 'artifacts/r155/playground-build.txt',
-  'artifacts/r155/host-tests.txt', 'artifacts/r155/lume-check.txt',
-  'artifacts/r155/playground-extra.txt', 'artifacts/r155/playground-extra.cjs',
-  'artifacts/r155/playground-page.txt', 'artifacts/r155/cli-tests.txt',
-
   'examples/settings/app.js',
   'examples/dashboard/app.js',
   'tests/ota_consumers.js',
@@ -268,7 +249,7 @@ const ALLOWED = [
   'artifacts/r142/try_batch1000.log',
   'artifacts/r142/try_transition1000.log',
   // r148 controller follow-up (e4f2d47): stale r82/r84/r92 host-run evidence
-  // logs deliberately deleted (disk hygiene). They differ from 5ca3e66 as
+  // logs deliberately deleted (disk hygiene). They differ from d85e69a as
   // deletions, so each path is allowlisted here; artifacts/ is regenerable
   // evidence, not source.
   'artifacts/r82/baseline-build.log',
@@ -321,7 +302,7 @@ const ALLOWED = [
   // hotreload OOM-verb plumbing, and the fw-sync firmware trio republication.
   // firmware/runtime files here are part of the r140 deliberate perf change
   // whose new BASE is pinned above; they are listed to keep the allChanged
-  // predicate honest about what legitimately differs from 5ca3e66.
+  // predicate honest about what legitimately differs from d85e69a.
   'firmware/components/lume-engine/include/lume_engine.h',
   'firmware/components/lume-engine/include/lume_perf_binding.h',
   'firmware/components/lume-engine/lume_engine.c',
@@ -347,28 +328,18 @@ const ALLOWED = [
   'artifacts/r152/npm-ci.txt',
   'artifacts/r152/playground-build.txt',
   'artifacts/r152/regression-summary.txt',
-  // r154: v0.3.2 release evidence (fresh build, merge_bin, asset md5s,
-  // download-verify, regression outputs) + the round's report.
-  'artifacts/r154/assets-local.md5',
-  'artifacts/r154/build-after-ff.log',
-  'artifacts/r154/build-tail.log',
-  'artifacts/r154/cli-tests.txt',
-  'artifacts/r154/download-verify.txt',
-  'artifacts/r154/flash_args.build-original',
-  'artifacts/r154/js-regression-ba5156e.txt',
-  'artifacts/r154/js-regression-before-npm-ci.txt',
-  'artifacts/r154/js-regression.txt',
-  'artifacts/r154/merge.txt',
-  'artifacts/r154/npm-ci.txt',
-  'artifacts/r154/release-notes.md',
-  'artifacts/r154/release-upload.txt',
-  'artifacts/r154/size.txt',
-  'docs/r154-release-report.md',
   'artifacts/r152/playwright-production-page.txt',
   'docs/r152-flapdot-ghost-report.md',
   // r151 (shell form primitives round) landed its controls_demo harness on
-  // main after 5ca3e66 was pinned; it is a test-only addition.
+  // main after 0d1111c was pinned; it is a test-only addition.
   'tests/controls_demo.js',
+  // r153: Keyboard keyStates round. The wordle playground generated files are
+  // already allowlisted above (regenerated because shell.js is embedded in the
+  // bundle); the new per-key tint harness is staged here BEFORE commit because
+  // `git diff` does not see untracked files, which would otherwise turn the
+  // allChanged allowlist red once the test commit lands. All 15 guard BASEs are
+  // re-pinned to the r153 feat commit 0d1111c (runtime/ diff stays pinned).
+  'tests/keyboard_states.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -437,9 +408,9 @@ const checks = [
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ CLI tooling identical to 5ca3e66', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ CLI tooling identical to d85e69a', [fwChanged, c => c.length === 0]],
 
-  ['only known r132 + r133 + r134 + r135 + r136 files differ from 5ca3e66', [allChanged, c =>
+  ['only known r132 + r133 + r134 + r135 + r136 files differ from d85e69a', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f))]],
 ];
 
@@ -512,11 +483,11 @@ must('playground manifest drops dashboard',
 must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
-must('a firmware file changes vs 5ca3e66',
+must('a firmware file changes vs d85e69a',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to 5ca3e66', fwChanged);
-must('an out-of-scope file changes vs 5ca3e66',
+  'firmware/ runtime/ CLI tooling identical to d85e69a', fwChanged);
+must('an out-of-scope file changes vs d85e69a',
   () => allChanged.concat(['docs/unexpected.md']),
-  'only known r132 + r133 + r134 + r135 + r136 files differ from 5ca3e66', allChanged);
+  'only known r132 + r133 + r134 + r135 + r136 files differ from d85e69a', allChanged);
 
 console.log('ALL OTA CONSUMERS HARNESS CASES PASSED');

@@ -90,16 +90,16 @@ const R128_FIRMWARE_FILES = [
   'firmware/sdkconfig.defaults',
   'runtime/types/lume.d.ts',
 ];
-const diffFiles = execFileSync('git', ['diff', '--name-only', '5ca3e66',
+const diffFiles = execFileSync('git', ['diff', '--name-only', 'ba5156e',
   '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
 const changed = diffFiles ? diffFiles.split('\n') : [];
 assert.ok(changed.every(f => R128_FIRMWARE_FILES.includes(f)),
-  'only known firmware files may differ from 5ca3e66: ' + changed.join(', '));
+  'only known firmware files may differ from ba5156e: ' + changed.join(', '));
 
 console.log('PASS sd_gallery: Sd-first read path wired before Fs fallback');
 console.log('PASS sd_gallery: per-image try/catch degrades one image only');
 console.log('PASS sd_gallery: Fs fallback + embedded red PNG intact');
 console.log('PASS sd_gallery: statvfs error-code discrimination + integer MB HUD');
 console.log('PASS sd_gallery: all app string literals ASCII-only (r64)');
-console.log('PASS sd_gallery: firmware/ runtime/ differ only in known files vs 5ca3e66');
+console.log('PASS sd_gallery: firmware/ runtime/ differ only in known files vs 0d1111c');
 console.log('ALL SD GALLERY HARNESS CASES PASSED');

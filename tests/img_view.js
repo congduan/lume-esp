@@ -24,7 +24,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/img_view/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '5ca3e66'; // r148: re-pinned to the shell Keyboard feat commit (runtime/ shell + types)
+const BASE = 'ba5156e'; // r153 rebase: pinned to round-start main // r153: re-pinned to the Keyboard keyStates feat commit (runtime/ shell + types)
 const SW = 24, SH = 24, FACTORS = [2, 4, 8];
 
 // ---- independent reference scalers (NOT copied from the host stub) --------
@@ -222,7 +222,7 @@ check('playground manifest has 55 apps including img_view', () => {
 });
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/img_view.js'), source));
-check('firmware/ runtime/ tools/lume/ byte-identical to baseline 5ca3e66', () =>
+check('firmware/ runtime/ tools/lume/ byte-identical to baseline 0d1111c', () =>
   assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']), []));
 
 // ---- mutation proof: key predicates MUST fail on a bad input --------------

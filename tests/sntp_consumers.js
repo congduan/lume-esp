@@ -41,10 +41,10 @@ function asciiStrings(s) {
 const R129_ALLOWLIST = [];
 function gitChanged() {
   const head = execFileSync('git',
-    ['diff', '--name-only', '5ca3e66', 'HEAD', '--', 'firmware/', 'runtime/'],
+    ['diff', '--name-only', 'ba5156e', 'HEAD', '--', 'firmware/', 'runtime/'],
     { cwd: root, encoding: 'utf8' }).trim();
   const work = execFileSync('git',
-    ['diff', '--name-only', '5ca3e66', '--', 'firmware/', 'runtime/'],
+    ['diff', '--name-only', 'ba5156e', '--', 'firmware/', 'runtime/'],
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
@@ -111,7 +111,7 @@ const checks = [
   ['settings string literals are ASCII-only', [settings, asciiStrings]],
 
   // --- round scope guard: firmware/ runtime/ unchanged vs r128 baseline ----
-  ['firmware/ runtime/ differ from 5ca3e66 only in the (empty) r129 allowlist',
+  ['firmware/ runtime/ differ from ba5156e only in the (empty) r129 allowlist',
     [changedFiles, changed => changed.every(f => R129_ALLOWLIST.includes(f))]],
 ];
 
@@ -180,8 +180,8 @@ must('clock UI copy gains a non-ASCII string',
 must('settings UI copy gains a non-ASCII string',
   s => s + "\nvar __bad = '时间';",
   'settings string literals are ASCII-only', settings);
-must('a firmware file changes vs 5ca3e66',
+must('a firmware file changes vs 0d1111c',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ differ from 5ca3e66 only in the (empty) r129 allowlist', changedFiles);
+  'firmware/ runtime/ differ from ba5156e only in the (empty) r129 allowlist', changedFiles);
 
 console.log('ALL SNTP CONSUMER HARNESS CASES PASSED');
