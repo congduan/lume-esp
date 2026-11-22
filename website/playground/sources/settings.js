@@ -97,7 +97,7 @@ var volume = signal(function () {
   return typeof v === 'number' && v >= 0 && v <= 100 ? v : 50;
 }());
 var volNote = signal('');
-var powerConfirm = signal(false);
+var powerNote = signal('');       /* r164: ASCII note for guarded power-off failure */
 var wifiBusy = signal('');         /* ssid while a connect attempt is running */
 var timeSyncLine = signal('TIME SYNC: --');  /* r129: General-page NTP status */
 var otaLine = signal('ota off');             /* r132: General-page OTA status */
@@ -374,17 +374,34 @@ function applyVolume(v, persist) {
   var r = audio.setVolume(v);
   volNote.set(r === 0 ? '' : 'audio err ' + r);
 }
-var armTimer = null;
+/* ---- r164: power off consumer (pure app layer) BEGIN -----------------------------
+ * lume.pmic.powerOff() performs a REAL power off: on device it never returns.
+ * r164 replaces the old 3 s arm/confirm gate with a shell.Dialog whose danger
+ * "Power off" button is the ONLY path to the binding. The typeof guard lives
+ * inside that callback, so Cancel / mask / card / a stub without Dialog can
+ * never power the device down; a missing binding degrades to an ASCII note. */
 function powerOff() {
-  if (!powerConfirm()) {
-    powerConfirm.set(true);
-    if (armTimer !== null) lume.system.clearTimeout(armTimer);
-    armTimer = lume.system.setTimeout(function () { powerConfirm.set(false); }, 3000);
+  var shell = lume.ui && lume.ui.shell;
+  if (!shell || typeof shell.Dialog !== 'function') {
+    powerNote.set('power off n/a (no dialog)');
     return;
   }
-  powerConfirm.set(false);
-  lume.pmic.powerOff();
+  shell.Dialog({
+    title: 'Power off',
+    message: 'The device powers down immediately; unsaved state is lost.',
+    buttons: [
+      { label: 'Cancel', style: 'plain' },
+      { label: 'Power off', style: 'danger', onPress: function () {
+        if (!lume.pmic || typeof lume.pmic.powerOff !== 'function') {
+          powerNote.set('power off n/a');        /* stub without the binding */
+          return;
+        }
+        lume.pmic.powerOff();                    /* real power off; never returns */
+      } }
+    ]
+  });
 }
+/* ---- r164: power off consumer END ---- */
 
 /* ---- r129: time sync (r128 lume.system.time / setTimeNtp primitives) ----------
  * time() and Date.now() both read gettimeofday(), so a synced device shows
@@ -770,7 +787,7 @@ var generalPage = View({ style: {
   actionRow([
     bigButton('Sleep now', function () { lume.power.sleepNow(); }),
     bigButton(function () {
-      return powerConfirm() ? 'Confirm off?' : 'Power off';
+      return powerNote() === '' ? 'Power off' : powerNote();
     }, powerOff, 1)
   ]),
   Text({ text: 'Touch the screen to wake from sleep',

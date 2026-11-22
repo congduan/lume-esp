@@ -8,8 +8,8 @@
  *  heartbeat line ("HR 072", fixed width, <=20 bytes) once per second.
  *  Inbound central commands are shown in the HUD (truncated to 20 bytes).
  *
- *  Advertising is behind a two-stage arm/confirm gate (arm -> 3 s -> act) so
- *  a stray tap cannot drop a live link. status() returns a NEGATIVE NUMBER on
+ *  Advertising is behind a shell.Dialog confirmation (r164) so a stray tap
+ *  cannot drop a live link. status() returns a NEGATIVE NUMBER on
  *  failure, discriminated with typeof === 'object'; read() yields a string,
  *  null (empty FIFO) or a negative code. Without a BLE stack (playground /
  *  stub) every call is guarded with `typeof lume.ble !== 'undefined'` and the
@@ -18,6 +18,8 @@
  *  No radio / board on the host: this is simulator/host evidence only, not
  *  on-device BLE acceptance (docs/KNOWN-SIMPLIFICATIONS.md r146).
  */
+
+import '../../runtime/shell.js';
 
 /* ---- r146: BLE telemetry logic BEGIN ---- */
 var NAME = 'Lume';
@@ -34,8 +36,6 @@ var txCount = signal(0);
 var rxCount = signal(0);
 var note = signal('');
 var advertising = signal(false);
-var toggleArm = signal(false);
-var toggleArmTimer = null;
 var pollId = null;
 var hrId = null;
 
@@ -98,23 +98,32 @@ function stopAdv() {
   note.set('advertising stopped');
 }
 
-/* r146 TWO-STAGE GATE BEGIN */
+/* r164: BLE advertise/stop gate BEGIN (shell.Dialog replaces the r146 two-stage arm) */
 function toggleAdvert() {
-  if (!toggleArm()) {                          /* first tap: arm a 3 s confirm */
-    toggleArm.set(true);
-    note.set('Confirm: tap again within 3s');
-    if (toggleArmTimer !== null) lume.system.clearTimeout(toggleArmTimer);
-    toggleArmTimer = lume.system.setTimeout(function () {
-      toggleArm.set(false);
-      note.set('');
-    }, 3000);
-    return;                                    /* do NOT start/stop on first tap */
+  var shell = lume.ui && lume.ui.shell;
+  if (!shell || typeof shell.Dialog !== 'function') {
+    note.set('BLE n/a (no dialog)');           /* never auto-start/stop without a modal */
+    return;
   }
-  toggleArm.set(false);                        /* second tap: act */
-  if (toggleArmTimer !== null) { lume.system.clearTimeout(toggleArmTimer); toggleArmTimer = null; }
-  if (advertising()) stopAdv(); else startAdv();
+  var stopping = advertising();
+  var label = stopping ? 'Stop adv' : 'Start adv';
+  shell.Dialog({
+    title: stopping ? 'Stop advertising?' : 'Start advertising?',
+    message: stopping ? 'The link drops and this device stops advertising.'
+                      : 'This device advertises as ' + NAME + ' for a central.',
+    buttons: [
+      { label: 'Cancel', style: 'plain' },
+      { label: label, style: 'danger', onPress: function () {
+        if (!HAS_BLE || typeof lume.ble === 'undefined') {
+          note.set('BLE n/a (no stack)');      /* stub without the binding */
+          return;
+        }
+        if (advertising()) stopAdv(); else startAdv();
+      } }
+    ]
+  });
 }
-/* r146 TWO-STAGE GATE END */
+/* r164: BLE advertise/stop gate END */
 
 lume.app.onStart(function () {
   if (!HAS_BLE) { note.set('BLE n/a (no stack)'); return; }
@@ -173,8 +182,7 @@ View({ style: {
   card('note', function () { return note() === '' ? '-' : note(); }),
   spark,
   Button({ title: function () {
-    if (toggleArm()) return advertising() ? 'Confirm stop?' : 'Confirm adv?';
-    return advertising() ? 'Stop advertising' : 'Advertise';
+    return advertising() ? 'Stop adv' : 'Start adv';
   }, onPress: toggleAdvert, style: { width: '100%', height: 56, background: 'accent', borderRadius: 999 } })
 ]);
 /* ---- r146: UI END ---- */
