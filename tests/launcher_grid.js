@@ -1,5 +1,6 @@
 /*
- * r160 host harness for examples/launcher_grid (pure app).
+ * r160 host harness for examples/launcher_grid (pure app), extended in r162
+ * for shell.Launcher's onEditingChange observable edit state.
  *
  *   node tests/launcher_grid.js
  *
@@ -7,14 +8,18 @@
  * explicit 9-app literal list (no lume.apps.entries / no real apps.launch),
  * onLaunch / onBack host callbacks exist, indicator is off so the only Canvases
  * are the 9 48x48 icons (20736 px <= 230400 px full frame), the theme is
- * customised, ASCII-only copy, 14/20/32 fonts, the 59-app manifest, byte-
- * identical playground source, and firmware/runtime/tools/lume zero-diff vs
- * 8e42b96. Every static predicate has a mutation proof.
+ * customised, ASCII-only copy (app AND this harness), 14/20/32 fonts, the
+ * 61-app manifest, byte-identical playground source, and firmware/runtime/
+ * tools/lume zero-diff vs the r162 feat commit. r162 adds static contracts for
+ * the shell setEditing notification (both change points), the .d.ts prop and
+ * the app's EDIT status consumption. Every static predicate has a mutation
+ * proof.
  *
  * Part 2: live runs of the REAL app against the firmware prelude + shell.js.
- * Tile onPress drives the real onLaunch host callback; an edge swipe drives
- * onBack; shutdown clears effects/timers. No board, no touch, no real app
- * switch: host evidence only (r160 docs).
+ * Tile onPress drives the real onLaunch host callback; the edit button and an
+ * edge swipe drive Launcher's two onEditingChange sites; shutdown clears
+ * effects/timers. A no-callback variant proves the old shell path is intact.
+ * No board, no touch, no real app switch: host evidence only (r160/r162 docs).
  */
 'use strict';
 const assert = require('node:assert/strict');
@@ -26,9 +31,11 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '8e42b96'; // r160: pure app round; firmware/runtime/CLI untouched
+const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
 const source = read('examples/launcher_grid/app.js');
 const shell = read('runtime/shell.js');
+const dts = read('runtime/types/lume.d.ts');
+const harness = read('tests/launcher_grid.js');
 const manifest = read('tools/playground/build.mjs');
 const playgroundSrc = read('website/playground/sources/launcher_grid.js');
 const APPS_N = 9;
@@ -58,6 +65,13 @@ function gitChanged(paths, base) {
   const work = execFileSync('git', ['diff', '--name-only', b, '--', ...paths],
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
+}
+function propsBlock(s, name) {
+  const start = s.indexOf('interface ' + name + ' {');
+  assert.ok(start >= 0, 'missing interface ' + name);
+  const end = s.indexOf('\n  }', start);
+  assert.ok(end > start, 'unterminated interface ' + name);
+  return s.slice(start, end);
 }
 
 /* ------------------------ part 1: static guards ------------------------ */
@@ -107,15 +121,35 @@ const checks = [
   ['onBack host handler returns true (editing-state fallback)', [source, s =>
     s.includes("onBack: function () { lastAction.set('BACK'); return true; },")]],
 
-  ['status Text is signal-driven and ASCII-only', [source, s =>
-    s.includes('text: function () { return lastAction(); },') &&
+  ['status Text is signal-driven with r162 EDIT feedback', [source, s =>
+    s.includes("return editing() ? 'EDIT' : lastAction();") &&
     s.includes("var lastAction = signal('READY');")]],
+
+  ['shell.Launcher setEditing notifies onEditingChange at both change points', [shell, s =>
+    s.includes('function setEditing(v) { editing.set(v); if (p.onEditingChange) p.onEditingChange(v); }') &&
+    (s.match(/editing\.set\(/g) || []).length === 1 &&
+    s.includes('onPress: function () { setEditing(!editing()); }') &&
+    s.includes('if (editing()) { setEditing(false); return true; }')]],
+
+  ['LauncherProps declares the onEditingChange callback', [dts, s => {
+    const b = propsBlock(s, 'LauncherProps');
+    return b.includes('onEditingChange?: (editing: boolean) => void;') &&
+      b.includes('/** Fires when edit mode toggles (edit button or back-out-of-edit). */');
+  }]],
+
+  ['app consumes onEditingChange and shows EDIT in the status line', [source, s =>
+    s.includes('var editing = signal(false);') &&
+    s.includes('onEditingChange: function (v) { editing.set(v); },') &&
+    s.includes("return editing() ? 'EDIT' : lastAction();")]],
 
   ['custom theme sets primary / surface / accent / text', [source, s =>
     s.includes('lume.theme.set({') && /primary: '#/.test(s) && /surface: '#/.test(s) &&
     /accent: '#/.test(s) && /text: '#/.test(s)]],
 
   ['entire app file is ASCII-only (r64)', [source,
+    s => s.length > 0 && /^[\x00-\x7F]*$/.test(s)]],
+
+  ['entire harness file is ASCII-only (r64)', [harness,
     s => s.length > 0 && /^[\x00-\x7F]*$/.test(s)]],
 
   ['UI string literals ASCII-only (r64)', [literals(source),
@@ -127,10 +161,10 @@ const checks = [
   ['playground sources/launcher_grid.js byte-identical to the example', [playgroundSrc, x =>
     x === source]],
 
-  ['launcher_grid is in the 59-app playground manifest', [apps,
+  ['launcher_grid is in the 61-app playground manifest', [apps,
     list => list.length === 61 && list.includes('launcher_grid')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 8e42b96', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.length === 0]],
 ];
 
 for (const [name, [subject, test]] of checks) {
@@ -155,14 +189,18 @@ const GRID = 'Launcher title / columns / indicator fixed (canvas lock)';
 const BUDGET = 'canvas budget constants are explicit and correct';
 const ONLAUNCH = 'onLaunch host callback records id and updates status';
 const ONBACK = 'onBack host handler returns true (editing-state fallback)';
-const STATUS = 'status Text is signal-driven and ASCII-only';
+const STATUS = 'status Text is signal-driven with r162 EDIT feedback';
+const SHELL_EDIT = 'shell.Launcher setEditing notifies onEditingChange at both change points';
+const DTS_EDIT = 'LauncherProps declares the onEditingChange callback';
+const APP_EDIT = 'app consumes onEditingChange and shows EDIT in the status line';
 const THEME = 'custom theme sets primary / surface / accent / text';
 const ASCII = 'entire app file is ASCII-only (r64)';
+const HARNESS_ASCII = 'entire harness file is ASCII-only (r64)';
 const LIT = 'UI string literals ASCII-only (r64)';
 const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
 const SRC = 'playground sources/launcher_grid.js byte-identical to the example';
-const MANIFEST = 'launcher_grid is in the 59-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 8e42b96';
+const MANIFEST = 'launcher_grid is in the 61-app playground manifest';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 80e76b2';
 
 must('drop the shell import',
   x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);
@@ -190,8 +228,23 @@ must('onLaunch falls back to a real app switch',
                  "onLaunch: function (id) { lume.apps.launch(id); },"), ONLAUNCH, source);
 must('drop the onBack host handler',
   x => x.replace("onBack: function () { lastAction.set('BACK'); return true; },", ''), ONBACK, source);
-must('status stops following the launch signal',
-  x => x.replace('text: function () { return lastAction(); },', "text: 'STATIC',"), STATUS, source);
+must('status stops following the launch/editing signals',
+  x => x.replace("return editing() ? 'EDIT' : lastAction();", "return 'STATIC';"), STATUS, source);
+must('shell drops the onEditingChange notification call',
+  x => x.replace('if (p.onEditingChange) p.onEditingChange(v);', ''), SHELL_EDIT, shell);
+must('edit toggle bypasses setEditing',
+  x => x.replace('onPress: function () { setEditing(!editing()); }',
+                 'onPress: function () { editing.set(!editing()); }'), SHELL_EDIT, shell);
+must('back-out bypasses setEditing',
+  x => x.replace('if (editing()) { setEditing(false); return true; }',
+                 'if (editing()) { editing.set(false); return true; }'), SHELL_EDIT, shell);
+must('LauncherProps drops the onEditingChange declaration',
+  x => x.replace('    onEditingChange?: (editing: boolean) => void;\n', ''), DTS_EDIT, dts);
+must('app drops the onEditingChange consumer',
+  x => x.replace('onEditingChange: function (v) { editing.set(v); },\n', ''), APP_EDIT, source);
+must('app drops the EDIT status feedback',
+  x => x.replace("return editing() ? 'EDIT' : lastAction();", 'return lastAction();'), APP_EDIT, source);
+must('a non-ASCII byte slips into the harness', x => x + '\n// \u4E2D', HARNESS_ASCII, harness);
 must('custom theme is dropped',
   x => x.replace('lume.theme.set(', 'lume.noTheme('), THEME, source);
 must('a non-ASCII byte slips into the file', x => x + '\n// \u4E2D', ASCII, source);
@@ -201,22 +254,30 @@ must('playground generated source drifts',
   x => x + '\n// drift', SRC, playgroundSrc);
 must('playground manifest drops launcher_grid',
   list => list.filter(x => x !== 'launcher_grid'), MANIFEST, apps);
-must('a firmware/runtime/CLI file changes after 8e42b96',
+must('a firmware/runtime/CLI file changes after 80e76b2',
   () => ['runtime/shell.js'], GUARD, fwChanged);
 
 /* ------------------------ part 2: live prelude ------------------------- */
-function boot(src) {
-  const st = runApp(shell + '\n' + stripImport(src === undefined ? source : src), {
+function bootWith(shellSrc, appSrc) {
+  const st = runApp(shellSrc + '\n' + stripImport(appSrc === undefined ? source : appSrc), {
     filename: 'examples/launcher_grid/app.js',
   });
   st.eval = code => vm.runInContext(code, st.ctx);
   st.api = () => st.ctx.lgApi;
   return st;
 }
+function boot(src, shellSrc) { return bootWith(shellSrc === undefined ? shell : shellSrc, src); }
 function attempt(fn) { try { fn(); return true; } catch (e) { return false; } }
 function pressIds(s) { return s.messages.filter(m => m[0] === 'press').map(m => m[1]); }
 function canvasNodes(s) { return s.messages.filter(m => m[0] === 'create' && m[2] === 3); }
 function gestureIds(s) { return s.messages.filter(m => m[0] === 'gesture').map(m => m[1]); }
+/* The status Text owns the last ATTR_TEXT emit; read its rendered value, not
+ * the lastAction signal (the r162 EDIT prefix lives in the Text expression). */
+function statusText(s) {
+  const id = s.api().statusNode;
+  const attrs = s.messages.filter(m => m[0] === 'attr' && m[1] === id && m[2] === 0);
+  return attrs.length ? attrs[attrs.length - 1][3] : undefined;
+}
 function drag(s, id, from, to, t0) {
   t0 = t0 || 0;
   s.gesture(id, 0, from, 200, t0);
@@ -254,23 +315,58 @@ const live = {
     assert.equal(a.status(), 'launch settings', 'last tile -> launch settings');
   }),
 
+  'onEditingChange mirrors edit state true then false into the app signal': (src, shellSrc) => attempt(() => {
+    const s = boot(src, shellSrc), a = s.api();
+    const ids = pressIds(s);
+    const left = gestureIds(s)[1];
+    assert.equal(a.editing(), false, 'no spurious first-frame true/false report');
+    assert.equal(statusText(s), 'READY');
+    s.press(ids[0]);                              // edit button -> setEditing(true)
+    assert.equal(a.editing(), true, 'callback fired with true');
+    assert.equal(statusText(s), 'EDIT', 'status shows EDIT');
+    drag(s, left, 10, 90, 0);                     // EdgeNavigation back -> setEditing(false)
+    assert.equal(a.editing(), false, 'callback fired with false');
+    assert.equal(statusText(s), 'READY', 'status restored to prior action');
+  }),
+
+  'app without onEditingChange boots and keeps baseline status semantics': src => attempt(() => {
+    const noCb = src
+      .replace('onEditingChange: function (v) { editing.set(v); },\n', '')
+      .replace("return editing() ? 'EDIT' : lastAction();", 'return lastAction();');
+    assert.notEqual(noCb, src, 'no-callback variant must differ from source');
+    const s = boot(noCb), a = s.api();
+    const ids = pressIds(s);
+    const left = gestureIds(s)[1];
+    assert.equal(statusText(s), 'READY');
+    s.press(ids[0]);
+    assert.equal(a.editing(), false, 'app signal untouched with no callback');
+    assert.equal(statusText(s), 'READY', 'no EDIT feedback with no callback');
+    drag(s, left, 10, 90, 0);
+    assert.equal(statusText(s), 'READY', 'editing back still consumed internally');
+    s.press(ids[1]);
+    assert.equal(statusText(s), 'launch counter', 'tile launch still works');
+  }),
+
   'edit-mode back and onBack fallback update status': src => attempt(() => {
     const s = boot(src), a = s.api();
     const ids = pressIds(s);
     const left = gestureIds(s)[1]; // EdgeNavigation left strip (0 is the List)
     s.press(ids[1]);
-    assert.equal(a.status(), 'launch counter');
+    assert.equal(statusText(s), 'launch counter');
     /* Enter editing mode: the edit button is the first press handler. */
     s.press(ids[0]);
+    assert.equal(statusText(s), 'EDIT', 'edit tap shows EDIT');
     /* While editing, tile presses are suppressed by Launcher. */
     s.press(ids[2]);
-    assert.equal(a.status(), 'launch counter', 'editing suppresses launches');
-    /* First back exits editing (Launcher consumes it). */
+    assert.equal(statusText(s), 'EDIT', 'editing suppresses launches');
+    /* First back exits editing (Launcher consumes it) and restores status. */
     drag(s, left, 10, 90, 0);
-    assert.equal(a.status(), 'launch counter', 'editing back is consumed internally');
+    assert.equal(statusText(s), 'launch counter', 'editing back restores prior status');
+    s.press(ids[2]);
+    assert.equal(statusText(s), 'launch timer_kit', 'tile launches after back-out');
     /* Second back reaches the host onBack callback. */
     drag(s, left, 10, 90, 200);
-    assert.equal(a.status(), 'BACK', 'host onBack fallback fires');
+    assert.equal(statusText(s), 'BACK', 'host onBack fallback fires');
   }),
 
   'shutdown clears all effects and timers': src => attempt(() => {
@@ -308,5 +404,30 @@ mustLive('live: onLaunch falls back to a real app switch',
   x => x.replace("onLaunch: function (id) { lastAction.set('launch ' + id); },\n",
                  "onLaunch: function (id) { lume.apps.launch(id); },\n"),
   'tile onPress drives the onLaunch host callback (no app-store launch)');
+mustLive('live: app drops onEditingChange consumer -> no EDIT feedback',
+  x => x.replace('onEditingChange: function (v) { editing.set(v); },\n', ''),
+  'onEditingChange mirrors edit state true then false into the app signal');
+mustLive('live: app drops EDIT status expression -> no EDIT feedback',
+  x => x.replace("return editing() ? 'EDIT' : lastAction();", 'return lastAction();'),
+  'onEditingChange mirrors edit state true then false into the app signal');
+
+function mustLiveShell(name, mutation, liveName) {
+  const mutated = mutation(shell);
+  assert.notEqual(mutated, shell, 'shell live mutation did not change source: ' + name);
+  assert.equal(live[liveName](source, mutated), false,
+    'shell live assertion is decorative; mutation did not FAIL: ' + name);
+  console.log('PASS launcher_grid live mutation: ' + name + ' -> FAIL as expected');
+}
+mustLiveShell('live: shell notification removed -> app editing stays false',
+  x => x.replace('if (p.onEditingChange) p.onEditingChange(v);', ''),
+  'onEditingChange mirrors edit state true then false into the app signal');
+mustLiveShell('live: edit toggle bypasses setEditing -> no true callback',
+  x => x.replace('onPress: function () { setEditing(!editing()); }',
+                 'onPress: function () { editing.set(!editing()); }'),
+  'onEditingChange mirrors edit state true then false into the app signal');
+mustLiveShell('live: back-out bypasses setEditing -> no false callback',
+  x => x.replace('if (editing()) { setEditing(false); return true; }',
+                 'if (editing()) { editing.set(false); return true; }'),
+  'onEditingChange mirrors edit state true then false into the app signal');
 
 console.log('ALL LAUNCHER GRID HARNESS CASES PASSED');

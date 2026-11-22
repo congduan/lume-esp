@@ -21,7 +21,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
+const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
 const HEAD_BASE = '31adb96'; // r150 trunk: firmware/ must be byte-identical
 
 const app = read('examples/controls_demo/app.js');

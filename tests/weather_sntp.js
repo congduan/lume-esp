@@ -23,7 +23,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
+const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
 const BEGIN = '/* ---- r131: SNTP-first BEGIN ---- */';
 const END = '/* ---- r131: SNTP-first END ---- */';
 
@@ -120,7 +120,7 @@ const checks = [
   ['weather is in the 57-app playground manifest', [playgroundApps,
     list => list.length === 61 && list.includes('weather')]],
 
-  ['firmware/ runtime/ CLI tooling untouched vs ba5156e (shell.js/types only) (manifest excluded)',
+  ['firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only) (manifest excluded)',
     [changed, c => c.length === 0]],
 ];
 
@@ -184,6 +184,6 @@ must('playground manifest drops weather',
   'weather is in the 57-app playground manifest', playgroundApps);
 must('a firmware file changes vs 1dc7c76',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling untouched vs ba5156e (shell.js/types only) (manifest excluded)', changed);
+  'firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only) (manifest excluded)', changed);
 
 console.log('ALL WEATHER SNTP HARNESS CASES PASSED');

@@ -25,7 +25,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '76d2c0c'; // r159: pure app round; firmware/runtime/CLI untouched
+const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
 const source = read('examples/control_center/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -153,7 +153,7 @@ const checks = [
   ['control_center is in the 58-app playground manifest', [apps,
     list => list.length === 61 && list.includes('control_center')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 76d2c0c', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.length === 0]],
 ];
 
 for (const [name, [subject, test]] of checks) {
@@ -191,7 +191,7 @@ const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
 const BUDGET = 'static tree within the node budget';
 const SRC = 'playground sources/control_center.js byte-identical to the example';
 const MANIFEST = 'control_center is in the 58-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 76d2c0c';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 80e76b2';
 
 must('drop the shell import',
   x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);
