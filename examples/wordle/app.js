@@ -10,8 +10,16 @@
  *
  * Dictionary: 300 embedded ASCII five-letter words, merged answer/guess list
  * (a guess must be in the list). NVS keys are <= 15 chars (lume_kv.c):
- * 'hisc.wordle' stores the longest win streak, 'wordle.cur' the current one.
- * All UI copy is ASCII (r64). Touch feel stays deferred to board bring-up.
+ * 'hisc.wordle' stores the longest win streak, 'wordle.cur' the current one,
+ * 'wr.day' the dayIndex of the last win. All UI copy is ASCII (r64).
+ *
+ * r165: the answer is now deterministic per UTC day -- wdDayIndex() divides
+ * lume.system.time() (unix ms) by 86400000 and wdPick() indexes WORDS with it.
+ * Same day, same word; a new day means a new word. Before SNTP on a cold boot
+ * time() is a small 1970 value, so dayIndex 0 maps to WORDS[0] ('about'). That
+ * is the documented "clock not set" behaviour, not a bug; after SNTP the real
+ * dayIndex takes over (it may switch the word within the same session). See
+ * docs/KNOWN-SIMPLIFICATIONS.md. Touch feel stays deferred to board bring-up.
  */
 
 import '../../runtime/shell.js';
@@ -24,7 +32,8 @@ var IW = 480, CANVAS_H = 228, CANVAS_Y = 64;
 var WORD_LEN = 5, ROWS = 6;
 var CELL = 30, GAP = 4, GX = 157, GY = 4;
 var ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-var KV_BEST = 'hisc.wordle', KV_CUR = 'wordle.cur';   /* 11 / 10 chars */
+var KV_BEST = 'hisc.wordle', KV_CUR = 'wordle.cur', KV_DAY = 'wr.day'; /* 11 / 10 / 7 chars */
+var MS_PER_DAY = 86400000;
 
 var COL = {
   BG:'#0C0A10', EMPTY:'#191B24', EMPTY_B:'#333A48',
@@ -119,12 +128,21 @@ var WORDS = [
 
 function wdEmit(s, msg) { s.events.push(msg); }
 
-/* Injectable pick; clamps an out-of-range rnd() back into the list. */
-function wdPick(rnd) {
-  var r = rnd ? rnd() : Math.random();
-  var i = Math.floor(r * WORDS.length);
-  if (i < 0) i = 0;
-  if (i >= WORDS.length) i = WORDS.length - 1;
+/* r165: UTC day ordinal from the wall clock. time() is a number by contract
+ * and never throws, but a defensive check keeps a broken host stub harmless.
+ * A cold boot before SNTP yields a small -> dayIndex 0 (honest, see header). */
+function wdDayIndex() {
+  var t = lume.system.time();
+  if (typeof t !== 'number' || !isFinite(t)) return 0;
+  return Math.floor(t / MS_PER_DAY);
+}
+
+/* r165: deterministic daily pick -- same dayIndex always maps to the same
+ * word. No random path remains. Negative dayIndex (not expected) wraps in. */
+function wdPick(day) {
+  var d = typeof day === 'number' ? day : wdDayIndex();
+  var i = d % WORDS.length;
+  if (i < 0) i += WORDS.length;
   return WORDS[i];
 }
 
@@ -132,16 +150,24 @@ function wdPick(rnd) {
  * nonnegative number is accepted. Every access is guarded (NVS may be off). */
 function wdCur() { try { var n = lume.storage.kv.get(KV_CUR); return typeof n === 'number' && n >= 0 ? n : 0; } catch (e) { return 0; } }
 function wdBest() { try { var n = lume.storage.kv.get(KV_BEST); return typeof n === 'number' && n >= 0 ? n : 0; } catch (e) { return 0; } }
+function wdDay() { try { var n = lume.storage.kv.get(KV_DAY); return typeof n === 'number' && n >= 0 ? n : -1; } catch (e) { return -1; } }
 function wdSaveCur(v) { try { lume.storage.kv.set(KV_CUR, v); } catch (e) {} return v; }
 function wdSaveBest(v) { try { lume.storage.kv.set(KV_BEST, v); } catch (e) {} return v; }
+function wdSaveDay(v) { try { lume.storage.kv.set(KV_DAY, v); } catch (e) {} return v; }
 
-function wdNewGame(answer, rnd) {
+function wdNewGame(answer) {
+  var day = wdDayIndex();
+  var last = wdDay();
+  /* r165: streak means consecutive days won. A gap of 2+ days since the last
+   * win breaks it; same-day replays and the next day carry it forward. */
+  if (last >= 0 && day - last >= 2) wdSaveCur(0);
   var s = {
-    answer: answer || wdPick(rnd),
+    day: day,
+    answer: answer || wdPick(day),
     rows: [], current: '', attempt: 0, status: 'play',
     streak: wdCur(), best: wdBest(), events: []
   };
-  wdEmit(s, 'new words=' + WORDS.length);
+  wdEmit(s, 'new words=' + WORDS.length + ' day=' + day);
   return s;
 }
 
@@ -201,6 +227,7 @@ function wdSubmit(s) {
   if (guess === s.answer) {
     s.status = 'win';
     s.streak = wdSaveCur(wdCur() + 1);
+    wdSaveDay(s.day);
     if (s.best < s.streak) s.best = wdSaveBest(s.streak);
     wdEmit(s, 'WIN attempt=' + s.attempt + ' streak=' + s.streak);
   } else if (s.attempt >= ROWS) {
@@ -226,7 +253,7 @@ function wdLetterMarks(s) {
 
 /* ------------------------------ GAME UI ------------------------------ */
 
-var state = wdNewGame(null, null);
+var state = wdNewGame();
 var frame = signal(0), hudSig = signal(''), noteSig = signal('TYPE A WORD - ENTER TO SUBMIT');
 /* r153: translate the highest per-letter verdict into shell keyStates and
  * publish it as a signal; only keys whose tint changes rewrite their ATTR. */
@@ -313,12 +340,12 @@ Text({ parent: root, text: function () {
 }, style: { position: 'absolute', x: 8, y: 46, fontSize: 14, color: '#9FD8F0' } });
 
 function updateHud() {
-  hudSig.set('TRY ' + Math.min(state.attempt + 1, ROWS) + '/' + ROWS +
+  hudSig.set('DAY #' + state.day + '  TRY ' + Math.min(state.attempt + 1, ROWS) + '/' + ROWS +
     '  STREAK ' + state.streak + '  BEST ' + state.best);
 }
 function flush() { while (state.events.length) logEvent(state.events.shift()); updateHud(); }
 function newRound() {
-  state = wdNewGame(null, null);
+  state = wdNewGame();
   refreshKeyStates();
   noteSig.set('TYPE A WORD - ENTER TO SUBMIT');
   painted = false;
@@ -376,5 +403,5 @@ globalThis.wdCanvas = canvas;
 globalThis.wdKeyStates = keyStatesSig;
 
 updateHud();
-logEvent('boot words=' + WORDS.length + ' keys=' + KV_BEST + '/' + KV_CUR);
+logEvent('boot words=' + WORDS.length + ' keys=' + KV_BEST + '/' + KV_CUR + '/' + KV_DAY);
 frame.set(frame() + 1);
