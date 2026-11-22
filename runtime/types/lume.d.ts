@@ -306,6 +306,24 @@ declare namespace lume.ui.shell {
   /** Theme-token annulus and center button; pure gesture-to-callback translation.
    * Returns its Canvas node; dispose(node) unregisters all gesture handlers. */
   function ClickWheel(props: ClickWheelProps): lume.ui.Node;
+  interface ColorPickerProps {
+    parent?: lume.ui.Node;
+    x?: number; y?: number;
+    /** #RRGGBB; invalid values warn and use #40D8B0. */
+    initialHex?: string;
+    /** Live selection, at most once per 100 ms during a drag; final value flushes on release. */
+    onChange?: (hex: string) => void;
+    onConfirm?: (hex: string) => void;
+    onDismiss?: () => void;
+  }
+  /** One 300x360 Canvas with a 24-segment hue ring, separate saturation/value
+   * strips, preview and touch buttons. Returns a node for shell.dispose(node).
+   * Also disposes on app pause. */
+  function ColorPicker(props?: ColorPickerProps): lume.ui.Node;
+  /** HSV degrees [0,360), saturation/value [0,1] to canonical #RRGGBB. */
+  function hsvToHex(h: number, s: number, v: number): string;
+  /** Parses #RRGGBB into HSV or returns null for invalid input. */
+  function hexToHsv(hex: string): {h: number; s: number; v: number} | null;
   interface SliderProps {
     parent?: lume.ui.Node;
     min?: number; max?: number; step?: number;
