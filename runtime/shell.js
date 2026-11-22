@@ -290,11 +290,21 @@
    * prelude / native ATTR semantics are untouched, touch feel is deferred to
    * board bring-up. */
   var KEY_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+  /* r153: per-key state tint. keyStates maps a LOWERCASE letter to one of the
+   * three Wordle verdicts: 'hit' (right letter, right slot, green), 'present'
+   * (right letter, wrong slot, yellow), 'miss' (letter absent, grey). Any other
+   * key or value is ignored and the key keeps its default background; SPACE /
+   * BKSP / ENTER are never tinted. */
+  var KEY_STATE_TINTS = { hit: '#166B3E', present: '#8A6A12', miss: '#30343E' };
   function Keyboard(p) {
     p = p || {};
     callback('Keyboard onKey', p.onKey);
     callback('Keyboard onBackspace', p.onBackspace);
     callback('Keyboard onSubmit', p.onSubmit);
+    var keyStates = p.keyStates;
+    if (keyStates !== undefined && typeof keyStates !== 'function' &&
+        (typeof keyStates !== 'object' || keyStates === null || Array.isArray(keyStates)))
+      throw new TypeError('lume: Keyboard keyStates must be an object or a signal function');
     var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
     var width = positive('Keyboard width', p.width, screen.w, 16384);
     var columns = KEY_ROWS[0].length;                 /* 10 letters on the top row */
@@ -335,9 +345,25 @@
           onPress: onPress }));
       };
     }
+    /* r153: absent keyStates returns the exact r148 colour helper, so the node
+     * and effect graph is unchanged. When present, each letter key binds its
+     * own background getter: the prelude wraps a function background in an
+     * owned effect, so a published state change rewrites only this key's
+     * ATTR_BG_COLOR in place -- no node rebuild, no canvas, control keys stay
+     * on their fixed backgrounds. */
+    function letterBackground(ch) {
+      var fallback = color('surface', '#132435');
+      if (keyStates === undefined) return fallback;
+      return function () {
+        var states = typeof keyStates === 'function' ? keyStates() : keyStates;
+        var tint = states && KEY_STATE_TINTS[states[ch]];
+        return tint || fallback();
+      };
+    }
     KEY_ROWS.forEach(function (chars) {
       row(chars.split('').map(function (ch) {
-        return key(ch.toUpperCase(), keySize, function () { if (p.onKey) p.onKey(ch); });
+        return key(ch.toUpperCase(), keySize, function () { if (p.onKey) p.onKey(ch); },
+          letterBackground(ch));
       }));
     });
     var spaceWidth = 4 * keySize + 3 * gap;

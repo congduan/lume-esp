@@ -1,12 +1,12 @@
 /* r149 - Wordle: 5 letters x 6 tries, on-screen QWERTY keyboard, pure app JS.
  *
- * Consumes the r148 shell.Keyboard (no firmware / prelude / runtime change).
- * Two-pass verdict with the standard repeated-letter rule (count the answer
- * first, then hand out yellows left-to-right, so no letter is over-awarded).
- * Green = right slot, yellow = present wrong slot, grey = absent. Keyboard has
- * no per-key background injection point in shell.js, so letter feedback state
- * is drawn as a 26-letter status bar immediately above the keyboard (green >
- * yellow > grey priority); that tradeoff is recorded in KNOWN-SIMPLIFICATIONS.
+ * Consumes the r148 shell.Keyboard plus its r153 per-key keyStates injection
+ * (no firmware / prelude change). Two-pass verdict with the standard
+ * repeated-letter rule (count the answer first, then hand out yellows
+ * left-to-right, so no letter is over-awarded). Green = right slot, yellow =
+ * present wrong slot, grey = absent. The highest verdict per letter (G > Y >
+ * X) is fed straight to the keyboard's key cap backgrounds; the old self-drawn
+ * 26-letter status bar is gone (tradeoff in KNOWN-SIMPLIFICATIONS).
  *
  * Dictionary: 300 embedded ASCII five-letter words, merged answer/guess list
  * (a guess must be in the list). NVS keys are <= 15 chars (lume_kv.c):
@@ -23,7 +23,6 @@ import '../../runtime/shell.js';
 var IW = 480, CANVAS_H = 228, CANVAS_Y = 64;
 var WORD_LEN = 5, ROWS = 6;
 var CELL = 30, GAP = 4, GX = 157, GY = 4;
-var BAR_Y = 210, BAR_H = 16, BAR_CELL = 18;
 var ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 var KV_BEST = 'hisc.wordle', KV_CUR = 'wordle.cur';   /* 11 / 10 chars */
 
@@ -33,7 +32,7 @@ var COL = {
   GREEN:'#166B3E', GREEN_B:'#4FE08A',
   YELLOW:'#8A6A12', YELLOW_B:'#F2CE45',
   GRAY:'#30343E', GRAY_B:'#6E7585',
-  INK:'#F2F4F8', RING:'#6E7A8C'
+  INK:'#F2F4F8'
 };
 
 /* 5x7 hand-drawn glyphs, '#' = ink. Precomputed to run-length spans once. */
@@ -212,8 +211,8 @@ function wdSubmit(s) {
   return 'submitted';
 }
 
-/* Highest feedback per letter over all submitted rows, G > Y > X. Drives the
- * status bar above the keyboard (shell.Keyboard has no per-key coloring). */
+/* Highest feedback per letter over all submitted rows, G > Y > X. Fed to the
+ * keyboard's keyStates as hit (G) / present (Y) / miss (X). */
 function wdLetterMarks(s) {
   var m = {}, rank = { X: 1, Y: 2, G: 3 }, r, c, ch, mark;
   for (r = 0; r < s.rows.length; r++)
@@ -229,6 +228,14 @@ function wdLetterMarks(s) {
 
 var state = wdNewGame(null, null);
 var frame = signal(0), hudSig = signal(''), noteSig = signal('TYPE A WORD - ENTER TO SUBMIT');
+/* r153: translate the highest per-letter verdict into shell keyStates and
+ * publish it as a signal; only keys whose tint changes rewrite their ATTR. */
+var keyStatesSig = signal({});
+function refreshKeyStates() {
+  var marks = wdLetterMarks(state), out = {}, ch;
+  for (ch in marks) out[ch] = marks[ch] === 'G' ? 'hit' : marks[ch] === 'Y' ? 'present' : 'miss';
+  keyStatesSig.set(out);
+}
 
 lume.theme.set({ colors: { bg:'#07111D', primary:'#07111D', surface:'#132435',
   surfaceAlt:'#1C3449', text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0',
@@ -282,21 +289,6 @@ function paintGrid(ctx, a) {
   }
 }
 
-/* 26-letter feedback strip: colored by highest verdict seen so far. */
-function paintBar(ctx, a) {
-  var marks = wdLetterMarks(state), i, ch, mk, x, ink;
-  for (i = 0; i < 26; i++) {
-    ch = ALPHABET.charAt(i);
-    mk = marks[ch];
-    x = 6 + i * BAR_CELL;
-    ink = mk === 'G' ? COL.GREEN_B : mk === 'Y' ? COL.YELLOW_B :
-          mk === 'X' ? COL.GRAY_B : COL.RING;
-    drawRect(ctx, COL.EMPTY, box(x, BAR_Y, BAR_CELL - 1, BAR_H), a);
-    drawRect(ctx, ink, box(x, BAR_Y, BAR_CELL - 1, 2), a);
-    drawGlyph(ctx, ch, x + 6, BAR_Y + 5, 1, ink, a);
-  }
-}
-
 var painted = false;
 var canvas = Canvas({ parent: root, width: IW, height: CANVAS_H,
   style: { position: 'absolute', x: 0, y: CANVAS_Y }, onDraw: function (ctx) {
@@ -306,7 +298,6 @@ var canvas = Canvas({ parent: root, width: IW, height: CANVAS_H,
     if (!a) return undefined;
     ctx.fillColor(COL.BG); ctx.fillRect(a.x, a.y, a.w, a.h);
     paintGrid(ctx, a);
-    paintBar(ctx, a);
     painted = true;
     return [a];
   } });
@@ -328,6 +319,7 @@ function updateHud() {
 function flush() { while (state.events.length) logEvent(state.events.shift()); updateHud(); }
 function newRound() {
   state = wdNewGame(null, null);
+  refreshKeyStates();
   noteSig.set('TYPE A WORD - ENTER TO SUBMIT');
   painted = false;
   frame.set(frame() + 1);
@@ -342,6 +334,7 @@ Button({ parent: root, title: 'NEW', style: { position: 'absolute', x: 402, y: 4
  * 480 px, y 300 so the 168 px keyboard sits above the bottom bezel. */
 var keyboard = lume.ui.shell.Keyboard({
   parent: root, width: IW, keySize: 40, gap: 0, y: 300,
+  keyStates: keyStatesSig,
   onKey: function (ch) {
     var r = wdKey(state, ch);
     if (r === 'full') noteSig.set('SLOT FULL - ENTER TO SUBMIT');
@@ -359,6 +352,7 @@ var keyboard = lume.ui.shell.Keyboard({
   },
   onSubmit: function () {
     var r = wdSubmit(state);
+    if (r === 'submitted') refreshKeyStates();
     if (r === 'short') noteSig.set('NEED 5 LETTERS');
     else if (r === 'invalid') noteSig.set('NOT IN WORD LIST');
     else if (r === 'duplicate') noteSig.set('ALREADY TRIED');
@@ -379,6 +373,7 @@ globalThis.wdGetGame = function () { return state; };
 globalThis.wdKb = keyboard;
 globalThis.wdNewRound = newRound;
 globalThis.wdCanvas = canvas;
+globalThis.wdKeyStates = keyStatesSig;
 
 updateHud();
 logEvent('boot words=' + WORDS.length + ' keys=' + KV_BEST + '/' + KV_CUR);

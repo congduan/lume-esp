@@ -242,6 +242,13 @@ declare namespace lume.ui.shell {
     onPageSwipe?: (dir: 'left' | 'right') => void;
     edgeWidth?: number; indicator?: boolean; width?: number; height?: number;
   }
+  /** Per-letter feedback state for shell.Keyboard key caps.
+   * 'hit' = green (right letter, right slot); 'present' = yellow (right letter,
+   * wrong slot); 'miss' = grey (letter absent in the answer). */
+  type KeyboardKeyState = 'hit' | 'present' | 'miss';
+  /** Lowercase ASCII letter (a-z) -> feedback state. Unknown letters and
+   * out-of-set values are ignored; SPACE / BKSP / ENTER are never tinted. */
+  type KeyboardKeyStates = { [letter: string]: KeyboardKeyState };
   interface KeyboardProps {
     parent?: lume.ui.Node;
     /** Receives one lowercase ASCII character for each letter, plus ' ' for SPACE. */
@@ -254,6 +261,11 @@ declare namespace lume.ui.shell {
     gap?: number;
     /** Key side in px (40..128); defaults to the largest size that fits the row. */
     keySize?: number;
+    /** Optional per-key tint map, or a signal getter returning one. A getter
+     * makes each letter key re-resolve its own background on publish (only that
+     * key's ATTR_BG_COLOR is rewritten; no node rebuild). Undefaulted/absent
+     * keeps the r148 behaviour: every key uses the theme 'surface' colour. */
+    keyStates?: KeyboardKeyStates | (() => KeyboardKeyStates);
     x?: number; y?: number;
     style?: lume.ui.Style;
   }
