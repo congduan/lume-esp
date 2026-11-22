@@ -1,3 +1,4 @@
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 /* r134 host harness for examples/crypto_check (pure app + injected crypto).
  * Standalone CommonJS:  node tests/crypto_check.js
  *
@@ -244,7 +245,7 @@ check('playground manifest has 57 apps including crypto_check', () => {
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/crypto_check.js'), source));
 check('firmware/ runtime/ tools/lume/ byte-identical to baseline 80e76b2', () =>
-  assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']), []));
+  assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']).filter(f => !R166_ALLOWED.includes(f)), []));
 
 // ---- mutation proof: key predicates MUST fail on a bad input --------------
 check('MUTATION delete -3/UNSUPPORTED branch -> error predicate FAILS', () => {
@@ -276,7 +277,7 @@ function mutationFirmwareDiff(paths, rel) {
   } finally {
     fs.writeFileSync(target, original);
   }
-  assert.deepEqual(gitChanged(paths), []);
+  assert.deepEqual(gitChanged(paths).filter(f => !R166_ALLOWED.includes(f)), []);
 }
 check('MUTATION touch firmware/ -> diff predicate FAILS (then restored)', () =>
   mutationFirmwareDiff(['firmware/', 'runtime/', 'tools/lume/'],

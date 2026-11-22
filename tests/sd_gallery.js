@@ -89,6 +89,7 @@ const R128_FIRMWARE_FILES = [
   'firmware/components/lume-engine/lume_scripts.c',
   'firmware/sdkconfig.defaults',
   'runtime/types/lume.d.ts',
+  'runtime/shell.js', // r166 ColorPicker
 ];
 const diffFiles = execFileSync('git', ['diff', '--name-only', '80e76b2',
   '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();

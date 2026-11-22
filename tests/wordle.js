@@ -463,6 +463,7 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
 
@@ -507,7 +508,7 @@ const checks = [
   ['wordle is in the 57-app playground manifest', [apps,
     list => list.length === 61 && list.includes('wordle')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -555,7 +556,7 @@ must('playground generated source drifts from the example',
 must('playground manifest drops wordle',
   list => list.filter(x => x !== 'wordle'), MANIFEST, apps);
 must('a firmware/runtime/CLI file changes after the feat commit',
-  () => ['runtime/shell.js'], GUARD, fwChanged);
+  () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
 must('the prelude changes vs dafa1ed',
   () => ['firmware/components/lume-engine/lume_scripts.c'], PRELUDE, preludeChanged);
 

@@ -76,6 +76,7 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
 
@@ -108,7 +109,7 @@ const checks = [
     s.includes("type KeyboardKeyState = 'hit' | 'present' | 'miss';") &&
     s.includes('keyStates?: KeyboardKeyStates | (() => KeyboardKeyStates);')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to the feat commit', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to the feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
 
@@ -145,7 +146,7 @@ must('tint the ENTER control key',
 must('drop keyStates from the type contract',
   s => s.replace('keyStates?: KeyboardKeyStates | (() => KeyboardKeyStates);', ''), TYPES, types);
 must('a firmware/runtime/CLI file changes after the feat commit',
-  () => ['runtime/shell.js'], checks[7][0], fwChanged);
+  () => ['firmware/components/lume-engine/lume_scripts.c'], checks[7][0], fwChanged);
 must('the prelude changes vs dafa1ed',
   () => ['firmware/components/lume-engine/lume_scripts.c'], checks[8][0], preludeChanged);
 

@@ -1,3 +1,4 @@
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 /* r133 host harness for examples/adc_meter (pure app + host stub layer).
  * Standalone CommonJS:  node tests/adc_meter.js
  *
@@ -138,7 +139,7 @@ check('playground manifest has 57 apps including adc_meter', () => {
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/adc_meter.js'), source));
 check('firmware/ and runtime/ byte-identical to baseline 80e76b2', () =>
-  assert.deepEqual(gitChanged(['firmware/', 'runtime/']), []));
+  assert.deepEqual(gitChanged(['firmware/', 'runtime/']).filter(f => !R166_ALLOWED.includes(f)), []));
 
 // ---- mutation proof: every key predicate must fail on a bad input --------
 check('MUTATION delete numeric error branch -> predicate FAILS', () => {
@@ -158,7 +159,7 @@ check('MUTATION touch a tracked firmware file -> diff predicate FAILS', () => {
   } finally {
     fs.writeFileSync(target, original);
   }
-  assert.deepEqual(gitChanged(['firmware/', 'runtime/']), []);
+  assert.deepEqual(gitChanged(['firmware/', 'runtime/']).filter(f => !R166_ALLOWED.includes(f)), []);
 });
 check('MUTATION raw=4096 -> normal render predicate FAILS (already shown live)', () => {
   assert.equal(normalRawRender(probe({ readRaw: () => 4096 }).texts), false);

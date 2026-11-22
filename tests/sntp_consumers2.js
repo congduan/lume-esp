@@ -70,6 +70,7 @@ function gitChanged(paths) {
 /* r133 registers adc_meter in tools/playground/build.mjs (data-only) as the
  * 46th app; r134 adds crypto_check as the 47th; r135 adds archive_view as the
  * 48th. Keep the firmware/runtime/CLI surface pinned to the baseline. */
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const changed = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
 // --- checks -----------------------------------------------------------------
@@ -98,7 +99,7 @@ checks.push(['worldclock absent (no example dir, not in manifest)',
   [playgroundApps, list => !list.includes('worldclock') &&
     !fs.existsSync(path.join(root, 'examples/worldclock/app.js'))]]);
 checks.push(['firmware/ runtime/ CLI tooling identical to 80e76b2 (manifest excluded)',
-  [changed, c => c.length === 0]]);
+  [changed, c => c.every(f => R166_ALLOWED.includes(f))]]);
 
 for (const [name, [source, test]] of checks) {
   assert.ok(test(source), 'FAIL sntp_consumers2: ' + name);

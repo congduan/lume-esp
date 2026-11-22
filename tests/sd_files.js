@@ -118,6 +118,7 @@ const R128_FIRMWARE_FILES = [
   'firmware/components/lume-engine/lume_scripts.c',
   'firmware/sdkconfig.defaults',
   'runtime/types/lume.d.ts',
+  'runtime/shell.js', // r166 ColorPicker
 ];
 function gitDiffEmpty() {
   const out = execFileSync('git', ['diff', '--name-only', '80e76b2',

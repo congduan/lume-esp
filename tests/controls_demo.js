@@ -62,6 +62,7 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const fwChanged = gitChanged(['firmware/', 'runtime/']);
 const trunkFirmware = gitChanged(['firmware/'], HEAD_BASE);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
@@ -120,7 +121,7 @@ const checks = [
   ['controls_demo is in the 57-app playground manifest', [apps,
     list => list.length === 61 && list.includes('controls_demo')]],
 
-  ['firmware/ and runtime/ identical to the r151 feat commit', [fwChanged, c => c.length === 0]],
+  ['firmware/ and runtime/ identical to the r151 feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
   ['firmware/ byte-identical to the r150 trunk baseline', [trunkFirmware, c => c.length === 0]],
 
@@ -288,7 +289,7 @@ must('playground generated source drifts from the example',
 must('playground manifest drops controls_demo',
   list => list.filter(x => x !== 'controls_demo'), MANIFEST, apps);
 must('a runtime file changes after the feat commit',
-  () => ['runtime/shell.js'], GUARD, fwChanged);
+  () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
 must('a firmware file changes vs the r150 trunk',
   () => ['firmware/components/lume-engine/lume_engine.c'], TRUNK, trunkFirmware);
 must('the prelude changes vs dafa1ed',

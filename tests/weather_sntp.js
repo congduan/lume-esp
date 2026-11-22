@@ -62,6 +62,7 @@ function gitChanged(paths) {
 /* r133 registers adc_meter in tools/playground/build.mjs (data-only) as the
  * 46th app; r134 adds crypto_check as the 47th; r135 adds archive_view as the
  * 48th. Keep the firmware/runtime/CLI surface pinned to the baseline. */
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const changed = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
 // --- checks -----------------------------------------------------------------
@@ -121,7 +122,7 @@ const checks = [
     list => list.length === 61 && list.includes('weather')]],
 
   ['firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only) (manifest excluded)',
-    [changed, c => c.length === 0]],
+    [changed, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [src, test]] of checks) {

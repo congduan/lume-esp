@@ -70,6 +70,7 @@ const BLE = sliceBetween(hrSrc,
   '/* r164: BLE advertise/stop gate BEGIN',
   '/* r164: BLE advertise/stop gate END */');
 const lits = [...literals(settings), ...literals(hrSrc), ...literals(harness)];
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const fwChanged = gitChanged(['firmware/', 'runtime/']);
 
 /* ------------------------ part 1: static guards ------------------------ */
@@ -131,7 +132,7 @@ const checks = [
   ['all UI string literals ASCII-only in both apps and this harness', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ identical to the r164 feat commit', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ identical to the r164 feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [src, test]] of checks) {

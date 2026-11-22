@@ -64,6 +64,7 @@ const lits = literals(app);
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
 const apps = listBlock.split(',').map(x => x.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
 const fwChanged = gitChanged(['firmware/', 'runtime/']);
 
 /* ------------------------ part 1: static guards ------------------------ */
@@ -131,7 +132,7 @@ const checks = [
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ identical to 9fb12d7 (pure app layer)', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ identical to 9fb12d7 (pure app layer)', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [src, test]] of checks) {
