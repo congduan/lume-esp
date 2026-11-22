@@ -120,7 +120,7 @@ const R128_FIRMWARE_FILES = [
   'runtime/types/lume.d.ts',
 ];
 function gitDiffEmpty() {
-  const out = execFileSync('git', ['diff', '--name-only', '5d02549',
+  const out = execFileSync('git', ['diff', '--name-only', '80e76b2',
     '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
   const files = out ? out.split('\n') : [];
   return files.every(f => R128_FIRMWARE_FILES.includes(f));
@@ -134,8 +134,8 @@ for (const c of checks) {
   assert.ok(c.test(app), 'FAIL sd_files: ' + c.name);
   console.log('PASS sd_files: ' + c.name);
 }
-assert.ok(gitDiffEmpty(), 'FAIL sd_files: only known firmware files may differ from ba5156e');
-console.log('PASS sd_files: firmware/ runtime/ differ from ba5156e only in known files');
+assert.ok(gitDiffEmpty(), 'FAIL sd_files: only known firmware files may differ from 80e76b2');
+console.log('PASS sd_files: firmware/ runtime/ differ from 80e76b2 only in known files');
 assert.ok(manifestHasApps(manifest), 'FAIL sd_files: playground manifest must list image_gallery and files');
 console.log('PASS sd_files: playground manifest lists image_gallery and files');
 

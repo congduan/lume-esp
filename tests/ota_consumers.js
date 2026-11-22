@@ -16,7 +16,7 @@
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
 //     in the 57-app manifest, all UI literals are ASCII (r64), and only the
-//     known r132-r136 files differ from the d85e69a baseline.
+//     known r132-r136 files differ from the 80e76b2 baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
 const fs = require('node:fs');
@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
+const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -249,9 +249,9 @@ const ALLOWED = [
   'artifacts/r142/try_batch1000.log',
   'artifacts/r142/try_transition1000.log',
   // r148 controller follow-up (e4f2d47): stale r82/r84/r92 host-run evidence
-  // logs deliberately deleted (disk hygiene). They differ from d85e69a as
-  // deletions, so each path is allowlisted here; artifacts/ is regenerable
-  // evidence, not source.
+  // logs deliberately deleted (disk hygiene). They predate the 80e76b2
+  // baseline, so they no longer appear in the diff; the paths stay allowlisted
+  // here as historical record. artifacts/ is regenerable evidence, not source.
   'artifacts/r82/baseline-build.log',
   'artifacts/r82/baseline-size.log',
   'artifacts/r82/build-final.log',
@@ -469,9 +469,9 @@ const checks = [
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ CLI tooling identical to d85e69a', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ CLI tooling identical to 80e76b2', [fwChanged, c => c.length === 0]],
 
-  ['only known r132 + r133 + r134 + r135 + r136 files differ from d85e69a', [allChanged, c =>
+  ['only known r132 + r133 + r134 + r135 + r136 files differ from 80e76b2', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f))]],
 ];
 
@@ -546,9 +546,9 @@ must('a non-ASCII UI literal slips in',
   'all UI string literals ASCII-only (r64)', lits);
 must('a firmware file changes vs d85e69a',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to d85e69a', fwChanged);
+  'firmware/ runtime/ CLI tooling identical to 80e76b2', fwChanged);
 must('an out-of-scope file changes vs d85e69a',
   () => allChanged.concat(['docs/unexpected.md']),
-  'only known r132 + r133 + r134 + r135 + r136 files differ from d85e69a', allChanged);
+  'only known r132 + r133 + r134 + r135 + r136 files differ from 80e76b2', allChanged);
 
 console.log('ALL OTA CONSUMERS HARNESS CASES PASSED');

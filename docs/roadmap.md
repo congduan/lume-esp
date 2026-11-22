@@ -3325,3 +3325,32 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `4f12d4e`（build.mjs + 61-app playground 生成物） / test `caa12f2`（16 处计数同步 + sd_files 变异串 + ota ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS r161 节）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r161 节。
+
+### r162 result — `shell.Launcher` 编辑态外露刀：`onEditingChange` 回调 + launcher_grid 消费（runtime/ 小刀 + 纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r162-wt`（分支 `r162-launcher-editing`，基线 `f6d5853`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 已只读软链对齐、软链不入 git。干净基线全量 `tests/*.js` = 0 FAIL。
+
+**实证纠偏（假设以源码为准）**：
+1. `grep -n 'editing.set' runtime/shell.js` 实证变更点恰两处：edit 按钮 `onPress`（:620）与 `EdgeNavigation` 的 `onBack`（:651）；`var editing = signal(false)` 在 :610。与简报锚点一致。
+2. `website/api.html:23` 的 Launcher 签名是 `function Launcher(props: LauncherProps): lume.ui.Node;`，**按名字引用 `LauncherProps`、不含内联 props**；`scripts/check_website.py` 只校验该签名行在 `.d.ts` 中原样存在。故 `onEditingChange` 加进 `interface LauncherProps` 后签名行自动一致，**api.html 无需改动**，实证 `check_website.py` 四类 none。若强行往签名行塞内联 prop 反而转红。
+3. 本轮合法改 `runtime/shell.js` / `runtime/types/lume.d.ts`，使 **20 个** harness 的 runtime/firmware 零 diff 守卫转红（简报只预期 app 数量无级联，实证此级联存在）。按既有 `76d2c0c` 先例，test commit 把全部 BASE 从旧提交重钉到本轮 feat `80e76b2`，零 diff / allowlist 语义完全保留（未自比较、未删守卫、未放宽断言），重钉后全量 0 FAIL。`sd_files.js` 的清单变异串未动（app 数量不变，仍 61）。
+
+**实现**：`runtime/shell.js` 引入局部 `setEditing(v)`（`editing.set(v)` 后 `if (p.onEditingChange) p.onEditingChange(v)`），两处变更点统一走它；不用 effect 订阅（避开首帧误报 false 与 dispose 时序），不加 try/catch（与 shell 全部回调现状一致）。`runtime/types/lume.d.ts` `LauncherProps` 增 `onEditingChange?: (editing: boolean) => void;`。`examples/launcher_grid/app.js` 增 `editing` signal，status Text 改为 `editing() ? 'EDIT' : lastAction()`，回调写该 signal；暴露 `statusNode` / `editing` 供 harness 精确观测渲染文本。不传回调时 shell 行为与基线逐字等价（live 变体实证）。
+
+**级联同步（不改生产行为）**：`npm run build:playground` 重建后，除 launcher_grid 生成物外，另有 7 个 app bundle 因内嵌 shell.js 而更新、`sources.js` 同步；61 apps 不变。`ota_consumers.js` ALLOWED 本轮无新路径（改的全是已跟踪文件），未预加。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/launcher_grid.js` → 20 静态 + 25 静态 mutation + 6 live + 9 live mutation 全绿，末行 `ALL LAUNCHER GRID HARNESS CASES PASSED`，`EXIT=0`。新增 live 实证：tap edit → 回调 true / 渲染 `EDIT`、back → false / 恢复 `READY`、无回调变体不炸且保持旧语义；新增 shell 侧 live mutation「删掉通知调用 → app editing 仍 false」证明通知 load-bearing。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → 仅 `done`，**0 FAIL**（feat 后、test commit 后各跑一次；最终又连跑 4 次均 0 FAIL）。一次早期全量跑曾出现 `FAIL tests/wordle.js`，单独复跑即绿；实证 `tests/wordle.js:428-431` 的 smoke 用 `Math.random()` 掷键，断言 `a green or yellow cell fill was drawn`（:388）在随机序列未命中绿/黄格时会偶发失败。干净基线 worktree `f6d5853` 同法 40 次跑出 2 次失败（本轮 worktree 30 次 1 次失败），**确认为存量 flake、非本轮引入**；本轮对 `wordle.js` 的改动只有 BASE/标签重钉，未碰 smoke 与断言。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # skipped 0`。
+- `python3 scripts/check_website.py` → `HTML pages: 7` / `API: 158 catalog entries, 158 type declarations, 34 function namespaces` / `API missing/invented/duplicates/signatures not found: none`。
+- `node tools/lume/lume.js check examples/launcher_grid --no-emu` → `[PASS] bundle 20683 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS esbuild-wasm assets and 61 editable sources` / `PASS prelude 67428 bytes; 61 apps` / `PASS bundle launcher_grid 20683 bytes`；二次构建输出逐字一致、`git status` 无变化（幂等）。
+- **固件零关联实证，未跑 `idf.py build`**：`grep -rn 'shell\.js\|shell\.Launcher\|runtime/shell' firmware/main/ firmware/components/lume-engine/ 2>/dev/null` 与 `grep -rn 'shell' ...` 均无输出（shell.js 是 CLI-bundled JS 层，不进固件 prelude）；`git diff f6d5853 HEAD -- firmware/` 与原 `lume_scripts.c` diff 均为空，IRAM 16384 硬线未触碰。
+- ASCII 纪律：`examples/launcher_grid/app.js` 与 `tests/launcher_grid.js` 全文件非 ASCII 字节 0，字号仅 14；未改 vendored（QuickJS/LVGL）。
+
+**里程碑口径**：M5 Component library 行仍不勾（组件被消费 ≠ 真机验收）；编辑态真实触控命中、edit 按钮手感、back 滑动手感、status `EDIT` 在 AMOLED 上的可读性**全部 deferred，不声称真机验证**。r160 登记的「editing 不对外暴露」遗留就此收口。
+
+**commits（未推送，拆分）**：feat `80e76b2`（runtime + 契约 + app + playground 生成物） / test `690cb07`（launcher_grid 断言扩展 + 20 个 runtime 守卫 BASE 重钉） / docs（本节 + KNOWN-SIMPLIFICATIONS r162 节）。未跑 codex review（主控轮负责）。磁盘 `/` 余 4.9G，日志只留 `/tmp`。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r162 节。

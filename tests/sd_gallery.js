@@ -90,11 +90,11 @@ const R128_FIRMWARE_FILES = [
   'firmware/sdkconfig.defaults',
   'runtime/types/lume.d.ts',
 ];
-const diffFiles = execFileSync('git', ['diff', '--name-only', '5d02549',
+const diffFiles = execFileSync('git', ['diff', '--name-only', '80e76b2',
   '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
 const changed = diffFiles ? diffFiles.split('\n') : [];
 assert.ok(changed.every(f => R128_FIRMWARE_FILES.includes(f)),
-  'only known firmware files may differ from ba5156e: ' + changed.join(', '));
+  'only known firmware files may differ from 80e76b2: ' + changed.join(', '));
 
 console.log('PASS sd_gallery: Sd-first read path wired before Fs fallback');
 console.log('PASS sd_gallery: per-image try/catch degrades one image only');

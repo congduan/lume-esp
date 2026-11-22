@@ -608,6 +608,12 @@
     callback('onLaunch', p.onLaunch);
     var columns = positive('Launcher columns', p.columns, 3, 8);
     var editing = signal(false), launching = signal(null);
+    /* r162: every edit-mode transition goes through this one helper so a host
+     * onEditingChange observer sees exactly the two real change points (edit
+     * button toggle, EdgeNavigation back-out). No effect subscription: that
+     * would misreport false on the first frame and tangle dispose ordering.
+     * No try/catch, matching every other shell callback (exceptions surface). */
+    function setEditing(v) { editing.set(v); if (p.onEditingChange) p.onEditingChange(v); }
     var root = View({ parent: p.parent, style: { width: '100%', height: 480,
       background: '#000000', scroll: 'none' } });
     var bar = p.statusBar === false ? null : StatusBar({ parent: root, left: p.title || 'Lume',
@@ -617,7 +623,7 @@
     if (bar === null) Text({ parent: root, text: p.title || 'Lume', style: { x: 24, y: 40 } });
     Button({ parent: root, title: function () { return editing() ? 'done' : 'edit'; },
       style: { x: 400, y: top, width: 56, height: 56 },
-      onPress: function () { editing.set(!editing()); } });
+      onPress: function () { setEditing(!editing()); } });
     var rows = [];
     for (var i = 0; i < apps.length; i += columns) rows.push(apps.slice(i, i + columns));
     var list = List({ parent: root,
@@ -648,7 +654,7 @@
       },
     });
     var edge = EdgeNavigation({ parent: root, indicator: p.indicator,
-      onBack: function () { if (editing()) { editing.set(false); return true; } return p.onBack ? p.onBack() : false; },
+      onBack: function () { if (editing()) { setEditing(false); return true; } return p.onBack ? p.onBack() : false; },
       onPageSwipe: p.onPageSwipe });
     cleanups[root] = function () { if (bar !== null) dispose(bar); dispose(edge); };
     return root;

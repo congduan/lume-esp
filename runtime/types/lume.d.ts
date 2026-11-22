@@ -346,6 +346,8 @@ declare namespace lume.ui.shell {
     statusBar?: boolean; columns?: number; title?: string;
     right?: string | (() => string); indicator?: boolean;
     onBack?: () => boolean; onPageSwipe?: (dir: 'left' | 'right') => void;
+    /** Fires when edit mode toggles (edit button or back-out-of-edit). */
+    onEditingChange?: (editing: boolean) => void;
   }
   function StatusBar(props?: StatusBarProps): lume.ui.Node;
   /** Returns the left edge node; dispose(id) unregisters both edge targets. */

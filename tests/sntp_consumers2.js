@@ -6,7 +6,7 @@
 //     only a 0 return enables wall-time rendering, failure copy is ASCII,
 //     sync is cadence-gated in the tick (not every frame).
 //   - worldclock absence (no dir, not in the 57-app playground manifest).
-//   - firmware/ runtime/ tools/ are byte-identical to baseline 5ca3e66.
+//   - firmware/ runtime/ tools/ are byte-identical to baseline 80e76b2.
 // There is NO radio and NO board on the host: nothing here proves a real SNTP
 // exchange. Host net.status() is DISCONNECTED, so the GOT_IP gate is inert.
 const fs = require('node:fs');
@@ -16,7 +16,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '5d02549'; // r158: re-pinned to the r153 merge point (runtime/ unchanged since)
+const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
 const BEGIN = '/* ---- r130: SNTP sync BEGIN ---- */';
 const END = '/* ---- r130: SNTP sync END ---- */';
 
@@ -97,7 +97,7 @@ checks.push(['all three migrated apps are in the 57-app playground manifest',
 checks.push(['worldclock absent (no example dir, not in manifest)',
   [playgroundApps, list => !list.includes('worldclock') &&
     !fs.existsSync(path.join(root, 'examples/worldclock/app.js'))]]);
-checks.push(['firmware/ runtime/ CLI tooling identical to 5ca3e66 (manifest excluded)',
+checks.push(['firmware/ runtime/ CLI tooling identical to 80e76b2 (manifest excluded)',
   [changed, c => c.length === 0]]);
 
 for (const [name, [source, test]] of checks) {
@@ -142,6 +142,6 @@ must('playground manifest gains worldclock',
   'worldclock absent (no example dir, not in manifest)', playgroundApps);
 must('a firmware file changes vs ffdd757',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to 5ca3e66 (manifest excluded)', changed);
+  'firmware/ runtime/ CLI tooling identical to 80e76b2 (manifest excluded)', changed);
 
 console.log('ALL SNTP CONSUMERS2 HARNESS CASES PASSED');

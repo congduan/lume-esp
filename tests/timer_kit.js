@@ -24,7 +24,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '6426f7b'; // r156 merge point: firmware/runtime/tools/lume untouched this round
+const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
 const source = read('examples/timer_kit/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -139,7 +139,7 @@ const checks = [
   ['timer_kit is in the 57-app playground manifest', [apps,
     list => list.length === 61 && list.includes('timer_kit')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 6426f7b', [fwChanged, c => c.length === 0]],
+  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.length === 0]],
 ];
 
 for (const [name, [subject, test]] of checks) {
@@ -175,7 +175,7 @@ const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
 const BUDGET = 'canvas budget locked: slider only, 17280 <= 230400 px';
 const SRC = 'playground sources/timer_kit.js byte-identical to the example';
 const MANIFEST = 'timer_kit is in the 57-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 6426f7b';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 80e76b2';
 
 must('drop the shell import',
   x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);
