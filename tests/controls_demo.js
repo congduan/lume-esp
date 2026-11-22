@@ -6,7 +6,7 @@
  * (the CLI bundles shell.js into the app; Node cannot eval the import). Static
  * checks cover the three registrations, controlled mode, the 40 px touch floor,
  * gesture-unsubscribe-on-dispose, ASCII copy, the byte-identical playground
- * source, the 55-app manifest and the BASE guards. Live checks drive a real
+ * source, the 56-app manifest and the BASE guards. Live checks drive a real
  * Switch press, Slider pan -> step-quantised value, Progress ATTR_WIDTH updates
  * and signal-driven re-render, plus dispose idempotence. Every source predicate
  * has a mutation proof below. There is NO hardware touch calibration here:
@@ -117,8 +117,8 @@ const checks = [
   ['playground sources/controls_demo.js byte-identical to example', [playgroundSrc, s =>
     s === app]],
 
-  ['controls_demo is in the 55-app playground manifest', [apps,
-    list => list.length === 55 && list.includes('controls_demo')]],
+  ['controls_demo is in the 56-app playground manifest', [apps,
+    list => list.length === 56 && list.includes('controls_demo')]],
 
   ['firmware/ and runtime/ identical to the r151 feat commit', [fwChanged, c => c.length === 0]],
 
@@ -261,7 +261,7 @@ const PROGRESS = 'Progress updates only fill width ATTR_WIDTH via a bound numeri
 const WIRING = 'app wires all three values through signals (controlled consumers)';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/controls_demo.js byte-identical to example';
-const MANIFEST = 'controls_demo is in the 55-app playground manifest';
+const MANIFEST = 'controls_demo is in the 56-app playground manifest';
 const GUARD = 'firmware/ and runtime/ identical to the r151 feat commit';
 const TRUNK = 'firmware/ byte-identical to the r150 trunk baseline';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';

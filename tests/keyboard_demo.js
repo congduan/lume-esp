@@ -7,7 +7,7 @@
  * observes the native message stream: four rows / 29 keys, QWERTY labels, 40 px
  * touch targets, and onKey / onBackspace / onSubmit routing through real Button
  * presses. Static checks cover ASCII copy, the byte-identical playground source,
- * the 55-app manifest, and the BASE guard. Every source predicate has a mutation
+ * the 56-app manifest, and the BASE guard. Every source predicate has a mutation
  * proof below. There is NO hardware touch calibration here: deferred to
  * board bring-up (docs/KNOWN-SIMPLIFICATIONS.md r148).
  */
@@ -20,7 +20,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'ba5156e'; // r153 rebase: pinned to round-start main // r153: Keyboard keyStates feat commit (runtime/ shell + types + api)
+const BASE = '5ca3e66'; // r148: shell Keyboard feat commit (runtime/ shell + types + api)
 
 const app = read('examples/keyboard_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -129,10 +129,10 @@ const checks = [
   ['playground sources/keyboard_demo.js byte-identical to example', [playgroundSrc, s =>
     s === app]],
 
-  ['keyboard_demo is in the 55-app playground manifest', [apps,
-    list => list.length === 55 && list.includes('keyboard_demo')]],
+  ['keyboard_demo is in the 56-app playground manifest', [apps,
+    list => list.length === 56 && list.includes('keyboard_demo')]],
 
-  ['firmware/ and runtime/ untouched vs ba5156e (shell.js/types only)', [fwChanged, c => c.length === 0]],
+  ['firmware/ and runtime/ identical to 5ca3e66', [fwChanged, c => c.length === 0]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -215,8 +215,8 @@ const WIRING = 'app wires onKey / onBackspace / onSubmit to its signals';
 const LABELS = 'native nodes carry the 26 letters + SPACE + BKSP + ENTER labels';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/keyboard_demo.js byte-identical to example';
-const MANIFEST = 'keyboard_demo is in the 55-app playground manifest';
-const GUARD = 'firmware/ and runtime/ untouched vs ba5156e (shell.js/types only)';
+const MANIFEST = 'keyboard_demo is in the 56-app playground manifest';
+const GUARD = 'firmware/ and runtime/ identical to 5ca3e66';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop the shell.Keyboard registration',
