@@ -3053,3 +3053,33 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 - **M5 Board abstraction checkbox 不勾**：无第二块板目标、无运行时切换、无真机验收——本刀只是给未来第二板 / 运行时探测留的桩。板级项（显示/触摸/sleep current/radio/第二板探测）全部 deferred，**不声称真机验证**，统一为「编译/宿主证据，非真机」。ASCII 纪律全满足；未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；commits 拆 feat / test / docs，**未推送**，未跑 codex review（主控轮负责）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r147 节。
+
+### r148 result — M5 Component library 第二片：shell `Keyboard` 软键盘（runtime/ + 纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r148-wt`（分支 `r148-keyboard`，基线 `dafa1ed`）。
+
+**实证先行（假设以源码为准）**：`runtime/shell.js` 的组件挂在闭包内 `shell.X = X`，末尾一次性 `lume.ui = lume.ui || {}; lume.ui.shell = shell;`；cleanup 统一走 `cleanups[id]` + `shell.dispose(id)`；包装后的 `View` 只在 style 未显式给 `padding`/`gap` 时注入 `theme.spacing`。prelude 实证 `NODE_BUTTON = 2`、`ATTR_TEXT=0 / ATTR_WIDTH=2 / ATTR_HEIGHT=3 / ATTR_PADDING=10 / ATTR_GAP=11`，`__lume_dispatchPress` 直接调 `onPress`——故键盘键位复用 `Button` + `onPress`，新组件不改 prelude / ATTR 语义。`scripts/gen_api_docs.py` 解析 `declare namespace lume.ui.shell` 下所有函数，故 `.d.ts` 新增 `Keyboard` 必须重生成 `website/api.html`（`--check` 验证）。
+
+**实现**：`runtime/shell.js` 新增 `Keyboard(props)`：QWERTY 三排（`qwertyuiop` / `asdfghjkl` / `zxcvbnm`）+ `SPACE` / `BKSP` / `ENTER` 共 29 键，4 个 row View + 1 root View；`onKey(char)`（字母小写 + 空格 `' '`）/ `onBackspace()` / `onSubmit()` 经既有 `callback()` 校验；每键 `>= 40 px` 触控下限，间距取 `theme.spacing` 但按 480 px 十列布局夹到 `maxGap = 8`，显式 `gap` / `keySize` / `style` 可覆盖并在越界时报错；cleanup 注册 `cleanups[root]`，`dispose(root)` 一次移除 4 排 + 29 键，二次调用幂等。全部键名 ASCII（r64）。`runtime/types/lume.d.ts` 追加 `KeyboardProps` + `Keyboard()` JSDoc；`python3 scripts/gen_api_docs.py` 重生成 `website/api.html`（153→154 行 API entry，含 `lume.ui.shell.Keyboard`）。`examples/keyboard_demo/app.js` 单行输入显示 + 键盘，提交后显示 `Submitted: <line>`，仿 files 先例 `import '../../runtime/shell.js'`；`examples/files` 一字未动（其 playground bundle 因内嵌 shell.js 随组件变更重生成，属预期）。
+
+**宿主 harness**：`tests/keyboard_demo.js`（CommonJS，仿 hr_monitor/adc_meter）跑真 app + prelude_runner，13 条源码/仓库断言 + 8 条 live 消息流断言（4 排 / 29 键、QWERTY 标签、40 px 目标、`onKey`/`onBackspace`/`onSubmit` 经真 `Button` press 改信号、回调类型校验、dispose 幂等）+ 16 条 mutation 反例，全绿。
+
+**级联同步（先例精确执行）**：
+- 清单 52→53：`tools/playground/build.mjs` 注册 `keyboard_demo`（第 53 个）；同步 10 个 harness 的 `52-app` / `length === 52` / `apps.length, 52` 计数断言（`ota_consumers` / `weather_sntp` / `sntp_consumers2` / `vec_demo` / `img_view` / `archive_view` / `adc_meter` / `crypto_check` / `hr_monitor` / `reboot_consumers`），`sd_files.js` 的清单变异串同步加上 `'keyboard_demo'`。
+- **BASE 重钉**：重钉前全量 harness 实证 FAIL 清单（14 项）：13 个 app-only 守卫（`adc_meter` / `archive_view` / `crypto_check` / `hr_monitor` / `img_view` / `ota_consumers` / `reboot_consumers` / `sd_files` / `sd_gallery` / `sntp_consumers` / `sntp_consumers2` / `vec_demo` / `weather_sntp`）因 runtime/ diff 转红；另有 `board_abi.js` 在基线 `dafa1ed` 已红（守卫仍钉在 r146 的 `4155d15`，r147 重钉后未同步，且 `git diff` 超过 Node 默认 maxBuffer 报 `ENOBUFS`）。test commit 把这 13 个 BASE 全重钉到本轮 feat `bbd8627` 并刷新过时注释，零 diff / allowlist 断言语义不放宽；`board_abi.js` 守卫改以 `dafa1ed` 为参照、显式排除本轮合法落地面（runtime/、website/、examples/、tools/、tests/、docs/）并提高 maxBuffer，仍禁止两板组件之外的任何 firmware 变化。重钉后全量 0 FAIL。
+- `tests/ota_consumers.js` ALLOWED 在 test commit 前预加本轮全部新文件（app / harness / 两个 playground 生成物 / `files.js` / `sources.js` / `shell.js` / `.d.ts` / `api.html`），避免 untracked 对 `git diff` 不可见导致提交后转红。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/keyboard_demo.js` → 13 静态 + 8 live + 16 mutation 全绿，`ALL KEYBOARD DEMO HARNESS CASES PASSED`，退出码 0。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → `done`，**0 FAIL**（85 个 harness，含本轮新增 `keyboard_demo.js`）。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0 / # todo 0`，`NPM_TEST_EXIT=0`（新 worktree 缺 gitignore 的 `tools/lume/bin/qjsc`，先报 49 pass / 1 skip；从主仓拷贝只读构建物后对齐基线，源码零改动，同 r146/r147 环境事实）。
+- `python3 scripts/check_website.py` → `HTML pages: 7; internal href/src and anchors checked` / `API: 154 catalog entries, 154 type declarations, 34 function namespaces` / `API missing: none` / `API invented: none` / `API duplicates: none` / `API signatures not found in lume.d.ts: none`，`WEBSITE_EXIT=0`；`python3 scripts/gen_api_docs.py --check` → `api.html is up to date with lume.d.ts (154 entries)`。
+- `node tools/lume/lume.js check examples/keyboard_demo --no-emu` → `[PASS] bundle 13356 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle keyboard_demo 13356 bytes` / `PASS esbuild-wasm assets and 53 editable sources` / `PASS prelude 67428 bytes; 53 apps`。
+- **固件零改动，未跑 `idf.py build`**：`git diff dafa1ed HEAD -- firmware/` 与 `git diff dafa1ed -- firmware/` 均空；`git diff dafa1ed HEAD -- firmware/components/lume-engine/lume_scripts.c` 与工作树 diff 亦空（prelude 未动）。shell.js 是 CLI 打包的 JS，`.d.ts` 是类型契约，二者都不进固件构建。IRAM 16384 硬线未触碰；无 build/ 负担，artifacts 只留 `/tmp`。
+
+**里程碑口径**：M5 Component library 行仍不勾（组件仍需真机触控验收）；P2 表「猜词游戏（Wordle 类）🔴 blocked」行不勾，但 result 注明**键盘缺口已部分解锁**：`lume.ui.shell.Keyboard` 已可作为后续 Wordle 类候选的 ASCII 字母输入原语；完整解锁仍需真实词游 app、字典/状态逻辑与真机输入手感验收（详见 KNOWN-SIMPLIFICATIONS r148 节）。真机触控手感、显示/触摸/sleep current/radio 全部 deferred，**不声称真机验证**。ASCII 纪律全满足；未改 vendored（QuickJS/LVGL）；未跑 codex review（主控轮负责）。
+
+**commits（未推送）**：feat `bbd8627`（shell Keyboard + 类型 + api.html + keyboard_demo app + 53-app playground） / test `c68d5a2`（keyboard_demo harness + 守卫 BASE 重钉 + 53-app 口径同步 + board_abi 存量守卫修复） / docs（本节）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r148 节。
