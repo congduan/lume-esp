@@ -3239,3 +3239,36 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `c78e4f1`（app + 58-app playground 生成物） / test `42963ac`（control_center harness + 14 处计数同步 + sd_files 变异串 + ota ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS r159 节）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r159 节。
+
+### r160 result — M5 Component library 第七片：launcher_grid 网格启动器（`shell.Launcher` 唯一零消费组件的首个消费刀，纯 app 层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r160-wt`（分支 `r160-launcher-grid`，基线 `8e42b96`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 从主仓只读软链对齐（先建 `bin/` 目录），源码零改动、软链不入 git。干净基线全量 `tests/*.js` = 0 FAIL。
+
+**实证纠偏（方案与实际代码不符处，以源码为准）**：
+1. 简报称「每个 app 图标是 48×48 Canvas」——逐行读 `runtime/shell.js` 证实 `Launcher`（:599-655）的 `renderItem` 内确为 `Canvas({ width: 48, height: 48, ... })`（:641），但 `EdgeNavigation`（:228-285）在 `indicator !== false` 时**每侧再加一个 24×64 Canvas**（:246）。故 app 必须显式传 `indicator: false` 才能让画布数恰等于 `apps.length`；harness live 断言 `canvases.length === 9`，mutation 反例实证「开 indicator → 11 个画布」转红。
+2. `onLaunch` 语义实证（:638-639）：传 `p.onLaunch` 则**只调宿主回调**，不落 `lume.apps.launch`；未传才走真机 app 切换。本 app 传宿主回调记录 `launch <id>`，harness live 断言 `launch` 消息数为 0。
+3. 简报称「`grep -rn 'length === 58' tests/*.js` 当前 10 处」——实证该语法确 10 处，但另有 **5 处**写作 `assert.equal(apps.length, 58, ...)`（adc_meter / archive_view / crypto_check / img_view / vec_demo），合计 **15 处**；若只按简报的 10 处同步，全量 suite 会新增 5 个 FAIL。已全部 58→59 同步。`tests/control_center.js` 第 10/153/193 行的「58-app」是**文案标签**，按纪律未动；`docs/roadmap.md` 的历史 58 记录是快照，未动。
+4. `examples/control_center` / `timer_kit` 的 JSDoc 不能照抄字面量：app 注释若写 `lume.apps.entries()` / `lume.apps.launch` 会被静态断言（要求这些串全文件不出现）判红，已改写为「app-store 默认」「不切换 app」等描述。harness 的 `apps: APPS` / 唯一性也因 introspection 对象曾重复一次而退化，已把 introspection key 改名 `appList` 恢复 load-bearing。
+5. harness 两处自证修正：(a) APPS/FIELDS 断言曾闭包捕获模块级数组，mutation 改 source 后数组不变 → 假绿，已改为对传入 source 现场提取；(b) 连续两次 edge swipe 用相同时间戳时第二次不触发（gesture 状态机按时基判定），已给 `drag` 加 `t0` 参数，第二次用 200/250/300。
+
+**实现**：`examples/launcher_grid/app.js`（单文件、保守 var/function、唯一一行 shell.js import）。480×480 全幅方屏（非圆屏，不用 SafeArea）；`lume.theme.set` 自定义 bg/primary/surface/accent/text 等色；显式 9 个精选 app 字面量数组（id/label/color/单字母 ASCII glyph：C/T/Q/K/W/E/M/L/S），不依赖 app store；`shell.Launcher({ title:'GRID', columns:3, indicator:false, onLaunch, onBack })`；底栏 24 px 处一条 signal 驱动的 ASCII status Text，显示 `launch <id>` / `BACK` / `READY`。9 个 48×48 图标 = 20,736 px ≤ 230,400 px 全帧预算；静态树 41 个 `create` 节点（远低于 128）。字号仅 14/20/32，全文件非 ASCII 字节 0。
+
+**宿主 harness**：新增 `tests/launcher_grid.js`（CommonJS，仿 `tests/control_center.js`）：16 静态断言（Launcher 真实消费、显式 9 app、4 字段/ASCII glyph、GRID/3 列/indicator off、画布预算常量、onLaunch/onBack/status/theme、ASCII、字号、59 清单、字节一致、固件零 diff）+ 19 静态 mutation + 4 live（真 prelude + 真 shell.js：根节点与精确 9×2304 画布预算、tile onPress → `launch <id>` 且无 real launch、编辑态吞 back + 第二次 back 到宿主、shutdown 后 effects/timers 归零）+ 4 live mutation，全部 load-bearing。
+
+**级联同步（不改生产行为）**：`tools/playground/build.mjs` 清单 58→59（`launcher_grid` 第 59 个，命令实证 `59 editable sources` / `59 apps`，bundle 20533 bytes）；15 个 harness 计数断言逐个同步（10 处 `length === 58` + 5 处 `assert.equal(apps.length, 58, ...)`）；`sd_files.js` 变异串精确追加 `'launcher_grid'`；`ota_consumers.js` ALLOWED 在 commit 前预加 4 个新路径（app / harness / 两个 playground 生成物）。
+
+**验证（原始输出；宿主/编译证据，非真机）**：
+- `node tests/launcher_grid.js` → 末行 `ALL LAUNCHER GRID HARNESS CASES PASSED`，`EXIT=0`。
+- `for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done` → 仅 `done`，**0 FAIL**。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # skipped 0`。
+- `python3 scripts/check_website.py` → `HTML pages: 7` / `API: 158 catalog entries, 158 type declarations, 34 function namespaces` / `API missing/invented/duplicates/signatures not found: none`。
+- `node tools/lume/lume.js check examples/launcher_grid --no-emu` → `[PASS] bundle 20533 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `[PASS] bundle 2160 bytes` / `RESULT: PASS`。
+- `npm run build:playground --prefix tools/lume` → `PASS bundle launcher_grid 20533 bytes` / `PASS esbuild-wasm assets and 59 editable sources` / `PASS prelude 67428 bytes; 59 apps`。
+- **固件零改动，未跑 `idf.py build`**：`git diff 8e42b96 HEAD -- firmware/ runtime/ tools/lume/` 与 `git diff 8e42b96 -- firmware/ runtime/ tools/lume/` 原始输出均为空；IRAM 16384 硬线未触碰。
+- `grep -Pn '[^\x00-\x7F]' examples/launcher_grid/app.js tests/launcher_grid.js` → `NONE`。
+
+**里程碑口径**：M5 Component library 行仍不勾（组件被消费 ≠ 真机验收）；真机触控命中、9 宫格图标渲染/配色、编辑态滑动手感、app 切换语义全部 deferred，**不声称真机验证**。未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）；磁盘紧张，临时产物只留 `/tmp`，未清主仓 build/。
+
+**commits（未推送，拆分）**：feat（app + 59-app playground 生成物） / test（launcher_grid harness + 15 处计数同步 + sd_files 变异串 + ota ALLOWED 预加） / docs（本节 + KNOWN-SIMPLIFICATIONS r160 节）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r160 节。

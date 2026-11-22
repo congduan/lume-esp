@@ -130,7 +130,7 @@ const checks = [
     s === app]],
 
   ['keyboard_demo is in the 57-app playground manifest', [apps,
-    list => list.length === 58 && list.includes('keyboard_demo')]],
+    list => list.length === 59 && list.includes('keyboard_demo')]],
 
   ['firmware/ and runtime/ identical to 5ca3e66', [fwChanged, c => c.length === 0]],
 

@@ -505,7 +505,7 @@ const checks = [
     x === source]],
 
   ['wordle is in the 57-app playground manifest', [apps,
-    list => list.length === 58 && list.includes('wordle')]],
+    list => list.length === 59 && list.includes('wordle')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 5d02549', [fwChanged, c => c.length === 0]],
 

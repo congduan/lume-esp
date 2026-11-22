@@ -345,6 +345,15 @@ const ALLOWED = [
   'tests/control_center.js',
   'website/playground/apps/control_center.js',
   'website/playground/sources/control_center.js',
+  // r160: launcher_grid (first consumer of shell.Launcher). Four new paths
+  // staged here BEFORE the feat/test commits because `git diff` does not see
+  // untracked files; without them the allChanged allowlist turns red once the
+  // app / harness / generated playground artifacts land. No firmware / runtime
+  // / tools/lume change: the zero-diff guards stay unweakened.
+  'examples/launcher_grid/app.js',
+  'tests/launcher_grid.js',
+  'website/playground/apps/launcher_grid.js',
+  'website/playground/sources/launcher_grid.js',
   // r158: BASE re-pinned to the r153 merge point 5d02549 (runtime/ unchanged
   // since). These are the exact r156/r157 paths that now fall inside the diff
   // window; each is allowlisted by its precise path, never by a wildcard.
@@ -446,7 +455,7 @@ const checks = [
     s === dashboard]],
 
   ['dashboard is in the playground manifest', [playgroundApps,
-    list => list.length === 58 && list.includes('dashboard')]],
+    list => list.length === 59 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
