@@ -231,6 +231,30 @@ const ALLOWED = [
   'artifacts/r142/tests_remaining_js.txt',
   'artifacts/r142/try_batch1000.log',
   'artifacts/r142/try_transition1000.log',
+  // r148 controller follow-up (e4f2d47): stale r82/r84/r92 host-run evidence
+  // logs deliberately deleted (disk hygiene). They differ from d85e69a as
+  // deletions, so each path is allowlisted here; artifacts/ is regenerable
+  // evidence, not source.
+  'artifacts/r82/baseline-build.log',
+  'artifacts/r82/baseline-size.log',
+  'artifacts/r82/build-final.log',
+  'artifacts/r82/cli-tests.log',
+  'artifacts/r82/fft-standalone.log',
+  'artifacts/r82/host-tests.log',
+  'artifacts/r82/quickjs-g0.log',
+  'artifacts/r82/restored-build.log',
+  'artifacts/r82/restored-size.log',
+  'artifacts/r84/baseline-build-size.log',
+  'artifacts/r84/check-counter.log',
+  'artifacts/r84/doc-checks.log',
+  'artifacts/r84/firmware-build-final.log',
+  'artifacts/r84/firmware-build-first-fail.log',
+  'artifacts/r84/host-tests.log',
+  'artifacts/r84/imgscale-harness.log',
+  'artifacts/r84/imgscale-obj-size.log',
+  'artifacts/r84/npm-test.log',
+  'artifacts/r84/quickjs-g0.log',
+  'artifacts/r84/stub-check.log',
   // r138-r141 (already merged to main when this entry was added): alloc
   // injection harness (host + firmware drill verb), lume.perf bindings,
   // hotreload OOM-verb plumbing, and the fw-sync firmware trio republication.

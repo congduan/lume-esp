@@ -64,7 +64,11 @@ const guardOut = execFileSync('git', [
   'diff', 'dafa1ed', 'HEAD', '--',
   ':!firmware/components/lume-board',
   ':!firmware/components/lume-board-hal',
-  ':!runtime/', ':!website/', ':!examples/', ':!tools/', ':!tests/', ':!docs'
+  ':!runtime/', ':!website/', ':!examples/', ':!tools/', ':!tests/', ':!docs',
+  // r148 controller follow-up: stale r82/r84/r92 host-run evidence logs were
+  // deliberately removed (disk hygiene, e4f2d47); artifacts/ is regenerable
+  // evidence, not source, so the guard no longer pins its contents.
+  ':!artifacts/'
 ], { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim();
 check('zero-diff guard: no changes outside board components and r148 surfaces',
   guardOut === '');
