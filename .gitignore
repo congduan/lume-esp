@@ -9,3 +9,5 @@ tools/lume/bin/
 *.lumepak
 managed_components/
 dependencies.lock
+firmware/build
+firmware/build-local
