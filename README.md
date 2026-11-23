@@ -100,7 +100,7 @@ fed in 1152-frame chunks through `lume.audio.playStream()`, so the engine never
 blocks for a full note. Key highlights switch `ATTR_BG_COLOR` on persistent
 nodes — no per-frame redraw.
 
-**Shell components** ([runtime/shell.js](runtime/shell.js) — status bar, launcher, dialogs, toasts)
+**Shell components** ([runtime/shell.js](runtime/shell.js) — 13 optional JS components: StatusBar / EdgeNavigation / Launcher (+onEditingChange) / Keyboard (+keyStates) / Switch / Slider / Progress / ClickWheel / ColorPicker / Dialog / Card / IconButton / Toast)
 
 The optional [launcher app](examples/launcher/app.js) can pin itself as the
 power-on target with `lume.apps.setBoot('launcher')`. Its **EDIT → EXIT LAUNCHER
@@ -191,7 +191,7 @@ CI release notes.
 
 ### Try it in your browser
 
-Open the [static Playground](https://congduan.github.io/lume-esp/playground/) to try 54 screen apps without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
+The [static Playground](https://congduan.github.io/lume-esp/playground/) contains 66 bundled screen apps; 48 are currently selectable in its picker without installing anything. It is a prelude semantic simulation with stubbed hardware APIs; touch feel, timing, and hardware behavior still require a real board.
 
 ### Real firmware in your browser
 
@@ -367,7 +367,7 @@ components are in progress.
 | **M2 — hardware API surface** (GPIO/PWM/ADC, power, IMU, WiFi+HTTP, KV, files, audio, TF card, crypto, compress, FFT, SNTP) | ✅ code complete |
 | **M3 — declarative UI completeness** (flex, styles, animation, canvas, gestures, lifecycle, themes, virtualized lists, images, SafeArea) | ✅ code complete |
 | **M4 — tooling** (`lume` CLI ✅, host simulator ✅, WiFi OTA code complete + HMAC auth ✅, esp-emu network runner available (r144 association still failing) / on-device radio check pending) | 🚧 |
-| **M5 — ecosystem** (component library, launcher shell including SafeArea, board abstraction) | 🚧 optional JS shell components + bilingual docs site landed; board abstraction not started |
+| **M5 — ecosystem** (component library, launcher shell including SafeArea, board abstraction) | 🚧 13 optional JS shell components + bilingual docs site landed; board abstraction not started |
 
 > **Honesty note**: "code complete" means compiles green, host-tested, and reviewed.
 > On-device acceptance (visuals, touch feel, sleep current, radio range) is pending

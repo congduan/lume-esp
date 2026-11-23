@@ -222,6 +222,64 @@ canvas is scaled to a 466 round preview, so pass 480 there. On a native 466
 logical screen, pass 466. See `docs/r104-safearea-report.md` for a counter
 migration example.
 
+### Optional shell ClickWheel
+
+After importing `runtime/shell.js`,
+`lume.ui.shell.ClickWheel(props: ClickWheelProps): lume.ui.Node` returns a
+Canvas node. `ClickWheelProps` requires absolute integer screen coordinates
+`cx`, `cy`, `outerR`, `innerR`; `outerR >= 40` and
+`1 <= innerR < outerR`. Optional `parent` attaches the Canvas to a node.
+`onRotate(deltaSteps: number)` receives signed one-step callbacks for each
+1/16 turn (clockwise positive); `onCenterTap()` handles taps at or within
+`innerR`; `onOuterTap(quadrant: 0 | 1 | 2 | 3)` handles taps in the
+45-degree cardinal sectors around top/right/bottom/left. The app owns its
+selection state. `lume.ui.shell.dispose(node)` unregisters the gesture
+handlers and removes the Canvas.
+
+Invalid coordinates/radii throw `RangeError`; a supplied non-function callback
+throws `TypeError`. This JS shell component returns a node, not a hardware
+success/error integer. See `examples/ipod_music/app.js` for the UI-only
+consumer (no audio output) and the [ClickWheel guide](../website/guide.html#clickwheel).
+
+### Optional shell Dialog
+
+`lume.ui.shell.Dialog(props: DialogProps): () => void` opens a dialog and
+returns an idempotent close function. `DialogProps` requires `title: string`
+and `buttons: DialogButton[]`; `message?: string` and `modal?: boolean` are
+optional. Each button has `label: string`, optional `style: 'plain' |
+'primary' | 'danger'`, and optional `onPress(): void`. A button closes the
+top dialog before its callback. The backdrop always intercepts touch;
+`modal` defaults to `true`, so tapping the backdrop closes the top dialog.
+With `modal: false`, the backdrop does not close it. The shell closes all
+open dialogs on `lume.app.onPause`.
+
+A non-array `buttons` value or an invalid button style throws `TypeError`, as
+does a non-function `onPress`. No negative hardware error code is returned.
+Keep destructive calls inside the confirmed button callback; see the OTA
+token and reboot consumers in `examples/settings/app.js` and the
+[Dialog guide](../website/guide.html#dialog).
+
+### Optional shell ColorPicker
+
+`lume.ui.shell.ColorPicker(props?: ColorPickerProps): lume.ui.Node` returns
+one 300x360 Canvas with a 24-segment HSV hue ring, saturation/value strips,
+preview, and SAVE/CLOSE touch targets. `ColorPickerProps` accepts
+`parent?: lume.ui.Node`, integer `x?`/`y?` (default horizontally centered,
+`y=8`), `initialHex?: string`, `onChange?(hex: string): void`,
+`onConfirm?(hex: string): void`, and `onDismiss?(): void`. The initial color
+must be `#RRGGBB`; an invalid value logs a warning and falls back to
+`#40D8B0`. Drag-time `onChange` is limited to at most once per 100 ms; a
+pending final value is flushed on release or SAVE. SAVE calls `onConfirm`
+with the selected color; CLOSE disposes the Canvas and calls `onDismiss`.
+The Canvas also disposes on app pause; callers can use
+`lume.ui.shell.dispose(node)` explicitly.
+
+Non-integer `x`/`y` throw `RangeError`; supplied non-function callbacks throw
+`TypeError`. Invalid `initialHex` warns and falls back, rather than returning
+a negative error code. The consumer in `examples/color_demo/app.js` updates
+its live tint on change and saves KV only on confirm; see the
+[ColorPicker guide](../website/guide.html#colorpicker).
+
 ### Command channel
 
 Management operations travel as `LUMC` command frames on the same USB/WiFi
