@@ -293,6 +293,10 @@ const invs0 = ui.messages.filter(m => m[0] === 'invalidate');
     assert.ok(w * h < 480 * 480, 'no steady full repaint: ' + w * h);
   }
   assert.ok(ui.messages.slice(mark).some(m => m[0] === 'pathDraw'), 'static layer replayed each frame');
+  const idleMark = ui.messages.length;
+  for (let i = 0; i < 20; i++) c.tick();
+  assert.equal(ui.messages.slice(idleMark).filter(m => m[0] === 'invalidate').length, 0, 'ready state skips 20 paints');
+  console.log('EVIDENCE minigolf ready 0 paints/20 ticks; moving paints <230400 px and retained path per paint');
   console.log('PASS minigolf drag -> aim -> HIT + dirty budget (max inc ' + maxInc + ' px) + pathDraw replay');
 }
 
