@@ -18,6 +18,7 @@ int main(void)
     assert(lume_cmd_parse((const uint8_t *)put, 34, &cmd) == 0);
     assert(cmd.kind == LUME_CMD_FPUT && cmd.data_len == 4 && cmd.data[1] == 0);
     check("FPUT\tsd:/x\t0\t4", LUME_CMD_ERR_FORMAT, 0);
+    check("FPUT\tconfig\tsd:/x\t0\t1\nx", LUME_CMD_ERR_ARG, 0);
     check("FPUT\tsd:/x\t5\t4\nx", LUME_CMD_ERR_ARG, 0);
     check("FPUT\tsd:/x\t0\t8388609\nx", LUME_CMD_ERR_ARG, 0);
     check("FPUT\tsd:/../x\t0\t1\nx", LUME_CMD_ERR_ARG, 0);
@@ -27,5 +28,5 @@ int main(void)
     check("FGET\tsd:/a\t0\t768", LUME_CMD_OK, LUME_CMD_FGET);
     check("FGET\tsd:/a\t0\t769", LUME_CMD_ERR_ARG, 0);
     check("LIST", LUME_CMD_OK, LUME_CMD_LIST);
-    puts("file protocol parser: 11 PASS");
+    puts("file protocol parser: 12 PASS");
 }
