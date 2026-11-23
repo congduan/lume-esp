@@ -163,7 +163,7 @@ const checks = [
     x === source]],
 
   ['launcher_grid is in the 61-app playground manifest', [apps,
-    list => list.length === 62 && list.includes('launcher_grid')]],
+    list => list.length === 66 && list.includes('launcher_grid')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];

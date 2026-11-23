@@ -133,7 +133,7 @@ check('playground manifest has 57 apps including adc_meter', () => {
   assert.ok(listBlock, 'playground app list not found');
   const apps = listBlock.split(',')
     .map(x => x.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
-  assert.equal(apps.length, 62, String(apps.length));
+  assert.equal(apps.length, 66, String(apps.length));
   assert.ok(apps.includes('adc_meter'));
 });
 check('generated playground source is byte-identical to the example', () =>

@@ -120,7 +120,7 @@ const checks = [
     s === app]],
 
   ['hr_monitor is in the 57-app playground manifest', [playgroundApps,
-    list => list.length === 62 && list.includes('hr_monitor')]],
+    list => list.length === 66 && list.includes('hr_monitor')]],
 
   ['firmware/ runtime/ CLI tooling identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];

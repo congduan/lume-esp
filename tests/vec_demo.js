@@ -262,7 +262,7 @@ check('static tree <= 12 nodes', () => {
 });
 check('playground manifest has 57 apps including vec_demo', () => {
   const apps = manifestApps(manifest);
-  assert.equal(apps.length, 62, String(apps.length));
+  assert.equal(apps.length, 66, String(apps.length));
   assert.ok(apps.includes('vec_demo'));
 });
 check('generated playground source is byte-identical to the example', () =>

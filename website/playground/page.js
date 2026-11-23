@@ -43,6 +43,10 @@
     ['plasma','◉','Plasma','等离子屏保','Tilt the lava; tap to change theme','倾斜熔岩，点击切换主题'],
     ['voice_assistant','◎','Voice Assistant','语音助手','Push-to-talk walkie-talkie demo','按住说话对讲机演示'],
     ['spectrum_music','♫','Spectrum Music','频谱音乐盒','Radial live and demo spectrum','麦克风与演示径向频谱'],
+    ['ble_uart','B','BLE UART','蓝牙串口','BLE link lifecycle with stub radio','模拟蓝牙连接流程'],
+    ['spectrum','▥','Spectrum','音频频谱','Microphone spectrum with browser stub','模拟麦克风频谱'],
+    ['svg_icon','◇','SVG icon','SVG 图标','Vector icon rendering','矢量图标渲染'],
+    ['gestures','↗','Gestures','手势','Tap, swipe, hold and pan','点击、滑动、长按与拖动'],
     ['aurora_clock','o','Aurora Clock','极光时钟','Flowing ribbons and time','流动极光与时间'],
     ['flapdot','b','Flapdot','拍拍鸟','One-tap arcade flyer','一键街机飞行']
   ];

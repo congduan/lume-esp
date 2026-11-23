@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "app": "examples/skycombat",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 8219,
+      "ms": 24
+    },
+    {
+      "step": "eval",
+      "skipped": "--no-emu"
+    },
+    {
+      "step": "layout",
+      "skipped": "requires emulator screenshot (--no-emu)"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": null
+}
