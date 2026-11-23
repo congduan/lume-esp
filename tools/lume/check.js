@@ -1,4 +1,4 @@
-import { readFile, readdir, mkdir } from 'node:fs/promises';
+import { readFile, readdir, mkdir, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,6 +125,101 @@ function tail(text, n = 20) {
   return (text || '').split(/\r?\n/).filter(Boolean).slice(-n).join('\n');
 }
 
+async function defaultRunVisual(appDir, outDir) {
+  const { createRequire } = await import('node:module');
+  const { createServer } = await import('node:net');
+  const require = createRequire(import.meta.url);
+  let chromium;
+  try { ({ chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright')); }
+  catch (e) { throw new Error(`Playwright unavailable; set PLAYWRIGHT_MODULE to its installed path (${e.message})`); }
+  const port = await new Promise((res, rej) => {
+    const server = createServer();
+    server.once('error', rej);
+    server.listen(0, '127.0.0.1', () => { const p = server.address().port; server.close(() => res(p)); });
+  });
+  const entry = join(resolve(appDir), 'app.js');
+  const appSource = await readFile(entry, 'utf8');
+  const themeColor = /lume\.theme\.set\s*\(/.test(appSource)
+    ? (appSource.match(/\bbg\s*:\s*['"](#[0-9a-fA-F]{6})['"]/) || [])[1]?.toUpperCase() ?? null
+    : null;
+  const url = `http://localhost:${port}/`;
+  const visualDir = join(outDir, 'visual');
+  await mkdir(visualDir, { recursive: true });
+  const child = spawn(process.execPath, [join(ROOT, 'tools/simulator/sim.js'), entry], {
+    cwd: ROOT, env: { ...process.env, LUME_SIM_PORT: String(port) }, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let output = '';
+  child.stdout.on('data', b => { output += b; });
+  child.stderr.on('data', b => { output += b; });
+  let browser;
+  try {
+    const started = Date.now();
+    while (!output.includes('Host Simulator http://')) {
+      if (child.exitCode !== null) throw new Error(`simulator exited: ${output}`);
+      if (Date.now() - started > 10000) throw new Error(`simulator startup timeout: ${output}`);
+      await new Promise(r => setTimeout(r, 100));
+    }
+    browser = await chromium.launch({ headless: true });
+    const page = await browser.newPage({ viewport: { width: 600, height: 640 }, deviceScaleFactor: 1 });
+    await page.goto(url);
+    const frames = [];
+    const begun = Date.now();
+    for (const [index, seconds] of [1, 3, 6].entries()) {
+      const wait = begun + seconds * 1000 - Date.now();
+      if (wait > 0) await page.waitForTimeout(wait);
+      const file = `frame-${String(index + 1).padStart(2, '0')}.png`;
+      const png = await page.locator('#device').screenshot({ path: join(visualDir, file) });
+      const response = await page.request.get(`${url}messages`);
+      const data = await response.json();
+      const calls = data.messages.filter(m => m[0] === 'draw').length;
+      const renderCalls = data.messages.filter(m => ['create', 'attr', 'draw'].includes(m[0])).length;
+      const metrics = await page.evaluate(async base64 => {
+        const canvases = [...document.querySelectorAll('#device canvas')];
+        let pixels;
+        if (canvases.length) {
+          pixels = canvases.flatMap(c => [...c.getContext('2d').getImageData(0, 0, c.width, c.height).data]);
+        } else {
+          const image = new Image();
+          image.src = `data:image/png;base64,${base64}`;
+          await image.decode();
+          const c = document.createElement('canvas'); c.width = image.width; c.height = image.height;
+          const ctx = c.getContext('2d'); ctx.drawImage(image, 0, 0);
+          pixels = [...ctx.getImageData(0, 0, c.width, c.height).data];
+        }
+        const hist = new Map(); let nonEmpty = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const [r, g, b, a] = pixels.slice(i, i + 4);
+          if (a === 0 || (r === 0 && g === 0 && b === 0)) continue;
+          nonEmpty++;
+          const color = '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+          hist.set(color, (hist.get(color) || 0) + 1);
+        }
+        return { hasCanvas: canvases.length > 0, nonEmptyRatio: pixels.length ? nonEmpty / (pixels.length / 4) : 0,
+          top5: [...hist].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([color, pixels]) => ({ color, pixels })) };
+      }, png.toString('base64'));
+      const assertions = {
+        nonEmpty: metrics.nonEmptyRatio > 0,
+        drawCalls: metrics.hasCanvas ? calls > 0 : renderCalls > 0,
+        drawBudget: (metrics.hasCanvas ? calls : renderCalls) < 250,
+        simulator: !data.error,
+        ...(themeColor && !metrics.hasCanvas ? { themeColor: metrics.top5.some(x => x.color === themeColor) } : {}),
+      };
+      frames.push({ file, url, timestamp: new Date().toISOString(), elapsedMs: Date.now() - begun,
+        canvasDrawCalls: calls, renderCalls, nonEmptyRatio: metrics.nonEmptyRatio,
+        top5: metrics.top5, themeColor, assertions, error: data.error || null });
+    }
+    const visual = { app: relative(ROOT, resolve(appDir)), frames,
+      ok: frames.every(f => Object.values(f.assertions).every(Boolean)) };
+    await writeFile(join(visualDir, 'visual.json'), JSON.stringify(visual, null, 2) + '\n');
+    const file = relative(ROOT, join(visualDir, 'visual.json'));
+    return { ok: visual.ok, frames: frames.length, file,
+      ...(!visual.ok ? { error: `visual assertions failed; see ${file}` } : {}) };
+  } finally {
+    if (browser) await browser.close();
+    child.kill('SIGTERM');
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* One-shot verification pipeline                                     */
 /* ------------------------------------------------------------------ */
@@ -137,9 +232,11 @@ export async function check(appDir, options = {}, deps = {}) {
     readCatalog: () => readCatalog(DTS_PATH),
     hasLayoutSpec: name => hasLayoutSpec(name, LAYOUT_SPEC_PATH),
     runLayout,
+    runVisual: defaultRunVisual,
     ...deps,
   };
-  const { noEmu = false, timeout = 120 } = options;
+  const { noEmu = false, timeout = 120, visual = false } = options;
+  const skipEmu = noEmu || visual;
   const timeoutMs = Math.max(1, Number(timeout) || 120) * 1000;
 
   const abs = resolve(appDir);
@@ -161,8 +258,8 @@ export async function check(appDir, options = {}, deps = {}) {
   result.steps.push({ step: 'bundle', ok: true, bytes: bytes.length, ms: Date.now() - t0 });
 
   /* 2. emulator render + eval verification */
-  if (noEmu) {
-    result.steps.push({ step: 'eval', skipped: '--no-emu' });
+  if (skipEmu) {
+    result.steps.push({ step: 'eval', skipped: visual ? '--visual uses browser simulator' : '--no-emu' });
   } else {
     emu = await io.runEmu(appDir, outDir, timeoutMs);
     result.screenshot = emu.screenshot ?? null;
@@ -202,8 +299,8 @@ export async function check(appDir, options = {}, deps = {}) {
   }
 
   /* 3. geometry assertions (only for apps with layout expectations) */
-  if (noEmu) {
-    result.steps.push({ step: 'layout', skipped: 'requires emulator screenshot (--no-emu)' });
+  if (skipEmu) {
+    result.steps.push({ step: 'layout', skipped: visual ? 'requires emulator screenshot (--visual)' : 'requires emulator screenshot (--no-emu)' });
   } else if (!(await io.hasLayoutSpec(appName))) {
     result.steps.push({ step: 'layout', skipped: `no layout expectations for ${appName}` });
   } else {
@@ -223,6 +320,14 @@ export async function check(appDir, options = {}, deps = {}) {
   result.steps.push(perf
     ? { step: 'perf', ok: true, ...perf }
     : { step: 'perf', skipped: 'profile disabled' });
+
+  if (visual) {
+    try {
+      result.steps.push({ step: 'visual', ...await io.runVisual(appDir, outDir) });
+    } catch (err) {
+      result.steps.push({ step: 'visual', ok: false, error: err.message });
+    }
+  }
 
   result.ok = result.steps.every(s => ('skipped' in s) || s.ok === true);
   return result;
@@ -250,6 +355,7 @@ function stepSummary(step) {
   if (step.step === 'bundle') return `${step.bytes} bytes (${step.ms} ms)`;
   if (step.step === 'eval') return `${step.evalOkCount}x "app eval ok; entering event loop"`;
   if (step.step === 'perf') return perfSummary(step);
+  if (step.step === 'visual') return `${step.frames} frames: ${step.file}`;
   return 'ok';
 }
 

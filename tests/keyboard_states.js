@@ -76,7 +76,7 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
 

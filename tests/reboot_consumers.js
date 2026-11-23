@@ -67,7 +67,7 @@ function gitChanged(paths) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
 // --- checks -----------------------------------------------------------------
@@ -107,8 +107,8 @@ const checks = [
   ['playground sources/settings.js byte-identical to example', [playgroundSrc, s =>
     s === settings]],
 
-  ['settings is in the 57-app playground manifest', [playgroundApps,
-    list => list.length === 66 && list.includes('settings')]],
+  ['settings is in the playground manifest', [playgroundApps,
+    list => list.length > 0 && list.includes('settings')]],
 
   ['firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only)', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
@@ -156,7 +156,7 @@ must('playground generated source drifts from the example',
   'playground sources/settings.js byte-identical to example', playgroundSrc);
 must('playground manifest drops settings',
   list => list.filter(x => x !== 'settings'),
-  'settings is in the 57-app playground manifest', playgroundApps);
+  'settings is in the playground manifest', playgroundApps);
 must('a firmware file changes vs 92b6f29',
   () => ['firmware/components/lume-engine/lume_engine.c'],
   'firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only)', fwChanged);

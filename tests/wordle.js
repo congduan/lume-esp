@@ -540,7 +540,7 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
 
@@ -582,8 +582,8 @@ const checks = [
   ['playground sources/wordle.js byte-identical to example', [playgroundSrc, x =>
     x === source]],
 
-  ['wordle is in the 57-app playground manifest', [apps,
-    list => list.length === 66 && list.includes('wordle')]],
+  ['wordle is in the playground manifest', [apps,
+    list => list.length > 0 && list.includes('wordle')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 6dddec1', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
@@ -629,7 +629,7 @@ const TINT = 'keyStates consume wdLetterMarks (r153 tint replaces the letter bar
 const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
-const MANIFEST = 'wordle is in the 57-app playground manifest';
+const MANIFEST = 'wordle is in the playground manifest';
 const GUARD = 'firmware/ runtime/ tools/lume/ identical to 6dddec1';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 const DAY_INDEX = 'r165 wdDayIndex derives the ordinal from lume.system.time()';

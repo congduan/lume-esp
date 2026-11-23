@@ -699,6 +699,19 @@ test('check: --no-emu skips emu/layout/perf but keeps the bundle check', async (
   assert.equal(result.steps.filter(s => 'skipped' in s).length, 3);
 });
 
+test('check: visual mode aggregates browser result and skips emulator', async () => {
+  for (const visualOk of [true, false]) {
+    const result = await check('examples/counter', { visual: true }, {
+      bundle: async () => Buffer.alloc(20),
+      runEmu: async () => { throw Error('visual mode must skip emulator'); },
+      runVisual: async () => ({ ok: visualOk, frames: 3, file: 'visual.json' }),
+    });
+    assert.equal(result.ok, visualOk);
+    assert.equal(result.steps.find(s => s.step === 'eval').skipped, '--visual uses browser simulator');
+    assert.equal(result.steps.find(s => s.step === 'visual').frames, 3);
+  }
+});
+
 test('check: CLI --json is valid JSON and exit codes are 0 (pass) / 1 (fail)', async () => {
   const cli = new URL('./lume.js', import.meta.url).pathname;
   // npm --prefix runs tests with cwd=tools/lume, so use an absolute app path.

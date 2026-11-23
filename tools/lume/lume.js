@@ -13,8 +13,8 @@ import { check, render } from './check.js';
 import { scan, renderScan } from './scan.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --host <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume repl [--port <path>] [--eval "expr"] [--host <ip> --token <t>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--timeout <s>]\n  lume token <32hex> [--port <path>]
-  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --host pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --ota is a legacy alias for --host.\n  deploy/dev compile with vendored qjsc by default; the first run builds\n  qjsc locally. --source sends JS for older firmware.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n  screenshot --scan N boots the app under esp32sim at N successive instants\n  (no board needed) and checks every frame for the expected layer set and\n  out-of-bounds changed pixels; exit 0 = all frames pass, 1 = any fail.\n  repl evaluates one JS expression per line on the device's CURRENT app ctx\n  (so app globals/signals are visible). --eval sends one expression and exits;\n  without it, type expressions interactively (Ctrl+C or "exit" to quit).\n  Output is bounded to 2048 bytes per result; longer replies are truncated.\n`;
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --host <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume repl [--port <path>] [--eval "expr"] [--host <ip> --token <t>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--visual] [--timeout <s>]\n  lume token <32hex> [--port <path>]
+  lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --visual captures browser frames at 1/3/6s and checks pixels/draws; it\n  skips the firmware emulator and needs Playwright.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --host pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --ota is a legacy alias for --host.\n  deploy/dev compile with vendored qjsc by default; the first run builds\n  qjsc locally. --source sends JS for older firmware.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n  screenshot --scan N boots the app under esp32sim at N successive instants\n  (no board needed) and checks every frame for the expected layer set and\n  out-of-bounds changed pixels; exit 0 = all frames pass, 1 = any fail.\n  repl evaluates one JS expression per line on the device's CURRENT app ctx\n  (so app globals/signals are visible). --eval sends one expression and exits;\n  without it, type expressions interactively (Ctrl+C or "exit" to quit).\n  Output is bounded to 2048 bytes per result; longer replies are truncated.\n`;
 
 const APP_COMMANDS = new Set(['list', 'launch', 'remove', 'home']);
 
@@ -24,7 +24,7 @@ function parse(args) {
   if (command === '--version' || command === '-v') return { command: 'version' };
   if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check', 'token', 'repl'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
   let dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr = null, ephemeral = false, bytecode = true;
-  let json = false, noEmu = false, timeout = 120, scanN = null;
+  let json = false, noEmu = false, visual = false, timeout = 120, scanN = null;
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
     if (a === '--port' && command !== 'create' && rest[i + 1]) port = rest[++i];
@@ -39,6 +39,7 @@ function parse(args) {
     else if (a === '--json' && (command === 'check' || command === 'screenshot')) json = true;
     else if (a === '--scan' && command === 'screenshot' && rest[i + 1]) scanN = rest[++i];
     else if (a === '--no-emu' && command === 'check') noEmu = true;
+    else if (a === '--visual' && command === 'check') visual = true;
     else if (a === '--timeout' && command === 'check' && rest[i + 1]) timeout = rest[++i];
     else if (!a.startsWith('-') && command === 'apps' && !sub) sub = a;
     else if (!a.startsWith('-') && command === 'apps' && !subArg) subArg = a;
@@ -91,7 +92,7 @@ function parse(args) {
       throw new Error(`invalid app id: ${subArg}`);
     }
   }
-  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr, ephemeral, bytecode, json, noEmu, timeout, scanN };
+  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr, ephemeral, bytecode, json, noEmu, visual, timeout, scanN };
 }
 
 /* Directory name -> stable app id (same rules as lume_app_id.h). */
@@ -350,7 +351,7 @@ async function runDev(dir, portPath, id, ephemeral, bytecode) {
 
 try {
   const opts = parse(process.argv.slice(2));
-  const { command, dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr, ephemeral, bytecode, json, noEmu, timeout, scanN } = opts;
+  const { command, dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr, ephemeral, bytecode, json, noEmu, visual, timeout, scanN } = opts;
   if (command === 'help') process.stdout.write(usage);
   else if (command === 'version') process.stdout.write(pkg.version + '\n');
   else if (command === 'create') process.stdout.write(`Created ${await create(dir)}\n`);
@@ -365,7 +366,7 @@ try {
   }
   else if (command === 'screenshot') await runScreenshot(dir && dir !== '.' ? dir : 'screenshot.bmp', { port, ota, token, otaPort });
   else if (command === 'check') {
-    const result = await check(dir, { noEmu, timeout });
+    const result = await check(dir, { noEmu, timeout, visual });
     process.stdout.write(render(result, { json }));
     process.exitCode = result.ok ? 0 : 1;
   } else {

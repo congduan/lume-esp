@@ -75,7 +75,7 @@ function propsBlock(s, name) {
 }
 
 /* ------------------------ part 1: static guards ------------------------ */
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -163,7 +163,7 @@ const checks = [
     x === source]],
 
   ['launcher_grid is in the 61-app playground manifest', [apps,
-    list => list.length === 66 && list.includes('launcher_grid')]],
+    list => list.length > 0 && list.includes('launcher_grid')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];

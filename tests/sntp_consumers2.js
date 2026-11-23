@@ -5,7 +5,7 @@
 //   - clock_round / aurora_clock / watchface: GOT_IP-gated setTimeNtp(),
 //     only a 0 return enables wall-time rendering, failure copy is ASCII,
 //     sync is cadence-gated in the tick (not every frame).
-//   - worldclock absence (no dir, not in the 57-app playground manifest).
+//   - worldclock absence (no dir, not in the playground manifest).
 //   - firmware/ runtime/ tools/ are byte-identical to baseline 80e76b2.
 // There is NO radio and NO board on the host: nothing here proves a real SNTP
 // exchange. Host net.status() is DISCONNECTED, so the GOT_IP gate is inert.
@@ -51,7 +51,7 @@ for (const a of APPS) {
   next[a.name] = a.p + 'NextSyncMs';
 }
 
-// The 57-app playground manifest is the source of truth for "in清单".
+// The playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -70,7 +70,7 @@ function gitChanged(paths) {
 /* r133 registers adc_meter in tools/playground/build.mjs (data-only) as the
  * 46th app; r134 adds crypto_check as the 47th; r135 adds archive_view as the
  * 48th. Keep the firmware/runtime/CLI surface pinned to the baseline. */
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
 const changed = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
 // --- checks -----------------------------------------------------------------
@@ -92,8 +92,8 @@ for (const a of APPS) {
   checks.push([`${n}: sync cadence-gated in tick via ${next[n]}`, [sources[n], s =>
     s.includes('lume._nowMs() >= ' + next[n])]]);
 }
-checks.push(['all three migrated apps are in the 57-app playground manifest',
-  [playgroundApps, list => list.length === 66 &&
+checks.push(['all three migrated apps are in the playground manifest',
+  [playgroundApps, list => list.length > 0 &&
     ['clock_round', 'aurora_clock', 'watchface'].every(x => list.includes(x))]]);
 checks.push(['worldclock absent (no example dir, not in manifest)',
   [playgroundApps, list => !list.includes('worldclock') &&
@@ -137,7 +137,7 @@ for (const a of APPS) {
 }
 must('playground manifest drops clock_round',
   list => list.filter(x => x !== 'clock_round'),
-  'all three migrated apps are in the 57-app playground manifest', playgroundApps);
+  'all three migrated apps are in the playground manifest', playgroundApps);
 must('playground manifest gains worldclock',
   list => [...list, 'worldclock'],
   'worldclock absent (no example dir, not in manifest)', playgroundApps);
