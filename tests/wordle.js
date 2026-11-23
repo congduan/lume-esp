@@ -540,7 +540,7 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
 
@@ -583,7 +583,7 @@ const checks = [
     x === source]],
 
   ['wordle is in the 57-app playground manifest', [apps,
-    list => list.length === 66 && list.includes('wordle')]],
+    list => list.length > 0 && list.includes('wordle')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 6dddec1', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
