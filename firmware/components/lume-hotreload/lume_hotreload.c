@@ -550,6 +550,7 @@ static void handle_file_cmd(reply_sink_t sink, const lume_cmd_t *cmd)
                             S_ISDIR(st.st_mode) ? "true" : "false");
         if (tail < 0 || (size_t)tail >= 16384 - pos) { ok = false; break; }
         pos += (size_t)tail; count++;
+        if (pos + 2 >= 16384) { ok = false; break; }
     }
     closedir(dir);
     if (!ok) { free(json); cmd_reply(sink, false, NULL, NULL, 0, "listing"); return; }
