@@ -95,6 +95,9 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
+  // r75 follow-up: SVG rasterizer scanline fill + LVGL refresh period/cache.
+  'firmware/components/lume-svg/lume_svg.c',
+  'firmware/components/lvgl/lv_conf.h',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
@@ -547,6 +550,17 @@ const ALLOWED = [
   'artifacts/r154/npm-ci.txt',
   'artifacts/r154/release-upload.txt',
   'artifacts/r175/sdkconfig-diff-groups.txt',
+  // r75 follow-up: abc123 static black cards and fishtank dirty-rect paint.
+  '.gitignore',
+  'examples/abc123/app.js',
+  'examples/fishtank/app.js',
+  'tests/abc123.js',
+  'tests/fishtank.js',
+  'tests/lume_svg_test.c',
+  'website/playground/apps/abc123.js',
+  'website/playground/apps/fishtank.js',
+  'website/playground/sources/abc123.js',
+  'website/playground/sources/fishtank.js',
 ];
 
 // --- checks -----------------------------------------------------------------
