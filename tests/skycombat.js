@@ -23,4 +23,13 @@ let max=0;for(let i=0;i<250;i++){let from=ui.messages.length;ui.ctx.scTick();let
 assert.equal(ui.ctx.sc.sim,true);
 let from=ui.messages.length;ui.ctx.scFrame.set(ui.ctx.scFrame()+1);const ordinary=draws(ui.messages.slice(from));for(let i=0;i<8;i++)ui.ctx.scStep(ui.ctx.sc);from=ui.messages.length;ui.ctx.scFrame.set(ui.ctx.scFrame()+1);const resumed=draws(ui.messages.slice(from));assert.ok(resumed<=240);assert.ok(Math.abs(resumed-ordinary)<15,`full redraw after skipped ticks ${ordinary}/${resumed}`);
 assert.ok(src.includes('c.clear()')&&src.includes('c.fillRect(0,0,480,480)'));
+assert.equal(ui.ctx.scTimerDt,33,'combat timer stays at 33 ms');
+ui.ctx.sc.over=true;from=ui.messages.length;ui.ctx.scTick();
+assert.equal(ui.ctx.scTimerDt,100,'game-over timer drops to 100 ms');
+assert.equal(draws(ui.messages.slice(from)),0,'static game-over frame is not repainted');
+from=ui.messages.length;for(let i=0;i<10;i++)ui.ctx.scTick();
+assert.equal(draws(ui.messages.slice(from)),0,'one second of game-over ticks emits no canvas calls');
+ui.ctx.sc=ui.ctx.scFire(ui.ctx.sc);
+ui.ctx.scSchedule();assert.equal(ui.ctx.scTimerDt,33,'restart restores combat cadence');
+console.log('EVIDENCE skycombat combat <=31 scheduled frames/s, over 0 draws in 10 polls, <=240 calls/paint');
 console.log(`PASS real prelude SIM, full redraw after 8 skipped ticks, max ${max}/240`);
