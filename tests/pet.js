@@ -47,7 +47,7 @@ function session(options = {}) {
     now: () => now,
     setImu: v => { sample = v; },
     advance(ms) { now += ms; vm.runInContext(`__now+=${ms}`, s.ctx); },
-    tick(ms = 50) { this.advance(ms); vm.runInContext('__lume_tick()', s.ctx); },
+    tick(ms = 100) { this.advance(ms); vm.runInContext('__lume_tick()', s.ctx); },
     val: expr => vm.runInContext(expr, s.ctx),
     do: expr => vm.runInContext(expr, s.ctx),
     tapAt(x, y) {
@@ -118,14 +118,14 @@ check('longpress = feed: hunger drops (via gesture dispatch)', () => {
 check('IMU magnitude spike = startle: -> SURPRISED, then decays back', () => {
   const h = session();
   h.setImu({ ax: 0, ay: 0, az: 32, gx: 0, gy: 0, gz: 0 });
-  h.tick(50);
+  h.tick(100);
   assert.equal(stateOf(h), 'SURPRISED');
   /* subsequent spikes are debounced (armed=false) until rest is observed */
   h.setImu({ ax: 0, ay: 0, az: 9.81, gx: 0, gy: 0, gz: 0 });
-  h.tick(50);
+  h.tick(100);
   assert.equal(h.val('startleArmed'), true, 're-armed at rest');
   h.do('care.until = ' + h.now() + ';');
-  h.tick(50);
+  h.tick(100);
   assert.equal(stateOf(h), 'IDLE', 'transient expired -> IDLE');
 });
 check('time decay drives hunger into HUNGRY and feeding resolves it', () => {
@@ -139,7 +139,7 @@ check('time decay drives hunger into HUNGRY and feeding resolves it', () => {
 });
 check('sleep is timer-driven; wake()/startle resumes, sleeping decays slowly', () => {
   const h = session();
-  h.advance(16000); h.tick(50);            /* no interaction for 16 s */
+  h.advance(16000); h.tick(100);           /* no interaction for 16 s */
   assert.equal(stateOf(h), 'SLEEP');
   const h0 = h.val('care.hunger');
   for (let i = 0; i < 20; i++) h.tick(1000);
@@ -183,10 +183,11 @@ check('idle animation repaints only the eye rows (<=96px wide, 12px tall)', () =
   let boxes = [];
   for (let i = 0; i < 24; i++) {
     const from = h.s.messages.length;
-    h.tick(50);
+    h.tick(100);
     boxes = boxes.concat(h.s.messages.slice(from).filter(m => m[0] === 'invalidate' && m.length === 6));
   }
   assert.ok(boxes.length >= 8, 'animation produced ' + boxes.length + ' dirty rects');
+  assert.equal(boxes.length, 24, '10 Hz idle animation paints once per 100 ms tick');
   for (const m of boxes) {
     const [, , x, y, w, hh] = m;
     assert.ok(w <= 96 && hh <= 12, 'dirty rect ' + w + 'x' + hh + ' too large');
@@ -194,6 +195,7 @@ check('idle animation repaints only the eye rows (<=96px wide, 12px tall)', () =
   }
   console.log('EVIDENCE idle dirty rects=' + boxes.length +
     ' widths=' + boxes.map(m => m[4]).join(','));
+  console.log('EVIDENCE pet idle 10 paints/s, sleep 0 paints/s; each idle paint <= sprite spans');
 });
 check('sleeping never repaints the canvas across many ticks', () => {
   const h = session();
