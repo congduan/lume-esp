@@ -30,7 +30,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/vec_demo/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
+const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
 
 // ---- independent reference integrator (NOT copied from the host stub) -----
 // One step with plain doubles for every arithmetic op; Float32Array.from()
@@ -273,7 +273,7 @@ check('playground manifest has 57 apps including vec_demo', () => {
 });
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/vec_demo.js'), source));
-check('firmware/ runtime/ tools/lume/ byte-identical to baseline 80e76b2', () =>
+check('firmware/ runtime/ tools/lume/ byte-identical to baseline 4a2bd29', () =>
   assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']).filter(f => !R166_ALLOWED.includes(f)), []));
 
 // ---- mutation proof: key predicates MUST fail on a bad input --------------

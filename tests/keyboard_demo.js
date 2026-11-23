@@ -20,7 +20,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
+const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
 
 const app = read('examples/keyboard_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -139,7 +139,7 @@ const checks = [
   ['keyboard_demo is in the playground manifest', [apps,
     list => list.length > 0 && list.includes('keyboard_demo')]],
 
-  ['firmware/ and runtime/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ and runtime/ identical to 4a2bd29', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -223,7 +223,7 @@ const LABELS = 'native nodes carry the 26 letters + SPACE + BKSP + ENTER labels'
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/keyboard_demo.js byte-identical to example';
 const MANIFEST = 'keyboard_demo is in the playground manifest';
-const GUARD = 'firmware/ and runtime/ identical to 80e76b2';
+const GUARD = 'firmware/ and runtime/ identical to 4a2bd29';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop the shell.Keyboard registration',

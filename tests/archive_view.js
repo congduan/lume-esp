@@ -34,7 +34,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/archive_view/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
+const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
 
 // ---- independent expected plaintexts (same synthetic samples the app embeds)
 const PLAIN_A = '[Lume] boot log sample (synthetic)\n' +
@@ -215,7 +215,7 @@ check('playground manifest has 57 apps including archive_view', () => {
 });
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/archive_view.js'), source));
-check('firmware/ runtime/ tools/lume/ byte-identical to baseline 80e76b2', () =>
+check('firmware/ runtime/ tools/lume/ byte-identical to baseline 4a2bd29', () =>
   assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']).filter(f => !R166_ALLOWED.includes(f)), []));
 
 // ---- mutation proof: key predicates MUST fail on a bad input --------------

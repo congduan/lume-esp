@@ -13,7 +13,7 @@
 //     connected AND subscribed; inbound commands are truncated to 20 bytes.
 //   - all UI literals are ASCII (r64), the generated playground source is
 //     byte-identical, hr_monitor is in the playground manifest, and firmware/
-//     runtime/ CLI tooling are identical to the 80e76b2 baseline.
+//     runtime/ CLI tooling are identical to the 4a2bd29 baseline.
 // Real on-device advertising / notify / coexistence are deferred to board
 // bring-up (docs/KNOWN-SIMPLIFICATIONS.md r146); no hardware proof here.
 const fs = require('node:fs');
@@ -23,7 +23,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
+const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
 
 const app = read('examples/hr_monitor/app.js');
 
@@ -128,7 +128,7 @@ const checks = [
   ['hr_monitor is in the playground manifest', [playgroundApps,
     list => list.length > 0 && list.includes('hr_monitor')]],
 
-  ['firmware/ runtime/ CLI tooling identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ CLI tooling identical to 4a2bd29', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [src, test]] of checks) {
@@ -182,6 +182,6 @@ must('playground manifest drops hr_monitor',
   'hr_monitor is in the playground manifest', playgroundApps);
 must('a firmware file changes vs 27541bb',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to 80e76b2', fwChanged);
+  'firmware/ runtime/ CLI tooling identical to 4a2bd29', fwChanged);
 
 console.log('ALL HR MONITOR HARNESS CASES PASSED');

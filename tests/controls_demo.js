@@ -21,8 +21,8 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
-const HEAD_BASE = '31adb96'; // r150 trunk: firmware/ byte-identical except r173 companion P1
+const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const HEAD_BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
 const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
@@ -131,9 +131,9 @@ const checks = [
   ['controls_demo is in the playground manifest', [apps,
     list => list.length > 0 && list.includes('controls_demo')]],
 
-  ['firmware/ and runtime/ identical to the r151 feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ and runtime/ identical to the r176 feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
-  ['firmware/ identical to the r150 trunk baseline except r173 companion P1', [trunkFirmware, c => c.every(f => R173_FIRMWARE.includes(f))]],
+  ['firmware/ identical to the r176 feat commit except r173 companion P1', [trunkFirmware, c => c.every(f => R173_FIRMWARE.includes(f))]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -273,8 +273,8 @@ const WIRING = 'app wires all three values through signals (controlled consumers
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/controls_demo.js byte-identical to example';
 const MANIFEST = 'controls_demo is in the playground manifest';
-const GUARD = 'firmware/ and runtime/ identical to the r151 feat commit';
-const TRUNK = 'firmware/ identical to the r150 trunk baseline except r173 companion P1';
+const GUARD = 'firmware/ and runtime/ identical to the r176 feat commit';
+const TRUNK = 'firmware/ identical to the r176 feat commit except r173 companion P1';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop the Progress registration',
@@ -300,7 +300,7 @@ must('playground manifest drops controls_demo',
   list => list.filter(x => x !== 'controls_demo'), MANIFEST, apps);
 must('a runtime file changes after the feat commit',
   () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
-must('a firmware file changes vs the r150 trunk',
+must('a firmware file changes vs the r176 feat commit',
   () => ['firmware/components/lume-engine/lume_engine.c'], TRUNK, trunkFirmware);
 must('the prelude changes vs dafa1ed',
   () => ['firmware/components/lume-engine/lume_scripts.c'], PRELUDE, preludeChanged);

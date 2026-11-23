@@ -24,7 +24,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '6dddec1'; // r165: re-pinned to this round's daily-pick feat commit (app layer only)
+const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
 const source = read('examples/wordle/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -591,7 +591,7 @@ const checks = [
   ['wordle is in the playground manifest', [apps,
     list => list.length > 0 && list.includes('wordle')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 6dddec1', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ tools/lume/ identical to 4a2bd29', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 
@@ -636,7 +636,7 @@ const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
 const MANIFEST = 'wordle is in the playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 6dddec1';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 4a2bd29';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 const DAY_INDEX = 'r165 wdDayIndex derives the ordinal from lume.system.time()';
 const DAILY_PICK = 'r165 wdPick is deterministic day % WORDS.length, no random path';

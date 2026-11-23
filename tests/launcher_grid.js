@@ -31,7 +31,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
+const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
 const source = read('examples/launcher_grid/app.js');
 const shell = read('runtime/shell.js');
 const dts = read('runtime/types/lume.d.ts');
@@ -171,7 +171,7 @@ const checks = [
   ['launcher_grid is in the 61-app playground manifest', [apps,
     list => list.length > 0 && list.includes('launcher_grid')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ tools/lume/ identical to 4a2bd29', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [subject, test]] of checks) {
@@ -207,7 +207,7 @@ const LIT = 'UI string literals ASCII-only (r64)';
 const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
 const SRC = 'playground sources/launcher_grid.js byte-identical to the example';
 const MANIFEST = 'launcher_grid is in the 61-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 80e76b2';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 4a2bd29';
 
 must('drop the shell import',
   x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);
@@ -261,7 +261,7 @@ must('playground generated source drifts',
   x => x + '\n// drift', SRC, playgroundSrc);
 must('playground manifest drops launcher_grid',
   list => list.filter(x => x !== 'launcher_grid'), MANIFEST, apps);
-must('a firmware/runtime/CLI file changes after 80e76b2',
+must('a firmware/runtime/CLI file changes after 4a2bd29',
   () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
 
 /* ------------------------ part 2: live prelude ------------------------- */
