@@ -120,7 +120,9 @@ check('boot: glider seeded, RUN at 350ms, LIFE READY logged', () => {
   const mark = ui.messages.length;
   run('__lume_tick()');
   assert.equal(ui.messages.slice(mark).filter(m => m[0] === 'invalidate').length, 0, 'sub-350ms tick skips paint');
-  console.log('EVIDENCE game_of_life initial 1 full paint; idle subinterval 0 paints');
+  const firstCalls = ui.messages.slice(0, mark).filter(m => m[0] === 'draw' || m[0] === 'pathDraw').length;
+  assert.ok(firstCalls > 0 && firstCalls <= 500, 'first-paint call budget ' + firstCalls);
+  console.log('EVIDENCE game_of_life initial 1 full paint/' + firstCalls + ' calls; idle subinterval 0 paints');
 });
 
 check('STATIC layer: retainSegments uploaded exactly once (72 segments)', () => {

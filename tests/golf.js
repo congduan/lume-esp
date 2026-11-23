@@ -271,7 +271,14 @@ const ROOT_ID = 1;
   const idle = ui.messages.slice(mark);
   assert.equal(idle.filter(m => m[0] === 'invalidate').length, 0, 'ready state skips 20 timer paints');
   assert.equal(idle.filter(m => m[0] === 'draw').length, 0, 'ready state emits no canvas calls');
-  console.log('EVIDENCE golf ready 0 paints/20 ticks; moving paints use subcanvas dirty rects');
+  let calls = 0, maxCalls = 0;
+  for (const m of ui.messages) {
+    if (m[0] === 'draw') calls++;
+    else if (m[0] === 'batch') calls += m[2].length / 6;
+    else if (m[0] === 'invalidate') { maxCalls = Math.max(maxCalls, calls); calls = 0; }
+  }
+  assert.ok(maxCalls > 0 && maxCalls <= 2000, 'per-paint draw budget ' + maxCalls);
+  console.log('EVIDENCE golf ready 0 paints/20 ticks; max ' + maxCalls + ' draw calls/paint');
   console.log('PASS golf dirty-rect discipline + canvas pixel budget');
 }
 

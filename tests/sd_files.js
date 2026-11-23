@@ -124,6 +124,8 @@ const R128_FIRMWARE_FILES = [
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
+  'firmware/components/lume-svg/lume_svg.c',
+  'firmware/components/lvgl/lv_conf.h',
 ];
 function gitDiffEmpty() {
   const out = execFileSync('git', ['diff', '--name-only', '4a2bd29',

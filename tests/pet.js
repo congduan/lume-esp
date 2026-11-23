@@ -181,13 +181,17 @@ check('bad KV values fall back to skin 0 (no negative-number discriminator)', ()
 check('idle animation repaints only the eye rows (<=96px wide, 12px tall)', () => {
   const h = session();
   let boxes = [];
+  let maxCalls = 0;
   for (let i = 0; i < 24; i++) {
     const from = h.s.messages.length;
     h.tick(100);
-    boxes = boxes.concat(h.s.messages.slice(from).filter(m => m[0] === 'invalidate' && m.length === 6));
+    const chunk = h.s.messages.slice(from);
+    boxes = boxes.concat(chunk.filter(m => m[0] === 'invalidate' && m.length === 6));
+    maxCalls = Math.max(maxCalls, chunk.filter(m => m[0] === 'draw').length);
   }
   assert.ok(boxes.length >= 8, 'animation produced ' + boxes.length + ' dirty rects');
   assert.equal(boxes.length, 24, '10 Hz idle animation paints once per 100 ms tick');
+  assert.ok(maxCalls > 0 && maxCalls <= 100, 'per-paint draw budget ' + maxCalls);
   for (const m of boxes) {
     const [, , x, y, w, hh] = m;
     assert.ok(w <= 96 && hh <= 12, 'dirty rect ' + w + 'x' + hh + ' too large');
@@ -195,7 +199,7 @@ check('idle animation repaints only the eye rows (<=96px wide, 12px tall)', () =
   }
   console.log('EVIDENCE idle dirty rects=' + boxes.length +
     ' widths=' + boxes.map(m => m[4]).join(','));
-  console.log('EVIDENCE pet idle 10 paints/s, sleep 0 paints/s; each idle paint <= sprite spans');
+  console.log('EVIDENCE pet idle 10 paints/s, sleep 0 paints/s; max ' + maxCalls + ' draw calls/paint');
 });
 check('sleeping never repaints the canvas across many ticks', () => {
   const h = session();

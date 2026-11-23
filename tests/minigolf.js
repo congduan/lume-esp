@@ -296,7 +296,14 @@ const invs0 = ui.messages.filter(m => m[0] === 'invalidate');
   const idleMark = ui.messages.length;
   for (let i = 0; i < 20; i++) c.tick();
   assert.equal(ui.messages.slice(idleMark).filter(m => m[0] === 'invalidate').length, 0, 'ready state skips 20 paints');
-  console.log('EVIDENCE minigolf ready 0 paints/20 ticks; moving paints <230400 px and retained path per paint');
+  let calls = 0, maxCalls = 0;
+  for (const m of ui.messages) {
+    if (m[0] === 'draw' || m[0] === 'pathDraw') calls++;
+    else if (m[0] === 'batch') calls += m[2].length / 6;
+    else if (m[0] === 'invalidate') { maxCalls = Math.max(maxCalls, calls); calls = 0; }
+  }
+  assert.ok(maxCalls > 0 && maxCalls <= 300, 'per-paint call budget ' + maxCalls);
+  console.log('EVIDENCE minigolf ready 0 paints/20 ticks; max ' + maxCalls + ' calls/paint');
   console.log('PASS minigolf drag -> aim -> HIT + dirty budget (max inc ' + maxInc + ' px) + pathDraw replay');
 }
 

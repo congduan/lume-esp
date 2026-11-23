@@ -42,7 +42,9 @@ const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts', // r166 C
   'firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
-  'firmware/components/lume-hotreload/lume_hotreload.c']; // r173 companion P1
+  'firmware/components/lume-hotreload/lume_hotreload.c',
+  'firmware/components/lume-svg/lume_svg.c',
+  'firmware/components/lvgl/lv_conf.h']; // r173 companion P1 and r75 already on main
 function gitChanged() {
   const head = execFileSync('git',
     ['diff', '--name-only', '4a2bd29', 'HEAD', '--', 'firmware/', 'runtime/'],

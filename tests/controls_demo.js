@@ -26,7 +26,9 @@ const HEAD_BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat com
 const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
-  'firmware/components/lume-hotreload/lume_hotreload.c']; // r173 companion P1
+  'firmware/components/lume-hotreload/lume_hotreload.c',
+  'firmware/components/lume-svg/lume_svg.c',
+  'firmware/components/lvgl/lv_conf.h']; // r173 companion P1 and r75 already on main
 
 const app = read('examples/controls_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -72,7 +74,11 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
-  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
+  // r75 raster and refresh changes already present on origin/main.
+  'firmware/components/lume-svg/lume_svg.c',
+  'firmware/components/lvgl/lv_conf.h',
+];
 const fwChanged = gitChanged(['firmware/', 'runtime/']);
 const trunkFirmware = gitChanged(['firmware/'], HEAD_BASE);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');

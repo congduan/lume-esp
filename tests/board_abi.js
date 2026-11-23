@@ -97,12 +97,16 @@ const guardOut = execFileSync('git', [
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL landed in
   // lume-hotreload; everything else under firmware/ still fails the guard.
   ':!firmware/components/lume-hotreload',
+  // r75 raster and refresh changes are already present on origin/main.
+  ':!firmware/components/lume-svg/lume_svg.c',
+  ':!firmware/components/lvgl/lv_conf.h',
   ':!runtime/', ':!website/', ':!examples/', ':!tools/', ':!tests/', ':!docs',
   // r150: docs-refresh round lands README.md / README.zh-CN.md (43->53 apps,
   // SNTP/TF/SafeArea/esp-emu sections). Root READMEs live outside docs/, so
   // they need their own exclusion; everything else outside the listed surfaces
   // still fails the guard.
   ':!README.md', ':!README.zh-CN.md',
+  ':!.gitignore', // already changed on origin/main after the historical guard base
   // r148 controller follow-up: stale r82/r84/r92 host-run evidence logs were
   // deliberately removed (disk hygiene, e4f2d47); artifacts/ is regenerable
   // evidence, not source, so the guard no longer pins its contents.

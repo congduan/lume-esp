@@ -404,12 +404,13 @@ check('prelude boot: paint + HUD + 4 keyboard rows / 29 keys', () => {
   const invs = ui.s.messages.filter(m => m[0] === 'invalidate');
   assert.ok(invs.length >= 1, 'first paint');
   assert.deepEqual(invs[0].slice(2), [0, 0, 480, 228], 'first paint covers the canvas');
-  assert.ok(ui.s.messages.filter(m => m[0] === 'draw').length > 100, 'span replay draw stream');
+  const firstCalls = ui.s.messages.filter(m => m[0] === 'draw').length;
+  assert.ok(firstCalls > 100 && firstCalls <= 1000, 'first-paint call budget ' + firstCalls);
   assert.equal(vm.runInContext('painted', ui.s.ctx), true, 'first paint latches painted');
   const before = ui.s.messages.length;
   vm.runInContext('__lume_tick()', ui.s.ctx);
   assert.equal(ui.s.messages.slice(before).filter(m => m[0] === 'invalidate').length, 0, 'idle tick skips paint');
-  console.log('EVIDENCE wordle idle 0 paints/tick; first paint one full 480x228 canvas');
+  console.log('EVIDENCE wordle idle 0 paints/tick; first paint ' + firstCalls + ' calls on 480x228 canvas');
 });
 
 // 15. keyboard callback injection: onKey / BKSP / SPACE / ENTER routing
