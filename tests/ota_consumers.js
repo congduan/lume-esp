@@ -534,6 +534,10 @@ const ALLOWED = [
   // r176: HAL registration slice -- report + regenerable evidence only.
   // Evidence artifacts are admitted by the r176 prefix in the check below.
   'docs/r176-report.md',
+  // r177: board-id slice -- one new host harness + report; regenerable
+  // evidence is admitted by the r177 prefix in the check below.
+  'tests/board_id.js',
+  'docs/r177-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -605,7 +609,8 @@ const checks = [
 
   ['only known r132 + r133 + r134 + r135 + r136 files differ from 3514c76', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f) ||
-      f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/'))]],
+      f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
+      f.startsWith('artifacts/r177/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {
