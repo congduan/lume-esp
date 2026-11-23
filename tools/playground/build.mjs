@@ -12,6 +12,9 @@ const apps = ['counter', 'clock', 'clock_round', 'dashboard_round', 'games_snake
   'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo',
   'watchface', 'async_demo', 'piano', 'compass', 'invaders', 'frogger', 'abc123', 'sokoban', 'lcd_dual', 'memory', 'minesweeper', 'golf', 'scroller', 'raycast', 'fishtank', 'particles', 'voice_assistant', 'spectrum_music', 'plasma', 'skyfire', 'skycombat', 'aurora_clock', 'flapdot', 'wordring',
   'image_gallery', 'files', 'adc_meter', 'crypto_check', 'archive_view', 'img_view', 'vec_demo', 'settings', 'hr_monitor', 'keyboard_demo', 'wordle', 'controls_demo', 'timer_kit', 'control_center', 'launcher_grid', 'minigolf', 'ipod_music', 'color_demo', 'ble_uart', 'spectrum', 'svg_icon', 'gestures'];
+export function manifestApps() { return [...apps]; }
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 const source = await readFile(join(root, 'firmware/components/lume-engine/lume_scripts.c'), 'utf8');
 const start = 'const char lume_prelude_js[] =\n';
 const part = source.split(start)[1];
@@ -41,3 +44,5 @@ for (const name of apps) {
 await writeFile(join(out, 'sources.js'), `window.LUME_SOURCES = ${JSON.stringify(sources)};\n`);
 console.log(`PASS esbuild-wasm assets and ${apps.length} editable sources`);
 console.log(`PASS prelude ${Buffer.byteLength(prelude)} bytes; ${apps.length} apps`);
+
+}
