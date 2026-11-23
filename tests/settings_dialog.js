@@ -28,7 +28,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const app = read('examples/settings/app.js');
 const manifest = read('tools/playground/build.mjs');
 const playgroundSrc = read('website/playground/sources/settings.js');
@@ -138,7 +138,7 @@ const checks = [
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ identical to 4a2bd29 (pure app layer)', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ identical to 3514c76 (pure app layer)', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [src, test]] of checks) {
@@ -185,9 +185,9 @@ must('a non-ASCII UI literal slips in',
   // Built at runtime so this harness file itself stays ASCII-only.
   arr => arr.concat(String.fromCharCode(0x4E2D)),
   'all UI string literals ASCII-only (r64)', lits);
-must('a firmware file changes vs 4a2bd29',
+must('a firmware file changes vs 3514c76',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ identical to 4a2bd29 (pure app layer)', fwChanged);
+  'firmware/ runtime/ identical to 3514c76 (pure app layer)', fwChanged);
 
 /* ------------------------ part 2: live Dialog behavior ------------------ */
 const EXPOSE = `

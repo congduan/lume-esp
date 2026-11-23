@@ -24,7 +24,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const source = read('examples/wordle/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -548,7 +548,7 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
-const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
+const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
 
 function literals(x) {
   return [...x.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"/g)]
@@ -591,9 +591,9 @@ const checks = [
   ['wordle is in the playground manifest', [apps,
     list => list.length > 0 && list.includes('wordle')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 4a2bd29', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ tools/lume/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
-  ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
+  ['prelude lume_scripts.c unchanged since 3514c76', [preludeChanged, c => c.length === 0]],
 
   ['r165 wdDayIndex derives the ordinal from lume.system.time()', [source, x =>
     x.includes('function wdDayIndex()') &&
@@ -636,8 +636,8 @@ const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
 const MANIFEST = 'wordle is in the playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 4a2bd29';
-const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 3514c76';
+const PRELUDE = 'prelude lume_scripts.c unchanged since 3514c76';
 const DAY_INDEX = 'r165 wdDayIndex derives the ordinal from lume.system.time()';
 const DAILY_PICK = 'r165 wdPick is deterministic day % WORDS.length, no random path';
 const DAY_KV = 'r165 KV_DAY key fits the 15-char NVS cap';
@@ -661,7 +661,7 @@ must('playground manifest drops wordle',
   list => list.filter(x => x !== 'wordle'), MANIFEST, apps);
 must('a firmware/runtime/CLI file changes after the feat commit',
   () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
-must('the prelude changes vs dafa1ed',
+must('the prelude changes vs 3514c76',
   () => ['firmware/components/lume-engine/lume_scripts.c'], PRELUDE, preludeChanged);
 must('wdPick falls back to random pick',
   x => x.replace('var i = d % WORDS.length;', 'var i = Math.floor(Math.random() * WORDS.length);'),

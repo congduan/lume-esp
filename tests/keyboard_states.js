@@ -22,7 +22,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const shell = read('runtime/shell.js');
 const types = read('runtime/types/lume.d.ts');
 
@@ -84,7 +84,7 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
-const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
+const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
 
 /* ------------------------- part 1: static source ----------------------- */
 const checks = [
@@ -116,7 +116,7 @@ const checks = [
     s.includes('keyStates?: KeyboardKeyStates | (() => KeyboardKeyStates);')]],
 
   ['firmware/ runtime/ tools/lume/ identical to the feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
-  ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
+  ['prelude lume_scripts.c unchanged since 3514c76', [preludeChanged, c => c.length === 0]],
 ];
 
 for (const [name, [src, test]] of checks) {
@@ -153,7 +153,7 @@ must('drop keyStates from the type contract',
   s => s.replace('keyStates?: KeyboardKeyStates | (() => KeyboardKeyStates);', ''), TYPES, types);
 must('a firmware/runtime/CLI file changes after the feat commit',
   () => ['firmware/components/lume-engine/lume_scripts.c'], checks[7][0], fwChanged);
-must('the prelude changes vs dafa1ed',
+must('the prelude changes vs 3514c76',
   () => ['firmware/components/lume-engine/lume_scripts.c'], checks[8][0], preludeChanged);
 
 /* -------------------------- part 2: live stream ------------------------ */

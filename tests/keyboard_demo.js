@@ -20,7 +20,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 
 const app = read('examples/keyboard_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -86,7 +86,7 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/']);
-const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
+const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
 
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -139,9 +139,9 @@ const checks = [
   ['keyboard_demo is in the playground manifest', [apps,
     list => list.length > 0 && list.includes('keyboard_demo')]],
 
-  ['firmware/ and runtime/ identical to 4a2bd29', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ and runtime/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
-  ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
+  ['prelude lume_scripts.c unchanged since 3514c76', [preludeChanged, c => c.length === 0]],
 ];
 
 for (const [name, [src, test]] of checks) {
@@ -223,8 +223,8 @@ const LABELS = 'native nodes carry the 26 letters + SPACE + BKSP + ENTER labels'
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/keyboard_demo.js byte-identical to example';
 const MANIFEST = 'keyboard_demo is in the playground manifest';
-const GUARD = 'firmware/ and runtime/ identical to 4a2bd29';
-const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
+const GUARD = 'firmware/ and runtime/ identical to 3514c76';
+const PRELUDE = 'prelude lume_scripts.c unchanged since 3514c76';
 
 must('drop the shell.Keyboard registration',
   s => s.replace('shell.Keyboard = Keyboard;', ''), REG, shell);
@@ -257,7 +257,7 @@ must('playground manifest drops keyboard_demo',
   list => list.filter(x => x !== 'keyboard_demo'), MANIFEST, apps);
 must('a firmware/runtime file changes after the feat commit',
   () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
-must('the prelude changes vs dafa1ed',
+must('the prelude changes vs 3514c76',
   () => ['firmware/components/lume-engine/lume_scripts.c'], PRELUDE, preludeChanged);
 
 console.log('ALL KEYBOARD DEMO HARNESS CASES PASSED');
