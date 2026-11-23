@@ -1,0 +1,21 @@
+=== harnesses (100 files) ===
+HARNESS_FAILS=0 TOTAL=100
+=== npm test --prefix tools/lume ===
+# tests 52
+# pass 52
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+=== check_website.py ===
+HTML pages: 7; internal href/src and anchors checked
+API missing: none
+API invented: none
+API duplicates: none
+API signatures not found in lume.d.ts: none
+=== lume check net_check --no-emu ===
+[PASS] bundle   1549 bytes (20 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+RESULT: PASS (4 steps, 0 failed; exit 0)

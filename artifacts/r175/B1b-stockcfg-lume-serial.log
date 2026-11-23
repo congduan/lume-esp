@@ -1,0 +1,141 @@
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v1.2.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+[INFO  cli::run] Loaded firmware: 795968 bytes
+[INFO  machine] WiFi SoftAP: WPA2-PSK enabled for SSID 'emu-test'
+[INFO  host::net_user] user-net: DNS forwarder upstream [127.0.0.53:53], restrict=false
+[INFO  host::net_user] user-net: backend ready (192.168.4.0/24 (gateway 192.168.4.1, firmware 192.168.4.2), 0 hostfwd rules)
+[INFO  cli::run] Network backend: user-mode (smoltcp NAT, 192.168.4.0/24 (gateway 192.168.4.1, firmware 192.168.4.2); the gateway is host loopback)
+[INFO  cli::run] Loaded ROM ELF: <embedded esp32s3> (949552 bytes)
+[INFO  cli::run] Booting from real ROM reset vector (use --skip-rom to bypass)
+[INFO  machine] ROM ELF: 5227 symbols loaded
+[INFO  machine] ROM ELF loaded, 9 functions patched for interception
+[INFO  machine] CPU reset at ROM entry: PC=0x40000400, SP=0x3FCEB710
+[INFO  cli::run] Starting emulation (chip=esp32s3, batch_size=50000)
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:QIO, clock div:1
+load:0x3fce2820,len:0x16a8
+load:0x403c8700,len:0xe88
+load:0x403cb700,len:0x3184
+entry 0x403c8948
+[INFO  periph::hub::console] Console: firmware selected USB-Serial/JTAG (EP1)
+I (3) boot: ESP-IDF v5.5.5 2nd stage bootloader
+I (3) boot: compile time Nov 23 2026 21:18:18
+I (3) boot: Multicore bootloader
+I (4) boot: chip revision: v0.0
+I (4) boot: efuse block revision: v1.0
+I (4) qio_mode: Enabling default flash chip QIO
+I (4) boot.esp32s3: Boot SPI Speed : 80MHz
+I (4) boot.esp32s3: SPI Mode       : SLOW READ
+I (4) boot.esp32s3: SPI Flash Size : 16MB
+I (4) boot: Enabling RNG early entropy source...
+I (4) boot: Partition Table:
+I (4) boot: ## Label            Usage          Type ST Offset   Length
+I (4) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (4) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (4) boot:  2 factory          factory app      00 00 00010000 00640000
+I (4) boot:  3 storage          Unknown data     01 83 00750000 00100000
+I (4) boot: End of partition table
+I (5) esp_image: segment 0: paddr=00010020 vaddr=3c090020 size=17f60h ( 98144) map
+I (11) esp_image: segment 1: paddr=00027f88 vaddr=3fc96400 size=053e8h ( 21480) load
+I (13) esp_image: segment 2: paddr=0002d378 vaddr=40374000 size=02ca0h ( 11424) load
+I (15) esp_image: segment 3: paddr=00030020 vaddr=42000020 size=82db0h (535984) map
+I (51) esp_image: segment 4: paddr=000b2dd8 vaddr=40376ca0 size=0f718h ( 63256) load
+I (56) esp_image: segment 5: paddr=000c24f8 vaddr=50000000 size=00020h (    32) load
+I (60) boot: Loaded app from partition at offset 0x10000
+I (60) boot: Disabling RNG early entropy source...
+I (60) octal_psram: vendor id    : 0x0d (AP)
+I (60) octal_psram: dev id       : 0x01 (generation 2)
+I (60) octal_psram: density      : 0x03 (64 Mbit)
+I (60) octal_psram: good-die     : 0x01 (Pass)
+I (60) octal_psram: Latency      : 0x00 (Variable)
+I (60) octal_psram: VCC          : 0x01 (3V)
+I (60) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (61) octal_psram: BurstType    : 0x00 ( Wrap)
+I (61) octal_psram: BurstLen     : 0x00 (16 Byte)
+I (61) octal_psram: Readlatency  : 0x00 (6 cycles@Variable)
+I (61) octal_psram: DriveStrength: 0x00 (1/1)
+I (61) MSPI Timing: Enter psram timing tuning
+W MSPI Timing: tuning fail, best point is fallen back to index 5
+I (61) esp_psram: Found 8MB PSRAM device
+I (61) esp_psram: Speed: 80MHz
+I (62) mmu_psram: Read only data copied and mapped to SPIRAM
+I (67) mmu_psram: Instructions copied and mapped to SPIRAM
+I (67) cpu_start: Multicore app
+I (103) esp_psram: SPI SRAM memory test OK
+I (112) cpu_start: Pro cpu start user code
+I (112) cpu_start: cpu freq: 240000000 Hz
+I (112) app_init: Application information:
+I (112) app_init: Project name:     wifi_station
+I (112) app_init: App version:      1
+I (112) app_init: Compile time:     Nov 23 2026 21:19:33
+I (112) app_init: ELF file SHA256:  41c00b8d2...
+I (112) app_init: ESP-IDF:          v5.5.5
+I (112) efuse_init: Min chip rev:     v0.0
+I (112) efuse_init: Max chip rev:     v0.99 
+I (112) efuse_init: Chip rev:         v0.0
+I (112) heap_init: Initializing. RAM available for dynamic allocation:
+I (112) heap_init: At 3FC9F570 len 0004A1A0 (296 KiB): RAM
+I (112) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (112) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (112) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (112) esp_psram: Adding pool of 7488K of PSRAM memory to heap allocator
+I (112) esp_psram: Adding pool of 32K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (112) spi_flash: detected chip: gd
+I (112) spi_flash: flash io: qio
+I (112) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (112) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (113) main_task: Started on CPU0
+I (113) esp_psram: Reserving pool of 4K of internal memory for DMA/internal allocations
+I (113) main_task: Calling app_main()
+I (114) wifi station: ESP_WIFI_MODE_STA
+I (115) pp: pp rom version: e7ae62f
+I (115) net80211: net80211 rom version: e7ae62f
+I (116) wifi:wifi driver task: 3fcee2b4, prio:23, stack:6656, core=0
+I (116) wifi:wifi firmware version: b9f67df
+I (116) wifi:wifi certification version: v7.0
+I (116) wifi:config NVS flash: enabled
+I (116) wifi:config nano formatting: disabled
+I (117) wifi:Init data frame dynamic rx buffer num: 32
+I (117) wifi:Init static rx mgmt buffer num: 5
+I (117) wifi:Init management short buffer num: 32
+I (117) wifi:Init dynamic tx buffer num: 32
+I (117) wifi:Init static tx FG buffer num: 2
+I (117) wifi:Init static rx buffer size: 1600
+I (117) wifi:Init static rx buffer num: 10
+I (117) wifi:Init dynamic rx buffer num: 32
+I (117) wifi_init: rx ba win: 6
+I (117) wifi_init: accept mbox: 6
+I (117) wifi_init: tcpip mbox: 32
+I (117) wifi_init: udp mbox: 6
+I (117) wifi_init: tcp mbox: 6
+I (117) wifi_init: tcp tx win: 5760
+I (117) wifi_init: tcp rx win: 5760
+I (117) wifi_init: tcp mss: 1440
+I (121) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+W (121) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (128) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (129) wifi:mode : sta (24:0a:c4:00:00:01)
+I (129) wifi:enable tsf
+I (130) wifi station: wifi_init_sta finished.
+I (147) wifi:state: init -> auth (0xb0)
+I (147) wifi:state: auth -> assoc (0x0)
+I (148) wifi:state: assoc -> run (0x10)
+I (149) wifi:connected with emu-test, aid = 1, channel 1, BW20, bssid = 26:0a:c4:00:00:01
+I (149) wifi:security: WPA2-PSK, phy: bg, rssi: -30, cipher(pairwise:0x3, group:0x3), pmf:0
+I (150) wifi:pm start, type: 1
+
+I (150) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (150) wifi:set rx beacon pti, rx_bcn_pti: 0, bcn_timeout: 25000, mt_pti: 0, mt_time: 10000
+I (1151) esp_netif_handlers: sta ip: 192.168.4.2, mask: 255.255.255.0, gw: 192.168.4.1
+I (1151) wifi station: got ip:192.168.4.2
+I (1151) wifi station: connected to ap SSID:emu-test passwor[INFO  cli::run] Exit-on string 'got ip:' found in output

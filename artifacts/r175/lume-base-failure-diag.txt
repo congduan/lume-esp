@@ -1,0 +1,90 @@
+esp-emu: /home/ubuntu/.local/bin/esp-emu
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v1.2.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+esp-emu 1.2.0
+params: chip=esp32s3 auth=wpa2-psk net=user,net=192.168.4.0/24
+ssid=emu-test password_len=10 (value redacted) timeout=30s
+exit_on=[NETCHECK] ALL PASS
+firmware: /home/ubuntu/lume/firmware/build/merged_flash.bin
+34da45ed582b8ee5b769b1c37e83f3f6aac7035778a45cc0060732333ec31176  /home/ubuntu/lume/firmware/build/merged_flash.bin
+--- WiFi/NETCHECK serial lines ---
+[INFO  machine] WiFi SoftAP: WPA2-PSK enabled for SSID 'emu-test'
+I (4) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (1729) lume-ota: WiFi OTA token: 17fe208c291ccb1294d9407f1eaaaec0  (use: lume deploy --host <ip> --token 17fe208c291ccb1294d9407f1eaaaec0)
+I (1740) wifi:wifi driver task: 3fce8b40, prio:23, stack:6656, core=0
+I (1741) wifi:wifi firmware version: b9f67df
+I (1742) wifi:wifi certification version: v7.0
+I (1742) wifi:config NVS flash: enabled
+I (1742) wifi:config nano formatting: disabled
+I (1743) wifi:Init data frame dynamic rx buffer num: 32
+I (1743) wifi:Init static rx mgmt buffer num: 5
+I (1744) wifi:Init management short buffer num: 32
+I (1744) wifi:Init dynamic tx buffer num: 32
+I (1745) wifi:Init static tx FG buffer num: 2
+I (1745) wifi:Init static rx buffer size: 1600
+I (1746) wifi:Init static rx buffer num: 10
+I (1746) wifi:Init dynamic rx buffer num: 32
+I (1760) wifi:mode : sta (24:0a:c4:00:00:01)
+I (1760) wifi:enable tsf
+I (1761) lume-net: WiFi station up (WPA2-PSK only; handlers on sys_evt/core0, engine task core1; WiFi IRAM opts disabled)
+I (1880) lume-engine: js: [NETCHECK] init PASS ret=0
+I (1888) lume-engine: js: [NETCHECK] connect PASS ret=0
+I (1905) wifi:state: init -> auth (0xb0)
+W (1906) wifi:m f auth
+I (1906) wifi:state: auth -> assoc (0x0)
+W (1907) wifi:m f assoc req l=221
+I (2907) wifi:state: assoc -> init (0x400)
+W (6891) wifi:m f probe req l=0
+I (6909) wifi:state: init -> auth (0xb0)
+I (7911) wifi:state: auth -> init (0x200)
+W (11912) wifi:m f probe req l=0
+W (12033) wifi:m f probe req l=0
+W (12153) wifi:m f probe req l=0
+W (12274) wifi:m f probe req l=0
+W (12394) wifi:m f probe req l=0
+W (12515) wifi:m f probe req l=0
+W (12635) wifi:m f probe req l=0
+W (12756) wifi:m f probe req l=0
+W (12876) wifi:m f probe req l=0
+W (12997) wifi:m f probe req l=0
+W (13117) wifi:m f probe req l=0
+W (16913) wifi:m f probe req l=0
+W (17034) wifi:m f probe req l=0
+W (17154) wifi:m f probe req l=0
+W (17275) wifi:m f probe req l=0
+W (17395) wifi:m f probe req l=0
+W (17516) wifi:m f probe req l=0
+W (17636) wifi:m f probe req l=0
+W (17757) wifi:m f probe req l=0
+W (17877) wifi:m f probe req l=0
+W (17998) wifi:m f probe req l=0
+W (18118) wifi:m f probe req l=0
+W (21934) wifi:m f probe req l=0
+W (22055) wifi:m f probe req l=0
+W (22175) wifi:m f probe req l=0
+W (22296) wifi:m f probe req l=0
+W (22416) wifi:m f probe req l=0
+W (22537) wifi:m f probe req l=0
+W (22657) wifi:m f probe req l=0
+W (22778) wifi:m f probe req l=0
+W (22898) wifi:m f probe req l=0
+W (23019) wifi:m f probe req l=0
+W (23139) wifi:m f probe req l=0
+W (26935) wifi:m f probe req l=0
+W (27056) wifi:m f probe req l=0
+W (27176) wifi:m f probe req l=0
+W (27297) wifi:m f probe req l=0
+W (27417) wifi:m f probe req l=0
+W (27538) wifi:m f probe req l=0
+W (27658) wifi:m f probe req l=0
+W (27779) wifi:m f probe req l=0
+W (27899) wifi:m f probe req l=0
+W (28020) wifi:m f probe req l=0
+W (28140) wifi:m f probe req l=0

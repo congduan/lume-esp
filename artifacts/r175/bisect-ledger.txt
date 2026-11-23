@@ -1,0 +1,53 @@
+r175 bisect ledger (one line conclusion per build round; raw serial kept beside this file)
+========================================================================================
+Build accounting: B0=stock baseline, L0=Lume baseline (both required reproduction, step 1).
+Bisection rounds counted separately: B1, B1b, R3..; hard stop at 8 bisection rounds.
+
+B0  stock example, stock defaults            -> GREEN  exit0 got ip:192.168.4.2        [baseline, not a bisect round]
+L0  Lume firmware, tracked config            -> FAIL   assoc req l=221 / assoc -> init (0x400)  [baseline, not a bisect round]
+
+Round 1 / B1  stock source, Lume sdkconfig copied in, BUT idf.py set-target regenerated
+              sdkconfig from stock defaults -> config diff vs stock = 5 lines only.
+              -> GREEN (equivalent to stock + SoftAP=y, already excluded by r144).
+                 METHOD INVALID (set-target rewrites sdkconfig); not counted as valid evidence.
+
+Round 2 / B1b stock source, Lume sdkconfig preserved (build WITHOUT set-target),
+              verified partition 0x640000 / 240MHz / SPIRAM OCT / -O2 / USB console,
+              app 0xb2540. -> GREEN exit0 got ip:192.168.4.2.
+              CONCLUSION: Lume's non-default sdkconfig alone is NOT sufficient to reproduce.
+              The failure requires Lume's application/component/binary context.
+
+Next rounds: Lume-side group reverts (config x Lume-code interaction), temp copy of firmware,
+             one build dir reused, deleted between rounds.
+
+Round 3 / R3  Lume with SPIRAM_USE_MALLOC=n / CAPS_ALLOC=y.
+              -> INVALID for WiFi: app never started ([NETCHECK] init FAIL ret=-2),
+                 engine heap requires malloc-backed PSRAM.
+              Side fact: assoc frame is 221 B < ALWAYSINTERNAL=4096, so its buffer
+              was already internal RAM; the "malloc returns PSRAM" theory is weak.
+              Raw: R3-capsalloc-serial.log
+
+Round 4 / R4  Lume with CONFIG_BT_ENABLED=n -> BUILD FAIL (lume-ble REQUIRES bt).
+              Not a valid emu round; kept for method trace.
+Round 4 / R4b Lume with CONFIG_ESP_COEX_SW_COEXIST_ENABLE=n / ESP_WIFI_SW_COEXIST_ENABLE=n
+              (BT/NimBLE kept). -> assoc -> run (0x10) at 1905 ms: ASSOCIATION NOW SUCCEEDS.
+              But no "connected with", no DHCP/got ip; bcn_timeout at 7905,
+              run -> init (0xcc00) at 11905. First assoc fixed; IP stage still FAIL.
+              CONCLUSION: WiFi/BT SW coexistence is the config item that gates the
+              r144 assoc-TX failure. Not sufficient for full ALL PASS.
+              Raw: R4b-nocoexist-serial.log
+
+Round 5 / R5  coexistence off + SPIRAM_FETCH_INSTRUCTIONS=n / RODATA=n.
+              -> assoc -> run (0x10) at 1902, still no DHCP/IP, run -> init (0xcc00).
+              CONCLUSION: PSRAM instruction/RODATA mapping not the IP-stage cause.
+
+Round 6 / R6  coexistence off + compiler -Og (PERF=n/DEBUG=y) + FREERTOS_HZ=100.
+              -> INVALID: [NETCHECK] init FAIL ret=-2 (WiFi init did not complete).
+              Both reverted groups are non-viable on Lume as-is.
+
+STOP at 6 bisection rounds (budget <=8). Verdict: specific item locked at ASSOC stage
+(CONFIG_ESP_COEX_SW_COEXIST_ENABLE, selected by BT_ENABLED=y): turning it off flips
+assoc -> init (0x400) to assoc -> run (0x10). Full ALL PASS NOT reached: no DHCP/IP
+after association; no LWIP/netif/DHCP config difference exists between stock and Lume,
+so the residual is not config-driven. No firmware/sdkconfig.defaults change committed;
+no fake PASS, no runner relaxation.
