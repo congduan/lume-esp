@@ -24,9 +24,10 @@ int main(void)
     check("FPUT\tsd:/../x\t0\t1\nx", LUME_CMD_ERR_ARG, 0);
     check("FPUT\tfs:/x\t0\t2\nabc", LUME_CMD_ERR_ARG, 0);
     check("FLS\tfs:/", LUME_CMD_OK, LUME_CMD_FLS);
+    check("FLS\tfs:/media/", LUME_CMD_OK, LUME_CMD_FLS);
     check("FDEL\tsd:/a", LUME_CMD_OK, LUME_CMD_FDEL);
     check("FGET\tsd:/a\t0\t768", LUME_CMD_OK, LUME_CMD_FGET);
     check("FGET\tsd:/a\t0\t769", LUME_CMD_ERR_ARG, 0);
     check("LIST", LUME_CMD_OK, LUME_CMD_LIST);
-    puts("file protocol parser: 12 PASS");
+    puts("file protocol parser: 13 PASS");
 }
