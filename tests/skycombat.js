@@ -13,9 +13,14 @@ const c=g.scCal();const quiet={ax:0,ay:0,az:9.81,gx:0,gy:0,gz:0.8};for(let i=0;i
 let e={active:true,type:0,z:601};assert.equal(g.scHit(e,{x:240,y:240}),false);e.z=500;assert.equal(g.scHit(e,{x:240,y:240}),true);
 for(let n=1;n<9;n++){let s=g.scState();s.wave=n-1;g.scBegin(s);assert.equal(s.left,4+n);}
 console.log('PASS projection, integration, drift re-zero, hit range, wave count');
+assert.equal(g.scLerpColor('#FF0000','#0000FF',0),'#FF0000');
+assert.equal(g.scLerpColor('#FF0000','#0000FF',1),'#0000FF');
+assert.equal(g.scDepthColor('#FF0000',100),'#FF0000');
+assert.equal(g.scDepthColor('#FF0000',2000),'#521327');
+console.log('PASS lerpColor and 70% sky blend at z=2000');
 const ui=runApp(src);function draws(ms){return ms.reduce((n,m)=>n+(m[0]==='draw'?1:m[0]==='batch'?m[2].length/6:0),0);}
-let max=0;for(let i=0;i<250;i++){let from=ui.messages.length;ui.ctx.scTick();let d=draws(ui.messages.slice(from));max=Math.max(max,d);assert.ok(d<=150,`draw calls ${d}`);}
+let max=0;for(let i=0;i<250;i++){let from=ui.messages.length;ui.ctx.scTick();let d=draws(ui.messages.slice(from));max=Math.max(max,d);assert.ok(d<=240,`draw calls ${d}`);}
 assert.equal(ui.ctx.sc.sim,true);
-let from=ui.messages.length;ui.ctx.scFrame.set(ui.ctx.scFrame()+1);const ordinary=draws(ui.messages.slice(from));for(let i=0;i<8;i++)ui.ctx.scStep(ui.ctx.sc);from=ui.messages.length;ui.ctx.scFrame.set(ui.ctx.scFrame()+1);const resumed=draws(ui.messages.slice(from));assert.ok(resumed<=150);assert.ok(Math.abs(resumed-ordinary)<15,`full redraw after skipped ticks ${ordinary}/${resumed}`);
+let from=ui.messages.length;ui.ctx.scFrame.set(ui.ctx.scFrame()+1);const ordinary=draws(ui.messages.slice(from));for(let i=0;i<8;i++)ui.ctx.scStep(ui.ctx.sc);from=ui.messages.length;ui.ctx.scFrame.set(ui.ctx.scFrame()+1);const resumed=draws(ui.messages.slice(from));assert.ok(resumed<=240);assert.ok(Math.abs(resumed-ordinary)<15,`full redraw after skipped ticks ${ordinary}/${resumed}`);
 assert.ok(src.includes('c.clear()')&&src.includes('c.fillRect(0,0,480,480)'));
-console.log(`PASS real prelude SIM, full redraw after 8 skipped ticks, max ${max}/150`);
+console.log(`PASS real prelude SIM, full redraw after 8 skipped ticks, max ${max}/240`);

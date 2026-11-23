@@ -152,7 +152,7 @@ const checks = [
     x === source]],
 
   ['control_center is in the 58-app playground manifest', [apps,
-    list => list.length === 62 && list.includes('control_center')]],
+    list => list.length === 66 && list.includes('control_center')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];

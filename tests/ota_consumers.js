@@ -437,6 +437,21 @@ const ALLOWED = [
   // runtime / tools/lume change; no guard scope includes tools/playground/.
   'website/playground/apps/color_demo.js',
   'website/playground/sources/color_demo.js',
+  // r168: four registered apps, picker entries and SkyCombat visual pass.
+  'website/playground/index.html',
+  'website/playground/page.js',
+  'website/playground/apps/ble_uart.js',
+  'website/playground/apps/spectrum.js',
+  'website/playground/apps/svg_icon.js',
+  'website/playground/apps/gestures.js',
+  'website/playground/sources/ble_uart.js',
+  'website/playground/sources/spectrum.js',
+  'website/playground/sources/svg_icon.js',
+  'website/playground/sources/gestures.js',
+  'docs/r168-report.md',
+  'artifacts/r168/far.png',
+  'artifacts/r168/near.png',
+  'artifacts/r168/burst.png',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -499,7 +514,7 @@ const checks = [
     s === dashboard]],
 
   ['dashboard is in the playground manifest', [playgroundApps,
-    list => list.length === 62 && list.includes('dashboard')]],
+    list => list.length === 66 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],

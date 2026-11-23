@@ -138,7 +138,7 @@ const checks = [
     x === source]],
 
   ['timer_kit is in the 57-app playground manifest', [apps,
-    list => list.length === 62 && list.includes('timer_kit')]],
+    list => list.length === 66 && list.includes('timer_kit')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
