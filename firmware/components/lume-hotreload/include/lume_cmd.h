@@ -30,6 +30,9 @@
  *                  "CMD OK fwt <TAG>" so the CLI can stamp meta.json)
  *   TOKEN\t<hex>   (r96: set the WiFi-OTA token to a 32-hex-char value;
  *                  answered "CMD OK token ok" / "CMD ERR token")
+ *   FPUT\tfile\t<sd:/path|fs:/path>\t<offset>\t<total>\n<raw chunk bytes>
+ *   FLS\t<sd:/dir|fs:/dir>  /  FDEL\t<sd:/path|fs:/path>
+ *   FGET\t<path>\t<offset>\t<length>  (length 1..768)
  *   OOM\t<ms>      (r139, PROFILE ONLY: arm the allocator failure window;
  *                  answered "CMD OK oom <ms>". Absent from non-profile builds,
  *                  where the same bytes yield "CMD ERR verb".)
@@ -53,6 +56,8 @@
 #define LUME_CMD_ID_MAX      LUME_APP_ID_MAX
 #define LUME_CMD_META_MAX    1024   /* defensive cap on the meta line */
 #define LUME_CMD_TOKEN_HEX_LEN 32   /* r96: 16 random bytes, hex-encoded */
+#define LUME_CMD_FILE_PATH_MAX 244 /* prefix plus 240-byte storage path */
+#define LUME_CMD_FILE_MAX (8u * 1024u * 1024u)
 
 typedef enum {
     LUME_CMD_STORE = 1,
@@ -65,6 +70,10 @@ typedef enum {
     LUME_CMD_VER,
     LUME_CMD_FWTAG,
     LUME_CMD_TOKEN,   /* r96: TOKEN <32hex> — set the WiFi-OTA HMAC token */
+    LUME_CMD_FPUT,    /* FPUT\t<path>\t<offset>\t<total>\n<raw bytes> */
+    LUME_CMD_FLS,     /* FLS\t<directory path> */
+    LUME_CMD_FDEL,    /* FDEL\t<file path> */
+    LUME_CMD_FGET,    /* FGET\t<path>\t<offset>\t<length> */
 #if CONFIG_LUME_PERF_PROFILE
     LUME_CMD_OOM,     /* r139: OOM <ms> — arm allocator failure window */
 #endif
@@ -85,6 +94,10 @@ typedef struct {
     const char *src;                   /* points into the payload (STORE only) */
     size_t      src_len;
     char        token[LUME_CMD_TOKEN_HEX_LEN + 1];  /* r96: TOKEN verb only */
+    char        file_path[LUME_CMD_FILE_PATH_MAX + 1];
+    uint32_t    offset, total;
+    const uint8_t *data;
+    size_t      data_len;
 #if CONFIG_LUME_PERF_PROFILE
     uint32_t    oom_ms;                  /* r139: OOM verb only, arm delay */
 #endif

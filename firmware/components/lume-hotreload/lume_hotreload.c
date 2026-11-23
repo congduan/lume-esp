@@ -45,6 +45,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -66,6 +69,9 @@
 #include "lume_cmd.h"
 #include "lume_apps.h"
 #include "lume_board.h"
+#include "lume_fs.h"
+#include "lume_sd.h"
+#include "esp_littlefs.h"
 
 static const char *TAG     = "lume-hotreload";
 static const char *OTA_TAG = "lume-ota";
@@ -415,6 +421,144 @@ static void list_emit(void *arg, const char *id)
     l->count++;
 }
 
+/* r173 file commands share the authenticated LUMC channel. The portable
+ * parser has already rejected traversal and bounded the path and counters. */
+static bool file_vfs_path(const lume_cmd_t *cmd, char *out, size_t cap,
+                          bool *sd)
+{
+    *sd = memcmp(cmd->file_path, "sd:", 3) == 0;
+    if (*sd ? lume_sd_init() != 0 : !lume_fs_mounted()) return false;
+    const char *rel = cmd->file_path + 3;
+    int n = snprintf(out, cap, "%s%s%s", *sd ? "/lume_sd" : "/lume_fs",
+                     *rel == '/' ? "" : "/", rel);
+    return n > 0 && (size_t)n < cap;
+}
+
+static void file_reply_number(reply_sink_t sink, const char *verb, size_t value)
+{
+    char line[48];
+    int n = snprintf(line, sizeof(line), "CMD OK %s %u\n", verb,
+                     (unsigned)value);
+    if (n > 0 && (size_t)n < sizeof(line)) reply_write(sink, line, (size_t)n);
+}
+
+static void file_reply_bytes(reply_sink_t sink, const char *bytes, size_t len)
+{
+    /* USB driver TX buffer is 512 bytes; split long JSON lines at transport
+     * level without inserting a newline. */
+    for (size_t i = 0; i < len; i += 240) {
+        size_t n = len - i < 240 ? len - i : 240;
+        reply_write(sink, bytes + i, n);
+    }
+}
+
+static void handle_file_cmd(reply_sink_t sink, const lume_cmd_t *cmd)
+{
+    char path[sizeof("/lume_fs") + LUME_CMD_FILE_PATH_MAX + 2];
+    bool sd;
+    if (!file_vfs_path(cmd, path, sizeof(path), &sd)) {
+        cmd_reply(sink, false, NULL, NULL, 0, "mount");
+        return;
+    }
+    if (cmd->kind == LUME_CMD_FPUT) {
+        struct stat st;
+        if (cmd->offset && (stat(path, &st) != 0 || !S_ISREG(st.st_mode) ||
+                            st.st_size != (off_t)cmd->offset)) {
+            cmd_reply(sink, false, NULL, NULL, 0, "offset"); return;
+        }
+        if (cmd->offset == 0 && stat(path, &st) == 0 && !S_ISREG(st.st_mode)) {
+            cmd_reply(sink, false, NULL, NULL, 0, "path"); return;
+        }
+        if (!sd) {
+            size_t total = 0, used = 0;
+            if (esp_littlefs_info("storage", &total, &used) != ESP_OK ||
+                total < used || total - used <= 16384u + cmd->data_len) {
+                cmd_reply(sink, false, NULL, NULL, 0, "space"); return;
+            }
+        }
+        FILE *f = fopen(path, cmd->offset ? "ab" : "wb");
+        if (!f) { cmd_reply(sink, false, NULL, NULL, 0, "fs"); return; }
+        bool ok = fwrite(cmd->data, 1, cmd->data_len, f) == cmd->data_len;
+        if (fclose(f) != 0) ok = false;
+        if (!ok || stat(path, &st) != 0 ||
+            st.st_size != (off_t)(cmd->offset + cmd->data_len)) {
+            cmd_reply(sink, false, NULL, NULL, 0, "fs"); return;
+        }
+        file_reply_number(sink, "fput", (size_t)st.st_size);
+        return;
+    }
+    if (cmd->kind == LUME_CMD_FDEL) {
+        struct stat st;
+        if (stat(path, &st) != 0) {
+            cmd_reply(sink, false, NULL, NULL, 0, "notfound"); return;
+        }
+        /* FDEL handles files only. Directory deletion remains explicit in the
+         * storage APIs, so nonempty directories cannot be removed by accident. */
+        if (!S_ISREG(st.st_mode) || unlink(path) != 0) {
+            cmd_reply(sink, false, NULL, NULL, 0, "fs"); return;
+        }
+        cmd_reply(sink, true, "fdel", NULL, 0, NULL);
+        return;
+    }
+    if (cmd->kind == LUME_CMD_FGET) {
+        FILE *f = fopen(path, "rb");
+        if (!f) { cmd_reply(sink, false, NULL, NULL, 0, "notfound"); return; }
+        uint8_t raw[768];
+        bool ok = fseek(f, (long)cmd->offset, SEEK_SET) == 0;
+        size_t n = ok ? fread(raw, 1, cmd->total, f) : 0;
+        if (ferror(f)) ok = false;
+        if (fclose(f) != 0) ok = false;
+        if (!ok) { cmd_reply(sink, false, NULL, NULL, 0, "fs"); return; }
+        unsigned char b64[1028]; size_t encoded = 0;
+        if (mbedtls_base64_encode(b64, sizeof(b64), &encoded, raw, n) != 0) {
+            cmd_reply(sink, false, NULL, NULL, 0, "encode"); return;
+        }
+        file_reply_bytes(sink, "F64", 3);
+        file_reply_bytes(sink, (const char *)b64, encoded);
+        file_reply_bytes(sink, "\n", 1);
+        file_reply_number(sink, "fget", n);
+        return;
+    }
+    DIR *dir = opendir(path);
+    if (!dir) { cmd_reply(sink, false, NULL, NULL, 0, "fs"); return; }
+    /* One JSON array line. Entry names are escaped; cap output so a large
+     * directory fails explicitly rather than emitting a partial listing. */
+    char *json = malloc(16384);
+    if (!json) { closedir(dir); cmd_reply(sink, false, NULL, NULL, 0, "oom"); return; }
+    size_t pos = 0; int count = 0; bool ok = true;
+    json[pos++] = '[';
+    struct dirent *ent;
+    while ((ent = readdir(dir))) {
+        if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) continue;
+        char child[sizeof(path) + 256];
+        int cn = snprintf(child, sizeof(child), "%s/%s", path, ent->d_name);
+        struct stat st;
+        if (cn <= 0 || (size_t)cn >= sizeof(child) || stat(child, &st) != 0) { ok = false; break; }
+        int head = snprintf(json + pos, 16384 - pos, "%s{\"name\":\"", count ? "," : "");
+        if (head < 0 || (size_t)head >= 16384 - pos) { ok = false; break; }
+        pos += (size_t)head;
+        for (const unsigned char *p = (const unsigned char *)ent->d_name; *p; p++) {
+            if (pos + 8 >= 16384) { ok = false; break; }
+            if (*p == '"' || *p == '\\') json[pos++] = '\\';
+            if (*p < 32) { pos += (size_t)snprintf(json + pos, 16384 - pos, "\\u%04x", *p); }
+            else json[pos++] = (char)*p;
+        }
+        if (!ok) break;
+        int tail = snprintf(json + pos, 16384 - pos, "\",\"size\":%u,\"dir\":%s}",
+                            (unsigned)(S_ISDIR(st.st_mode) ? 0 : st.st_size),
+                            S_ISDIR(st.st_mode) ? "true" : "false");
+        if (tail < 0 || (size_t)tail >= 16384 - pos) { ok = false; break; }
+        pos += (size_t)tail; count++;
+    }
+    closedir(dir);
+    if (!ok) { free(json); cmd_reply(sink, false, NULL, NULL, 0, "listing"); return; }
+    json[pos++] = ']'; json[pos++] = '\n';
+    file_reply_bytes(sink, "FLS\t", 4);
+    file_reply_bytes(sink, json, pos);
+    free(json);
+    file_reply_number(sink, "fls", count);
+}
+
 static void handle_cmd(reply_sink_t sink, const uint8_t *payload, size_t len)
 {
     lume_cmd_t cmd;
@@ -424,6 +568,14 @@ static void handle_cmd(reply_sink_t sink, const uint8_t *payload, size_t len)
         return;
     }
     switch (cmd.kind) {
+    case LUME_CMD_FPUT:
+    case LUME_CMD_FLS:
+    case LUME_CMD_FDEL:
+    case LUME_CMD_FGET:
+        xSemaphoreTakeRecursive(s_pending_mutex, portMAX_DELAY);
+        handle_file_cmd(sink, &cmd);
+        xSemaphoreGiveRecursive(s_pending_mutex);
+        break;
     case LUME_CMD_STORE: {
         int s = lume_apps_store(cmd.id, cmd.meta, cmd.meta_len,
                                 cmd.src, cmd.src_len);
