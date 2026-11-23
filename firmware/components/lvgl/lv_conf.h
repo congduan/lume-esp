@@ -55,5 +55,13 @@
 /* Draw: default sw renderer */
 #define LV_DRAW_SW_DRAW_UNIT_CNT 1
 
+/* 2026-11-24: low-risk alignment with Brookesia BSP 2.0.1.
+ * 15 ms refresh period (LVGL default is 33) and style caching. The draw
+ * buffers stay at 20 lines in internal SRAM: Brookesia's 50-line PSRAM
+ * buffers need a bounce copy before QSPI DMA and are an A/B experiment,
+ * not part of this change. */
+#define LV_DEF_REFR_PERIOD 15
+#define LV_OBJ_STYLE_CACHE 1
+
 /* Padding/extra trimmed — defaults from lv_conf_internal apply */
 #endif /* LV_CONF_H */
