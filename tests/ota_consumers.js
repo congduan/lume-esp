@@ -517,6 +517,20 @@ const ALLOWED = [
   'artifacts/r169/regression.txt',
   'artifacts/r169/guard.txt',
   'artifacts/r169/website.txt',
+  // r174: retained-path verification of watchface / gravity_ball (the renamed
+  // imu_ball). No app, firmware, runtime or tooling change: only these two
+  // harnesses, the report and the enumerated evidence files are new.
+  'tests/watchface.js',
+  'tests/gravity_ball.js',
+  'docs/r174-report.md',
+  'artifacts/r174/instrument.js',
+  'artifacts/r174/instrument.txt',
+  'artifacts/r174/aa-raster.log',
+  'artifacts/r174/js-harnesses.log',
+  'artifacts/r174/cli-tests.log',
+  'artifacts/r174/website-check.log',
+  'artifacts/r174/wordle-recheck.log',
+  'artifacts/r174/git-diff-stat.log',
 ];
 
 // --- checks -----------------------------------------------------------------

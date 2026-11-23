@@ -69,3 +69,59 @@ const updated = h.messages.filter(m => m[0] === 'draw' && m[1] === id && m[2] ==
 assert.equal(updated.length - beforeTick, 6);
 assert.ok(updated.every(m => m[10] <= 630));
 console.log('PASS watchface progress clamps 0..100');
+
+/* ---- r174: retained-path coverage (static + live + mutation) --------------
+ * The r49 #6 migration is the shipped state. These assertions guard it: the
+ * 60 analog ticks and the three full ring backgrounds must be uploaded once
+ * and replayed with drawPath; the three dynamic progress arcs and the three
+ * hands stay in immediate mode (they deform/rotate every frame). */
+function assertRetainedSource(s) {
+  assert.ok(s.includes("c.retainSegments(minor, '#667F8B', 1)"), 'minor ticks retained');
+  assert.ok(s.includes("c.retainSegments(major, '#E9F5F8', 2)"), 'major ticks retained');
+  assert.ok(s.includes('c.drawPath(c.minorTicks)') && s.includes('c.drawPath(c.majorTicks)'),
+    'ticks replay via drawPath');
+  for (const r of [136, 111, 86]) {
+    assert.ok(s.includes(`c.retainPath(faceArcPoints(0, 360, ${r}), '#1C3449', 8)`),
+      `background ring ${r} retained`);
+  }
+  assert.ok(s.includes('for (var i = 0; i < c.bgRings.length; i++) c.drawPath(c.bgRings[i])'),
+    'background rings replay via drawPath');
+  // The old per-frame geometry rebuilds must be gone (no assertion loosening).
+  assert.ok(!s.includes("i % 5 ? '#667F8B' : '#E9F5F8'"), 'ticks not rebuilt per frame');
+  assert.ok(!s.includes("faceArc(c, 0, 360, 136, '#1C3449', 8)"), 'bg rings not rebuilt per frame');
+}
+assertRetainedSource(source);
+console.log('PASS watchface retained-path static contract (ticks + 3 bg rings)');
+
+const defs = h.messages.filter(m => m[0] === 'pathDefine');
+const draws = h.messages.filter(m => m[0] === 'pathDraw');
+assert.deepEqual(defs.map(d => [d[1], d[2], d[3].length / 6]),
+  [[10, 1, 48], [10, 2, 12], [14, 1, 121], [14, 2, 121], [14, 3, 121]]);
+assert.equal(draws.length, 5);
+assert.deepEqual(draws.map(d => [d[1], d[2], d[3], d[4]]),
+  [[10, 1, 0, 0], [10, 2, 0, 0], [14, 1, 0, 0], [14, 2, 0, 0], [14, 3, 0, 0]]);
+/* Signal-driven redraws must replay geometry, never re-upload it. faceNow
+ * redraws the analog and ring canvases (5 replays); faceBatt redraws only the
+ * ring canvas (3 replays). */
+const beforeRetainedRedraw = h.messages.length;
+vm.runInContext('faceNow.set(new Date(2026,0,1,10,31,0))', h.ctx);
+const analogRedraw = h.messages.slice(beforeRetainedRedraw);
+assert.equal(analogRedraw.filter(m => m[0] === 'pathDefine').length, 0, 'geometry uploaded only once');
+assert.deepEqual(analogRedraw.filter(m => m[0] === 'pathDraw').map(m => [m[1], m[2]]),
+  [[10, 1], [10, 2], [14, 1], [14, 2], [14, 3]]);
+const beforeBattRedraw = h.messages.length;
+vm.runInContext('faceBatt.set(55)', h.ctx);
+const ringRedraw = h.messages.slice(beforeBattRedraw);
+assert.equal(ringRedraw.filter(m => m[0] === 'pathDefine').length, 0, 'geometry uploaded only once');
+assert.deepEqual(ringRedraw.filter(m => m[0] === 'pathDraw').map(m => [m[1], m[2]]),
+  [[14, 1], [14, 2], [14, 3]]);
+console.log('PASS watchface retained paths defined once, replayed on every redraw');
+
+/* Mutation: removing EACH retained-path block must make its guard fail. */
+const noTicks = source.replace(/if \(!c\.minorTicks\) \{[\s\S]*?c\.drawPath\(c\.majorTicks\);/,
+  "for (var i = 0; i < 60; i++) c.line(150,150,151,151,'#ffffff',1);");
+assert.throws(() => assertRetainedSource(noTicks), /minor ticks retained/);
+const noRings = source.replace(/if \(!c\.bgRings\) \{[\s\S]*?for \(var i = 0; i < c\.bgRings\.length; i\+\+\) c\.drawPath\(c\.bgRings\[i\]\);/,
+  "for (var i = 0; i < 3; i++) faceArc(c, 0, 360, 136 - i * 25, '#1C3449', 8);");
+assert.throws(() => assertRetainedSource(noRings), /background ring 136 retained/);
+console.log('PASS watchface retained-path mutation guards (ticks, rings)');

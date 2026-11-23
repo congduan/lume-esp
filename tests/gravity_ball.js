@@ -134,3 +134,50 @@ check('the canvas holds exactly one ball and no ghost', () => {
   assert.ok(ballPixels > 400, 'ball pixels=' + ballPixels);
   assert.equal(wrong, 0, 'pixels outside the ball differ (ghost trail)=' + wrong);
 });
+
+/* ---- r174: r49 disc-span cache coverage (static + live + mutation) --------
+ * imu_ball was renamed to gravity_ball in r36. Its geometry is a moving filled
+ * disc, not line segments: C-side retained paths were measured in r49 and
+ * rejected (+12 % total, 49 AA canvas_line replays). The shipped retained form
+ * is a JS precomputed span table; these guards pin both its structure and the
+ * zero-trig per-frame cost. */
+const gbSource = fs.readFileSync('examples/gravity_ball/app.js', 'utf8');
+function assertSpanCache(s) {
+  assert.ok(s.includes('var BALL_SPANS = [];'), 'span table exists');
+  assert.ok(s.includes('BALL_SPANS.push([sy, Math.floor(Math.sqrt(BALL_R * BALL_R - sy * sy))]);'),
+    'rows precomputed once at load');
+  assert.ok(s.includes('var sy = BALL_SPANS[i][0], half = BALL_SPANS[i][1]'),
+    'per-frame draw replays cached rows');
+  assert.ok(!s.includes('var half = Math.floor(Math.sqrt(r * r - y * y));'),
+    'no per-frame sqrt rebuild');
+}
+assertSpanCache(gbSource);
+console.log('PASS gravity_ball disc span cache static contract');
+
+let spanFills = 0;
+session.ctx.__discCtx = { fillColor() {}, fillRect() { spanFills++; } };
+vm.runInContext(`(function () {
+  var real = Math.sqrt; globalThis.__sqrtCalls = 0;
+  Math.sqrt = function (x) { globalThis.__sqrtCalls++; return real(x); };
+  globalThis.__restoreSqrt = function () { Math.sqrt = real; };
+})();`, session.ctx);
+vm.runInContext('disc(__discCtx, 240, 240);', session.ctx);
+const sqrtCalls = vm.runInContext('globalThis.__sqrtCalls', session.ctx);
+vm.runInContext('globalThis.__restoreSqrt();', session.ctx);
+assert.equal(sqrtCalls, 0, 'per-frame sqrt calls');
+assert.equal(spanFills, 2 * R + 1, 'row spans replayed per frame');
+console.log(`PASS gravity_ball one disc frame: 0 sqrt, ${spanFills} cached row spans`);
+
+const mutatedGb = gbSource.replace(
+  /var BALL_SPANS = \[\];[\s\S]*?\n\}\nvar painted/,
+  `function disc(ctx, cx, cy, r, color) {
+  ctx.fillColor(color);
+  for (var y = -r; y <= r; y++) {
+    var half = Math.floor(Math.sqrt(r * r - y * y));
+    var x1 = Math.max(0, cx - half), x2 = Math.min(W, cx + half + 1);
+    if (x2 > x1 && cy + y >= 0 && cy + y < H) ctx.fillRect(x1, cy + y, x2 - x1, 1);
+  }
+}
+var painted`);
+assert.throws(() => assertSpanCache(mutatedGb), /span table exists/);
+console.log('PASS gravity_ball span-cache mutation guard');
