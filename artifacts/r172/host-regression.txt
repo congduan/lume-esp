@@ -1,0 +1,8 @@
+PASS tests/storybook.js exit=0
+PASS tests/music_player.js exit=0
+PASS tests/gestures.js exit=0
+PASS tests/sd_gallery.js exit=0
+PASS tests/sd_files.js exit=0
+PASS tests/sdcard.js exit=0
+PASS tests/image_mapping.js exit=0
+PASS tests/ota_consumers.js exit=0

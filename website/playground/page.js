@@ -12,6 +12,7 @@
     ['calculator','＝','Calculator','计算器','Everyday arithmetic','日常运算'],
     ['weather','☁','Weather','天气','Forecast with sample data','模拟天气数据'],
     ['music_player','♫','Music player','音乐播放器','Playback with sample tracks','模拟曲目播放'],
+    ['storybook','★','StoryBook','儿童绘本','Three-page sample story or TF story pack','三页示例故事或 TF 故事包'],
     ['ipod_music','◉','Wheel Music','转盘音乐','ClickWheel UI demo, no audio','转盘界面演示，无音频'],
     ['dashboard','▥','Dashboard','仪表盘','Live-style gauges','动态仪表'],
     ['gravity_ball','●','Gravity ball','重力球','Motion experiment','运动实验'],
