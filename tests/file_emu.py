@@ -50,5 +50,5 @@ assert re.search(r'FLS\t\[.*"name":"r173.bin".*"size":64.*\]', text), 'FLS metad
 assert 'F64' + base64.b64encode(DATA).decode() in text, 'FGET bytes differ'
 assert 'CMD OK fdel' in text, 'FDEL ACK missing'
 assert text.count('CMD OK fls') >= 2, 'FLS after delete missing'
-assert 'FLS\t[]' in text, 'deleted file still listed'
+assert re.search(r'FLS\t\[\{"name":"apps","size":0,"dir":true\}\]', text), 'deleted file still listed'
 print('esp32sim LittleFS: FPUT chunks / FLS size / FGET bytes / FDEL PASS')
