@@ -1,0 +1,25 @@
+PASS header defines four op typedefs
+PASS struct has four ops then board_id
+PASS header declares lume_board_get singleton
+PASS header states profile-is-source-of-truth division of labour
+PASS impl defines a single not_supported stub
+PASS impl default singleton uses generic board id
+PASS impl points all four ops at not_supported faces
+PASS header declares registration API and invalid-arg code
+PASS impl copies the board and keeps a stable current pointer
+PASS lume-board registers real drivers with the profile board name
+PASS touch_read drift documented: no standalone driver point-read API
+PASS dependency points lume-board -> lume-board-hal, never the reverse
+PASS zero-diff guard: no changes outside board components and r148 surfaces
+PASS lume_board_get returns a non-NULL singleton
+PASS lume_board_get is a stable process-wide singleton
+PASS board_id == "generic"
+PASS all four op pointers are populated
+PASS all four ops return -1 (not supported) before registration
+PASS invalid registrations rejected; generic stub still current
+PASS registered board queryable: four non-NULL ops + board_id
+PASS registry copies the struct and stays stable
+PASS registered ops dispatch to the host fake with correct args
+PASS board_abi: 4-op layout + stub + registration/query semantics
+PASS board_abi.c compiled and ran with exit 0
+board_abi: ALL CHECKS PASSED
