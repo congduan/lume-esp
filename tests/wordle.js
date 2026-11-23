@@ -582,7 +582,7 @@ const checks = [
   ['playground sources/wordle.js byte-identical to example', [playgroundSrc, x =>
     x === source]],
 
-  ['wordle is in the 57-app playground manifest', [apps,
+  ['wordle is in the playground manifest', [apps,
     list => list.length > 0 && list.includes('wordle')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 6dddec1', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
@@ -629,7 +629,7 @@ const TINT = 'keyStates consume wdLetterMarks (r153 tint replaces the letter bar
 const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
-const MANIFEST = 'wordle is in the 57-app playground manifest';
+const MANIFEST = 'wordle is in the playground manifest';
 const GUARD = 'firmware/ runtime/ tools/lume/ identical to 6dddec1';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 const DAY_INDEX = 'r165 wdDayIndex derives the ordinal from lume.system.time()';

@@ -107,7 +107,7 @@ const checks = [
   ['playground sources/settings.js byte-identical to example', [playgroundSrc, s =>
     s === settings]],
 
-  ['settings is in the 57-app playground manifest', [playgroundApps,
+  ['settings is in the playground manifest', [playgroundApps,
     list => list.length > 0 && list.includes('settings')]],
 
   ['firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only)', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
@@ -156,7 +156,7 @@ must('playground generated source drifts from the example',
   'playground sources/settings.js byte-identical to example', playgroundSrc);
 must('playground manifest drops settings',
   list => list.filter(x => x !== 'settings'),
-  'settings is in the 57-app playground manifest', playgroundApps);
+  'settings is in the playground manifest', playgroundApps);
 must('a firmware file changes vs 92b6f29',
   () => ['firmware/components/lume-engine/lume_engine.c'],
   'firmware/ runtime/ CLI tooling untouched vs 80e76b2 (shell.js/types only)', fwChanged);

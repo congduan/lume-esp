@@ -6,7 +6,7 @@
  * Part 1: static source contracts -- the three r151 shell controls are really
  * consumed, the absolute-time pause semantics, the KV / bell try-catch, the
  * ASCII / font / canvas discipline, the byte-identical playground source, the
- * 57-app manifest, and firmware/runtime/tools/lume zero-diff vs 6426f7b.
+ * playground manifest, and firmware/runtime/tools/lume zero-diff vs 6426f7b.
  * Every predicate has a mutation proof (18 static + 3 live).
  *
  * Part 2: live runs of the REAL app against the firmware prelude + shell.js.
@@ -137,7 +137,7 @@ const checks = [
   ['playground sources/timer_kit.js byte-identical to the example', [playgroundSrc, x =>
     x === source]],
 
-  ['timer_kit is in the 57-app playground manifest', [apps,
+  ['timer_kit is in the playground manifest', [apps,
     list => list.length > 0 && list.includes('timer_kit')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
@@ -175,7 +175,7 @@ const ASCII = 'all source literals ASCII-only (r64)';
 const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
 const BUDGET = 'canvas budget locked: slider only, 17280 <= 230400 px';
 const SRC = 'playground sources/timer_kit.js byte-identical to the example';
-const MANIFEST = 'timer_kit is in the 57-app playground manifest';
+const MANIFEST = 'timer_kit is in the playground manifest';
 const GUARD = 'firmware/ runtime/ tools/lume/ identical to 80e76b2';
 
 must('drop the shell import',
