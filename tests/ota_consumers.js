@@ -93,6 +93,14 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
+  // r171: manifest guard and optional browser visual check.
+  'tools/lume/check.js',
+  'tools/lume/lume.js',
+  'tools/lume/lume.test.js',
+  'tests/lib/manifest.js',
+  'tests/playground_manifest.js',
+  'docs/build.md',
+  'docs/r171-agent-infra-report.md',
   // r166: ColorPicker runtime/types, consumer, generated docs and shell bundles.
   'examples/color_demo/app.js',
   'tests/colorpicker.js',
