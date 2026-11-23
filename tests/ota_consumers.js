@@ -459,6 +459,25 @@ const ALLOWED = [
   'artifacts/r168/far.png',
   'artifacts/r168/near.png',
   'artifacts/r168/burst.png',
+  // r172: app-only StoryBook plus generated playground entry and evidence.
+  'examples/storybook/app.js',
+  'tests/storybook.js',
+  'tests/ota_consumers.js',
+  'docs/r172-storybook-report.md',
+  'website/playground/apps/storybook.js',
+  'website/playground/sources/storybook.js',
+  'artifacts/r172/storybook-test.txt',
+  'artifacts/r172/lume-check.txt',
+  'artifacts/r172/playground-build.txt',
+  'artifacts/r172/playwright.txt',
+  'artifacts/r172/shelf.png',
+  'artifacts/r172/reading.png',
+  'artifacts/r172/controls.png',
+  'artifacts/r172/cli-tests.txt',
+  'artifacts/r172/guard.txt',
+  'artifacts/r172/website.txt',
+  'artifacts/r172/playground-verify.txt',
+  'artifacts/r172/host-regression.txt',
 ];
 
 // --- checks -----------------------------------------------------------------
