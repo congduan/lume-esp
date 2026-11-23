@@ -478,6 +478,7 @@ const ALLOWED = [
   'artifacts/r172/website.txt',
   'artifacts/r172/playground-verify.txt',
   'artifacts/r172/host-regression.txt',
+  'artifacts/r172/playground-count.txt',
 ];
 
 // --- checks -----------------------------------------------------------------
