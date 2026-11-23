@@ -15,7 +15,7 @@
 //   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
-//     in the 57-app manifest, all UI literals are ASCII (r64), and only the
+//     in the playground manifest, all UI literals are ASCII (r64), and only the
 //     known r132-r136 files differ from the 80e76b2 baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
@@ -65,7 +65,7 @@ function literals(s) {
 }
 const lits = [...literals(settings), ...literals(dashboard)];
 
-// 57-app playground manifest is the source of truth for "in清单".
+// playground manifest is the source of truth for "in清单".
 const manifest = read('tools/playground/build.mjs');
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -89,10 +89,18 @@ function gitChanged(paths) {
  * firmware/runtime/CLI-tooling surface is still pinned. Scope the diff to
  * tools/lume/ so manifest registration is not misreported as a tooling
  * behaviour change. */
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts']; // r166 ColorPicker
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
+  // r171: manifest guard and optional browser visual check.
+  'tools/lume/check.js',
+  'tools/lume/lume.js',
+  'tools/lume/lume.test.js',
+  'tests/lib/manifest.js',
+  'tests/playground_manifest.js',
+  'docs/build.md',
+  'docs/r171-agent-infra-report.md',
   // r166: ColorPicker runtime/types, consumer, generated docs and shell bundles.
   'examples/color_demo/app.js',
   'tests/colorpicker.js',
@@ -392,6 +400,7 @@ const ALLOWED = [
   'artifacts/r168/lume-check.json',
   'artifacts/r168/playground-build.txt',
   'artifacts/r168/website-check.txt',
+  'docs/hardware-api.md',
   'artifacts/r152/regression-summary.txt',  // r156: skycombat 3D dogfight app + harness + evidence.
   'examples/skycombat/app.js',
   'tests/skycombat.js',
@@ -459,6 +468,26 @@ const ALLOWED = [
   'artifacts/r168/far.png',
   'artifacts/r168/near.png',
   'artifacts/r168/burst.png',
+  // r172: app-only StoryBook plus generated playground entry and evidence.
+  'examples/storybook/app.js',
+  'tests/storybook.js',
+  'tests/ota_consumers.js',
+  'docs/r172-storybook-report.md',
+  'website/playground/apps/storybook.js',
+  'website/playground/sources/storybook.js',
+  'artifacts/r172/storybook-test.txt',
+  'artifacts/r172/lume-check.txt',
+  'artifacts/r172/playground-build.txt',
+  'artifacts/r172/playwright.txt',
+  'artifacts/r172/shelf.png',
+  'artifacts/r172/reading.png',
+  'artifacts/r172/controls.png',
+  'artifacts/r172/cli-tests.txt',
+  'artifacts/r172/guard.txt',
+  'artifacts/r172/website.txt',
+  'artifacts/r172/playground-verify.txt',
+  'artifacts/r172/host-regression.txt',
+  'artifacts/r172/playground-count.txt',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -521,7 +550,7 @@ const checks = [
     s === dashboard]],
 
   ['dashboard is in the playground manifest', [playgroundApps,
-    list => list.length === 66 && list.includes('dashboard')]],
+    list => list.length > 0 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
