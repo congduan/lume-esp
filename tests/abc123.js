@@ -1,4 +1,4 @@
-/* r73 abc123 host harness: SVG data, four modes, image refresh and dots. */
+/* r73 abc123 host harness: SVG data, four modes, static black background. */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { runApp } = require('./lib/prelude_runner');
@@ -50,13 +50,20 @@ for (const ch of a.ABC_CARDS) assert.ok(a.abcWord(ch));
 console.log('PASS 36-card deck, words and digit dot counts');
 const creates = ui.messages.filter(m => m[0] === 'create');
 assert.equal(creates.filter(m => m[2] === 4).length, 1, 'one Image glyph node');
-assert.equal(creates.filter(m => m[2] === 3).length, 1, 'one auxiliary Canvas');
+assert.equal(creates.filter(m => m[2] === 3).length, 0, 'no auxiliary Canvas');
+const textIds = creates.filter(m => m[2] === 1).map(m => m[1]);
+assert.equal(textIds.length, 2, 'top and bottom Text nodes');
+const yOf = id => ui.messages.find(m => m[0] === 'attr' && m[1] === id && m[2] === 19)[3];
+assert.deepEqual(textIds.map(yOf), [18, 440], 'symmetric top/bottom text margins');
+const rootId = creates[0][1];
+assert.ok(ui.messages.some(m => m[0] === 'attr' && m[1] === rootId && m[2] === 1 && m[3] === 0),
+  'root background is static black');
 assert.equal(a.__imageSources.length, 1);
 const glyphId = a.__imageSources[0].id;
 assert.equal(a.__imageSources[0].width, 320);
 assert.equal(a.__imageSources[0].height, 320);
 assert.ok(decode(a.__imageSources[0].bytes).includes('viewBox="0 0 100 100"'));
-console.log('PASS Image glyph and auxiliary Canvas nodes');
+console.log('PASS static black root and single Image glyph node');
 tap(ui, 240, 300, 1000);
 assert.equal(a.card(), 'B');
 assert.equal(a.__imageSources.at(-1).id, glyphId);
@@ -82,10 +89,7 @@ assert.equal(decode(a.__imageSources.at(-1).bytes), a.GLYPH_PAIRS.A);
 tap(ui, 240, 40, 7700);
 assert.equal(a.mode(), 'seq');
 console.log('PASS four-mode cycle, random bag and vertical Aa source');
-const auxId = creates.find(m => m[2] === 3)[1];
-const dotCount = () => ui.messages.filter(m => m[0] === 'draw' && m[1] === auxId && m[2] === 5).length;
-const before = dotCount();
-a.card.set('3');
-assert.equal(dotCount() - before, 3);
-console.log('PASS number-dot Canvas draws three filled arcs');
+assert.equal(ui.messages.filter(m => m[0] === 'attr' && m[2] === 1).length, 1,
+  'background never changes across cards or modes');
+console.log('PASS static background across all cards and modes');
 console.log('ALL ABC123 HARNESS CASES PASSED');
