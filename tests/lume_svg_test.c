@@ -51,6 +51,22 @@ int main(void) {
        "<svg width='20' height='20'><rect x='1.25' y='1.25' width='10' "
        "height='10' opacity='.5'/></svg>",
        20, 20, 5, 5);
+  assert(lume_svg_render(SVG("<svg width='20' height='20'><rect x='1.25' "
+                             "y='1.25' width='10' height='10' opacity='.5'/>"
+                             "</svg>"),
+                         20, 20, &p, &w, &h) == 0);
+  assert(alpha(p, 20, 0, 0) == 0 && alpha(p, 20, 1, 1) == 128 &&
+         alpha(p, 20, 10, 10) == 128 && alpha(p, 20, 11, 11) == 0);
+  free(p);
+  puts("PASS fill scanline keeps exact fractional-edge alpha");
+  assert(lume_svg_render(SVG("<svg width='20' height='20'><path d='M2 2 H18 "
+                             "V18 H2 Z M6 6 H14 V14 H6 Z' fill='#fff'/>"
+                             "</svg>"),
+                         20, 20, &p, &w, &h) == 0);
+  assert(alpha(p, 20, 4, 4) > 0 && alpha(p, 20, 10, 10) == 0 &&
+         alpha(p, 20, 16, 16) > 0);
+  free(p);
+  puts("PASS fill scanline keeps even-odd holes");
   const char *vb =
       "<svg viewBox='0 0 32 16'><rect width='32' height='16'/></svg>";
   assert(lume_svg_size(SVG(vb), &w, &h) == 0 && w == 32 && h == 16);

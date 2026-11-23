@@ -581,6 +581,56 @@ static int inside(path *p, pt q) {
   }
   return hit;
 }
+static int cmp_x(const void *a, const void *b) {
+  double x = *(const double *)a, y = *(const double *)b;
+  return (x > y) - (x < y);
+}
+static void blend(uint8_t *dst, color c, double coverage);
+/* Even-odd fill with the same 2x2 sampling as the generic painter. The old
+ * painter tested every edge for every sub-sample (O(pixels * edges)), which
+ * makes a 320x320 glyph take tens of seconds on the soft-float MCU. Here each
+ * sub-row computes its edge crossings once, then fills spans by parity. */
+static int fill_scanline(path *p, style st, uint8_t *out, int w,
+                         int x0, int y0, int x1, int y1) {
+  size_t cap = p->n ? p->n : 1;
+  double *xs = LUME_SVG_MALLOC(2 * cap * sizeof(double));
+  if (!xs)
+    return -1;
+  for (int y = y0; y < y1; y++) {
+    size_t m[2];
+    for (int sy = 0; sy < 2; sy++) {
+      double qy = y + (sy + .5) / 2;
+      m[sy] = 0;
+      for (size_t i = 0; i < p->n; i++) {
+        edge e = p->v[i];
+        if ((e.a.y > qy) != (e.b.y > qy))
+          xs[sy * cap + m[sy]++] =
+              e.a.x + (qy - e.a.y) * (e.b.x - e.a.x) / (e.b.y - e.a.y);
+      }
+      if (m[sy])
+        qsort(xs + sy * cap, m[sy], sizeof(double), cmp_x);
+    }
+    size_t k[2] = {0, 0};
+    int parity[2] = {(int)(m[0] & 1), (int)(m[1] & 1)};
+    for (int x = x0; x < x1; x++) {
+      int fc = 0;
+      for (int sy = 0; sy < 2; sy++) {
+        for (int sx = 0; sx < 2; sx++) {
+          double qx = x + (sx + .5) / 2;
+          while (k[sy] < m[sy] && xs[sy * cap + k[sy]] <= qx) {
+            parity[sy] ^= 1;
+            k[sy]++;
+          }
+          fc += parity[sy];
+        }
+      }
+      if (fc)
+        blend(out + 4 * ((size_t)y * w + x), st.fill, fc * st.opacity / 4);
+    }
+  }
+  LUME_SVG_FREE(xs);
+  return 0;
+}
 static void blend(uint8_t *dst, color c, double coverage) {
   int a = (int)lround(c.a * coverage);
   if (a <= 0)
@@ -615,6 +665,11 @@ static void paint(path *p, style st, uint8_t *out, int w, int h, double scale,
   double pad = st.sw * scale / 2 + 1;
   int x0 = (int)fmax(0, floor(minx - pad)), x1 = (int)fmin(w, ceil(maxx + pad)),
       y0 = (int)fmax(0, floor(miny - pad)), y1 = (int)fmin(h, ceil(maxy + pad));
+  /* OOM falls back to the generic painter so a glyph is never silently blank. */
+  if (x0 < x1 && y0 < y1 && !st.fill.none && p->closed &&
+      (st.stroke.none || st.sw <= 0) &&
+      fill_scanline(p, st, out, w, x0, y0, x1, y1) == 0)
+    return;
   for (int y = y0; y < y1; y++)
     for (int x = x0; x < x1; x++) {
       int fc = 0, sc = 0;
