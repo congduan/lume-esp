@@ -1,0 +1,67 @@
+[1] CRC-32 + encoder field-by-field vs CLI
+  ok  : crc32("123456789") == 0xcbf43926
+  ok  : encode length == 12 + 9
+  ok  : C encoder emits byte-for-byte the CLI/USB frame (LUME|len|crc|payload)
+  ok  : offset 0..3 magic LUME
+  ok  : offset 4..7 total_len u32 LE == payload bytes (9)
+  ok  : offset 8..11 crc32 u32 LE == crc(payload)
+  ok  : offset 12.. payload verbatim
+[2] frame protocol reuse (OTA decoder == USB/CLI wire format)
+  ok  : CLI frame -> exactly one DATA event, no ERR
+  ok  : DATA len == 9
+  ok  : DATA payload matches source
+  ok  : single-byte streaming parse OK
+  ok  : encode->decode round trip OK
+[3] aligned 4-byte control frames
+  ok  : BACK event
+  ok  : PAUS event
+  ok  : RESM event
+  ok  : controls emit no DATA/ERR
+[4] reject reasons, lengths and LUME resync
+  ok  : bad magic -> ERR bad-magic
+  ok  : resync: valid frame after noise still parses
+  ok  : total_len 0 -> ERR empty
+  ok  : total_len > 256KiB -> ERR too-large (drop+resync)
+  ok  : corrupted payload -> ERR bad-crc (len=9)
+  ok  : encoder accepts a 1 KiB payload
+  ok  : 1 KiB frame decode OK
+[4b] r43b bytecode frame kind
+  ok  : encode_bytecode length == 12 + payload
+  ok  : bytecode frame magic == "LUMB"
+  ok  : LUMB decodes as EV_BYTECODE (not DATA/CMD) and round-trips
+  ok  : LUME/LUMC/LUMB interleave in one parser with no resync
+[5] token auth (correct / wrong token)
+  ok  : auth_parse("AUTH <token>\n") extracts token
+  ok  : RIGHT token: token_equal == true (auth OK path)
+  ok  : WRONG token (1 char off): token_equal == false (auth ERR path)
+  ok  : empty token rejected
+  ok  : 31-char token rejected (length)
+  ok  : wrong prefix -> auth_parse false
+  ok  : empty token line -> auth_parse false
+  ok  : space in token -> auth_parse false
+[5b] r96 HMAC-SHA256 challenge-response auth
+  ok  : mbedTLS SHA-256 HMAC primitive available
+  ok  : RFC 4231 case 1 HMAC vector matches
+  ok  : hex_valid: 32 hex OK
+  ok  : hex_valid: non-hex rejected
+  ok  : hex_decode: odd nhex rejected
+  ok  : hex_decode: first/last byte correct
+  ok  : hex_valid: 64 hex MAC OK
+  ok  : hex_equal: identical MAC matches
+  ok  : hex_equal: 1-char-off MAC rejected
+  ok  : challenge line format == "CHALLENGE <32hex>\n"
+  ok  : RIGHT MAC: mac_verify == 0 (auth OK path)
+  ok  : WRONG MAC: mac_verify == -4 (auth ERR path)
+  ok  : replay with a different challenge -> mac_verify -4
+  ok  : malformed challenge hex -> mac_verify -2
+  ok  : auth_parse extracts a 64-hex MAC
+[6] RELOAD reply lines
+  ok  : OK line == "RELOAD OK 9\n"
+  ok  : ERR line == "RELOAD ERR bad-crc\n"
+[7] listener gate (WiFi not connected -> no OTA server)
+  ok  : WiFi DOWN + token ready -> can_serve FALSE (refuse to start)
+  ok  : WiFi DOWN + no token -> FALSE
+  ok  : WiFi UP + no token -> FALSE
+  ok  : WiFi UP (GOT_IP) + token ready -> TRUE (auto-start)
+
+56 checks, 0 failures -> PASS

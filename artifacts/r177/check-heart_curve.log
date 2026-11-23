@@ -1,0 +1,8 @@
+lume check examples/heart_curve
+
+[PASS] bundle   1795 bytes (31 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)

@@ -1,0 +1,11 @@
+PASS piano note->frequency and note-name table
+PASS piano envelope sample count, attack budget and stream chunking
+PASS piano envelope continuity at handoff and decay shape
+PASS piano stereo 16-bit LE PCM, L=R, soft attack
+PASS piano 14x34px white row + 10 black seam keys fit 480px
+PASS piano tap injection emits PIANO KEY C5 freq=523.25
+PASS piano highlight is ATTR_BG_COLOR change, no node rebuild
+PASS piano pan glissando crosses keys with per-key dedupe
+PASS piano octave switch maps C4->C3/C5 (12-semitone steps)
+PASS piano demo melody starts/stops and plays notes
+PASS piano host harness: 10/10 assertions

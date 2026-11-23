@@ -1,0 +1,20 @@
+PASS boot IDLE + honest DEMO badge (no key / no IP)
+PASS state table: 6 legal edges, illegal jumps rejected + logged
+PASS IDLE->LISTEN->THINK->(next frame)transport->SPEAK + play
+PASS barge-in SPEAK->IDLE, repeat tap is harmless no-op
+PASS LISTEN timeout -> IDLE; watchdog inert outside LISTEN
+PASS DEMO canned replies rotate across 6 turns (wrap at 4, start=1)
+PASS typewriter advances 1 char/tick, clamps at 45 (no wall-clock)
+PASS canvas budget 51200/230400 px, 18 draw calls/frame, dirty rect
+PASS UI text pure ASCII (134 bound strings)
+PASS transport slot: fake drives THINK->SPEAK; error path -> IDLE
+PASS LIVE detection + legacy lume.ai.chat delegation through transport
+PASS record() -3 degrades to demo level; real PCM drives bounded VU
+PASS waveform level bounded [0,1] in IDLE and LISTEN over 240 ticks
+PASS r124: panstart opens LISTEN+mic, panend sends end -> THINK/SPEAK
+PASS r124: <400 ms hold discarded -> IDLE, no end, mic stopped
+PASS r124: 15 s watchdog force-sends (end frame) instead of hanging
+PASS r124: panend fires before swipe:up (not swallowed); down drag = panend only
+PASS r124: two holds / one connection / one hello, mic reopens on hold 2
+PASS r124: DEMO mode unaffected (pan no-op, tap still works)
+ALL VOICE ASSISTANT HARNESS CASES PASSED

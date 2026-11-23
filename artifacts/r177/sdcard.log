@@ -1,0 +1,5 @@
+PASS sdcard: wiring (component/engine/boards/sdkconfig/d.ts)
+PASS sdcard: never-format + lazy-mount policy locked
+PASS sdcard: error-code parity with lume.storage.Fs
+PASS sdcard: prelude unchanged (natives self-register)
+ALL SD HARNESS CASES PASSED

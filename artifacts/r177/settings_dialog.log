@@ -1,0 +1,32 @@
+PASS settings_dialog: shell.js imported once by the documented relative path
+PASS settings_dialog: rotate opens shell.Dialog with title + message
+PASS settings_dialog: Rotate is a danger button; setToken lives in its onPress only
+PASS settings_dialog: Cancel is plain with no onPress, ordered before the danger button
+PASS settings_dialog: reboot opens a Dialog with a danger Reboot button
+PASS settings_dialog: reboot() sits inside the danger onPress, after the typeof guard
+PASS settings_dialog: all three Dialog guards degrade to ASCII notes (no silent dangerous fallback)
+PASS settings_dialog: no two-stage confirm signals or arm timers survive
+PASS settings_dialog: OTA row stays View+Text+Button with a static New token title
+PASS settings_dialog: reboot row stays View+Text+Button with a static Reboot title
+PASS settings_dialog: playground sources/settings.js byte-identical to example
+PASS settings_dialog: settings is in the 61-app playground manifest
+PASS settings_dialog: all UI string literals ASCII-only (r64)
+PASS settings_dialog: firmware/ runtime/ identical to 4a2bd29 (pure app layer)
+PASS settings_dialog mutation: delete the rotate Dialog call -> FAIL as expected
+PASS settings_dialog mutation: downgrade Rotate from danger to plain -> FAIL as expected
+PASS settings_dialog mutation: give Cancel an onPress (Cancel would execute) -> FAIL as expected
+PASS settings_dialog mutation: delete the reboot Dialog danger Reboot button -> FAIL as expected
+PASS settings_dialog mutation: move reboot() before the typeof guard -> FAIL as expected
+PASS settings_dialog mutation: harden the Dialog guard (drop all three fallbacks) -> FAIL as expected
+PASS settings_dialog mutation: resurrect the two-stage confirm signal -> FAIL as expected
+PASS settings_dialog mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS settings_dialog mutation: a firmware file changes vs 4a2bd29 -> FAIL as expected
+PASS settings_dialog live: rotate Cancel -> no setToken
+PASS settings_dialog live: rotate Rotate -> setToken(32hex)
+PASS settings_dialog live: setToken failure -> ASCII err note
+PASS settings_dialog live: reboot Cancel -> no reboot
+PASS settings_dialog live: reboot Reboot -> one reboot
+PASS settings_dialog live: reboot binding stub -> reboot n/a
+PASS settings_dialog live: Dialog stub -> ASCII notes, no auto action
+PASS settings_dialog live mutation: Cancel with onPress -> FAIL as expected
+ALL SETTINGS DIALOG HARNESS CASES PASSED

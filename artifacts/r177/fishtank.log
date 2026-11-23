@@ -1,0 +1,5 @@
+PASS 60 s smoke: six fish bounded, finite, continuous, capped turn; eaten=40
+PASS food pursuit changes heading and position
+PASS eating removes pellet and accelerates swimming/tail
+PASS size tiers 6/5/6 stations; 15 Hz dirty-rect paint (max 7 rects), 11 plant sway frames, tap feeding, no errors, max draw calls/frame=135 (limit 250)
+ALL FISHTANK HARNESS CASES PASSED

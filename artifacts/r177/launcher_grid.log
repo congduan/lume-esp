@@ -1,0 +1,63 @@
+PASS launcher_grid static: shell.js imported by the documented relative path
+PASS launcher_grid static: shell.Launcher is consumed
+PASS launcher_grid static: explicit 9-app literal list passed to Launcher
+PASS launcher_grid static: every app carries id / label / color / ASCII glyph
+PASS launcher_grid static: Launcher title / columns / indicator fixed (canvas lock)
+PASS launcher_grid static: canvas budget constants are explicit and correct
+PASS launcher_grid static: onLaunch host callback records id and updates status
+PASS launcher_grid static: onBack host handler returns true (editing-state fallback)
+PASS launcher_grid static: status Text is signal-driven with r162 EDIT feedback
+PASS launcher_grid static: shell.Launcher setEditing notifies onEditingChange at both change points
+PASS launcher_grid static: LauncherProps declares the onEditingChange callback
+PASS launcher_grid static: app consumes onEditingChange and shows EDIT in the status line
+PASS launcher_grid static: custom theme sets primary / surface / accent / text
+PASS launcher_grid static: entire app file is ASCII-only (r64)
+PASS launcher_grid static: entire harness file is ASCII-only (r64)
+PASS launcher_grid static: UI string literals ASCII-only (r64)
+PASS launcher_grid static: Text fontSize limited to bundled 14/20/32 faces
+PASS launcher_grid static: playground sources/launcher_grid.js byte-identical to the example
+PASS launcher_grid static: launcher_grid is in the 61-app playground manifest
+PASS launcher_grid static: firmware/ runtime/ tools/lume/ identical to 4a2bd29
+PASS launcher_grid mutation: drop the shell import -> FAIL as expected
+PASS launcher_grid mutation: app stops consuming shell.Launcher -> FAIL as expected
+PASS launcher_grid mutation: drop the explicit apps argument (falls back to app store) -> FAIL as expected
+PASS launcher_grid mutation: use the app store instead of a literal -> FAIL as expected
+PASS launcher_grid mutation: drop one curated app -> FAIL as expected
+PASS launcher_grid mutation: non-ASCII glyph slips into the app -> FAIL as expected
+PASS launcher_grid mutation: indicator re-enabled (two extra edge canvases) -> FAIL as expected
+PASS launcher_grid mutation: columns drift off 3x3 -> FAIL as expected
+PASS launcher_grid mutation: icon size drifts off 48 -> FAIL as expected
+PASS launcher_grid mutation: drop the onLaunch host callback -> FAIL as expected
+PASS launcher_grid mutation: onLaunch falls back to a real app switch -> FAIL as expected
+PASS launcher_grid mutation: drop the onBack host handler -> FAIL as expected
+PASS launcher_grid mutation: status stops following the launch/editing signals -> FAIL as expected
+PASS launcher_grid mutation: shell drops the onEditingChange notification call -> FAIL as expected
+PASS launcher_grid mutation: edit toggle bypasses setEditing -> FAIL as expected
+PASS launcher_grid mutation: back-out bypasses setEditing -> FAIL as expected
+PASS launcher_grid mutation: LauncherProps drops the onEditingChange declaration -> FAIL as expected
+PASS launcher_grid mutation: app drops the onEditingChange consumer -> FAIL as expected
+PASS launcher_grid mutation: app drops the EDIT status feedback -> FAIL as expected
+PASS launcher_grid mutation: a non-ASCII byte slips into the harness -> FAIL as expected
+PASS launcher_grid mutation: custom theme is dropped -> FAIL as expected
+PASS launcher_grid mutation: a non-ASCII byte slips into the file -> FAIL as expected
+PASS launcher_grid mutation: a CJK UI literal slips in -> FAIL as expected
+PASS launcher_grid mutation: font size escapes the bundled faces -> FAIL as expected
+PASS launcher_grid mutation: playground generated source drifts -> FAIL as expected
+PASS launcher_grid mutation: playground manifest drops launcher_grid -> FAIL as expected
+PASS launcher_grid mutation: a firmware/runtime/CLI file changes after 4a2bd29 -> FAIL as expected
+PASS launcher_grid live: root node exists with an exact 9-icon canvas budget
+PASS launcher_grid live: tile onPress drives the onLaunch host callback (no app-store launch)
+PASS launcher_grid live: onEditingChange mirrors edit state true then false into the app signal
+PASS launcher_grid live: app without onEditingChange boots and keeps baseline status semantics
+PASS launcher_grid live: edit-mode back and onBack fallback update status
+PASS launcher_grid live: shutdown clears all effects and timers
+PASS launcher_grid live mutation: live: explicit apps dropped -> zero canvases -> FAIL as expected
+PASS launcher_grid live mutation: live: indicator re-enabled -> two extra canvases -> FAIL as expected
+PASS launcher_grid live mutation: live: onLaunch host callback dropped -> status stays READY -> FAIL as expected
+PASS launcher_grid live mutation: live: onLaunch falls back to a real app switch -> FAIL as expected
+PASS launcher_grid live mutation: live: app drops onEditingChange consumer -> no EDIT feedback -> FAIL as expected
+PASS launcher_grid live mutation: live: app drops EDIT status expression -> no EDIT feedback -> FAIL as expected
+PASS launcher_grid live mutation: live: shell notification removed -> app editing stays false -> FAIL as expected
+PASS launcher_grid live mutation: live: edit toggle bypasses setEditing -> no true callback -> FAIL as expected
+PASS launcher_grid live mutation: live: back-out bypasses setEditing -> no false callback -> FAIL as expected
+ALL LAUNCHER GRID HARNESS CASES PASSED

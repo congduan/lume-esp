@@ -1,0 +1,54 @@
+PASS wordle UI strings ASCII-only (r64)
+PASS wordle dictionary 300 unique five-letter ASCII words, all self-green
+PASS wordle 26 five-by-seven glyphs decoded to valid spans
+PASS wordle verdict green/yellow/grey, inputs immutable
+PASS wordle repeated letters: two-pass count, no over-awarding
+PASS wordle new game defaults + KV load + event
+PASS wordle letter input: lowercase, full/space/ignore guards, backspace
+PASS wordle submit guards: short / non-dictionary / duplicate
+PASS wordle win: verdict all green, streak + best persisted
+PASS wordle loss: 6 tries, streak reset, board fully locked
+PASS wordle streak transitions: best is the longest run
+PASS wordle letter marks: highest feedback priority G > Y > X
+PASS wordle KV keys <= 15 chars, storage failures non-fatal
+PASS wordle canvas budget 109440/230400 px, grid in bounds
+PASS wordle r165 wdDayIndex + deterministic daily pick (no random path)
+PASS wordle r165 streak gap: 2+ days since last win breaks the run
+EVIDENCE wordle idle 0 paints/tick; first paint 302 calls on 480x228 canvas
+PASS wordle prelude boot: paint + HUD + 4 keyboard rows / 29 keys
+PASS wordle keyboard injection: onKey -> state, BKSP, SPACE ignored, ENTER submit
+PASS wordle feedback colors reach draw stream after a submitted guess
+PASS wordle NEW button resets board after win
+PASS wordle shell.dispose removes 33 nodes once
+PASS wordle ~60 s smoke (keys=120, submits=39, restarts=14, draws=24372, paints=131)
+PASS wordle ~60 s smoke: bounded state, draws and invalidates in canvas
+PASS wordle r165 live: same clock same word, +1 day new word, DAY #N in HUD
+PASS wordle static: Keyboard registered on lume.ui.shell
+PASS wordle static: app wires onKey/onBackspace/onSubmit into game logic
+PASS wordle static: Keyboard geometry: 40 px key, gap 0, y 300
+PASS wordle static: keyStates consume wdLetterMarks (r153 tint replaces the letter bar)
+PASS wordle static: native nodes carry QWERTY + SPACE/BKSP/ENTER
+PASS wordle static: all UI string literals ASCII-only (r64)
+PASS wordle static: playground sources/wordle.js byte-identical to example
+PASS wordle static: wordle is in the playground manifest
+PASS wordle static: firmware/ runtime/ tools/lume/ identical to 4a2bd29
+PASS wordle static: prelude lume_scripts.c unchanged since dafa1ed
+PASS wordle static: r165 wdDayIndex derives the ordinal from lume.system.time()
+PASS wordle static: r165 wdPick is deterministic day % WORDS.length, no random path
+PASS wordle static: r165 KV_DAY key fits the 15-char NVS cap
+PASS wordle static: r165 HUD renders DAY #N
+PASS wordle mutation: drop shell.Keyboard registration -> FAIL as expected
+PASS wordle mutation: app stops forwarding onKey -> FAIL as expected
+PASS wordle mutation: shrink the keyboard touch target -> FAIL as expected
+PASS wordle mutation: keyStates drop feedback marks -> FAIL as expected
+PASS wordle mutation: a key label drifts from QWERTY -> FAIL as expected
+PASS wordle mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS wordle mutation: playground generated source drifts from the example -> FAIL as expected
+PASS wordle mutation: playground manifest drops wordle -> FAIL as expected
+PASS wordle mutation: a firmware/runtime/CLI file changes after the feat commit -> FAIL as expected
+PASS wordle mutation: the prelude changes vs dafa1ed -> FAIL as expected
+PASS wordle mutation: wdPick falls back to random pick -> FAIL as expected
+PASS wordle mutation: wdDayIndex ignores the wall clock -> FAIL as expected
+PASS wordle mutation: KV_DAY grows past the NVS cap -> FAIL as expected
+PASS wordle mutation: HUD drops the DAY #N label -> FAIL as expected
+ALL WORDLE HARNESS CASES PASSED

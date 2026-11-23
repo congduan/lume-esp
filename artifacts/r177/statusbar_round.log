@@ -1,0 +1,7 @@
+PASS statusbar-round 2.16 square 480 keeps legacy 432 wide at (24,24) - no regression
+PASS statusbar-round 1.8 square 368 clamps the bar to the screen - no overflow
+PASS statusbar-round 1.75C round 466 bar is equal-width with the SafeArea inscribed square
+PASS statusbar-round custom x/y still override derived geometry
+PASS statusbar-round invalid shape throws TypeError (square and round are the only shapes)
+PASS statusbar-round round bar keeps signal getters and clock disposal behaviour
+PASS 6 statusbar-round cases

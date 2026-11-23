@@ -1,0 +1,33 @@
+PASS confirm_sweep: power off opens a Dialog with title, message, plain Cancel and danger button
+PASS confirm_sweep: powerOff binding guard sits inside the danger onPress
+PASS confirm_sweep: power off Dialog guard degrades to an ASCII note
+PASS confirm_sweep: BLE gate opens a Dialog with a plain Cancel and danger start/stop button
+PASS confirm_sweep: BLE binding guard sits inside the danger onPress
+PASS confirm_sweep: BLE Dialog guard degrades to an ASCII note
+PASS confirm_sweep: no two-stage confirm signal survives in any example app
+PASS confirm_sweep: both buttons are free of the confirm flip; BLE title is a static-anchorable expression
+PASS confirm_sweep: all UI string literals ASCII-only in both apps and this harness
+PASS confirm_sweep: firmware/ runtime/ identical to the r164 feat commit
+PASS confirm_sweep mutation: delete the power off Dialog call -> FAIL as expected
+PASS confirm_sweep mutation: give power Cancel an onPress -> FAIL as expected
+PASS confirm_sweep mutation: move powerOff() before the binding guard -> FAIL as expected
+PASS confirm_sweep mutation: delete the BLE Dialog call -> FAIL as expected
+PASS confirm_sweep mutation: give BLE Cancel an onPress -> FAIL as expected
+PASS confirm_sweep mutation: drop the BLE binding guard -> FAIL as expected
+PASS confirm_sweep mutation: resurrect the powerConfirm signal -> FAIL as expected
+PASS confirm_sweep mutation: resurrect the toggleArm signal -> FAIL as expected
+PASS confirm_sweep mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS confirm_sweep mutation: a firmware file changes vs the feat commit -> FAIL as expected
+PASS confirm_sweep live: power Cancel -> 0 powerOff
+PASS confirm_sweep live: power mask -> 0 powerOff
+PASS confirm_sweep live: power danger -> 1 powerOff
+PASS confirm_sweep live: power binding stub -> power off n/a, 0 actions
+PASS confirm_sweep live: power Dialog stub -> ASCII note, 0 actions
+PASS confirm_sweep live: BLE Cancel -> 0 start/stop
+PASS confirm_sweep live: BLE danger idle -> 1 startAdv
+PASS confirm_sweep live: BLE danger advertising -> 1 stopAdv
+PASS confirm_sweep live: BLE binding stub -> BLE n/a, 0 actions
+PASS confirm_sweep live: BLE Dialog stub -> ASCII note, 0 actions
+PASS confirm_sweep live mutation: power Cancel with onPress -> FAIL as expected
+PASS confirm_sweep live mutation: BLE Cancel with onPress -> FAIL as expected
+ALL CONFIRM SWEEP HARNESS CASES PASSED

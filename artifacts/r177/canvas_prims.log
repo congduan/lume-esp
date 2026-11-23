@@ -1,0 +1,2 @@
+PASS prelude emits fillCircle/fillEllipse/ellipse draw records
+PASS Playground prelude snapshot matches firmware source

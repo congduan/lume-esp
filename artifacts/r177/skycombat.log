@@ -1,0 +1,4 @@
+PASS projection, integration, drift re-zero, hit range, wave count
+PASS lerpColor and 70% sky blend at z=2000
+EVIDENCE skycombat combat <=31 scheduled frames/s, over 0 draws in 10 polls, <=240 calls/paint
+PASS real prelude SIM, full redraw after 8 skipped ticks, max 231/240

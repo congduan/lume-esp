@@ -1,0 +1,31 @@
+PASS weather_sntp: SNTP call sits in the refresh path before the HTTPS request
+PASS weather_sntp: wall-clock-unset gate compares time() against the clock threshold
+PASS weather_sntp: clock threshold is 2026-01-01T00:00:00Z (1767225600000 ms)
+PASS weather_sntp: only r===0 continues; failure aborts with DEMO data (no HTTPS burned)
+PASS weather_sntp: skipTls bypass kept: insecure users never enter the sync gate
+PASS weather_sntp: fetchForecast still offers the insecure httpsInsecure escape hatch
+PASS weather_sntp: failed sync is throttled 60 s via _nowMs-domain lastSyncFailMs
+PASS weather_sntp: throttle window constant is 60000 ms
+PASS weather_sntp: failure copy is a Chinese short text carrying the ASCII return code
+PASS weather_sntp: old "TLS 需校时" -2 copy removed, transport reading installed
+PASS weather_sntp: header no longer claims there is no SNTP / set-time API
+PASS weather_sntp: SNTP and https share ONE setTimeout callback
+PASS weather_sntp: playground sources/weather.js byte-identical to examples/weather/app.js
+PASS weather_sntp: weather is in the playground manifest
+PASS weather_sntp: firmware/ runtime/ CLI tooling untouched vs 4a2bd29 (shell.js/types only) (manifest excluded)
+PASS weather_sntp mutation: drop the setTimeNtp call from the refresh path -> FAIL as expected
+PASS weather_sntp mutation: wall clock is never checked before the sync call -> FAIL as expected
+PASS weather_sntp mutation: clock threshold is moved off 2026-01-01 -> FAIL as expected
+PASS weather_sntp mutation: success branch no longer requires r===0 -> FAIL as expected
+PASS weather_sntp mutation: insecure users are forced through the sync gate -> FAIL as expected
+PASS weather_sntp mutation: insecure httpsInsecure escape hatch removed -> FAIL as expected
+PASS weather_sntp mutation: drop the lastSyncFailMs throttle read -> FAIL as expected
+PASS weather_sntp mutation: throttle window changed away from 60 s -> FAIL as expected
+PASS weather_sntp mutation: failure copy loses its ASCII return code -> FAIL as expected
+PASS weather_sntp mutation: restore the old "TLS 需校时" -2 copy -> FAIL as expected
+PASS weather_sntp mutation: restore the old "no SNTP API" header claim -> FAIL as expected
+PASS weather_sntp mutation: split SNTP and https into two setTimeout callbacks -> FAIL as expected
+PASS weather_sntp mutation: playground generated source drifts from the example -> FAIL as expected
+PASS weather_sntp mutation: playground manifest drops weather -> FAIL as expected
+PASS weather_sntp mutation: a firmware file changes vs 1dc7c76 -> FAIL as expected
+ALL WEATHER SNTP HARNESS CASES PASSED

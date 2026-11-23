@@ -1,0 +1,6 @@
+PASS safearea square insets are zero and children stay in full-size view
+PASS safearea round 466 uses a centered inscribed 329 px square
+PASS safearea oversized direct View children warn once without throwing
+PASS safearea fitting direct children do not warn
+PASS safearea invalid shape and size throw TypeError
+PASS 5 safearea cases

@@ -1,0 +1,39 @@
+PASS ota_consumers: OTA helper reads lume.ota.status() locally
+PASS ota_consumers: number return discriminated via typeof === object, ASCII err code
+PASS ota_consumers: four flags + port rendered; .token / [token] never read in either app
+PASS ota_consumers: OTA row is exactly View + Text + Button (3 nodes)
+PASS ota_consumers: row Text shows only status; New-token opens a Dialog
+PASS ota_consumers: setToken sits in the danger Rotate onPress of a Dialog
+PASS ota_consumers: Dialog guard degrades to an ASCII note; no 3 s arm timer remains
+PASS ota_consumers: replacement token is 32 lowercase hex chars from Math.random
+PASS ota_consumers: setToken failure renders ASCII code; success refreshes status
+PASS ota_consumers: 600 ms poll refreshes OTA status
+PASS ota_consumers: header registers Math.random as NOT cryptographically secure
+PASS ota_consumers: dashboard SYSTEM reads status() with typeof === object discrimination
+PASS ota_consumers: dashboard publishes OTA row with 9 separators inside 360 px
+PASS ota_consumers: dashboard OTA line never reads token
+PASS ota_consumers: playground sources/dashboard.js byte-identical to example
+PASS ota_consumers: dashboard is in the playground manifest
+PASS ota_consumers: all UI string literals ASCII-only (r64)
+PASS ota_consumers: firmware/ runtime/ CLI tooling identical to 4a2bd29
+PASS ota_consumers: only known r132 + r133 + r134 + r135 + r136 files differ from 4a2bd29
+PASS ota_consumers mutation: drop the lume.ota.status() read -> FAIL as expected
+PASS ota_consumers mutation: truthy test replaces typeof === object discrimination -> FAIL as expected
+PASS ota_consumers mutation: render the full token straight into the status text -> FAIL as expected
+PASS ota_consumers mutation: drop the OTA row Text -> FAIL as expected
+PASS ota_consumers mutation: New-token button no longer opens a Dialog -> FAIL as expected
+PASS ota_consumers mutation: danger Rotate button downgraded -> FAIL as expected
+PASS ota_consumers mutation: Dialog guard hardened (no ASCII fallback) -> FAIL as expected
+PASS ota_consumers mutation: token length shrinks from 32 to 16 hex chars -> FAIL as expected
+PASS ota_consumers mutation: setToken failure loses its ASCII return code -> FAIL as expected
+PASS ota_consumers mutation: poll no longer refreshes OTA status -> FAIL as expected
+PASS ota_consumers mutation: header drops the non-CSPRNG registration -> FAIL as expected
+PASS ota_consumers mutation: dashboard truthy test replaces typeof === object -> FAIL as expected
+PASS ota_consumers mutation: dashboard separators revert to 8 -> FAIL as expected
+PASS ota_consumers mutation: dashboard renders the full token on canvas -> FAIL as expected
+PASS ota_consumers mutation: playground generated source drifts from the example -> FAIL as expected
+PASS ota_consumers mutation: playground manifest drops dashboard -> FAIL as expected
+PASS ota_consumers mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS ota_consumers mutation: a firmware file changes vs d85e69a -> FAIL as expected
+PASS ota_consumers mutation: an out-of-scope file changes vs d85e69a -> FAIL as expected
+ALL OTA CONSUMERS HARNESS CASES PASSED

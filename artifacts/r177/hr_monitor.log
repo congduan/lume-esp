@@ -1,0 +1,25 @@
+PASS hr_monitor: defensive guard typeof lume.ble !== undefined degrades to ASCII note
+PASS hr_monitor: status() negative-number error discriminated via typeof === object
+PASS hr_monitor: shell.Dialog gate: Cancel is plain, danger calls startAdv/stopAdv
+PASS hr_monitor: both lume.ble.start and lume.ble.stop are wired through the gate
+PASS hr_monitor: HR telemetry throttled by a >=1 s setInterval
+PASS hr_monitor: HR writes only while CONNECTED and subscribed, ASCII fixed width
+PASS hr_monitor: inbound command truncated to <=20 B ASCII
+PASS hr_monitor: status HUD renders state / subscribed / pending / mtu
+PASS hr_monitor: all UI string literals ASCII-only (r64)
+PASS hr_monitor: playground sources/hr_monitor.js byte-identical to example
+PASS hr_monitor: hr_monitor is in the playground manifest
+PASS hr_monitor: firmware/ runtime/ CLI tooling identical to 4a2bd29
+PASS hr_monitor mutation: drop the typeof lume.ble guard -> FAIL as expected
+PASS hr_monitor mutation: truthy test replaces typeof === object discrimination -> FAIL as expected
+PASS hr_monitor mutation: drop the BLE Dialog gate -> FAIL as expected
+PASS hr_monitor mutation: stop() no longer wired through the gate -> FAIL as expected
+PASS hr_monitor mutation: throttle drops from 1000 ms to 100 ms -> FAIL as expected
+PASS hr_monitor mutation: HR write loses its CONNECTED+subscribed precondition -> FAIL as expected
+PASS hr_monitor mutation: inbound command loses its 20-byte truncation -> FAIL as expected
+PASS hr_monitor mutation: HUD drops the mtu row -> FAIL as expected
+PASS hr_monitor mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS hr_monitor mutation: playground generated source drifts from the example -> FAIL as expected
+PASS hr_monitor mutation: playground manifest drops hr_monitor -> FAIL as expected
+PASS hr_monitor mutation: a firmware file changes vs 27541bb -> FAIL as expected
+ALL HR MONITOR HARNESS CASES PASSED

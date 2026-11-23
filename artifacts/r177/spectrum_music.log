@@ -1,0 +1,8 @@
+PASS Hann window finite, coherent sum=511.50
+PASS prelude starts DEMO after microphone error
+PASS native-API stub FFT finite; sine peak bin=32 band=20
+PASS radial index to angle linear
+PASS DEMO audible PCM and visible FFT, draw calls=51
+PASS MIC callback defers analysis and drawing
+BENCH host prelude FFT+window+magnitude+bands 1024: median 2.326 ms/analysis, 5x100
+ALL SPECTRUM MUSIC CASES PASSED

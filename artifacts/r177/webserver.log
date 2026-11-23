@@ -1,0 +1,9 @@
+PASS default closed and token required
+PASS start, URL, and duplicate start
+PASS token gate before JS dispatch
+PASS exact route, welcome fallback, 404
+PASS query decode and response framing
+PASS 8 KiB request body cap and full POST to KV
+PASS stop lifecycle
+PASS built-in welcome and handler exception
+webserver: 8 cases PASS

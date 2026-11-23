@@ -1,0 +1,17 @@
+PASS wordring UI strings ASCII-only (r64 font rule)
+PASS wordring dictionary: 743 unique five-letter ASCII words, all self-green
+PASS wordring glyphs: 28 five-by-seven glyphs decoded to valid spans
+PASS wordring verdict: green/yellow/grey + input immutability
+PASS wordring duplicate letters: two-pass count, no over-awarding
+PASS wordring new game + rotation: wrap 0..25 both directions
+PASS wordring confirm/backspace: lowercase slots, full guard
+PASS wordring submit guards: short + duplicate rejected, no attempt spent
+PASS wordring win: verdict all green, streak + best persisted
+PASS wordring loss: 6 tries, streak reset, board fully locked
+PASS wordring best: fewer overwrites / worse and equal keep
+PASS wordring KV: keys <= 15 chars, storage failures non-fatal
+PASS wordring canvas budget: 206400/230400 px, grid and ring in bounds
+PASS wordring prelude boot: full paint, HUD attrs, span draw stream
+PASS wordring tap pipeline: rotate/confirm, DEL/ENTER/NEW, KV write
+PASS wordring ~60 s smoke (taps=120, submits=39, restarts=14, draws=92329, paints=187)
+ALL tests/wordring.js PASSED
