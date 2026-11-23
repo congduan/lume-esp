@@ -65,6 +65,12 @@ Selected adjacent host harness regression (`artifacts/r172/host-regression.txt`)
 
 Playwright screenshots: [bookshelf](../artifacts/r172/shelf.png), [reading page](../artifacts/r172/reading.png), [controls](../artifacts/r172/controls.png). The browser error box was empty in all three states. Visual inspection finds the caption at 28 px, a dark scene with high contrast text, one prominent story choice, and four large controls. The requested independent vision review by the main controller remains pending.
 
+## Independent vision review (main controller, r175 cadence round)
+
+The three screenshots were re-reviewed by an independent vision model. Verdict: **all three PASS** — no truncation, overflow, misalignment, tofu glyphs, overlap or pixel defects on any of the three pages; contrast is high on all text; the four shelf cards and the four reading controls are evenly sized and aligned.
+
+The one finding — the 2nd–4th shelf cards render as blank cards — was traced to app code and is **by design, not a rendering bug**: `examples/storybook/app.js:156` creates exactly 4 fixed shelf slots and `sbRefreshShelf()` (line 68) fills only `sbBooks.length` of them; in the browser-stub environment the TF-card listing throws at line 62 so the library degrades to the single built-in sample book, leaving slots 2–4 intentionally empty (`''` titles). On device with TF content all four slots fill. No app change required.
+
 `tools/playground/verify.mjs` remains red in the pre-existing complete-catalog check (`artifacts/r172/playground-verify.txt`). Before this change, the build had 66 sources but `page.js` exposed only 48 examples and `index.html` omitted their scripts. This change makes those counts 67 and 49 respectively; the verifier reports `expected 67 examples, got 49`. Exposing all missing entries within this slice would require fixing unrelated app/browser stubs (the first is `adc_meter`), so r172 leaves the existing gap untouched. StoryBook's own browser entry loads and renders without errors.
 
 ## Deferred board acceptance
