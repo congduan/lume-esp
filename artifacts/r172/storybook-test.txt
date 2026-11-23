@@ -1,0 +1,18 @@
+PASS pack: sorted pages, optional meta and audio-only page
+PASS mutation page order
+PASS mutation optional meta
+PASS MP3 EOF advances only in automatic mode and within bounds
+PASS mutation EOF gate
+PASS mutation auto gate
+PASS mutation last page bound
+PASS hotspot circle inside, edge, outside
+PASS mutation hotspot boundary
+PASS mutation hotspot outside
+PASS KV continuation roundtrip and rejection of stale page
+PASS mutation KV page value
+PASS missing TF directory activates labelled three-page sample
+PASS mutation empty-library fallback
+PASS host prelude loads the actual app with a three-page sample
+PASS live sample ticks advance all three pages and stop at THE END
+PASS playback failure switches the live reader to MUTE
+PASS mutation sample has three pages
