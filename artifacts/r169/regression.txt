@@ -1,0 +1,101 @@
+PASS tests/abc123.js                          | ALL ABC123 HARNESS CASES PASSED
+PASS tests/adc_meter.js                       | PASS adc_meter harness: all live, static and mutation checks green
+PASS tests/ai.js                              | 
+PASS tests/alloc_inject.js                    | PASS alloc_inject: countdown OOM -> deterministic failure, counter consistent, no crash
+PASS tests/animation_mapping.js               | PASS color animation rejected
+PASS tests/apps.js                            | PASS 15 multi-app cases
+PASS tests/archive_view.js                    | PASS archive_view harness: all live, static and mutation checks green
+PASS tests/async_jobs.js                      | 
+PASS tests/aurora_clock.js                    | ALL AURORA CLOCK CASES PASSED
+PASS tests/ble.js                             | PASS failed start() is surfaced without starting the poll timer
+PASS tests/board_abi.js                       | PASS board_abi.c compiled and ran with exit 0
+PASS tests/canvas_mapping.js                  | PASS sprite slot redefinition re-uploads (animation frame swap)
+PASS tests/canvas_prims.js                    | PASS Playground prelude snapshot matches firmware source
+PASS tests/clickwheel.js                      | PASS clickwheel angle, taps, sparse trajectory, independent mounts and dispose
+PASS tests/clock_round.js                     | PASS clock_round pure angles, prelude, 71 calls/frame, 60-second tick smoke
+PASS tests/color_demo.js                      | ALL COLOR_DEMO CASES PASSED
+PASS tests/colorpicker.js                     | ALL COLORPICKER CASES PASSED
+PASS tests/compass.js                         | PASS compass host harness: 10/10 assertions
+PASS tests/compress.js                        | ALL OK
+PASS tests/confirm_sweep.js                   | ALL CONFIRM SWEEP HARNESS CASES PASSED
+PASS tests/control_center.js                  | ALL CONTROL CENTER HARNESS CASES PASSED
+PASS tests/controls_demo.js                   | ALL CONTROLS DEMO HARNESS CASES PASSED
+PASS tests/create_failure.js                  | PASS: Canvas failure latches dead id and native attrs become no-op
+PASS tests/crypto_check.js                    | PASS crypto_check harness: all live, static and mutation checks green
+PASS tests/crypto.js                          | ALL OK
+PASS tests/dashboard_round.js                 | PASS dashboard_round relative heading and linear level mapping
+PASS tests/decode.js                          | PASS error codes -1/-2 (type, dimensions, 480 cap, corrupt input)
+PASS tests/fft.js                             | PASS error codes for type, length, non-power-of-two, limit, overlap
+PASS tests/files_dialog.js                    | PASS files after: DEL -> Dialog -> Delete -> remove -> Toast
+PASS tests/fishtank.js                        | ALL FISHTANK HARNESS CASES PASSED
+PASS tests/flapdot.js                         | ALL flapdot harness checks passed
+PASS tests/frogger.js                         | ALL FROGGER HARNESS CASES PASSED
+PASS tests/game_of_life.js                    | PASS life PATTERN cycles GLIDER -> LWSS -> PULSAR(48) -> RANDOM
+PASS tests/games.js                           | PASS tetris canvas, tap rotation, pan follow, soft and hard drop, line log
+PASS tests/gateway.js                         | ALL GATEWAY HARNESS CASES PASSED (23 cases)
+PASS tests/gateway_upstream.js                | ALL GATEWAY UPSTREAM CASES PASSED (37 cases)
+PASS tests/gesture_queue.js                   | PASS: MOVE pressure reserves capacity and UP reaches queue tail
+PASS tests/gestures.js                        | PASS 20 r21 gesture cases
+PASS tests/golf.js                            | ALL golf harness checks passed
+PASS tests/gravity_ball.js                    | PASS gravity_ball the canvas holds exactly one ball and no ghost
+PASS tests/hr_monitor.js                      | ALL HR MONITOR HARNESS CASES PASSED
+PASS tests/image_mapping.js                   | PASS embedded PNG 1x1 decodes to exact opaque red RGBA bytes
+PASS tests/imgscale.js                        | PASS error codes -1/-2 and identical-view in-place allowance
+PASS tests/img_view.js                        | PASS img_view harness: all live, static and mutation checks green
+PASS tests/invaders.js                        | ALL INVADERS HARNESS CASES PASSED
+PASS tests/ipod_music.js                      | PASS ipod_music list, select, play demo, scrub, pause, next, previous, menu
+PASS tests/keyboard_demo.js                   | ALL KEYBOARD DEMO HARNESS CASES PASSED
+PASS tests/keyboard_states.js                 | ALL KEYBOARD STATES HARNESS CASES PASSED
+PASS tests/launcher_grid.js                   | ALL LAUNCHER GRID HARNESS CASES PASSED
+PASS tests/lcd_dual.js                        | ALL LCD_DUAL HARNESS CASES PASSED
+PASS tests/lifecycle.js                       | PASS replacement starts fresh app without old callbacks
+PASS tests/list_virtualization.js             | PASS 10 list virtualization cases
+PASS tests/memory.js                          | ALL tests/memory.js PASS
+PASS tests/minesweeper.js                     | ALL tests/minesweeper.js PASS
+PASS tests/minigolf.js                        | ALL MINIGOLF HARNESS CASES PASSED (12 cases)
+PASS tests/music_player.js                    | 
+PASS tests/ota_auth.js                        | 
+PASS tests/ota_consumers.js                   | ALL OTA CONSUMERS HARNESS CASES PASSED
+PASS tests/particles.js                       | ALL PARTICLES HARNESS CASES PASSED
+PASS tests/pet.js                             | PASS 12 pet host cases
+PASS tests/piano.js                           | PASS piano host harness: 10/10 assertions
+PASS tests/plasma.js                          | ALL PLASMA HARNESS CASES PASSED
+PASS tests/playground_manifest.js             | PASS playground manifest 69 apps match generated sources and examples; removal/addition mutation caught
+PASS tests/power.js                           | PASS shutdown clears wake callbacks
+PASS tests/raycast_game.js                    | PASS four sound heads remain within 48 ms stereo PCM
+PASS tests/reboot_consumers.js                | ALL REBOOT CONSUMERS HARNESS CASES PASSED
+PASS tests/reload_staging.js                  | PASS: successful post coalesces replacement and preserves latest frame
+PASS tests/repl_protocol.js                   | ALL REPL PROTOCOL CASES PASSED
+PASS tests/safearea.js                        | PASS 5 safearea cases
+PASS tests/scroller.js                        | ALL SCROLLER HARNESS CASES PASSED
+PASS tests/sdcard.js                          | ALL SD HARNESS CASES PASSED
+PASS tests/sd_files.js                        | ALL SD FILES HARNESS CASES PASSED
+PASS tests/sd_gallery.js                      | ALL SD GALLERY HARNESS CASES PASSED
+PASS tests/settings_dialog.js                 | ALL SETTINGS DIALOG HARNESS CASES PASSED
+PASS tests/shell_components.js                | PASS 18 shell component cases
+PASS tests/skycombat.js                       | PASS real prelude SIM, full redraw after 8 skipped ticks, max 231/240
+PASS tests/skyfire.js                         | ALL SKYFIRE HARNESS CASES PASSED
+PASS tests/sntp_consumers2.js                 | ALL SNTP CONSUMERS2 HARNESS CASES PASSED
+PASS tests/sntp_consumers.js                  | ALL SNTP CONSUMER HARNESS CASES PASSED
+PASS tests/sntp.js                            | ALL SNTP HARNESS CASES PASSED
+PASS tests/sokoban.js                         | ALL SOKOBAN HARNESS CASES PASSED
+PASS tests/spectrum.js                        | PASS spectrum stopStream clears callback and capture
+PASS tests/spectrum_music.js                  | ALL SPECTRUM MUSIC CASES PASSED
+PASS tests/statusbar_round.js                 | PASS 6 statusbar-round cases
+PASS tests/storybook.js                       | PASS mutation sample has three pages
+PASS tests/style_mapping.js                   | PASS embedded demo and refreshed counter both register buttons
+PASS tests/tetris_dirty.js                    | ALL PASS: tetris dirty-rect coverage invariant holds
+PASS tests/text_payload.js                    | PASS: external text payload has sender rollback and receiver release paths
+PASS tests/theme_mapping.js                   | PASS demo buttons recolor card, controls and full-screen root
+PASS tests/timer_kit.js                       | ALL TIMER KIT HARNESS CASES PASSED
+PASS tests/va_ws.js                           | ALL VA WS HARNESS CASES PASSED (13 cases)
+PASS tests/vec_demo.js                        | PASS vec_demo harness: all live, known-answer, static and mutation checks green
+PASS tests/voice_assistant.js                 | ALL VOICE ASSISTANT HARNESS CASES PASSED
+PASS tests/watchface.js                       | PASS watchface progress clamps 0..100
+PASS tests/weather.js                         | PASS 13 weather cases (10 logic + 3 UI)
+PASS tests/weather_sntp.js                    | ALL WEATHER SNTP HARNESS CASES PASSED
+PASS tests/webserver.js                       | PASS built-in welcome and handler exception
+PASS tests/wordle.js                          | ALL WORDLE HARNESS CASES PASSED
+PASS tests/wordring.js                        | ALL tests/wordring.js PASSED
+PASS tests/ws.js                              | 
+=== SUMMARY: 100 tests, 0 FAIL ===

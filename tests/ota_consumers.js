@@ -503,6 +503,20 @@ const ALLOWED = [
   'tests/file_emu.py',
   'tests/file_protocol.c',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
+  // r169: playground single-source alignment + registered browser-only apps.
+  // No firmware / runtime/ / tools/lume change; the adc stub is in the browser
+  // runtime at website/playground/runtime.js (already allowlisted above).
+  'website/playground/apps/mochi.js',
+  'website/playground/sources/mochi.js',
+  'website/playground/apps/shell_demo.js',
+  'website/playground/sources/shell_demo.js',
+  'docs/r169-report.md',
+  'artifacts/r169/baseline-verify.txt',
+  'artifacts/r169/verify.txt',
+  'artifacts/r169/build.txt',
+  'artifacts/r169/regression.txt',
+  'artifacts/r169/guard.txt',
+  'artifacts/r169/website.txt',
 ];
 
 // --- checks -----------------------------------------------------------------

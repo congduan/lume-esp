@@ -199,6 +199,23 @@
   const installedApps = { ...(options.apps || {}) };
   let currentApp = options.currentApp || '';
   let bootPin = options.bootPin || '';
+  // r169: there is no ADC peripheral in the browser. Keep the lume.adc shape
+  // and return -3 (internal/unsupported) instead of faking a voltage reading;
+  // pass options.adc to inject a host implementation. adc_meter renders the
+  // negative code as ASCII "err -3" rather than throwing on undefined.
+  function adcStub() {
+    const unsupported = name => () => {
+      options.onWarn?.(`lume.adc.${name} unsupported in browser (no ADC); returning -3`);
+      return -3;
+    };
+    return {
+      config: unsupported('config'),
+      readRaw: unsupported('readRaw'),
+      readMv: unsupported('readMv'),
+      free: () => 0,
+      ...(options.adc || {}),
+    };
+  }
   // r91: mbedTLS does not exist in the browser. Keep the lume.crypto shape
   // and return -3 (internal/unsupported) instead of faking cryptographic
   // results; pass options.crypto to inject a host implementation.
@@ -231,6 +248,7 @@
     fft: fftStub(),
     imgscale: imgscaleStub(),
     math: mathStub(options),
+    adc: adcStub(),
     crypto: cryptoStub(),
     compress: compressStub(),
     createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
