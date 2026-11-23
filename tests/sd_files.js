@@ -197,7 +197,7 @@ must('inject CJK UI copy',
   s => s.replace("notify('Cannot delete SD entry');", "notify('无法删除 SD entry');"),
   'all app string literals (UI copy) ASCII-only (r64)', app);
 must('drop image_gallery from playground manifest',
-  s => s.replace("'image_gallery', 'files', 'adc_meter', 'crypto_check', 'archive_view', 'img_view', 'vec_demo', 'settings', 'hr_monitor', 'keyboard_demo', 'wordle', 'controls_demo', 'timer_kit', 'control_center', 'launcher_grid', 'minigolf', 'ipod_music', 'color_demo'];", "'files'];"),
+  s => s.replace("'image_gallery', 'files',", "'files',"),
   'playground manifest lists image_gallery and files', manifest);
 
 console.log('ALL SD FILES HARNESS CASES PASSED');

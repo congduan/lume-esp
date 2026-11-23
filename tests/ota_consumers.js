@@ -385,6 +385,13 @@ const ALLOWED = [
   'artifacts/r156/website-check.txt',
   'website/playground/index.html',
   'website/playground/page.js',
+  // r168: skycombat visual overhaul evidence + 4-app registration evidence.
+  'artifacts/r168/browser-verify.txt',
+  'artifacts/r168/cli-tests.txt',
+  'artifacts/r168/host-summary.txt',
+  'artifacts/r168/lume-check.json',
+  'artifacts/r168/playground-build.txt',
+  'artifacts/r168/website-check.txt',
   'artifacts/r152/regression-summary.txt',  // r156: skycombat 3D dogfight app + harness + evidence.
   'examples/skycombat/app.js',
   'tests/skycombat.js',
