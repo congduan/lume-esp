@@ -429,6 +429,14 @@ const ALLOWED = [
   // allChanged allowlist turns red once the test commit lands. No firmware /
   // runtime / tools/lume change in this round.
   'tests/confirm_sweep.js',
+  // r167: color_demo joins the playground manifest (61 -> 62 apps). The two
+  // new generated artifacts are added BEFORE the feat commit lands because
+  // `git diff` does not see untracked files; without them the allChanged
+  // allowlist turns red once the feat commit lands. sources.js and the
+  // regenerated apps/wordle.js are already allowlisted above. No firmware /
+  // runtime / tools/lume change; no guard scope includes tools/playground/.
+  'website/playground/apps/color_demo.js',
+  'website/playground/sources/color_demo.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -491,7 +499,7 @@ const checks = [
     s === dashboard]],
 
   ['dashboard is in the playground manifest', [playgroundApps,
-    list => list.length === 61 && list.includes('dashboard')]],
+    list => list.length === 62 && list.includes('dashboard')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],

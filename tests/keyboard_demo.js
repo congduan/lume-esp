@@ -131,7 +131,7 @@ const checks = [
     s === app]],
 
   ['keyboard_demo is in the 57-app playground manifest', [apps,
-    list => list.length === 61 && list.includes('keyboard_demo')]],
+    list => list.length === 62 && list.includes('keyboard_demo')]],
 
   ['firmware/ and runtime/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
