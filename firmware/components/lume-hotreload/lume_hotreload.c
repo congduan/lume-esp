@@ -531,7 +531,8 @@ static void handle_file_cmd(reply_sink_t sink, const lume_cmd_t *cmd)
     while ((ent = readdir(dir))) {
         if (!strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")) continue;
         char child[sizeof(path) + 256];
-        int cn = snprintf(child, sizeof(child), "%s/%s", path, ent->d_name);
+        int cn = snprintf(child, sizeof(child), "%s%s%s", path,
+                          path[strlen(path) - 1] == '/' ? "" : "/", ent->d_name);
         struct stat st;
         if (cn <= 0 || (size_t)cn >= sizeof(child) || stat(child, &st) != 0) { ok = false; break; }
         int head = snprintf(json + pos, 16384 - pos, "%s{\"name\":\"", count ? "," : "");
