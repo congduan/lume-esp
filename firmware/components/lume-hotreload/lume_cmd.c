@@ -42,6 +42,7 @@ static bool file_path_valid(const char *p, size_t n, bool directory)
     for (size_t i = 0; i <= n; i++) {
         if (i == n || p[i] == '/') {
             size_t seg = i - start;
+            if (directory && i == n && seg == 0) return true;
             if (!seg || (seg == 1 && p[start] == '.') ||
                 (seg == 2 && p[start] == '.' && p[start + 1] == '.')) return false;
             start = i + 1;
