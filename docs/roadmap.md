@@ -941,7 +941,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 ### 幼儿教育（r70 起的新分组，非复刻线）
 
-与上面的社区复刻候选**无关**：教育品类自开叙事行，不放在 Retro classics / 复刻表里。已落地 `examples/abc123/`（`docs/r70-abc-report.md`、`docs/r73-abc-svg-report.md`）：36 张卡（A-Z + 0-9），顺序 / 随机 / 小写 / 竖排 Aa 对照四模式，全屏单手势点屏翻页 + 顶部 HUD 切模式，点击弹跳反馈，数字卡按值画实心圆点、A-E 配极简 Canvas 图标。Text 字号仍被 bridge 钉死在 14/20/32 三档；r73 将大字形改为 DejaVu Sans Bold 轮廓生成的 mini-SVG，由 Image 节点渲染。esp32sim 首卡解码明显较慢，真机翻页延迟、点屏/色彩/触感待接板验收。
+与上面的社区复刻候选**无关**：教育品类自开叙事行，不放在 Retro classics / 复刻表里。已落地 `examples/abc123/`（`docs/r70-abc-report.md`、`docs/r73-abc-svg-report.md`）：36 张卡（A-Z + 0-9），顺序 / 随机 / 小写 / 竖排 Aa 对照四模式，全屏单手势点屏翻页 + 顶部 HUD 切模式，点击弹跳反馈；早期版本用 Canvas 画数字圆点和 A-E 图标，当前已移除该底部图形并改为静态黑底。Text 字号仍被 bridge 钉死在 14/20/32 三档；r73 将大字形改为 DejaVu Sans Bold 轮廓生成的 mini-SVG，由 Image 节点渲染。esp32sim 首卡解码明显较慢，真机翻页延迟、点屏/色彩/触感待接板验收。
 
 ### P2 — 有依赖缺口或需固件刀，如实标注后缓做
 

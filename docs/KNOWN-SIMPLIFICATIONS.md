@@ -88,8 +88,8 @@
 ## r73 / abc123 SVG 字形（host + esp32sim，真机待验）
 
 - `tools/font2svg/generate.py` 用 fontTools 从 DejaVu Sans Bold TTF 一次性生成 62 个静态 SVG 和 26 个竖排 Aa 组合，路径指令均在 r58 的 M/L/H/V/C/S/Q/T/A/Z 子集内。生成物采用 100×100 viewBox、固定白色 fill；mini-SVG 不支持运行时改色或 `transform`，换色须再生成 SVG。静态轮廓没有笔顺/描红动画；弹跳仅作用于整个 Image 节点。
-- 数字字形也改为字体轮廓；数字下方的实心圆点和 A-E 涂鸦是独立教学元素，继续用一个 Canvas。四模式为顺序、随机、小写、竖排 Aa；数字在小写和 Aa 模式仍显示同一个数字。
-- 字形 Image 声明 320×320 像素，r58 会按此尺寸光栅化。esp32sim 首卡约在注入后 5.2 秒模拟时间完成 app eval，翻页可能显著卡顿；340² 试跑更慢（约 5.8 秒）。主机模拟器和 playground 仍以 Image 占位符显示，不能拿其截图验 SVG 画质。真机 SVG 解码耗时、翻页触感、PSRAM 峰值和 AMOLED 外观待接板验收。
+- 数字字形也改为字体轮廓；当前版本改为静态黑底，顶部 MODE 文案和底部识字文案保持原有上下间距，移除数字下方实心圆点和 A-E 涂鸦所在的底部 Canvas。四模式为顺序、随机、小写、竖排 Aa；数字在小写和 Aa 模式仍显示同一个数字，底部文案仍保留数字点数的文字提示（不再是图形）。
+- 字形 Image 声明 320×320 像素，r58 会按此尺寸光栅化。r58 的逐像素逐边采样在 MCU 软浮点上过慢（每个字形数十秒），现已改为 fill-only 闭合路径的扫描线 parity 填充：每个子扫描行只求一次边交点，再按区间覆盖 2×2 子采样；带 stroke 的通用路径仍走原采样器。macOS clang `-O2` 实测 320² 字形 A/B/O/8 由 21.7/28.8/36.3/100.0 ms 降到 0.4/0.5/0.3/0.6 ms；优化前后 8 个字形 + 9 个单测场景的 alpha 哈希逐项一致，`tests/lume_svg_test.c`、`tests/abc123.js`、`npm test --prefix tools/lume` 全绿。主机模拟器和 playground 仍以 Image 占位符显示，不能拿其截图验 SVG 画质。真机 SVG 解码耗时、翻页触感、PSRAM 峰值和 AMOLED 外观待接板验收。
 
 ## r70 / abc123 幼儿字母数字卡（host + browser + esp32sim 证据，无真机验收）
 
@@ -865,6 +865,7 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 
 - **问题**：真机上整屏变色（dark/light 主题切换）能看到一条刷新线从上往下扫。r28 实测该次重绘 `render 39 ms + flush 29 ms ≈ 68 ms`。
 - **对照 esp-brookesia（同板 `waveshare/esp32_s3_touch_amoled_2_16`，源码 git clone 逐行读）**：① SPI/QSPI 总线分支**不设 tear_avoid_mode**（`display_source.cpp:433-452` 只在 MIPI/RGB 分支赋值），即它也没有 TE 防撕裂；② `buffer_height` 默认 **20 行**（`brookesia_gui_lvgl/include/brookesia/gui_lvgl/macro_configs.h:104`），Task 节拍 tick 5 ms + 自适应 delay 10–100 ms；③ 板级 `sdkconfig.defaults.board:15` 为 **CPU 240 MHz**；④ 用 `ESP_LV_ADAPTER_DISPLAY_SPI_WITHOUT_PSRAM_DEFAULT_CONFIG` 创建显示。`esp_lv_adapter` 是私有组件（不在仓库、公开组件仓库亦 `ComponentNotFoundError`），其 buffer 究竟落在 SRAM 还是 PSRAM**无法源码级确认**，只能从宏名推断为内部 SRAM。结论：Brookesia 不是"消除了扫过"，而是条带更细（24 条 × ~1.2 ms）+ 渲染更快，观感更接近整体刷新。
+- **2026-11-24 上游复核（BSP 2.0.1 / adapter 0.6.0-beta，替代上面旧快照的不可确认项）**：① Waveshare 官方 2.16 引脚表**没有 `LCD_TE`**，`GPIO13` 是 `RTC_INT`（PCF85063ATL）；1.8 / 2.06 板的 `GPIO13` 才是 `LCD_TE`，说明 2.16 未在板级引出 CO5300 TE。② BSP 2.0.1 `bsp_display_start()` 明确 `.tear_avoid_mode = ESP_LV_ADAPTER_TEAR_AVOID_MODE_NONE`，profile 为 `ESP_LV_ADAPTER_PANEL_IF_OTHER` + `buffer_height=50` + `use_psram=true` + 双缓冲，`bsp_display_cfg_t` 也没有 `te_sync` 字段。③ `esp_lvgl_adapter` 0.6.0-beta 已有 `ESP_LV_ADAPTER_TEAR_AVOID_MODE_TE_SYNC` 与 `ESP_LV_ADAPTER_DISPLAY_SPI_WITH_PSRAM_TE_DEFAULT_CONFIG(..., te_gpio, ...)`，软件侧支持 SPI/QSPI TE 同步，但板上无 TE 信号可接。④ 结论：在不改板（飞线/改原理图把 CO5300 TE 引到某个空闲 GPIO）的前提下，2.16 无法启用 vsync 防撕裂；Brookesia 同样没有启用。
 - **尝试 A（失败，已回退）**：把 draw buffer 改成整屏 480 行 + `LV_DISPLAY_RENDER_MODE_FULL`，期望一帧一次提交。真机日志：
   ```
   I (2267) lume-display: CO5300 QSPI + LVGL display up (480x480 RGB565, 2x460800 B PSRAM draw buf)
@@ -882,7 +883,8 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
   I (2679) lume-engine: app eval ok; entering event loop
   ```
   `E (` 行 **0 条**、无 `QSPI flush failed`；`lume deploy examples/counter` 正常（`Deployed 1040 bytes`）。内部 RAM 代价为 2×19200 B。
-- **仍未验收/未量化**：① 观感上"扫过"是否消除——需要人眼确认，且**理论上仍会存在**：总线时间由 QSPI 40 MHz 决定（≈29 ms/整屏），无法靠缓冲切法消除；② 新配置的 render/flush 数字未复测（本轮结束时 perf monitor 已关闭），r28 的 39/29 ms 是老配置读数；③ 240 MHz 对功耗/发热的影响未测；④ 彻底消除需要 TE 引脚 + vsync 同步，尚未确认该板 TE 是否引到可用 GPIO。
+- **仍未验收/未量化**：① 观感上"扫过"是否消除——需要人眼确认，且**理论上仍会存在**：总线时间由 QSPI 40 MHz 决定（≈29 ms/整屏），无法靠缓冲切法消除；② 新配置的 render/flush 数字未复测（本轮结束时 perf monitor 已关闭），r28 的 39/29 ms 是老配置读数；③ 240 MHz 对功耗/发热的影响未测；④ 2026-11-24 已确认：官方 2.16 引脚表无 `LCD_TE`（`GPIO13=RTC_INT`），Brookesia BSP 2.0.1 也显式 `TEAR_AVOID_MODE_NONE`。adapter 0.6.0-beta 虽支持 SPI/QSPI `TE_SYNC`，但板上无 TE 信号可接，**不改板无法引入 vsync**；只能通过减少脏区/动画降低观感，彻底消除需要硬件引出 TE。
+- **2026-11-24 低风险刷新对齐（采用）**：`firmware/components/lvgl/lv_conf.h` 增加 `LV_DEF_REFR_PERIOD 15`（LVGL 默认 33）与 `LV_OBJ_STYLE_CACHE 1`；draw buffer 仍保持 20 行内部 SRAM DMA 双缓冲，不改 50 行 PSRAM、不改 `LV_USE_OS`。`idf.py -B build-local build` 通过（`lume.bin` `0x2e6a90`），烧录三件套 hash verified；`abc123` 重新部署成功，截图确认黑底、字形与上下文案正常。线条观感是否减轻仍需人眼在真机确认；无 TE 只能减轻，不能根除。
 - **roadmap 不动**：`docs/roadmap.md` 未修改。
 
 ## r30 / 多 app 存储 + 单 app 存活
@@ -1169,7 +1171,7 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - SVG intrinsic dimensions use positive pixel `width`/`height`, falling back per missing dimension to `viewBox` width/height. Percentages and other units are unsupported; an SVG without both intrinsic dimensions is rejected with `-2`. SVG may report intrinsic dimensions above 480 because its raster is separately limited to 480×480; bitmap PNG/JPEG size rejection remains unchanged.
 - SVG rasterization supports solid fill/stroke/opacity and the documented geometry/path subset. `transform` is unsupported. Gradients, filters and text are unsupported. The bitmap target is at most 480×480 with a centered `viewBox` meet mapping.
 - Host harness, firmware build and emulator checks do not constitute board acceptance. Display appearance, touch feel, memory pressure under real workload and transfer behavior remain for on-device verification.
-- The fill and stroke sampler visits every flattened edge for each covered pixel sample. A 100×100 circle icon did not finish app evaluation within the emulator's 8-second simulated window; the checked SVG smoke example uses an 80×80 rectangle and path. Latency for complex SVGs needs board profiling before treating them as interactive assets.
+- The original fill and stroke sampler visited every flattened edge for each covered pixel sample; a 100×100 circle icon did not finish app evaluation within the emulator's 8-second simulated window. Fill-only closed paths now use a scanline parity rasterizer with unchanged 2×2 AA coverage; stroked paths still use the per-sample edge scan. Latency for complex/stroked SVGs still needs board profiling before treating them as interactive assets.
 
 ## r65 / 桌面宠物（host + esp32sim 证据，无真机验收）
 
@@ -2508,3 +2510,9 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **wordle.js 再生成**：重建后 `apps/wordle.js` 出现差异（esbuild 压缩变量名重命名，r165 版本与当前工具链输出功能等价）；该生成物已在 ALLOWED，且无 harness 锁定 `apps/` bundle 字节（wordle harness 只锁 `sources/wordle.js` 字节一致）。连同 `sources.js` 随 feat commit 提交，以保证 `npm run build:playground` 后树干净（幂等）。
 - **文本标签不动**：4 处「61-app playground manifest」标签（`launcher_grid.js:12/165/203`、`settings_dialog.js:129`）按 r161 先例刻意保留旧数字，只同步 17 处数值断言到 62；mutation 查找键语义不受影响。
 - **验证与收尾口径**：build:playground 62 apps / color_demo 24207 bytes，重建后 `git status` 空；`colorpicker.js` / `color_demo.js` / `ota_consumers.js` / `sd_files.js` 全绿；全量 `tests/*.js` 0 FAIL（98 harness，未触发 wordle 存量 flake）；`npm test` 50/0/0（基线 skipped 0，简报 skipped 1 为过期口径）；`check_website.py` 四类 none；`lume check` color_demo / counter `--no-emu` 均 `RESULT: PASS`；`git diff 2b9a72f HEAD -- firmware/ runtime/` 与工作树版均空，未跑 `idf.py build`；ASCII `grep -Pn '[^\x00-\x7F]' tools/playground/build.mjs` → NONE。未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；commits 拆 feat `3e54f4c` / test `fe57938` / docs，未推送；未跑 codex review（主控轮负责）；最终日志只留 `/tmp/r167-final-verify.txt`，磁盘 `/` 紧张未留多余 build 产物。
+
+## r168 / fishtank 卡顿收口（纯 app 层）
+
+- **根因与改法**：r90 版每 33 ms 做一次 480×480 全幅重绘（119–135 条 Canvas 命令、约 230,400 像素发布/帧），与 `gravity_ball` 记录的全幅 20 fps 压垮 UI 队列同一类问题。本刀保留 33 ms 物理步长与转向/觅食/摆尾语义，改为每 2 步（15 Hz）才发一次 `tankFrame.set()`；工作缓冲区仍整帧重画，但 `onDraw` 返回 1..7 个脏矩形，只发布鱼（旧位置∪新位置）与鱼食的包围盒。槽位固定为 6 条鱼 + 1 个鱼食盒（无 O(n²) 归并），触屏投喂立即强制刷新。`examples/fishtank/app.js` 与 `tests/fishtank.js` 是仅有的源码改动。
+- **量化（host）**：`tests/fishtank.js` 全绿，新增断言首帧整屏、后续 90 tick 恰好 45 次绘制、每次 ≤8 个合法且非全屏脏矩形、tap 立即重绘、水草每 8 tick 摆动一次（90 tick 内 11 帧）；最大绘制调用仍为 135（<250）。`/tmp` 基准：JS + 消息生成由 `245.8 us/tick` 降到 `161.4 us/tick`（−34%）；发布像素由整屏 230,400 px/帧降到 `30,234 px/帧`（13.1%，5.3 个脏矩形/帧，含水草摆动帧），面板写带宽约为原来的 1/7。`lume check examples/fishtank --no-emu` PASS；`npm test --prefix tools/lume` 52/52。
+- **视觉取舍**：水草保留摆动但降到每 8 个物理 tick（约 267 ms / 每 4 个绘制帧）换一次相位，相位变化帧额外发布一个 424×134 的水草带脏盒；比原本每 30 Hz 全幅刷新便宜得多。光斑仍静态（摆动会把大片水域反复弄脏）；气泡停止上浮（原先 10 个气泡的并集脏盒几乎横跨整屏，慢速漂移不值这个刷新量）。鱼、鱼食、投喂、摆尾、弹跳仍按原语义运动。macOS 无 `idf.py build` / 真机，15 Hz 实际观感、水草 3.75 Hz 摆动是否够自然、AMOLED 色彩与触摸手感 deferred。
