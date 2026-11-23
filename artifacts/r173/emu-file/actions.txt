@@ -1,0 +1,8 @@
+2.5 serial-file /tmp/lume-r173-wt/artifacts/r173/emu-file/cmd-0.frame
+3.2 serial-file /tmp/lume-r173-wt/artifacts/r173/emu-file/cmd-1.frame
+3.9 serial-file /tmp/lume-r173-wt/artifacts/r173/emu-file/cmd-2.frame
+4.6 serial-file /tmp/lume-r173-wt/artifacts/r173/emu-file/cmd-3.frame
+5.3 serial-file /tmp/lume-r173-wt/artifacts/r173/emu-file/cmd-4.frame
+6.0 serial-file /tmp/lume-r173-wt/artifacts/r173/emu-file/cmd-5.frame
+6.7 serial-file /tmp/lume-r173-wt/artifacts/r173/emu-file/cmd-6.frame
+7.4 serial-file /tmp/lume-r173-wt/artifacts/r173/emu-file/cmd-7.frame

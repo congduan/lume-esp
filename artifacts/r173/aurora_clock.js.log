@@ -1,0 +1,5 @@
+PASS centers, 20 Hz speed cap, 60 s idle drift x0.3 and wake
+PASS palette lookup interpolates only precomputed colors
+PASS clock text changes on minute boundary only
+PASS prelude/no IMU, per-frame draw calls max=30, ripple <=35
+ALL AURORA CLOCK CASES PASSED

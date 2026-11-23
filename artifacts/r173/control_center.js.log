@@ -1,0 +1,42 @@
+PASS control_center static: shell.js imported by the documented relative path
+PASS control_center static: SafeArea consumed as the round-screen safe container
+PASS control_center static: Card consumed by four setting cards
+PASS control_center static: IconButton consumed by WiFi, Bluetooth and RESET
+PASS control_center static: all four values live in signals
+PASS control_center static: KV key block uses the four documented <=15-char keys
+PASS control_center static: flag KV get wrapped in try/catch, accepts only 0 or 1
+PASS control_center static: step KV get wrapped in try/catch, accepts only legal integer steps
+PASS control_center static: KV set wrapped in try/catch (NVS failure is volatile)
+PASS control_center static: startup reads every key back into its signal
+PASS control_center static: volume wraps 10 -> 0 and brightness wraps 5 -> 1
+PASS control_center static: RESET restores all four defaults through kvSave
+PASS control_center static: no Slider consumption (timer_kit owns that r157 point)
+PASS control_center static: zero Canvas nodes
+PASS control_center static: entire app file is ASCII-only (r64)
+PASS control_center static: UI string literals ASCII-only (r64)
+PASS control_center static: Text fontSize limited to bundled 14/20/32 faces
+PASS control_center static: static tree within the node budget
+PASS control_center static: playground sources/control_center.js byte-identical to the example
+PASS control_center static: control_center is in the 58-app playground manifest
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: FAIL control_center static: firmware/ runtime/ tools/lume/ identical to 80e76b2
+    at Object.<anonymous> (/tmp/lume-r173-wt/tests/control_center.js:161:10)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.1

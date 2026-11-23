@@ -1,0 +1,7 @@
+PASS 62 SVG outlines and 26 Aa pairs have valid structure
+PASS 36-card deck, words and digit dot counts
+PASS Image glyph and auxiliary Canvas nodes
+PASS page advance, Z-to-0 transition and Image bounce
+PASS four-mode cycle, random bag and vertical Aa source
+PASS number-dot Canvas draws three filled arcs
+ALL ABC123 HARNESS CASES PASSED

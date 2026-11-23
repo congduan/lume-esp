@@ -1,0 +1,8 @@
+PASS SHA-256 NIST vectors: empty / abc / 56-byte two-block
+PASS HMAC-SHA256 RFC 4231 cases 1/2/3
+PASS CRC-32 0xCBF43926 + JS reference cross-check (seed/no-seed)
+PASS AES-128/256-CTR SP 800-38A F.5 vectors + CTR symmetry + in-place
+PASS subarray/byteOffset views for all four primitives
+PASS error contract: -1 type / -2 length, no exceptions
+PERF host single sample (20000x 60B): native=20ms js=2377ms ratio=118.8x (sink=1966913649, NOT ESP32-S3)
+ALL OK
