@@ -9,6 +9,14 @@ Baseline: `origin/main` / `210229a` (fetched before work). All implementation is
 - One MP3 frame per 35 ms timer tick. The exclusive decoder closes for hotspot audio, then reopens the page and skips already played frames. Output failures show `MUTE`; page turns remain available. Browser/no-card path uses a labelled three-page sample with synthetic vector scenes and a short generated PCM cue.
 - Browser Playground source and bundle, app picker entry, and three screenshots. The existing build script produced 66 app bundles; StoryBook was appended without editing `tools/`, yielding 67 bundled sources.
 
+`artifacts/r172/playground-count.txt` confirms the final generated catalog:
+
+```text
+sources 67
+bundles 67
+missing 0
+```
+
 ## Evidence
 
 `node tests/storybook.js` (full output: `artifacts/r172/storybook-test.txt`):
