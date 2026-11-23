@@ -405,6 +405,11 @@ check('prelude boot: paint + HUD + 4 keyboard rows / 29 keys', () => {
   assert.ok(invs.length >= 1, 'first paint');
   assert.deepEqual(invs[0].slice(2), [0, 0, 480, 228], 'first paint covers the canvas');
   assert.ok(ui.s.messages.filter(m => m[0] === 'draw').length > 100, 'span replay draw stream');
+  assert.equal(vm.runInContext('painted', ui.s.ctx), true, 'first paint latches painted');
+  const before = ui.s.messages.length;
+  vm.runInContext('__lume_tick()', ui.s.ctx);
+  assert.equal(ui.s.messages.slice(before).filter(m => m[0] === 'invalidate').length, 0, 'idle tick skips paint');
+  console.log('EVIDENCE wordle idle 0 paints/tick; first paint one full 480x228 canvas');
 });
 
 // 15. keyboard callback injection: onKey / BKSP / SPACE / ENTER routing
@@ -546,6 +551,9 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
+  // r75 app-independent raster and refresh improvements already on main.
+  'firmware/components/lume-svg/lume_svg.c',
+  'firmware/components/lvgl/lv_conf.h',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
