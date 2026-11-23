@@ -62,19 +62,48 @@ function paintCalls(messages) {
 }
 const firstCalls = paintCalls(ui.messages);
 assert.ok(firstCalls > 0 && firstCalls <= 250, `initial paint calls ${firstCalls}`);
-let maxDraws = firstCalls;
+const firstInvalidate = ui.messages.find(m => m[0] === 'invalidate');
+assert.ok(firstInvalidate && firstInvalidate.length === 6, 'first paint emits one rect');
+assert.deepEqual(firstInvalidate.slice(2), [0, 0, 480, 480], 'first paint covers the whole panel');
+let maxDraws = firstCalls, frames = 0, maxDirty = 0, plantFrames = 0;
 for (let i = 0; i < 90; i++) {
   const start = ui.messages.length;
   ui.ctx.tankTick();
-  const count = paintCalls(ui.messages.slice(start));
+  const batch = ui.messages.slice(start);
+  const count = paintCalls(batch);
+  const areas = batch.filter(m => m[0] === 'invalidate');
+  if (!areas.length) {
+    assert.equal(count, 0, `skipped tick ${i} emits no draw`);
+    continue;
+  }
+  frames++;
   maxDraws = Math.max(maxDraws, count);
   assert.ok(count > 0 && count <= 250, `frame ${i} draw calls ${count}`);
+  assert.ok(areas.length <= 8, `frame ${i} emits <=8 dirty rects (${areas.length})`);
+  maxDirty = Math.max(maxDirty, areas.length);
+  let wide = false;
+  for (const r of areas) {
+    const [, id, x, y, w, h] = r;
+    assert.ok(id > 0 && x >= 0 && y >= 0 && w >= 1 && h >= 1 &&
+              x + w <= 480 && y + h <= 480, `frame ${i} dirty rect in canvas`);
+    assert.ok(!(x === 0 && y === 0 && w === 480 && h === 480),
+              `frame ${i} is not a full-panel refresh`);
+    if (w * h > 40000) wide = true;
+  }
+  if (wide) plantFrames++;
 }
+assert.equal(frames, 45, '30 Hz simulation repaints at 15 Hz (every other tick)');
+assert.equal(plantFrames, 11, 'plants sway every 8 physics ticks, not every frame');
+assert.ok(ui.ctx.tankPlantPhase(8) > ui.ctx.tankPlantPhase(0), 'plant phase advances');
 const root = ui.ctx.tankRoot;
+const tapStart = ui.messages.length;
 ui.gesture(root, 0, 240, 190, 1000);
 ui.gesture(root, 2, 240, 190, 1060);
 assert.equal(ui.ctx.tank.food.length, 5, 'tap creates five pellets');
-ui.ctx.tankTick();
-assert.ok(ui.messages.some(m => m[0] === 'invalidate'), 'canvas repaints');
-console.log(`PASS size tiers 6/5/6 stations; prelude integration: tap feeding, no errors, max draw calls/frame=${maxDraws} (limit 250)`);
+const tapBatch = ui.messages.slice(tapStart);
+assert.ok(tapBatch.some(m => m[0] === 'invalidate'), 'tap forces an immediate repaint');
+assert.ok(paintCalls(tapBatch) > 0, 'tap repaint emits draw commands');
+console.log(`PASS size tiers 6/5/6 stations; 15 Hz dirty-rect paint (max ${maxDirty} rects), ` +
+            `${plantFrames} plant sway frames, tap feeding, no errors, ` +
+            `max draw calls/frame=${maxDraws} (limit 250)`);
 console.log('ALL FISHTANK HARNESS CASES PASSED');

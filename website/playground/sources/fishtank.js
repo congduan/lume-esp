@@ -1,7 +1,11 @@
 /* Lume fish tank: all geometry is drawn with the firmware Canvas API.
- * One fixed 33 ms step keeps steering deterministic even when a frame is late. */
+ * Physics steps at 33 ms (deterministic steering); the canvas repaints every
+ * other step and publishes only 1..8 dirty rects around moving objects. The
+ * board cannot flush a full 480x480 panel 30 times a second (gravity_ball
+ * precedent), so full-screen refresh is limited to the first frame. */
 var TANK_W = 480, TANK_H = 480, FISH_LEFT = 38, FISH_RIGHT = 442;
 var FISH_TOP = 58, FISH_BOTTOM = 406, TANK_DT = 1 / 30;
+var TANK_RENDER_EVERY = 2, TANK_PLANT_EVERY = 8;
 var FISH_COLORS = [
   { body: '#F5A66B', light: '#FFD5A1', fin: '#D96A5A', deep: '#E08A4E', eye: '#142331' },
   { body: '#58C6C4', light: '#A8EBDE', fin: '#298EAE', deep: '#2F9FA8', eye: '#102C38' },
@@ -10,39 +14,79 @@ var FISH_COLORS = [
 function tankClamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 function tankAngle(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
 function tankRandom(s) { s.seed = (Math.imul(s.seed, 1664525) + 1013904223) >>> 0; return s.seed / 4294967296; }
+function tankBox(x0, y0, x1, y1, r) {
+  var x = Math.min(x0, x1) - r, y = Math.min(y0, y1) - r;
+  return { x: x, y: y, w: Math.max(x0, x1) + r - x, h: Math.max(y0, y1) + r - y };
+}
+function tankUnion(a, b) {
+  var x = Math.min(a.x, b.x), y = Math.min(a.y, b.y);
+  return { x: x, y: y, w: Math.max(a.x + a.w, b.x + b.w) - x,
+    h: Math.max(a.y + a.h, b.y + b.h) - y };
+}
+/* Fixed slots: six fish + one shared food box. Accumulating into slots keeps
+ * the bridge's 8-rect cap without an O(n^2) merge inside the JS tick. */
+function tankAccum(s, slot, box) {
+  s.pending[slot] = s.pending[slot] ? tankUnion(s.pending[slot], box) : box;
+}
+function tankSnapBoxes(boxes) {
+  var a = [];
+  for (var i = 0; i < boxes.length; i++) {
+    var r = boxes[i];
+    if (!r) continue;
+    var x = tankClamp(Math.round(r.x), 0, TANK_W - 1),
+        y = tankClamp(Math.round(r.y), 0, TANK_H - 1);
+    a.push({ x: x, y: y,
+      w: tankClamp(Math.round(r.x + r.w) - x, 1, TANK_W - x),
+      h: tankClamp(Math.round(r.y + r.h) - y, 1, TANK_H - y) });
+  }
+  return a;
+}
+/* Plants sway in ~267 ms steps (every 4th painted frame), not per physics tick:
+ * their union box is wide, so animating at 30 Hz would undo the dirty-rect win. */
+function tankPlantPhase(ticks) { return Math.floor(ticks / TANK_PLANT_EVERY) * 0.45; }
 function tankTarget(s, f) {
   f.tx = 64 + tankRandom(s) * 352;
   f.ty = 80 + tankRandom(s) * 292;
   f.wander = 90 + Math.floor(tankRandom(s) * 120);
 }
 function tankState() {
-  var s = { seed: 87, ticks: 0, fish: [], food: [], bubbles: [], eaten: 0 };
+  var s = { seed: 87, ticks: 0, fish: [], food: [], bubbles: [], eaten: 0,
+    pending: [], dirty: [] };
   var sizes = [1.25, 0.92, 0.68, 1.18, 0.86, 0.64];
   for (var i = 0; i < 6; i++) {
     var f = { x: 82 + (i % 3) * 151, y: 113 + Math.floor(i / 3) * 164,
       angle: i % 2 ? Math.PI - 0.35 : 0.35, speed: 0.9, size: sizes[i],
-      color: i % 3, phase: i * 1.3, burst: 0, tx: 0, ty: 0, wander: 0 };
+      color: i % 3, phase: i * 1.3, burst: 0, tx: 0, ty: 0, wander: 0,
+      px: 82 + (i % 3) * 151, py: 113 + Math.floor(i / 3) * 164 };
     tankTarget(s, f); s.fish.push(f);
   }
   for (i = 0; i < 10; i++) s.bubbles.push({ x: 43 + (i % 3) * 178 + (i % 2) * 7,
-    y: 35 + i * 43, r: 2 + i % 3, drift: i * 1.7 });
+    y: 35 + i * 43, r: 2 + i % 3, drift: i * 1.7,
+    px: 43 + (i % 3) * 178 + (i % 2) * 7, py: 35 + i * 43 });
   return s;
 }
 function tankFeed(s, x, y) {
   x = tankClamp(x, FISH_LEFT + 8, FISH_RIGHT - 8);
   y = tankClamp(y, FISH_TOP, FISH_BOTTOM - 40);
-  for (var i = 0; i < 5; i++) s.food.push({ x: x + (i - 2) * 6, y: y - (i % 2) * 5, age: 0 });
+  for (var i = 0; i < 5; i++) {
+    var fx = x + (i - 2) * 6, fy = y - (i % 2) * 5;
+    s.food.push({ x: fx, y: fy, px: fx, py: fy, age: 0 });
+    tankAccum(s, 6, tankBox(fx, fy, fx, fy, 5));
+  }
   if (s.food.length > 20) s.food.splice(0, s.food.length - 20);
 }
 function tankStep(s) {
   s.ticks++;
   var i, j, f, dx, dy, d, nearest, nearestD;
   for (i = s.food.length - 1; i >= 0; i--) {
-    var p = s.food[i]; p.y = Math.min(FISH_BOTTOM + 13, p.y + 0.52); p.age++;
+    var p = s.food[i]; p.px = p.x; p.py = p.y;
+    p.y = Math.min(FISH_BOTTOM + 13, p.y + 0.52); p.age++;
+    tankAccum(s, 6, tankBox(p.px, p.py, p.x, p.y, 5));
     if (p.age > 660) s.food.splice(i, 1);
   }
   for (i = 0; i < s.fish.length; i++) {
-    f = s.fish[i]; nearest = null; nearestD = 150 * 150;
+    f = s.fish[i]; f.px = f.x; f.py = f.y;
+    nearest = null; nearestD = 150 * 150;
     for (j = 0; j < s.food.length; j++) {
       dx = s.food[j].x - f.x; dy = s.food[j].y - f.y; d = dx * dx + dy * dy;
       if (d < nearestD) { nearestD = d; nearest = s.food[j]; }
@@ -72,17 +116,17 @@ function tankStep(s) {
     f.x = tankClamp(f.x + Math.cos(f.angle) * f.speed, FISH_LEFT, FISH_RIGHT);
     f.y = tankClamp(f.y + Math.sin(f.angle) * f.speed, FISH_TOP, FISH_BOTTOM);
     f.phase += 0.12 + f.speed * 0.19;
+    tankAccum(s, i, tankBox(f.px, f.py, f.x, f.y, 28 * f.size + 3));
   }
-  for (i = 0; i < s.bubbles.length; i++) {
-    var b = s.bubbles[i]; b.y -= 0.48 + b.r * 0.15;
-    if (b.y < 26) b.y = 427 + (i % 3) * 16;
-    b.drift += 0.025;
-  }
+  if (s.ticks % TANK_PLANT_EVERY === 0)
+    tankAccum(s, 7, tankBox(29, 309, 453, 443, 0));  /* wide plant band */
+  /* Bubbles stay put: their old full-width union dirty box cost more panel
+   * refresh than the slow drift was worth. Fish, plants and food carry motion. */
   return s;
 }
 
 /* GAME UI */
-var tank = tankState(), tankFrame = signal(0), tankTimer = null;
+var tank = tankState(), tankFrame = signal(0), tankTimer = null, tankPainted = false;
 var tankRoot = View({ style: { width: 480, height: 480, background: '#071C29', scroll: 'none' } });
 function tankLine(ctx, x1, y1, x2, y2, color, width) {
   ctx.line(Math.round(x1), Math.round(y1), Math.round(x2), Math.round(y2), color, width);
@@ -168,8 +212,10 @@ var tankCanvas = Canvas({ parent: tankRoot, width: TANK_W, height: TANK_H,
     var bands = ['#071B29','#082634','#0A303D','#0C3B47','#0D4650','#10515A',
       '#125A60','#155F61','#176263','#1A6361','#1C625D','#205F58'];
     for (var i = 0; i < bands.length; i++) { ctx.fillColor(bands[i]); ctx.fillRect(0, i * 40, 480, 40); }
-    /* Broad dim caustics: RGB565 has no alpha, so use nearby solid shades. */
-    var shift = Math.sin(tank.ticks * 0.012) * 13;
+    /* Broad dim caustics: RGB565 has no alpha, so use nearby solid shades.
+     * Kept static: animating them would dirty most of the water column while
+     * the fish and swaying plants already carry the motion. */
+    var shift = 0;
     tankLine(ctx, 78 + shift, 118, 112 + shift, 123, '#113A47', 12);
     tankLine(ctx, 223 - shift, 79, 263 - shift, 85, '#123743', 15);
     tankLine(ctx, 356 + shift, 226, 390 + shift, 231, '#1B565A', 13);
@@ -178,7 +224,7 @@ var tankCanvas = Canvas({ parent: tankRoot, width: TANK_W, height: TANK_H,
     ctx.fillColor('#766F59'); ctx.fillRect(0, 459, 480, 21);
     for (i = 0; i < 5; i++) {
       var bx = 45 + i * 98, top = 313 + i % 3 * 14;
-      var wave = Math.sin(tank.ticks * 0.045 + i * 1.6) * 12;
+      var wave = Math.sin(tankPlantPhase(tank.ticks) + i * 1.6) * 12;
       tankLine(ctx, bx, 439, bx + wave * 0.4, 376, '#256F5A', 7);
       tankLine(ctx, bx + wave * 0.4, 376, bx + wave, top, '#3B9371', 5);
       tankLine(ctx, bx + wave * 0.25, 395, bx - 12 + wave, 362, '#4AA37B', 3);
@@ -198,11 +244,24 @@ var tankCanvas = Canvas({ parent: tankRoot, width: TANK_W, height: TANK_H,
     for (i = 0; i < tank.fish.length; i++) order.push(i);
     order.sort(function (a, b) { return tank.fish[b].size - tank.fish[a].size; });
     for (i = 0; i < order.length; i++) tankFish(ctx, tank.fish[order[i]]);
+    if (!tankPainted) {
+      tankPainted = true;
+      return { x: 0, y: 0, w: TANK_W, h: TANK_H };  /* first frame: full panel */
+    }
+    return tank.dirty.length ? tank.dirty : { x: 0, y: 0, w: TANK_W, h: TANK_H };
   } });
-function tankTick() { tankStep(tank); tankFrame.set(tankFrame() + 1); }
+function tankFlush() {
+  tank.dirty = tankSnapBoxes(tank.pending);
+  tank.pending = [];
+  tankFrame.set(tankFrame() + 1);
+}
+function tankTick() {
+  tankStep(tank);
+  if (tank.ticks % TANK_RENDER_EVERY === 0) tankFlush();
+}
 function tankStart() { if (tankTimer === null) tankTimer = lume.system.setInterval(tankTick, 33); }
 function tankStop() { if (tankTimer !== null) lume.system.clearInterval(tankTimer); tankTimer = null; }
-lume.gesture.on(tankRoot, 'tap', function (e) { tankFeed(tank, e.x, e.y); tankFrame.set(tankFrame() + 1); });
+lume.gesture.on(tankRoot, 'tap', function (e) { tankFeed(tank, e.x, e.y); tankFlush(); });
 lume.app.onStart(tankStart);
 lume.app.onPause(tankStop);
 lume.app.onResume(tankStart);
