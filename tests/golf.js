@@ -266,6 +266,12 @@ const ROOT_ID = 1;
   }
   /* one canvas of 480x420 = 201,600 px < 230,400 budget */
   assert.ok(g.COURSE_W * g.COURSE_H <= 230400, 'canvas within pixel budget');
+  const mark = ui.messages.length;
+  for (let i = 0; i < 20; i++) c.tick();
+  const idle = ui.messages.slice(mark);
+  assert.equal(idle.filter(m => m[0] === 'invalidate').length, 0, 'ready state skips 20 timer paints');
+  assert.equal(idle.filter(m => m[0] === 'draw').length, 0, 'ready state emits no canvas calls');
+  console.log('EVIDENCE golf ready 0 paints/20 ticks; moving paints use subcanvas dirty rects');
   console.log('PASS golf dirty-rect discipline + canvas pixel budget');
 }
 
