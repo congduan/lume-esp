@@ -83,3 +83,63 @@ No UI bridge ATTR/OP ID or queue record changed, so
 - Real USB throughput/reconnect behavior and WiFi HMAC-authenticated file
   transfer, including interrupted transfer recovery and concurrent app work.
 - Android Companion P2 integration and user-facing file management.
+
+## Takeover closure
+
+### statvfs: empirical finding on the reported interruption
+
+The controller's initial diagnosis was a missing `statvfs` mock in the host
+esp32sim/stub layer. The takeover re-checked it against the current tree and
+could **not reproduce** it. No mock was added, no firmware path was `#if`-gated,
+no real feature was deleted, and `-Werror` was not relaxed:
+
+- Repo-wide search over `firmware/components/`, `tests/`, `tools/`: `statvfs`
+  appears only in a comment at `lume_sd.c:280` ("FATFS has no POSIX statvfs on
+  ESP-IDF; f_getfree is the documented capacity query"). There is no
+  `statvfs()` call site. On device, capacity goes through FATFS `f_getfree`
+  (`lume_sd.c:284`); host harnesses do not compile `lume_sd.c` at all.
+- The full host harness sweep (`for t in tests/*.js`) reports `TOTAL_FAIL=0`
+  with no statvfs diagnostic. `tests/file_protocol.c` plus `lume_cmd.c` compile
+  cleanly on the host with `-Wall -Wextra -Werror` and print
+  `file protocol parser: 13 PASS`.
+- `idf.py build` returns `BUILD_EXIT=0` with no statvfs-related diagnostic.
+- Historical `statvfs` strings in `artifacts/r126`, `r150`, `r152`, `r154` and
+  `r155` are JS-app harness copy about `Sd.statvfs()` error-code handling, not
+  compiler output.
+
+The actual interruption was an incomplete scope-guard allowlist merge after the
+rebase onto `origin/main` (`5e51789`), described next.
+
+### What was actually fixed
+
+Twenty-three `tests/*.js` guard harnesses carried half-merged worktree edits:
+
+- `tests/controls_demo.js`: the trunk check was renamed to
+  "firmware/ identical to the r150 trunk baseline except r173 companion P1",
+  but the mutation proof's `TRUNK` constant still referenced the old name, so
+  `must()` aborted with `unknown check`. The constant now matches the check.
+- `tests/ota_consumers.js`: `R166_ALLOWED` already admitted the r173 firmware
+  files, but the `allChanged` guard reads a separate `ALLOWED` array, so the
+  "only known ... files differ" check failed. The r173 source files are now in
+  `ALLOWED`, and evidence under `artifacts/r173/` is admitted by prefix. Both
+  mutation proofs still fire on an injected out-of-scope file.
+
+### Takeover verification (evidence in `artifacts/r173/`)
+
+- `for t in tests/*.js`: `TOTAL_FAIL=0` (`host-harness-final.log`).
+- `npm test --prefix tools/lume`: pass 51, fail 0, skipped 1 (`npm-test-final.log`).
+- Host C compile with `-Wall -Wextra -Werror`: `file protocol parser: 13 PASS`
+  (`parser-final.log`).
+- `python3 tests/file_cli_mock.py`: `FPUT 100 KiB / FLS / FGET SHA-256 / FDEL
+  PASS` (`cli-mock-final.log`).
+- `python3 tests/file_emu.py`: `esp32sim LittleFS ... PASS` (`emu-file-final.log`).
+- `python3 scripts/gen_api_docs.py --check`: `api.html is up to date ... (161
+  entries)` (`api-check-final.log`).
+- `idf.py build`: `BUILD_EXIT=0` (`idf-build-takeover.log`). `idf.py size`:
+  Flash Code `2,044,328 B` vs baseline `2,041,288 B` (`baseline-size.log`),
+  delta `+3,040 B` within the <=16 KB budget; IRAM `16,384 B` (0 remain).
+  Full table in `size-takeover.log`.
+- No UI bridge ATTR/OP ID or queue record changed, so
+  `tests/bridge_protocol.c` static assertions are unaffected.
+
+Continuation complete; the interruption point is fixed.

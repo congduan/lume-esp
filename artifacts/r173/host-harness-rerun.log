@@ -1,0 +1,100 @@
+=== FAIL tests/controls_demo.js (rc=1) ===
+PASS controls_demo: all three components registered on lume.ui.shell
+PASS controls_demo: controlled mode: value read at event time, onChange is the only output
+PASS controls_demo: 40 px touch floor enforced on Switch and Slider heights
+PASS controls_demo: every node registered for cleanup, dispose idempotent
+PASS controls_demo: gesture unsubscribers run on Slider dispose
+PASS controls_demo: Progress updates only fill width ATTR_WIDTH via a bound numeric style
+PASS controls_demo: app wires all three values through signals (controlled consumers)
+PASS controls_demo: all UI string literals ASCII-only (r64)
+PASS controls_demo: playground sources/controls_demo.js byte-identical to example
+PASS controls_demo: controls_demo is in the playground manifest
+PASS controls_demo: firmware/ and runtime/ identical to the r151 feat commit
+PASS controls_demo: firmware/ identical to the r150 trunk baseline except r173 companion P1
+PASS controls_demo: prelude lume_scripts.c unchanged since dafa1ed
+PASS controls_demo live: three components return nodes and are callable from the app
+PASS controls_demo live: Switch press routes onChange(!value) through the signal
+PASS controls_demo live: Slider pan maps dx back into range and quantises to step
+PASS controls_demo live: Slider clamps to [min,max] on an over-range drag
+PASS controls_demo live: Slider onChange fires once per changed step, not per pan frame
+PASS controls_demo live: Progress clamps value and updates fill ATTR_WIDTH only
+PASS controls_demo live: signals drive native re-render (Switch bg attr, Slider canvas draw)
+PASS controls_demo live: dispose removes every node once; second call is a no-op
+PASS controls_demo live: dispose unsubscribes gestures: no onChange after teardown
+PASS controls_demo live: uncontrolled use proves the component holds no state
+PASS controls_demo mutation: drop the Progress registration -> FAIL as expected
+PASS controls_demo mutation: drop the Switch onChange dispatch -> FAIL as expected
+PASS controls_demo mutation: lower the touch floor on one component -> FAIL as expected
+PASS controls_demo mutation: drop the Canvas cleanup registration -> FAIL as expected
+PASS controls_demo mutation: drop the gesture unsubscriber call -> FAIL as expected
+PASS controls_demo mutation: make Progress re-create its fill on every value change -> FAIL as expected
+PASS controls_demo mutation: app stops forwarding slider changes -> FAIL as expected
+PASS controls_demo mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS controls_demo mutation: playground generated source drifts from the example -> FAIL as expected
+PASS controls_demo mutation: playground manifest drops controls_demo -> FAIL as expected
+PASS controls_demo mutation: a runtime file changes after the feat commit -> FAIL as expected
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: unknown check: firmware/ byte-identical to the r150 trunk baseline
+    at must (/tmp/lume-r173-wt/tests/controls_demo.js:260:10)
+    at Object.<anonymous> (/tmp/lume-r173-wt/tests/controls_demo.js:303:1)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: undefined,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.1
+=== FAIL tests/ota_consumers.js (rc=1) ===
+PASS ota_consumers: OTA helper reads lume.ota.status() locally
+PASS ota_consumers: number return discriminated via typeof === object, ASCII err code
+PASS ota_consumers: four flags + port rendered; .token / [token] never read in either app
+PASS ota_consumers: OTA row is exactly View + Text + Button (3 nodes)
+PASS ota_consumers: row Text shows only status; New-token opens a Dialog
+PASS ota_consumers: setToken sits in the danger Rotate onPress of a Dialog
+PASS ota_consumers: Dialog guard degrades to an ASCII note; no 3 s arm timer remains
+PASS ota_consumers: replacement token is 32 lowercase hex chars from Math.random
+PASS ota_consumers: setToken failure renders ASCII code; success refreshes status
+PASS ota_consumers: 600 ms poll refreshes OTA status
+PASS ota_consumers: header registers Math.random as NOT cryptographically secure
+PASS ota_consumers: dashboard SYSTEM reads status() with typeof === object discrimination
+PASS ota_consumers: dashboard publishes OTA row with 9 separators inside 360 px
+PASS ota_consumers: dashboard OTA line never reads token
+PASS ota_consumers: playground sources/dashboard.js byte-identical to example
+PASS ota_consumers: dashboard is in the playground manifest
+PASS ota_consumers: all UI string literals ASCII-only (r64)
+PASS ota_consumers: firmware/ runtime/ CLI tooling identical to 80e76b2
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: FAIL ota_consumers: only known r132 + r133 + r134 + r135 + r136 files differ from 80e76b2
+    at Object.<anonymous> (/tmp/lume-r173-wt/tests/ota_consumers.js:571:10)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.1
+TOTAL_FAIL=2
