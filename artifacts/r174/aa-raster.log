@@ -1,0 +1,20 @@
+PASS isqrt 8.8 fixed-point contract
+PASS width=1 horizontal line: 1px core, no stray ink, stride padding intact
+PASS width=1 diagonal line: feather band present (was the staircase)
+PASS coverage rises monotonically toward the centreline
+PASS zero-length stroke paints a bounded point
+PASS width=4 envelope: hw=1 core, feather to +2, nothing at +3
+PASS ring: continuous annulus, centre clean, 45-degree sites smooth
+PASS wide ring degenerates to anti-aliased disc
+PASS 50% blend of white over grey is the channel-exact midpoint
+PASS shared joint: opaque core continuous, envelope not doubled
+PASS set_color channel decomposition exact
+PASS arc: wedge band, round end cap, empty gap, AA feather, padding intact
+PASS arc: full 360deg sweep across 0deg is bit-identical to ring
+PASS arc: 0deg wrap normalisation, equivalent geometry, correct gap
+PASS arc: end seam is continuous (no hard step / gap)
+PASS arc: from==to degenerates to a bounded round dot
+PASS arc: width>=2r-1 degenerates to a filled AA sector (no hole)
+PASS arc: bbox clipped to surface, stride padding intact
+PASS arc: r<=0 early return
+ALL CANVAS AA HOST TESTS PASSED

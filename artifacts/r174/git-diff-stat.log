@@ -1,0 +1,25 @@
+=== git diff --stat HEAD ===
+ tests/gravity_ball.js  | 47 ++++++++++++++++++++++++++++++++++++++++++
+ tests/ota_consumers.js | 14 +++++++++++++
+ tests/watchface.js     | 56 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 117 insertions(+)
+
+=== git diff --name-only HEAD ===
+tests/gravity_ball.js
+tests/ota_consumers.js
+tests/watchface.js
+
+=== untracked (artifacts/r174) ===
+artifacts/r174/aa-raster.log
+artifacts/r174/cli-tests.log
+artifacts/r174/git-diff-stat.log
+artifacts/r174/instrument.js
+artifacts/r174/instrument.txt
+artifacts/r174/js-harnesses.log
+artifacts/r174/website-check.log
+artifacts/r174/wordle-recheck.log
+
+=== firmware/runtime/tools changed files vs HEAD ===
+COUNT=0
+
+=> firmware/ change surface is 0; idf.py build + idf.py size NOT required (r174 verification item 6).

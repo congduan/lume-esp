@@ -1,0 +1,13 @@
+=== watchface: analogDraw + ringDraw + goalDraw, one frame, fixed data ===
+BEFORE (r49 reverted for ticks + bg rings): JS segments/frame=672 (line=63, polylineEdges=609) | native arc=6 circle=3 | DEFINE segments=0 pathEdges=0 | drawPath/frame=0
+  retained definitions: []
+AFTER  (shipped retained paths): JS segments/frame=249 (line=3, polylineEdges=246) | native arc=6 circle=3 | DEFINE segments=60 pathEdges=363 | drawPath/frame=5
+  retained definitions: [["segments",48],["segments",12],["path",121],["path",121],["path",121]]
+RESULT watchface JS segments/frame 672 -> 249 (-423, 62.9%)
+
+=== gravity_ball (imu_ball successor): disc(), one frame ===
+BEFORE per-frame Math.sqrt calls=49, fillRect spans=49
+AFTER  per-frame Math.sqrt calls=0, fillRect spans=49
+RESULT gravity_ball per-frame trig evaluations 49 -> 0 (-49)
+C-side retained line segments: 49 replayed via drawPath -> REJECTED in r49 (+12% total),
+                               see docs/roadmap.md r49 result section.
