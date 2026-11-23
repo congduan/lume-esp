@@ -462,6 +462,19 @@ declare namespace lume.system {
   function clearInterval(id: number): void;
   function clearTimeout(id: number): void;
   /**
+   * r177: read-only board identifier -- the compile-time board name selected
+   * by Kconfig `LUME_BOARD` (for example
+   * "waveshare_esp32_s3_touch_amoled_2_16"). It is read from the lume-board-hal
+   * registry via lume_board_get()->board_id: the real name after lume-board
+   * registers at boot, or the honest "generic" stub id before registration.
+   * The value domain is exactly the compiled board-name macro. There is no
+   * setter and no API to select or switch a board from JS. On the host test
+   * runner this is "host-stub" (harnesses may inject another string via
+   * options.board); in the browser playground stub it is "browser-stub".
+   * Compile-time / host evidence only; not verified on real hardware.
+   */
+  const board: string;
+  /**
    * r128: wall-clock Unix time in MILLISECONDS (same unit as Date.now()).
    * QuickJS's Date.now() reads gettimeofday() too, so a successful setTimeNtp()
    * corrects it without extra work. Before any sync this returns the genuine
