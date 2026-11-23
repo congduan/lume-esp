@@ -10,5 +10,5 @@
 idf_component_register(
     SRCS "lume_hotreload.c" "lume_frame.c" "lume_cmd.c"
     INCLUDE_DIRS "include"
-    REQUIRES lume-engine lume-net lume-board esp_driver_usb_serial_jtag nvs_flash lwip esp_hw_support mbedtls
+    REQUIRES lume-engine lume-net lume-board lume-storage joltwallet__littlefs esp_driver_usb_serial_jtag nvs_flash lwip esp_hw_support mbedtls
 )

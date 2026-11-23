@@ -76,7 +76,13 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
+  'firmware/components/lume-hotreload/CMakeLists.txt',
+  'firmware/components/lume-hotreload/include/lume_cmd.h',
+  'firmware/components/lume-hotreload/lume_cmd.c',
+  'firmware/components/lume-hotreload/lume_hotreload.c',
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
 

@@ -1,0 +1,8 @@
+PASS lume.ble wiring (header, CMake, sdkconfig, natives, types, docs)
+PASS onStart advertises; first poll of a live link sends HELLO
+PASS poll drains one RX packet, verifies the link and acks it
+PASS Ping Button press sends a ping
+PASS Ping counter Text reflects the press
+PASS negative read() status is handled by the app
+PASS onPause / shutdown stops advertising
+PASS failed start() is surfaced without starting the poll timer

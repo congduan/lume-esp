@@ -173,3 +173,14 @@ export function simpleCommand(verb, id) {
   const upper = verb.toUpperCase();
   return id ? `${upper}\t${id}` : upper;
 }
+
+/** r173 binary-safe file chunk; `FPUT` marks type=file on either transport. */
+export function fputCommand(path, offset, total, data) {
+  const bytes = Buffer.isBuffer(data) ? data : Buffer.from(data);
+  if (!bytes.length || !Number.isSafeInteger(offset) || !Number.isSafeInteger(total) ||
+      offset < 0 || total > 8 * 1024 * 1024 || offset + bytes.length > total ||
+      !/^(sd|fs):\/?[^\t\r\n]+$/.test(path) || path.split('/').some(s => s === '.' || s === '..')) {
+    throw new Error('invalid FPUT path, offset, total, or chunk');
+  }
+  return Buffer.concat([Buffer.from(`FPUT\tfile\t${path}\t${offset}\t${total}\n`), bytes]);
+}

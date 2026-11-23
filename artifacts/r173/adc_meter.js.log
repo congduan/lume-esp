@@ -1,0 +1,51 @@
+PASS default stub renders raw=2048, mv=1650, CFG OK and draws the bar
+PASS pin/atten buttons reconfigure and wrap 1..10 / 0..3
+PASS no free() call: no app close hook, slot state is engine-persistent
+PASS negative readMv/readRaw/config render as err <code> numerically
+PASS 0 sample is NOT treated as an error (numeric, not truthy, branch)
+PASS out-of-range raw 4096 is rejected, so the normal-render proof FAILS
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 error discrimination present, no truthy if(r)/if(m)
+PASS config/readRaw/readMv calls bound to pin, no token-class strings
+PASS header declares the LUME_MAX_NODES budget
+PASS playground manifest has 57 apps including adc_meter
+PASS generated playground source is byte-identical to the example
+node:assert:150
+  throw new AssertionError(obj);
+  ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'firmware/components/lume-hotreload/CMakeLists.txt',
++   'firmware/components/lume-hotreload/include/lume_cmd.h',
++   'firmware/components/lume-hotreload/lume_cmd.c',
++   'firmware/components/lume-hotreload/lume_hotreload.c'
++ ]
+- []
+
+    at /tmp/lume-r173-wt/tests/adc_meter.js:142:10
+    at check (/tmp/lume-r173-wt/tests/adc_meter.js:66:28)
+    at Object.<anonymous> (/tmp/lume-r173-wt/tests/adc_meter.js:141:1)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'firmware/components/lume-hotreload/CMakeLists.txt',
+    'firmware/components/lume-hotreload/include/lume_cmd.h',
+    'firmware/components/lume-hotreload/lume_cmd.c',
+    'firmware/components/lume-hotreload/lume_hotreload.c'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.1

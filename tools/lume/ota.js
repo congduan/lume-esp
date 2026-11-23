@@ -22,7 +22,7 @@ const RELOAD_LINE = /^RELOAD /;
 const CMD_LINE = /^CMD /;
 const CMD_OK_LINE = /^CMD OK(?: (\S+))?(?: (\S+))?(?: (\d+))?$/;
 const CMD_ERR_LINE = /^CMD ERR (\S+)$/;
-const LIST_LINE = /^(APP|META)\t/;
+const LIST_LINE = /^(APP|META|FLS)\t|^F64/;
 
 /** Validate a 32-hex-char token and return its 16 raw bytes (the HMAC key). */
 export function otaTokenKey(token) {

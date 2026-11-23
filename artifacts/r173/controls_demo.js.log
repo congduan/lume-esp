@@ -1,0 +1,32 @@
+PASS controls_demo: all three components registered on lume.ui.shell
+PASS controls_demo: controlled mode: value read at event time, onChange is the only output
+PASS controls_demo: 40 px touch floor enforced on Switch and Slider heights
+PASS controls_demo: every node registered for cleanup, dispose idempotent
+PASS controls_demo: gesture unsubscribers run on Slider dispose
+PASS controls_demo: Progress updates only fill width ATTR_WIDTH via a bound numeric style
+PASS controls_demo: app wires all three values through signals (controlled consumers)
+PASS controls_demo: all UI string literals ASCII-only (r64)
+PASS controls_demo: playground sources/controls_demo.js byte-identical to example
+PASS controls_demo: controls_demo is in the 57-app playground manifest
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: FAIL controls_demo: firmware/ and runtime/ identical to the r151 feat commit
+    at Object.<anonymous> (/tmp/lume-r173-wt/tests/controls_demo.js:132:10)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.1

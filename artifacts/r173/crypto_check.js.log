@@ -1,0 +1,65 @@
+PASS CRC-32 table cross-checks against zlib.crc32 (independent reference)
+PASS default payload Lume: SHA/HMAC hex matches node:crypto, AES loopback OK
+PASS rendered text stream carries the computed digest, not just ctx state
+PASS NEXT button cycles 3 payloads and wraps; empty payload does not crash
+PASS negative codes render numerically: ERR -2 / ERR -1, never ERR 0
+PASS -3 from any primitive renders UNSUPPORTED (host/playground stub reality)
+PASS default no-crypto host stub shows UNSUPPORTED for all four rows
+PASS CRC-32 u32: 4294967295 is VALID, not ERR -1; seed chaining used once
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / !== 0 error discrimination, no truthy branch
+PASS digest truncation to 16 bytes + "..." in both SHA and HMAC rows
+PASS CRC unsigned String(c2 >>> 0) with negative-only guard
+PASS header declares LUME_MAX_NODES budget and app is plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest has 57 apps including crypto_check
+PASS generated playground source is byte-identical to the example
+node:assert:150
+  throw new AssertionError(obj);
+  ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'firmware/components/lume-hotreload/CMakeLists.txt',
++   'firmware/components/lume-hotreload/include/lume_cmd.h',
++   'firmware/components/lume-hotreload/lume_cmd.c',
++   'firmware/components/lume-hotreload/lume_hotreload.c',
++   'tools/lume/lume.js',
++   'tools/lume/lume.test.js',
++   'tools/lume/ota.js',
++   'tools/lume/protocol.js',
++   'tools/lume/transport.js'
++ ]
+- []
+
+    at /tmp/lume-r173-wt/tests/crypto_check.js:248:10
+    at check (/tmp/lume-r173-wt/tests/crypto_check.js:85:28)
+    at Object.<anonymous> (/tmp/lume-r173-wt/tests/crypto_check.js:247:1)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'firmware/components/lume-hotreload/CMakeLists.txt',
+    'firmware/components/lume-hotreload/include/lume_cmd.h',
+    'firmware/components/lume-hotreload/lume_cmd.c',
+    'firmware/components/lume-hotreload/lume_hotreload.c',
+    'tools/lume/lume.js',
+    'tools/lume/lume.test.js',
+    'tools/lume/ota.js',
+    'tools/lume/protocol.js',
+    'tools/lume/transport.js'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.1

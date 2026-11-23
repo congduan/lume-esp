@@ -70,7 +70,8 @@ export async function openPort(path, { monitor = false } = {}) {
       pending.replLines.push(line);
       return;
     }
-    if (pending.kind === 'cmd' && (line.startsWith('APP\t') || line.startsWith('META\t'))) {
+    if (pending.kind === 'cmd' && (line.startsWith('APP\t') || line.startsWith('META\t') ||
+        line.startsWith('FLS\t') || line.startsWith('F64'))) {
       pending.lines.push(line);
       return;
     }

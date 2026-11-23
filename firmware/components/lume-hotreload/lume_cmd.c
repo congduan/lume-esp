@@ -17,6 +17,40 @@ static size_t find_nl(const char *p, size_t from, size_t len)
     return len;
 }
 
+static bool decimal(const char *p, size_t n, uint32_t *out)
+{
+    if (!n || n > 10) return false;
+    uint32_t v = 0;
+    for (size_t i = 0; i < n; i++) {
+        if (p[i] < '0' || p[i] > '9' || v > (UINT32_MAX - (uint32_t)(p[i] - '0')) / 10u)
+            return false;
+        v = v * 10u + (uint32_t)(p[i] - '0');
+    }
+    *out = v;
+    return true;
+}
+
+static bool file_path_valid(const char *p, size_t n, bool directory)
+{
+    if (n < 4 || n > LUME_CMD_FILE_PATH_MAX ||
+        !((memcmp(p, "sd:", 3) == 0) || (memcmp(p, "fs:", 3) == 0))) return false;
+    p += 3; n -= 3;
+    if (n > 240 || !n || (!directory && n == 1 && p[0] == '/')) return false;
+    if (p[0] == '/') { p++; n--; }
+    if (!n) return directory;
+    size_t start = 0;
+    for (size_t i = 0; i <= n; i++) {
+        if (i == n || p[i] == '/') {
+            size_t seg = i - start;
+            if (directory && i == n && seg == 0) return true;
+            if (!seg || (seg == 1 && p[start] == '.') ||
+                (seg == 2 && p[start] == '.' && p[start + 1] == '.')) return false;
+            start = i + 1;
+        } else if ((unsigned char)p[i] < 32 || p[i] == '\\' || p[i] == ':') return false;
+    }
+    return true;
+}
+
 int lume_cmd_parse(const uint8_t *payload, size_t len, lume_cmd_t *out)
 {
     if (out == NULL) {
@@ -40,6 +74,47 @@ int lume_cmd_parse(const uint8_t *payload, size_t len, lume_cmd_t *out)
 
     if (verb_end == 0) {
         return LUME_CMD_ERR_FORMAT;
+    }
+
+    if ((verb_end == 4 && memcmp(p, "FPUT", 4) == 0) ||
+        (verb_end == 3 && memcmp(p, "FLS", 3) == 0) ||
+        (verb_end == 4 && memcmp(p, "FDEL", 4) == 0) ||
+        (verb_end == 4 && memcmp(p, "FGET", 4) == 0)) {
+        bool put = verb_end == 4 && p[1] == 'P';
+        bool get = verb_end == 4 && p[1] == 'G';
+        bool dir = verb_end == 3;
+        /* Optional explicit payload type for OTA file pushes. Existing LUME,
+         * LUMB and STORE frames keep their implicit app type unchanged. */
+        const char *path = id;
+        size_t fields_len = id_len;
+        if (put && fields_len >= 5 && memcmp(path, "file\t", 5) == 0) {
+            path += 5; fields_len -= 5;
+        }
+        const char *end = path ? memchr(path, '\t', fields_len) : NULL;
+        size_t path_len = end ? (size_t)(end - path) : fields_len;
+        if (!has_id || !file_path_valid(path, path_len, dir)) return LUME_CMD_ERR_ARG;
+        memcpy(out->file_path, path, path_len);
+        out->file_path[path_len] = 0;
+        if (put || get) {
+            if (!end) return LUME_CMD_ERR_FORMAT;
+            const char *second = memchr(end + 1, '\t', path + fields_len - end - 1);
+            if (!second || !decimal(end + 1, (size_t)(second - end - 1), &out->offset) ||
+                !decimal(second + 1, (size_t)(path + fields_len - second - 1), &out->total))
+                return LUME_CMD_ERR_FORMAT;
+            if (put) {
+                if (line1_end == len) return LUME_CMD_ERR_FORMAT;
+                out->data = payload + line1_end + 1;
+                out->data_len = len - line1_end - 1;
+                if (!out->data_len || out->total > LUME_CMD_FILE_MAX ||
+                    out->offset > out->total || out->data_len > out->total - out->offset)
+                    return LUME_CMD_ERR_ARG;
+            } else if (out->total == 0 || out->total > 768 || line1_end != len) {
+                return LUME_CMD_ERR_ARG;
+            }
+        } else if (end || line1_end != len) return LUME_CMD_ERR_FORMAT;
+        out->kind = put ? LUME_CMD_FPUT : get ? LUME_CMD_FGET :
+                    dir ? LUME_CMD_FLS : LUME_CMD_FDEL;
+        return LUME_CMD_OK;
     }
 
     if (verb_end == 4 && memcmp(p, "HOME", 4) == 0) {

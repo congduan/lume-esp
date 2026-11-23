@@ -2,9 +2,10 @@
 import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
+import { createHash } from 'node:crypto';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
-import { CONTROL, storeCommand, storeCommandBuffer, simpleCommand } from './protocol.js';
+import { CONTROL, storeCommand, storeCommandBuffer, simpleCommand, fputCommand } from './protocol.js';
 import { queryFirmwareTag } from './fwtag.js';
 import { openPort } from './transport.js';
 import { openOta, OTA_PORT_DEFAULT } from './ota.js';
@@ -13,7 +14,7 @@ import { check, render } from './check.js';
 import { scan, renderScan } from './scan.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --host <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume repl [--port <path>] [--eval "expr"] [--host <ip> --token <t>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--visual] [--timeout <s>]\n  lume token <32hex> [--port <path>]
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --host <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume fput <local> <sd:/path|fs:/path> [--port <path>]\n  lume fls <sd:/dir|fs:/dir> [--port <path>]\n  lume fdel <sd:/path|fs:/path> [--port <path>]\n  lume repl [--port <path>] [--eval "expr"] [--host <ip> --token <t>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--visual] [--timeout <s>]\n  lume token <32hex> [--port <path>]
   lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --visual captures browser frames at 1/3/6s and checks pixels/draws; it\n  skips the firmware emulator and needs Playwright.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).\n  deploy/dev install the app on the device (LittleFS) and start it; the device\n  keeps exactly one app running. --ephemeral pushes without installing.\n  --host pushes over WiFi TCP (default port ${OTA_PORT_DEFAULT}); the board\n  must be connected to WiFi and its token is printed in the serial log.\n  --ota is a legacy alias for --host.\n  deploy/dev compile with vendored qjsc by default; the first run builds\n  qjsc locally. --source sends JS for older firmware.\n  screenshot captures the running app's frame over the same channel and\n  writes a 24-bit BMP (default: screenshot.bmp in the current directory).\n  screenshot --scan N boots the app under esp32sim at N successive instants\n  (no board needed) and checks every frame for the expected layer set and\n  out-of-bounds changed pixels; exit 0 = all frames pass, 1 = any fail.\n  repl evaluates one JS expression per line on the device's CURRENT app ctx\n  (so app globals/signals are visible). --eval sends one expression and exits;\n  without it, type expressions interactively (Ctrl+C or "exit" to quit).\n  Output is bounded to 2048 bytes per result; longer replies are truncated.\n`;
 
 const APP_COMMANDS = new Set(['list', 'launch', 'remove', 'home']);
@@ -22,8 +23,8 @@ function parse(args) {
   const [command, ...rest] = args;
   if (command === '--help' || command === '-h' || !command) return { command: 'help' };
   if (command === '--version' || command === '-v') return { command: 'version' };
-  if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check', 'token', 'repl'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
-  let dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr = null, ephemeral = false, bytecode = true;
+  if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check', 'token', 'repl', 'fput', 'fls', 'fdel'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
+  let dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr = null, ephemeral = false, bytecode = true, devicePath;
   let json = false, noEmu = false, visual = false, timeout = 120, scanN = null;
   for (let i = 0; i < rest.length; i++) {
     const a = rest[i];
@@ -44,10 +45,20 @@ function parse(args) {
     else if (!a.startsWith('-') && command === 'apps' && !sub) sub = a;
     else if (!a.startsWith('-') && command === 'apps' && !subArg) subArg = a;
     else if (!a.startsWith('-') && command === 'token' && !tokenHex) tokenHex = a;
+    else if (!a.startsWith('-') && command === 'fput' && dir && !devicePath) devicePath = a;
     else if (!a.startsWith('-') && !dir) dir = a;
     else throw new Error(`unexpected argument: ${a}\n${usage}`);
   }
   if (!dir && command === 'create') throw new Error(`create needs a name\n${usage}`);
+  if (['fput', 'fls', 'fdel'].includes(command)) {
+    if (!dir || dir === '.' || (command === 'fput' && !devicePath))
+      throw new Error(`${command} needs a path${command === 'fput' ? ' and device path' : ''}\n${usage}`);
+    if (command !== 'fput') devicePath = dir;
+    if (!/^(sd|fs):\/?[^\t\r\n]*$/.test(devicePath) ||
+        devicePath.split('/').some(s => s === '.' || s === '..') ||
+        (command !== 'fls' && /:\/?$/.test(devicePath)))
+      throw new Error(`invalid device path: ${devicePath}`);
+  }
   if (command === 'token' && !/^[0-9a-fA-F]{32}$/.test(tokenHex || '')) {
     throw new Error(`token needs 32 hex characters\n${usage}`);
   }
@@ -92,7 +103,48 @@ function parse(args) {
       throw new Error(`invalid app id: ${subArg}`);
     }
   }
-  return { command, dir: dir ?? '.', port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr, ephemeral, bytecode, json, noEmu, visual, timeout, scanN };
+  return { command, dir: dir ?? '.', devicePath, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr, ephemeral, bytecode, json, noEmu, visual, timeout, scanN };
+}
+
+async function runFileCommand(options) {
+  const device = await openPort(options.port);
+  try {
+    const path = options.devicePath;
+    if (options.command === 'fls') {
+      const r = await device.command(`FLS\t${path}`);
+      const parts = r.lines.filter(s => s.startsWith('FLS\t'));
+      if (r.verb !== 'fls' || !parts.length) throw new Error('incomplete FLS reply');
+      const entries = JSON.parse(parts.map(s => s.slice(4)).join(''));
+      process.stdout.write(JSON.stringify(entries) + '\n');
+    } else if (options.command === 'fdel') {
+      const r = await device.command(`FDEL\t${path}`);
+      if (r.verb !== 'fdel') throw new Error('unexpected FDEL reply');
+      process.stdout.write(`Deleted ${path}\n`);
+    } else {
+      const bytes = await readFile(resolve(options.dir));
+      if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new Error('file must be 1..8388608 bytes');
+      for (let offset = 0; offset < bytes.length; offset += 2048) {
+        const chunk = bytes.subarray(offset, offset + 2048);
+        const r = await device.command(fputCommand(path, offset, bytes.length, chunk));
+        if (r.verb !== 'fput' || Number(r.arg) !== offset + chunk.length)
+          throw new Error(`FPUT ACK size mismatch at ${offset}`);
+      }
+      const returned = [];
+      for (let offset = 0; offset < bytes.length; offset += 768) {
+        const n = Math.min(768, bytes.length - offset);
+        const r = await device.command(`FGET\t${path}\t${offset}\t${n}`);
+        const line = r.lines.find(s => s.startsWith('F64'));
+        if (r.verb !== 'fget' || !line) throw new Error(`incomplete FGET at ${offset}`);
+        const chunk = Buffer.from(line.slice(3), 'base64');
+        if (chunk.length !== n || Number(r.arg) !== n) throw new Error(`FGET size mismatch at ${offset}`);
+        returned.push(chunk);
+      }
+      const hash = x => createHash('sha256').update(x).digest('hex');
+      if (hash(bytes) !== hash(Buffer.concat(returned))) throw new Error('FPUT readback SHA-256 mismatch');
+      process.stdout.write(`Wrote ${bytes.length} bytes to ${path}; SHA-256 ${hash(bytes)} verified\n`);
+    }
+  } finally { await device.close(); }
+
 }
 
 /* Directory name -> stable app id (same rules as lume_app_id.h). */
@@ -358,6 +410,7 @@ try {
   else if (command === 'dev') await runDev(dir, port, id, ephemeral, bytecode);
   else if (command === 'apps') await runApps(sub, subArg, { port, ota, token, otaPort });
   else if (command === 'token') await runToken(tokenHex, { port });
+  else if (['fput', 'fls', 'fdel'].includes(command)) await runFileCommand(opts);
   else if (command === 'repl') await runRepl(evalExpr, { port, ota, token, otaPort });
   else if (command === 'screenshot' && scanN !== null) {
     const result = await scan(dir, { scan: scanN });

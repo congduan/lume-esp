@@ -119,6 +119,11 @@ const R128_FIRMWARE_FILES = [
   'firmware/sdkconfig.defaults',
   'runtime/types/lume.d.ts',
   'runtime/shell.js', // r166 ColorPicker
+  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL.
+  'firmware/components/lume-hotreload/CMakeLists.txt',
+  'firmware/components/lume-hotreload/include/lume_cmd.h',
+  'firmware/components/lume-hotreload/lume_cmd.c',
+  'firmware/components/lume-hotreload/lume_hotreload.c',
 ];
 function gitDiffEmpty() {
   const out = execFileSync('git', ['diff', '--name-only', '80e76b2',

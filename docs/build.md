@@ -148,6 +148,7 @@ The r96 WiFi-OTA auth handshake (`lume deploy --host <ip>`, legacy `--ota`) is `
 | Final `RELOAD OK/ERR` line | `lume_ota_reply()` (shared by USB + OTA) | `transport.js:24`, `ota.js` |
 | Command magic `LUMC`, same 12-byte header + CRC | `LUME_FRAME_CMD_MAGIC`, `LUME_FRAME_EV_CMD` | `protocol.js:cmdFrame()` |
 | Command text grammar (`STORE`/`LAUNCH`/`REMOVE`/`META`/`LIST`/`HOME`/`SHOT`/`VER`) | `lume_cmd.h` / `lume_cmd.c` | `protocol.js:storeCommand()/storeCommandBuffer()/simpleCommand()` |
+| r173 file commands `FPUT`/`FLS`/`FDEL`/`FGET` (type=file) | `lume_cmd.c`, `lume_hotreload.c:handle_file_cmd()` | `protocol.js:fputCommand()`, `lume fput/fls/fdel` |
 | `CMD OK` / `CMD ERR` lines | `lume_hotreload.c:cmd_reply()` | `transport.js`, `ota.js` |
 | Bytecode magic `LUMB`, same 12-byte header + CRC (r43b) | `LUME_FRAME_BYTECODE_MAGIC`, `LUME_FRAME_EV_BYTECODE`, `lume_frame_encode_bytecode()` | `protocol.js:bytecodeFrame()` |
 | `LQBC` 16-byte payload header (QJS version + BC_VERSION + body_len) | `lume_bytecode.h`, `lume_engine.c:eval_bytecode_buf()` | `protocol.js:bytecodePayload()/parseBytecodePayload()` |
@@ -159,6 +160,31 @@ The r96 WiFi-OTA auth handshake (`lume deploy --host <ip>`, legacy `--ota`) is `
 | REPL output bound (`LUME_REPL_OUT_CAP`=2048, truncation marker) | `lume_frame.h:lume_repl_clamp()` | `protocol.js:clampReplOutput()` |
 
 Four frame kinds share one byte stream: `LUME` payloads are evaluated as app source, `LUMC` payloads are management commands and are never evaluated, `LUMB` payloads (r43b) are a `LQBC` header plus a raw qjsc bytecode blob staged through the same reload slot (the engine dispatches on the payload header at eval time, so the source path is unchanged), and `LUMR` payloads (r115) are ONE JS expression evaluated synchronously on the **current app context** without recycling the runtime (so REPL sees app globals/signals). A command frame is answered with `CMD OK …` / `CMD ERR <reason>`; `LAUNCH`/`HOME` are answered with the engine's `RELOAD OK/ERR` because the outcome is only known after the target app evaluated. `LIST` sends one `APP\t<id>\nMETA\t<id>\t<json>\n` block per app before `CMD OK list <n>`. Old firmware treats `LUMB`/`LUMR` as a bad magic and re-syncs; it answers `VER` with `CMD ERR verb`, which the CLI surfaces as a "update firmware" hint before any bytecode is pushed.
+
+### r173 companion file commands
+
+After the usual USB connection or WiFi `CHALLENGE`/`AUTH OK` exchange, file
+payloads use the existing `LUMC` 12-byte header and frame CRC. The leading
+`file` field on `FPUT` is the OTA payload type marker. Existing `LUME`/`LUMB`
+and `STORE` payloads retain implicit `type=app` and their prior behavior.
+No handshake or app frame bytes changed.
+
+| Payload | Reply | Meaning |
+|---|---|---|
+| `FPUT\tfile\t<sd:/path or fs:/path>\t<offset>\t<total>\n<raw bytes>` | `CMD OK fput <current-size>` | Binary chunk. Offset 0 truncates/creates; later offsets must equal current file size. Final current size equals total. Max total 8 MiB. |
+| `FLS\t<sd:/dir or fs:/dir>` | `FLS\t<JSON fragment>` lines then `CMD OK fls <count>` | Concatenated fragments form a JSON array of immediate children with byte sizes; capped at 16 KiB. |
+| `FGET\t<path>\t<offset>\t<length>` | `F64<base64>` then `CMD OK fget <bytes>` | Read back up to 768 bytes; used for SHA-256 verification. |
+| `FDEL\t<path>` | `CMD OK fdel` | Unlink a regular file only. Directories, including nonempty ones, are rejected. |
+
+The parser rejects empty/malformed fields, `.` and `..` segments, repeated
+slashes, control bytes, backslashes, and paths over 240 bytes after the prefix.
+TF writes have an 8 MiB single-file cap; LittleFS writes additionally require
+at least 16 KiB free after each chunk according to `esp_littlefs_info()`.
+Commands work over both authenticated OTA and trusted USB because both feed
+the same frame parser. `lume fput <local> <device-path>` verifies every ACK,
+reads the file back in 768-byte chunks, and checks SHA-256; `lume fls` prints
+the JSON array; `lume fdel` deletes one file. The CLI file commands currently
+use serial `--port` only.
 
 ## Device REPL (`lume repl`)
 

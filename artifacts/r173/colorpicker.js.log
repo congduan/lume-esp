@@ -1,0 +1,9 @@
+PASS colorpicker 12 RGB round trips; mutation FAIL as expected
+PASS colorpicker ring angles and strips; mutation FAIL as expected
+PASS colorpicker outside areas ignored; mutation FAIL as expected
+PASS colorpicker pan throttle and final flush; mutation FAIL as expected
+PASS colorpicker invalid initialHex warns and defaults; mutation FAIL as expected
+PASS colorpicker one canvas, 24 arc segments, dispose; mutation FAIL as expected
+PASS colorpicker confirm, dismiss, and pause cleanup; mutation FAIL as expected
+PASS colorpicker callbacks validated before mounting; mutation FAIL as expected
+ALL COLORPICKER CASES PASSED

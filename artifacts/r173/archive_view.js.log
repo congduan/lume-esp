@@ -1,0 +1,62 @@
+PASS payload 1 zlib: real inflate text, byte counts, ratio and ZLIB label
+PASS payload 2 raw: real inflate text, byte counts, ratio and RAW label
+PASS payload 3 truncated zlib is a REAL -2 (not -1), rendered as ERR -2
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS NEXT cycles three payloads and wraps; format labels follow the cycle
+PASS default host stub (no options.compress) renders ERR -3, no fake success
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real inflate call present
+PASS text truncation to 120 chars + "..." is declared and implemented
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest has 57 apps including archive_view
+PASS generated playground source is byte-identical to the example
+node:assert:150
+  throw new AssertionError(obj);
+  ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
++ actual - expected
+
++ [
++   'firmware/components/lume-hotreload/CMakeLists.txt',
++   'firmware/components/lume-hotreload/include/lume_cmd.h',
++   'firmware/components/lume-hotreload/lume_cmd.c',
++   'firmware/components/lume-hotreload/lume_hotreload.c',
++   'tools/lume/lume.js',
++   'tools/lume/lume.test.js',
++   'tools/lume/ota.js',
++   'tools/lume/protocol.js',
++   'tools/lume/transport.js'
++ ]
+- []
+
+    at /tmp/lume-r173-wt/tests/archive_view.js:213:10
+    at check (/tmp/lume-r173-wt/tests/archive_view.js:73:28)
+    at Object.<anonymous> (/tmp/lume-r173-wt/tests/archive_view.js:212:1)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: [
+    'firmware/components/lume-hotreload/CMakeLists.txt',
+    'firmware/components/lume-hotreload/include/lume_cmd.h',
+    'firmware/components/lume-hotreload/lume_cmd.c',
+    'firmware/components/lume-hotreload/lume_hotreload.c',
+    'tools/lume/lume.js',
+    'tools/lume/lume.test.js',
+    'tools/lume/ota.js',
+    'tools/lume/protocol.js',
+    'tools/lume/transport.js'
+  ],
+  expected: [],
+  operator: 'deepStrictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.1

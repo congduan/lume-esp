@@ -814,6 +814,15 @@ declare namespace lume.storage.Fs {
  * profile currently defines a CD pin, so detect() returns -4;
  * mounted() reflects the mount result.
  */
+/** r173 companion file metadata returned by LUMC FLS over USB or HMAC OTA.
+ * The transfer channel is separate from the JS Fs/Sd APIs and does not change
+ * their 64 KiB read limit. */
+interface LumeCompanionFileEntry {
+  name: string;
+  size: number;
+  dir: boolean;
+}
+
 declare namespace lume.storage.Sd {
   /** true once the card VFS is mounted; false after a failed or not-yet
    * attempted mount. The first call triggers the mount attempt. */
