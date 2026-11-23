@@ -1,0 +1,10 @@
+PASS scroller camera advance + 20-tick dash/crouch
+PASS scroller jump impulse + gravity landing
+PASS scroller one-shot coin pickup + score
+PASS scroller spike collision + invulnerability window
+PASS scroller game over + restart reset
+PASS scroller KV hiscore (13-char key) + offline fallback
+PASS scroller sprite spans -> Uint16Array precomputed once
+PASS scroller integration: 8 uploads (idempotent), 2327 blits, 0 fillRect, 4 rects / 63872 px
+PASS scroller tap jump + swipe-down dash + 2 buttons
+ALL SCROLLER HARNESS CASES PASSED

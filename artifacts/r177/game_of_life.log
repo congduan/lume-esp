@@ -1,0 +1,15 @@
+PASS life budget: GRID<=60, 9px cells, single canvas <=300x300
+PASS life B3 birth: dead cell with exactly 3 live neighbours comes alive
+PASS life B3/S23 survival 2-3, death 0-1 and 4+
+PASS life stable 2x2 block is unchanged
+PASS life torus edges wrap neighbour counts across all four borders
+EVIDENCE game_of_life initial 1 full paint/7 calls; idle subinterval 0 paints
+PASS life boot: glider seeded, RUN at 350ms, LIFE READY logged
+PASS life STATIC layer: retainSegments uploaded exactly once (72 segments)
+PASS life LIVE layer: each generation logs LIFE GEN and invalidates <30% of frame
+PASS life glider translates while conserving 5 live cells
+PASS life tap: empty cell plants glider; live cell toggles off
+PASS life swipe up toggles play/pause; left/right cycle 200/350/500ms
+PASS life longpress clears the grid
+PASS life PATTERN cycles GLIDER -> LWSS -> PULSAR(48) -> RANDOM
+life harness: 13 cases passed

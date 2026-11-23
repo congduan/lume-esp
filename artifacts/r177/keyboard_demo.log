@@ -1,0 +1,38 @@
+PASS keyboard_demo: Keyboard registered on lume.ui.shell via the existing attach point
+PASS keyboard_demo: all three callbacks validated through the shell callback() helper
+PASS keyboard_demo: three QWERTY rows plus SPACE / BKSP / ENTER, all ASCII
+PASS keyboard_demo: 40 px touch floor and theme.spacing-derived key sizing
+PASS keyboard_demo: onKey / onBackspace / onSubmit dispatch into the app callbacks
+PASS keyboard_demo: cleanup registered on the root through the existing dispose chain
+PASS keyboard_demo: app wires onKey / onBackspace / onSubmit to its signals
+PASS keyboard_demo: native nodes carry the 26 letters + SPACE + BKSP + ENTER labels
+PASS keyboard_demo: all UI string literals ASCII-only (r64)
+PASS keyboard_demo: playground sources/keyboard_demo.js byte-identical to example
+PASS keyboard_demo: keyboard_demo is in the playground manifest
+PASS keyboard_demo: firmware/ and runtime/ identical to 4a2bd29
+PASS keyboard_demo: prelude lume_scripts.c unchanged since dafa1ed
+PASS keyboard_demo live: Keyboard returns a root node and is callable from the app
+PASS keyboard_demo live: mounts exactly 4 row Views and 29 Buttons under the keyboard root
+PASS keyboard_demo live: every key keeps a >=40 px touch target; SPACE is wider
+PASS keyboard_demo live: onKey routes letter and SPACE presses through the signal
+PASS keyboard_demo live: onBackspace removes exactly one character
+PASS keyboard_demo live: onSubmit freezes the line and resets the input
+PASS keyboard_demo live: non-function callbacks are rejected before any node is built
+PASS keyboard_demo live: dispose removes all 33 keyboard nodes once, second call is a no-op
+PASS keyboard_demo mutation: drop the shell.Keyboard registration -> FAIL as expected
+PASS keyboard_demo mutation: drop onSubmit validation -> FAIL as expected
+PASS keyboard_demo mutation: shrink QWERTY to two rows -> FAIL as expected
+PASS keyboard_demo mutation: drop the ENTER control key -> FAIL as expected
+PASS keyboard_demo mutation: lower the touch target floor below 40 px -> FAIL as expected
+PASS keyboard_demo mutation: drop theme.spacing derivation -> FAIL as expected
+PASS keyboard_demo mutation: drop onBackspace dispatch -> FAIL as expected
+PASS keyboard_demo mutation: drop SPACE dispatch -> FAIL as expected
+PASS keyboard_demo mutation: drop the cleanup registration -> FAIL as expected
+PASS keyboard_demo mutation: app stops forwarding onKey -> FAIL as expected
+PASS keyboard_demo mutation: a key label drifts from QWERTY -> FAIL as expected
+PASS keyboard_demo mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS keyboard_demo mutation: playground generated source drifts from the example -> FAIL as expected
+PASS keyboard_demo mutation: playground manifest drops keyboard_demo -> FAIL as expected
+PASS keyboard_demo mutation: a firmware/runtime file changes after the feat commit -> FAIL as expected
+PASS keyboard_demo mutation: the prelude changes vs dafa1ed -> FAIL as expected
+ALL KEYBOARD DEMO HARNESS CASES PASSED

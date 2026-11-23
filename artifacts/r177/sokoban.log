@@ -1,0 +1,11 @@
+PASS sokoban single-box push + move counter
+PASS sokoban no two-box push / no wall walk
+PASS sokoban box cannot be pushed into wall
+PASS sokoban goal coverage + all-boxes-home win
+PASS sokoban corner deadlock + goal exemption
+PASS sokoban all 10 levels BFS-solvable at stated par (data integrity)
+PASS sokoban progress KV (<=15 char key, clamp, graceful failure)
+PASS sokoban unlock + next/prev/restart navigation
+PASS sokoban sprite spans precomputed once, stable across moves
+PASS sokoban canvas/events, dirty budget, swipe push, tap push, reset button
+ALL SOKOBAN HARNESS CASES PASSED

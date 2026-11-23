@@ -1,0 +1,10 @@
+PASS spectrum single sine peak ±1 bin
+PASS spectrum two tones produce two peaks
+PASS spectrum Hann coherent gain normalization
+PASS spectrum log groups strictly advance
+PASS spectrum 256 FFT and 32 bars bounded
+PASS spectrum tap starts one 1024-frame stream
+PASS spectrum callback does not redraw canvas
+PASS spectrum timer signal drives 400x200 dirty rect
+PASS spectrum drop count and SPEC serial event
+PASS spectrum stopStream clears callback and capture

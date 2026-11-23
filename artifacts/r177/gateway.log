@@ -1,0 +1,24 @@
+PASS happy path: hello -> 60ms PCM -> text delta -> audio -> close
+PASS negative: uplink before hello -> not_hello + 1008
+PASS negative: non-hello text first -> not_hello + 1008
+PASS negative: broken JSON -> bad_json + 1002
+PASS negative: 1920-byte mono frame -> bad_audio_frame + 1009
+PASS negative: unmasked WS frame rejected at WS layer + 1002
+PASS negative: upstream disconnect -> upstream_closed + 1011
+PASS negative: hello v=2 -> unsupported_version + 1008
+PASS device close: gateway releases upstream and echoes 1000
+PASS control: unknown_type is non-fatal, ping gets pong
+PASS r117: transcript seq independent of text/audio, single final
+PASS r119: open mode + hello without auth -> full round unchanged
+PASS r119: locked + hello without token -> unauthorized + 1008 + zero upstream calls
+PASS r119: locked + wrong token -> unauthorized + 1008 + zero upstream calls
+PASS r119: locked + correct token -> full round, upstream engaged
+PASS r119: locked + audio before hello -> not_hello wins over token gate
+PASS r120: two turns carry user+assistant history; close clears; reconnect fresh
+PASS r120: history-limit=0 degrades to single-turn (r119 body)
+PASS r120: window keeps only the most recent N pairs (oldest dropped first)
+PASS r122: close retires history; reconnect with resume restores it
+PASS r122: unknown resume id degrades to a fresh session
+PASS r122: locked + wrong token + resume -> unauthorized, zero restore, zero upstream
+PASS r122: expired resume snapshot degrades to a fresh session
+ALL GATEWAY HARNESS CASES PASSED (23 cases)

@@ -264,7 +264,7 @@ function tick() {
   var changed = careStep(care, now, dtSec);
   if (changed) { frameIdx = 0; requestRedraw(changedBox(null, currentVariant())); syncHud(); }
   if (care.state !== 'SLEEP' && now - lastInteract >= SLEEP_AFTER_MS) enterSleep();
-  /* 20 Hz timer; repaint only when the animation frame actually advances. */
+  /* 10 Hz timer matches the animation cadence; repaint only on frame changes. */
   if (care.state !== 'SLEEP' && frameCount(care.state) > 1) {
     animAcc += dtSec * 1000;
     if (animAcc >= 100) {
@@ -278,7 +278,7 @@ function tick() {
   if (hudAcc >= 1000) { hudAcc = 0; stHunger.set(Math.round(care.hunger)); stHappy.set(Math.round(care.happy)); }
 }
 function start() {
-  if (timer === null) { tick.last = Date.now(); timer = lume.system.setInterval(tick, 50); }
+  if (timer === null) { tick.last = Date.now(); timer = lume.system.setInterval(tick, 100); }
 }
 function stop() { if (timer !== null) lume.system.clearInterval(timer); timer = null; }
 

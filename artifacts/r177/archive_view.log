@@ -1,0 +1,21 @@
+PASS payload 1 zlib: real inflate text, byte counts, ratio and ZLIB label
+PASS payload 2 raw: real inflate text, byte counts, ratio and RAW label
+PASS payload 3 truncated zlib is a REAL -2 (not -1), rendered as ERR -2
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS NEXT cycles three payloads and wraps; format labels follow the cycle
+PASS default host stub (no options.compress) renders ERR -3, no fake success
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real inflate call present
+PASS text truncation to 120 chars + "..." is declared and implemented
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest has 57 apps including archive_view
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 4a2bd29
+PASS MUTATION delete <0 error branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake inflate result -> real-inflate predicate and live FAIL
+PASS MUTATION drop text truncation -> truncation predicate FAILS
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS archive_view harness: all live, static and mutation checks green

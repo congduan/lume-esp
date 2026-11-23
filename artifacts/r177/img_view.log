@@ -1,0 +1,20 @@
+PASS default: 2x nearest, HUD/dims/OK, sprite pixels = independent nearest
+PASS NEXT cycles 2x -> 4x -> 8x -> 2x; every grid matches independent nearest
+PASS MODE toggles nearest <-> bilinear at every zoom; bilinear differs from nearest
+PASS both Buttons are wired: press NEXT changes zoom, press MODE flips sampling
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS scale() spy: app passes SRC, correct dims and the exact mode string
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real scale() call present
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 12 nodes
+PASS playground manifest has 57 apps including img_view
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 4a2bd29
+PASS MUTATION delete <0 error branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake scale result -> real-scale predicate and pixel compare FAIL
+PASS MUTATION fake reference -> pixel comparison FAILS (comparator load-bearing)
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS img_view harness: all live, static and mutation checks green

@@ -1,0 +1,3 @@
+PASS line-clear frame: rect=[0,0,160,320] cells=200 redrawn=200 (rect subset of redraw)
+PASS normal-drop frame: rect=[80,80,32,48] cells=6 redrawn=6 (still a tight dirty rect)
+ALL PASS: tetris dirty-rect coverage invariant holds

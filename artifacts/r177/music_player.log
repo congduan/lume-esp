@@ -1,0 +1,9 @@
+LRC normal: PASS
+LRC skip untimed: PASS
+LRC sort: PASS
+LRC bad GBK bytes: PASS
+Scheduler: ticks=7 decoded=5 sent=4 retry=2 PASS
+Scheduler: stop and negative-index wrap PASS
+Lyrics: five-line window and missing LRC PASS
+Library: recursive scan, ID3 title order, last track and offset KV PASS
+Restart: last track and LRC offset restored, playback starts at zero PASS

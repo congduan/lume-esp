@@ -1,0 +1,11 @@
+PASS frogger four-direction hop + boundary clamp
+PASS frogger vehicle collision
+PASS frogger log carry displacement
+PASS frogger water death
+PASS frogger home fill + level up
+PASS frogger difficulty speed-up
+PASS frogger high-score KV + graceful failure
+PASS frogger sprite spans precomputed once, stable across ticks
+PASS frogger game over restart
+PASS frogger canvas/events + tap-direction hops
+ALL FROGGER HARNESS CASES PASSED

@@ -1,0 +1,7 @@
+PASS 62 SVG outlines and 26 Aa pairs have valid structure
+PASS 36-card deck, words and digit dot counts
+PASS static black root and single Image glyph node
+PASS page advance, Z-to-0 transition and Image bounce
+PASS four-mode cycle, random bag and vertical Aa source
+PASS static background across all cards and modes
+ALL ABC123 HARNESS CASES PASSED

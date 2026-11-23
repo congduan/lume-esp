@@ -113,6 +113,16 @@ check('boot: glider seeded, RUN at 350ms, LIFE READY logged', () => {
   assert.equal(val('SPEEDS[speedIndex]'), 350);
   assert.equal(val('running'), true);
   assert.ok(logs.some(s => s.startsWith('LIFE READY grid=')), 'LIFE READY log');
+  assert.equal(val('painted'), true, 'first paint latches painted');
+  const first = ui.messages.filter(m => m[0] === 'invalidate' && m[1] === sceneId);
+  assert.equal(first.length, 1, 'one initial canvas paint');
+  assert.equal(first[0].length, 2, 'initial paint invalidates full canvas');
+  const mark = ui.messages.length;
+  run('__lume_tick()');
+  assert.equal(ui.messages.slice(mark).filter(m => m[0] === 'invalidate').length, 0, 'sub-350ms tick skips paint');
+  const firstCalls = ui.messages.slice(0, mark).filter(m => m[0] === 'draw' || m[0] === 'pathDraw').length;
+  assert.ok(firstCalls > 0 && firstCalls <= 500, 'first-paint call budget ' + firstCalls);
+  console.log('EVIDENCE game_of_life initial 1 full paint/' + firstCalls + ' calls; idle subinterval 0 paints');
 });
 
 check('STATIC layer: retainSegments uploaded exactly once (72 segments)', () => {

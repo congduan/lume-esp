@@ -266,6 +266,19 @@ const ROOT_ID = 1;
   }
   /* one canvas of 480x420 = 201,600 px < 230,400 budget */
   assert.ok(g.COURSE_W * g.COURSE_H <= 230400, 'canvas within pixel budget');
+  const mark = ui.messages.length;
+  for (let i = 0; i < 20; i++) c.tick();
+  const idle = ui.messages.slice(mark);
+  assert.equal(idle.filter(m => m[0] === 'invalidate').length, 0, 'ready state skips 20 timer paints');
+  assert.equal(idle.filter(m => m[0] === 'draw').length, 0, 'ready state emits no canvas calls');
+  let calls = 0, maxCalls = 0;
+  for (const m of ui.messages) {
+    if (m[0] === 'draw') calls++;
+    else if (m[0] === 'batch') calls += m[2].length / 6;
+    else if (m[0] === 'invalidate') { maxCalls = Math.max(maxCalls, calls); calls = 0; }
+  }
+  assert.ok(maxCalls > 0 && maxCalls <= 2000, 'per-paint draw budget ' + maxCalls);
+  console.log('EVIDENCE golf ready 0 paints/20 ticks; max ' + maxCalls + ' draw calls/paint');
   console.log('PASS golf dirty-rect discipline + canvas pixel budget');
 }
 

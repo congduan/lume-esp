@@ -1,0 +1,7 @@
+PASS particle count 220 in [200,300]; array length 880
+PASS IMU m/s^2 mapping, null fallback and m/s^2 shake deviation
+PASS 30 s demo smoke: bounded/finite, constant length, moved=220/220
+PASS touch velocity field: touched=119 vx=31.5 vy=-0.2
+PASS prelude integration: draw calls/frame 221..221 (<250), dirty rects, no IMU -> demo
+PASS gesture swipe+tap inject velocity: target 209 vx 22.0 -> 308.8
+ALL PARTICLES HARNESS CASES PASSED

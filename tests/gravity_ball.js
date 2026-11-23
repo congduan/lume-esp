@@ -82,7 +82,7 @@ check('the first frame paints the canvas once and invalidates all of it', () => 
   assert.equal(inv[0].length, 2, 'first paint invalidates the whole canvas');
 });
 check('no frame falls back to the whole canvas', () => {
-  assert.equal(frames.filter(f => f.inv.length === 0).length, 0, 'every tick redraws');
+  assert.ok(frames.some(f => f.inv.length === 0), 'subpixel motion skips paint');
   const whole = frames.filter(f => f.inv.some(m => m.length === 2));
   assert.equal(whole.length, 0, 'full-canvas invalidates after the first paint');
   for (const m of frames.flatMap(f => f.inv)) {
@@ -98,11 +98,19 @@ check('per-frame raster stays far below a full repaint', () => {
 });
 check('the dirty rect tracks the ball and stays small', () => {
   const rects = frames.flatMap(f => f.inv);
-  assert.equal(rects.length, FRAMES, 'one dirty rect per frame');
+  assert.ok(rects.length > FRAMES / 2 && rects.length <= FRAMES, 'only visible movement paints');
   const positions = new Set(rects.map(m => m[2] + ',' + m[3]));
   assert.ok(positions.size >= 8, 'distinct ball rects=' + positions.size);
   const worstArea = Math.max(...rects.map(m => m[4] * m[5]));
   assert.ok(worstArea <= game.W * game.H / 20, 'largest per-frame area=' + worstArea);
+  console.log('EVIDENCE gravity_ball ' + rects.length + '/' + FRAMES + ' visible-movement paints in ' + FRAMES * FRAME_MS + ' ms; <= ' + Math.max(...frames.map(f => f.draws)) + ' draw calls/paint');
+});
+check('stationary ball skips canvas drawing for a full second', () => {
+  const still = runApp(source, { imu: { read: () => ({ax:0,ay:0,az:9.81}) } });
+  const from = still.messages.length;
+  for (let i = 0; i < 20; i++) vm.runInContext('tick()', still.ctx);
+  assert.equal(still.messages.slice(from).filter(m => m[0] === 'invalidate').length, 0);
+  assert.equal(still.messages.slice(from).filter(m => m[0] === 'draw').length, 0);
 });
 check('the canvas holds exactly one ball and no ghost', () => {
   const px = new Uint32Array(game.W * game.H);

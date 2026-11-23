@@ -1,0 +1,2 @@
+PASS: 240-byte Chinese and 256-byte ASCII text accepted; 257 bytes rejected
+PASS: external text payload has sender rollback and receiver release paths

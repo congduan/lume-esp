@@ -1,0 +1,15 @@
+PASS gravity_ball gravity accelerates and displaces
+PASS gravity_ball the screen edge clamps and reflects normal velocity
+PASS gravity_ball tilting the other way reverses the fall direction
+PASS gravity_ball dt cap limits delayed tick
+PASS gravity_ball a hard tilt keeps the ball inside the screen
+PASS gravity_ball the first frame paints the canvas once and invalidates all of it
+PASS gravity_ball no frame falls back to the whole canvas
+PASS gravity_ball per-frame raster stays far below a full repaint
+EVIDENCE gravity_ball 36/40 visible-movement paints in 2000 ms; <= 50 draw calls/paint
+PASS gravity_ball the dirty rect tracks the ball and stays small
+PASS gravity_ball stationary ball skips canvas drawing for a full second
+PASS gravity_ball the canvas holds exactly one ball and no ghost
+PASS gravity_ball disc span cache static contract
+PASS gravity_ball one disc frame: 0 sqrt, 49 cached row spans
+PASS gravity_ball span-cache mutation guard

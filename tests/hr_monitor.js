@@ -75,7 +75,11 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
-  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
+  // r75 raster and refresh changes already present on origin/main.
+  'firmware/components/lume-svg/lume_svg.c',
+  'firmware/components/lvgl/lv_conf.h',
+];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
 // --- checks -----------------------------------------------------------------

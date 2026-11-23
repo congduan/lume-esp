@@ -1,0 +1,2 @@
+PASS: A post failure frees only A; B posts latest frame with pending set
+PASS: successful post coalesces replacement and preserves latest frame

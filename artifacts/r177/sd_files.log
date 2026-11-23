@@ -1,0 +1,42 @@
+PASS sd_files: Sd defensively resolved from lume.storage
+PASS sd_files: browse gated on Sd.mounted() === true
+PASS sd_files: SD/ virtual root entry appended only in Fs root when ready
+PASS sd_files: SD/ entry flagged and handled as SD mode entry
+PASS sd_files: Sd.list dispatch with Fs fallback
+PASS sd_files: Sd.read dispatch for text preview
+PASS sd_files: Sd remove/mkdir/exists dispatch (delete semantics reuse Fs recursion)
+PASS sd_files: sdOrFs falls back to Fs same path on negative code or throw
+PASS sd_files: isDirPath degrades on native throw
+PASS sd_files: loadDir degrades per operation (list failure -> empty dir)
+PASS sd_files: loadDir failure branch clears selected + preview
+PASS sd_files: removeTree degrades per operation (JS recursion, try/catch)
+PASS sd_files: previewSelected degrades on read failure
+PASS sd_files: makeDir degrades on exists/mkdir throw
+PASS sd_files: SD/ virtual entry cannot be deleted
+PASS sd_files: single shared delete Dialog (no duplicate flow)
+PASS sd_files: HUD queries Sd.statvfs()
+PASS sd_files: statvfs number error code discriminated via typeof === object
+PASS sd_files: statvfs error code renders NO CARD
+PASS sd_files: card free bytes floored to integer MB
+PASS sd_files: status label switches to card info only in SD mode
+PASS sd_files: SD root BACK exits SD mode instead of launcher
+PASS sd_files: all app string literals (UI copy) ASCII-only (r64)
+PASS sd_files: firmware/ runtime/ differ from 4a2bd29 only in known files
+PASS sd_files: playground manifest lists image_gallery and files
+PASS sd_files mutation: drop Sd resolution -> FAIL as expected
+PASS sd_files mutation: drop mounted gate -> FAIL as expected
+PASS sd_files mutation: drop SD/ root entry -> FAIL as expected
+PASS sd_files mutation: force Sd.list dispatch back to Fs -> FAIL as expected
+PASS sd_files mutation: force Sd.read dispatch back to Fs -> FAIL as expected
+PASS sd_files mutation: drop sdOrFs fallback on negative code -> FAIL as expected
+PASS sd_files mutation: drop sdOrFs fallback on native throw -> FAIL as expected
+PASS sd_files mutation: drop loadDir failure preview clear -> FAIL as expected
+PASS sd_files mutation: drop loadDir try/catch -> FAIL as expected
+PASS sd_files mutation: drop removeTree try/catch -> FAIL as expected
+PASS sd_files mutation: drop statvfs call -> FAIL as expected
+PASS sd_files mutation: drop typeof discrimination -> FAIL as expected
+PASS sd_files mutation: drop NO CARD -> FAIL as expected
+PASS sd_files mutation: drop integer MB floor -> FAIL as expected
+PASS sd_files mutation: inject CJK UI copy -> FAIL as expected
+PASS sd_files mutation: drop image_gallery from playground manifest -> FAIL as expected
+ALL SD FILES HARNESS CASES PASSED

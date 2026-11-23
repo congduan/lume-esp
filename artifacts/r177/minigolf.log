@@ -1,0 +1,20 @@
+PASS minigolf UI strings ASCII-only (r64 font rule)
+PASS minigolf power mapping (threshold/dead-zone/clamp, shared curve)
+PASS minigolf turn flow + shot gating (rolling/rejected putt)
+PASS minigolf physics (friction stop, slope deflection, OOB clamp, guard bounce)
+PASS minigolf cup capture / lip-out / hazard penalty reset
+EVIDENCE L1 OPEN PUTT solvable@par hole-in-one {"angle":90,"power":8,"speed":268}
+EVIDENCE L2 SLOPE solvable@par hole-in-one {"angle":90,"power":7,"speed":246}
+EVIDENCE L3 ONE GUARD solvable@par hole-in-one {"angle":75,"power":8,"speed":268}
+EVIDENCE L4 TWO GUARDS solvable@par hole-in-one {"angle":75,"power":9,"speed":291}
+EVIDENCE L5 BUNKERS solvable@par hole-in-one {"angle":70,"power":8,"speed":268}
+EVIDENCE L6 GAUNTLET solvable@par hole-in-one {"angle":105,"power":11,"speed":335}
+PASS minigolf all 6 procedural holes solvable at par (angle x power search)
+PASS minigolf hiscore KV (9-char key, strict-min, graceful failure)
+PASS minigolf boot + retained paths + first paint + canvas budget
+PASS minigolf demo/imu degradation + stationary no-putt
+PASS minigolf IMU swing threshold + one-putt debounce + weak-swing negative
+EVIDENCE minigolf ready 0 paints/20 ticks; max 5 calls/paint
+PASS minigolf drag -> aim -> HIT + dirty budget (max inc 9044 px) + pathDraw replay
+PASS minigolf RESET/NEXT navigation + 1800-tick finite smoke
+ALL MINIGOLF HARNESS CASES PASSED (12 cases)

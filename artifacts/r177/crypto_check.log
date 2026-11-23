@@ -1,0 +1,24 @@
+PASS CRC-32 table cross-checks against zlib.crc32 (independent reference)
+PASS default payload Lume: SHA/HMAC hex matches node:crypto, AES loopback OK
+PASS rendered text stream carries the computed digest, not just ctx state
+PASS NEXT button cycles 3 payloads and wraps; empty payload does not crash
+PASS negative codes render numerically: ERR -2 / ERR -1, never ERR 0
+PASS -3 from any primitive renders UNSUPPORTED (host/playground stub reality)
+PASS default no-crypto host stub shows UNSUPPORTED for all four rows
+PASS CRC-32 u32: 4294967295 is VALID, not ERR -1; seed chaining used once
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / !== 0 error discrimination, no truthy branch
+PASS digest truncation to 16 bytes + "..." in both SHA and HMAC rows
+PASS CRC unsigned String(c2 >>> 0) with negative-only guard
+PASS header declares LUME_MAX_NODES budget and app is plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest has 57 apps including crypto_check
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 4a2bd29
+PASS MUTATION delete -3/UNSUPPORTED branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake/full digest (drop truncation) -> predicate FAILS
+PASS MUTATION signed CRC render -> unsigned predicate FAILS
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS crypto_check harness: all live, static and mutation checks green

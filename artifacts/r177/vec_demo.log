@@ -1,0 +1,26 @@
+PASS default: N24/G40, HUD+OK, 9 nodes, no math error at boot
+PASS all four math APIs are actually called per step (spy forwards to real stub)
+PASS 30 steps match the independent reference integrator strictly (vx/vy/px/py/energy)
+PASS bounce constraint: 200 hard steps keep every particle inside the canvas
+PASS NEXT cycles gravity levels 0->1->2->0 and publishes the HUD
+PASS injected throwing vecAdd presents MATH ERR and freezes physics (defensive branch)
+PASS NEXT still switches level while frozen (button remains wired)
+PASS stub semantics: vecAdd returns a, mutates in place, honours byteOffset
+PASS stub semantics: vecScale returns a and mutates with double->f32 rounding
+PASS stub semantics: dot is a double accumulation equal to an independent sum
+PASS stub semantics: integrate uses interleaved acc and returns undefined
+PASS stub contract: non-Float32Array -> TypeError, length mismatch -> RangeError
+PASS all UI string literals ASCII-only (r64)
+PASS try/catch error branch and four real math calls present
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 12 nodes
+PASS playground manifest has 57 apps including vec_demo
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 4a2bd29
+PASS MUTATION delete try/catch error branch -> predicate and live MATH ERR FAIL
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake app physics -> independent reference comparison FAILS
+PASS MUTATION fake reference -> comparison FAILS (comparator load-bearing)
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS vec_demo harness: all live, known-answer, static and mutation checks green

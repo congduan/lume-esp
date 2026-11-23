@@ -1,0 +1,19 @@
+PASS pet app loads: IDLE, skin 0, precomputed sprite spans and one full paint
+PASS pet buildSpans merges runs and covers exactly the non-empty cells
+EVIDENCE PET PET happy=77 state=HAPPY | state=HAPPY
+PASS pet tap = pet: happy rises, state -> HAPPY (via gesture dispatch)
+EVIDENCE PET FEED hunger=15 state=IDLE | state=IDLE
+PASS pet longpress = feed: hunger drops (via gesture dispatch)
+PASS pet IMU magnitude spike = startle: -> SURPRISED, then decays back
+PASS pet time decay drives hunger into HUNGRY and feeding resolves it
+PASS pet sleep is timer-driven; wake()/startle resumes, sleeping decays slowly
+EVIDENCE skin KV keys=["pet.skin"]
+PASS pet skin switch writes pet.skin (<=15 chars) and wraps modulo 2
+PASS pet a fresh runtime restores the persisted skin on boot
+PASS pet bad KV values fall back to skin 0 (no negative-number discriminator)
+EVIDENCE idle dirty rects=24 widths=72,84,96,96,72,84,96,96,72,84,96,96,72,84,96,96,72,84,96,96,72,84,96,96
+EVIDENCE pet idle 10 paints/s, sleep 0 paints/s; max 6 draw calls/paint
+PASS pet idle animation repaints only the eye rows (<=96px wide, 12px tall)
+EVIDENCE sleep 40 ticks -> draws=0 invalidates=0
+PASS pet sleeping never repaints the canvas across many ticks
+PASS 12 pet host cases

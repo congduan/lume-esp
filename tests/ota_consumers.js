@@ -415,6 +415,10 @@ const ALLOWED = [
   'tests/skycombat.js',
   'website/playground/apps/skycombat.js',
   'website/playground/sources/skycombat.js',
+  // Pre-existing origin/main documentation and r75 firmware delta vs old guard base.
+  'docs/DESIGN-TOKENS.md',
+  'firmware/components/lume-svg/lume_svg.c',
+  'firmware/components/lvgl/lv_conf.h',
   'artifacts/r156/far.png',
   'artifacts/r156/near.png',
   'artifacts/r156/skycombat-harness.txt',
@@ -561,6 +565,21 @@ const ALLOWED = [
   'website/playground/apps/fishtank.js',
   'website/playground/sources/abc123.js',
   'website/playground/sources/fishtank.js',
+  // r177 app-frame sweep and the historical guards refreshed for r75 on main.
+  'examples/gravity_ball/app.js', 'examples/pet/app.js', 'examples/skycombat/app.js',
+  'tests/plasma.js', 'tests/skycombat.js', 'tests/golf.js', 'tests/minigolf.js',
+  'tests/gravity_ball.js', 'tests/pet.js', 'tests/wordle.js', 'tests/game_of_life.js',
+  'tests/adc_meter.js', 'tests/archive_view.js', 'tests/board_abi.js',
+  'tests/confirm_sweep.js', 'tests/control_center.js', 'tests/controls_demo.js',
+  'tests/crypto_check.js', 'tests/hr_monitor.js', 'tests/img_view.js',
+  'tests/keyboard_demo.js', 'tests/keyboard_states.js', 'tests/launcher_grid.js',
+  'tests/reboot_consumers.js', 'tests/settings_dialog.js', 'tests/sntp_consumers2.js',
+  'tests/timer_kit.js', 'tests/vec_demo.js', 'tests/weather_sntp.js',
+  'tests/ota_consumers.js', 'docs/r177-perf-report.md',
+  'website/playground/apps/gravity_ball.js', 'website/playground/apps/pet.js',
+  'website/playground/apps/skycombat.js', 'website/playground/sources.js',
+  'website/playground/sources/gravity_ball.js', 'website/playground/sources/pet.js',
+  'website/playground/sources/skycombat.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -632,7 +651,8 @@ const checks = [
 
   ['only known r132 + r133 + r134 + r135 + r136 files differ from 4a2bd29', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f) ||
-      f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/'))]],
+      f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
+      f.startsWith('artifacts/r177/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {

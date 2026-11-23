@@ -1,0 +1,10 @@
+PASS correctness: empty / repetitive text / RLE / random stored / >64KiB dynamic (raw+zlib, byte-exact)
+PASS default format (omitted/null) is raw
+PASS damaged streams rejected (truncated / bad header / reserved BTYPE / Adler mismatch)
+PASS out-too-small -> -3 with no out-of-bounds write
+PASS subarray/byteOffset views on src and out with guards intact
+PASS error contract: -1 type / -2 data / -3 length, no exceptions
+PERF native inflate 200x 111530B: 23ms (sink=22306000, NOT ESP32-S3)
+ALL OK
+PERF Node zlib.inflateSync baseline 200x 111530B: 41ms (sink=22306000, native C, host only)
+FIXTURES raw/zlib sizes: text=69/75B random=70025B big=5391B big-zlib=5397B

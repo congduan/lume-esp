@@ -1,5 +1,5 @@
 /* SkyCombat 3D: fixed camera, projected aircraft, and polled motion control. */
-var SC_PI=Math.PI,SC_DT=33,SC_F=400,SC_FAR=2000,SC_POOL=6;
+var SC_PI=Math.PI,SC_DT=33,SC_IDLE_DT=100,SC_F=400,SC_FAR=2000,SC_POOL=6;
 function scClamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function scRotate(x,y,deg){var a=deg*SC_PI/180,c=Math.cos(a),s=Math.sin(a);return [240+x*c-y*s,240+x*s+y*c];}
 function scProject(x,y,z,aimX,aimY,roll){var p=scRotate((x-aimX)*SC_F/z,(y-aimY)*SC_F/z,roll);return {x:p[0],y:p[1]};}
@@ -79,10 +79,12 @@ function scDraw(c){scFrame();var i,e,p,r,x,y,z,t,col,near=false,lead=null,leadZ=
  if(sc.over){c.fillColor('#061423');c.fillRect(85,165,310,128);c.text(154,180,'MISSION OVER',SC_GOLD,14);c.text(130,218,'SCORE '+sc.score+'  WAVE '+sc.wave,SC_WHITE,14);c.text(177,251,'BEST '+sc.best,SC_WHITE,14);}
 }
 Canvas({parent:scRoot,width:480,height:480,onDraw:scDraw});
-function scTick(){var sample=null;try{if(lume.imu&&lume.imu.read)sample=lume.imu.read();}catch(err){}
+function scTick(){if(sc.over){scSchedule();return;}var sample=null;try{if(lume.imu&&lume.imu.read)sample=lume.imu.read();}catch(err){}
  if(scMotion(sc.cal,sample,SC_DT)){sc.sim=false;sc.roll=sc.cal.roll;sc.pitch=sc.cal.pitch;}
  else{sc.sim=true;var t=sc.tick*SC_DT/1000;sc.roll=Math.sin(t*0.7)*25;sc.pitch=Math.sin(t*0.5)*12;}
- scStep(sc);scFrame.set(scFrame()+1);}
-lume.gesture.on(scRoot,'tap',function(){sc=scFire(sc);scFrame.set(scFrame()+1);});
-var scTimer=null;function scStart(){if(scTimer===null)scTimer=lume.system.setInterval(scTick,SC_DT);}function scStop(){if(scTimer!==null){lume.system.clearInterval(scTimer);scTimer=null;}}
+ scStep(sc);scFrame.set(scFrame()+1);if(sc.over)scSchedule();}
+lume.gesture.on(scRoot,'tap',function(){sc=scFire(sc);scFrame.set(scFrame()+1);scSchedule();});
+var scTimer=null,scTimerDt=0;
+function scSchedule(){var dt=sc.over?SC_IDLE_DT:SC_DT;if(scTimer!==null&&scTimerDt===dt)return;scStop();scTimer=lume.system.setInterval(scTick,dt);scTimerDt=dt;}
+function scStart(){scSchedule();}function scStop(){if(scTimer!==null){lume.system.clearInterval(scTimer);scTimer=null;}scTimerDt=0;}
 lume.app.onPause(scStop);lume.app.onResume(scStart);scStart();
