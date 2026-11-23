@@ -8,6 +8,8 @@ const logic = vm.createContext({});
 vm.runInContext(app.split('/* GAME UI */')[0], logic);
 
 assert.equal(logic.PL_DT, 50);
+const paintSource = app.split('onDraw: function (ctx) {')[1].split('} });')[0];
+assert.ok(!/toString\(|plBlendColor\(|toFixed\(/.test(paintSource), 'no per-frame color/string conversion');
 assert.ok(logic.PL_BLOBS.length >= 4 && logic.PL_BLOBS.length <= 6);
 assert.ok(logic.PL_THEMES.length >= 3 && logic.PL_THEMES.length <= 4);
 const state = logic.plState();
@@ -85,4 +87,5 @@ ui.gesture(ui.ctx.plRoot, 2, 240, 240, 1050);
 assert.equal(ui.ctx.pl.theme, 1, 'tap changes theme');
 assert.ok(ui.ctx.pl.ripple, 'tap creates ripple');
 console.log(`PASS concentric three-ring ellipses; real prelude <=60 calls/frame (normal max ${maxCalls}; overlap+ripple ${worstCalls}), no-IMU fallback, gesture`);
+console.log(`EVIDENCE plasma 50ms timer = 20 scheduled paints/s; max ${maxCalls} calls/paint; colors precomputed`);
 console.log('ALL PLASMA HARNESS CASES PASSED');
