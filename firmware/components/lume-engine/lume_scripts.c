@@ -469,6 +469,8 @@ const char lume_prelude_js[] =
 "  /* r128: wall clock (unix ms) + bounded SNTP sync; natives live on lume as\n"
 "   * _systemTime/_systemSetTimeNtp. setTimeNtp BLOCKS the engine task. */\n"
 "  time: function () { return lume._systemTime(); },\n"
+"  /* r177: read-only compile-time board name from the HAL registry. */\n"
+"  get board() { return lume._systemBoard(); },\n"
 "  setTimeNtp: function (server, timeoutMs) { return lume._systemSetTimeNtp(server, timeoutMs); },\n"
 "  /* r141: reboot() is the native itself, so extra args reach its argc guard. */\n"
 "  reboot: lume._systemReboot,\n"

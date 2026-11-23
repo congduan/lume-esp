@@ -25,7 +25,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const source = read('examples/control_center/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
@@ -164,7 +164,7 @@ const checks = [
   ['control_center is in the 58-app playground manifest', [apps,
     list => list.length > 0 && list.includes('control_center')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 4a2bd29', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ tools/lume/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
 
 for (const [name, [subject, test]] of checks) {
@@ -202,7 +202,7 @@ const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
 const BUDGET = 'static tree within the node budget';
 const SRC = 'playground sources/control_center.js byte-identical to the example';
 const MANIFEST = 'control_center is in the 58-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 4a2bd29';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 3514c76';
 
 must('drop the shell import',
   x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);

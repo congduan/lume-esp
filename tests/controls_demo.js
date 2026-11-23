@@ -21,8 +21,8 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
-const HEAD_BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+const HEAD_BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
@@ -81,7 +81,7 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
 ];
 const fwChanged = gitChanged(['firmware/', 'runtime/']);
 const trunkFirmware = gitChanged(['firmware/'], HEAD_BASE);
-const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
+const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
 
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
@@ -141,7 +141,7 @@ const checks = [
 
   ['firmware/ identical to the r176 feat commit except r173 companion P1', [trunkFirmware, c => c.every(f => R173_FIRMWARE.includes(f))]],
 
-  ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
+  ['prelude lume_scripts.c unchanged since 3514c76', [preludeChanged, c => c.length === 0]],
 ];
 
 for (const [name, [src, test]] of checks) {
@@ -281,7 +281,7 @@ const SRC = 'playground sources/controls_demo.js byte-identical to example';
 const MANIFEST = 'controls_demo is in the playground manifest';
 const GUARD = 'firmware/ and runtime/ identical to the r176 feat commit';
 const TRUNK = 'firmware/ identical to the r176 feat commit except r173 companion P1';
-const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
+const PRELUDE = 'prelude lume_scripts.c unchanged since 3514c76';
 
 must('drop the Progress registration',
   s => s.replace('shell.Progress = Progress;', ''), REG, shell);
@@ -308,7 +308,7 @@ must('a runtime file changes after the feat commit',
   () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
 must('a firmware file changes vs the r176 feat commit',
   () => ['firmware/components/lume-engine/lume_engine.c'], TRUNK, trunkFirmware);
-must('the prelude changes vs dafa1ed',
+must('the prelude changes vs 3514c76',
   () => ['firmware/components/lume-engine/lume_scripts.c'], PRELUDE, preludeChanged);
 
 console.log('ALL CONTROLS DEMO HARNESS CASES PASSED');

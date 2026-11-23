@@ -6,7 +6,7 @@
 //     only a 0 return enables wall-time rendering, failure copy is ASCII,
 //     sync is cadence-gated in the tick (not every frame).
 //   - worldclock absence (no dir, not in the playground manifest).
-//   - firmware/ runtime/ tools/ are byte-identical to baseline 4a2bd29.
+//   - firmware/ runtime/ tools/ are byte-identical to baseline 3514c76.
 // There is NO radio and NO board on the host: nothing here proves a real SNTP
 // exchange. Host net.status() is DISCONNECTED, so the GOT_IP gate is inert.
 const fs = require('node:fs');
@@ -16,7 +16,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const BEGIN = '/* ---- r130: SNTP sync BEGIN ---- */';
 const END = '/* ---- r130: SNTP sync END ---- */';
 
@@ -108,7 +108,7 @@ checks.push(['all three migrated apps are in the playground manifest',
 checks.push(['worldclock absent (no example dir, not in manifest)',
   [playgroundApps, list => !list.includes('worldclock') &&
     !fs.existsSync(path.join(root, 'examples/worldclock/app.js'))]]);
-checks.push(['firmware/ runtime/ CLI tooling identical to 4a2bd29 (manifest excluded)',
+checks.push(['firmware/ runtime/ CLI tooling identical to 3514c76 (manifest excluded)',
   [changed, c => c.every(f => R166_ALLOWED.includes(f))]]);
 
 for (const [name, [source, test]] of checks) {
@@ -153,6 +153,6 @@ must('playground manifest gains worldclock',
   'worldclock absent (no example dir, not in manifest)', playgroundApps);
 must('a firmware file changes vs ffdd757',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to 4a2bd29 (manifest excluded)', changed);
+  'firmware/ runtime/ CLI tooling identical to 3514c76 (manifest excluded)', changed);
 
 console.log('ALL SNTP CONSUMERS2 HARNESS CASES PASSED');

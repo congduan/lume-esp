@@ -16,7 +16,7 @@
 //     the 360 px page height.
 //   - dashboard playground generated source matches the example, dashboard is
 //     in the playground manifest, all UI literals are ASCII (r64), and only the
-//     known r132-r136 files differ from the 4a2bd29 baseline.
+//     known r132-r136 files differ from the 3514c76 baseline.
 // There is NO radio / board / real OTA push on the host: nothing here proves a
 // real token rotation or a real HMAC exchange. Deferred to board bring-up.
 const fs = require('node:fs');
@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -98,6 +98,11 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   // r75 follow-up: SVG rasterizer scanline fill + LVGL refresh period/cache.
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
+  // r177 board-id slice: lume.system.board getter (BASE 3514c76 is the perf
+  // sweep's docs commit, so the board-id feat files legitimately differ).
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_scripts.c',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
@@ -284,7 +289,7 @@ const ALLOWED = [
   'artifacts/r142/try_batch1000.log',
   'artifacts/r142/try_transition1000.log',
   // r148 controller follow-up (e4f2d47): stale r82/r84/r92 host-run evidence
-  // logs deliberately deleted (disk hygiene). They predate the 4a2bd29
+  // logs deliberately deleted (disk hygiene). They predate the 3514c76
   // baseline, so they no longer appear in the diff; the paths stay allowlisted
   // here as historical record. artifacts/ is regenerable evidence, not source.
   'artifacts/r82/baseline-build.log',
@@ -580,6 +585,14 @@ const ALLOWED = [
   'website/playground/apps/skycombat.js', 'website/playground/sources.js',
   'website/playground/sources/gravity_ball.js', 'website/playground/sources/pet.js',
   'website/playground/sources/skycombat.js',
+  // r177: board-id slice -- one new host harness + report; regenerable
+  // evidence is admitted by the r177 prefix in the check below.
+  'tests/board_id.js',
+  'docs/r177-report.md',
+  // r177 board-id feat files (the perf-sweep BASE 3514c76 predates them).
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_scripts.c',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -647,9 +660,9 @@ const checks = [
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ CLI tooling identical to 4a2bd29', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ CLI tooling identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
-  ['only known r132 + r133 + r134 + r135 + r136 files differ from 4a2bd29', [allChanged, c =>
+  ['only known r132 + r133 + r134 + r135 + r136 files differ from 3514c76', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f) ||
       f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
       f.startsWith('artifacts/r177/'))]],
@@ -724,10 +737,10 @@ must('a non-ASCII UI literal slips in',
   arr => arr.concat('中'),
   'all UI string literals ASCII-only (r64)', lits);
 must('a firmware file changes vs d85e69a',
-  () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ CLI tooling identical to 4a2bd29', fwChanged);
+  () => ['firmware/components/lume-board/lume_board.c'],
+  'firmware/ runtime/ CLI tooling identical to 3514c76', fwChanged);
 must('an out-of-scope file changes vs d85e69a',
   () => allChanged.concat(['docs/unexpected.md']),
-  'only known r132 + r133 + r134 + r135 + r136 files differ from 4a2bd29', allChanged);
+  'only known r132 + r133 + r134 + r135 + r136 files differ from 3514c76', allChanged);
 
 console.log('ALL OTA CONSUMERS HARNESS CASES PASSED');

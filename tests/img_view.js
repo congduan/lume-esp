@@ -35,7 +35,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const source = read('examples/img_view/app.js');
 const manifest = read('tools/playground/build.mjs');
-const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
+const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const SW = 24, SH = 24, FACTORS = [2, 4, 8];
 
 // ---- independent reference scalers (NOT copied from the host stub) --------
@@ -233,7 +233,7 @@ check('playground manifest has 57 apps including img_view', () => {
 });
 check('generated playground source is byte-identical to the example', () =>
   assert.equal(read('website/playground/sources/img_view.js'), source));
-check('firmware/ runtime/ tools/lume/ byte-identical to baseline 4a2bd29', () =>
+check('firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76', () =>
   assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']).filter(f => !R166_ALLOWED.includes(f)), []));
 
 // ---- mutation proof: key predicates MUST fail on a bad input --------------

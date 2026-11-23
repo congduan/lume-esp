@@ -89,9 +89,10 @@ check('dependency points lume-board -> lume-board-hal, never the reverse',
  * lands (runtime/ shell Keyboard, generated website/, examples/, tools/,
  * tests/, docs/). Every other path -- notably firmware/ outside the two board
  * components -- still fails the guard; the assertion is not weakened to a
- * self-comparison. */
+ * self-comparison. r177: BASE re-pinned to the board-id feat commit; the
+ * exclusion set and diff predicate are unchanged (no semantic relaxation). */
 const guardOut = execFileSync('git', [
-  'diff', 'dafa1ed', 'HEAD', '--',
+  'diff', '3514c76', 'HEAD', '--',
   ':!firmware/components/lume-board',
   ':!firmware/components/lume-board-hal',
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL landed in

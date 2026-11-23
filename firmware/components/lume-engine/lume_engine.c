@@ -29,6 +29,7 @@
 #include "esp_heap_caps.h"
 #include "esp_netif_sntp.h"  /* r128: bounded SNTP sync for lume.system.setTimeNtp() */
 #include "esp_system.h"      /* r141: esp_restart() for lume.system.reboot() */
+#include "lume_board_hal.h"  /* r177: lume.system.board reads the HAL registry */
 #include "lume_engine.h"
 #include "lume_perf_binding.h"   /* r140: profile-only lume.perf name contract */
 #include "lume_system_binding.h" /* r141: lume.system.reboot token contract */
@@ -714,6 +715,18 @@ static JSValue js_system_time(JSContext *ctx, JSValueConst self, int argc, JSVal
     gettimeofday(&tv, NULL);
     int64_t ms = (int64_t)tv.tv_sec * 1000 + (int64_t)tv.tv_usec / 1000;
     return JS_NewInt64(ctx, ms);
+}
+
+/* r177: read-only board identifier from the lume-board-hal registry. This is
+ * the HAL's first real consumer: lume_board_get()->board_id is the compile-time
+ * LUME_BOARD_NAME once lume-board registers at boot, or the honest "generic"
+ * stub id before registration. JS_NewString COPIES the bytes, so the returned
+ * value does not alias the static registry slot. No board can be selected or
+ * switched from JS -- this native is a pure observation point. */
+static JSValue js_system_board(JSContext *ctx, JSValueConst self, int argc, JSValueConst *argv)
+{
+    (void)self; (void)argc; (void)argv;
+    return JS_NewString(ctx, lume_board_get()->board_id);
 }
 
 /* Synchronous, bounded SNTP one-shot.
@@ -3296,6 +3309,10 @@ static void register_bindings(JSContext *ctx)
      * lume.system.time()/setTimeNtp() (same pattern as _nowMs / power._sleepNow). */
     JS_SetPropertyStr(ctx, lume, "_systemTime",
                       JS_NewCFunction(ctx, js_system_time, "_systemTime", 0));
+    /* r177: the prelude exposes this native as a read-only
+     * lume.system.board getter (no setter; app code cannot pick a board). */
+    JS_SetPropertyStr(ctx, lume, "_systemBoard",
+                      JS_NewCFunction(ctx, js_system_board, "_systemBoard", 0));
     JS_SetPropertyStr(ctx, lume, "_systemSetTimeNtp",
                       JS_NewCFunction(ctx, js_system_set_time_ntp, "_systemSetTimeNtp", 2));
     /* r141: the prelude exposes this native directly as lume.system.reboot()

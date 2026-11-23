@@ -273,6 +273,9 @@ function runApp(script, options = {}) {
     // wall clock too. _systemTime is the unix-ms wall clock -- the host has a
     // real clock already, so no fake 1970 value is needed here.
     _systemTime: () => Date.now(),
+    // r177: no board on the host; harnesses inject a string via options.board,
+    // otherwise the honest fixed id below (matches the .d.ts documented value).
+    _systemBoard: () => (options.board === undefined ? 'host-stub' : options.board),
     // No WiFi radio or SNTP daemon in the host: mirror the device's -3
     // "WiFi not connected" state error. Harnesses can assert this contract.
     _systemSetTimeNtp: (server, timeoutMs) => -3,

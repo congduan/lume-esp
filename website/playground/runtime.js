@@ -282,6 +282,9 @@
     // setTimeNtp() mirrors the firmware -3 "WiFi not connected" state error
     // rather than pretending to sync the browser's clock.
     _systemTime: () => Date.now(),
+    // r177: no board in the browser; return the documented fixed id (the
+    // firmware native instead reads lume_board_get()->board_id from the HAL).
+    _systemBoard: () => 'browser-stub',
     _systemSetTimeNtp: (server, timeoutMs) => -3,
     _nowMs: () => Date.now(), log: (...args) => options.onLog?.(...args),
     warn: (...args) => options.onWarn?.(...args),

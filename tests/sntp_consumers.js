@@ -47,10 +47,10 @@ const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts', // r166 C
   'firmware/components/lvgl/lv_conf.h']; // r173 companion P1 and r75 already on main
 function gitChanged() {
   const head = execFileSync('git',
-    ['diff', '--name-only', '4a2bd29', 'HEAD', '--', 'firmware/', 'runtime/'],
+    ['diff', '--name-only', '3514c76', 'HEAD', '--', 'firmware/', 'runtime/'],
     { cwd: root, encoding: 'utf8' }).trim();
   const work = execFileSync('git',
-    ['diff', '--name-only', '4a2bd29', '--', 'firmware/', 'runtime/'],
+    ['diff', '--name-only', '3514c76', '--', 'firmware/', 'runtime/'],
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
@@ -117,7 +117,7 @@ const checks = [
   ['settings string literals are ASCII-only', [settings, asciiStrings]],
 
   // --- round scope guard: firmware/ runtime/ unchanged vs r128 baseline ----
-  ['firmware/ runtime/ differ from 4a2bd29 only in the (empty) r129 allowlist',
+  ['firmware/ runtime/ differ from 3514c76 only in the (empty) r129 allowlist',
     [changedFiles, changed => changed.every(f => R129_ALLOWLIST.includes(f))]],
 ];
 
@@ -188,6 +188,6 @@ must('settings UI copy gains a non-ASCII string',
   'settings string literals are ASCII-only', settings);
 must('a firmware file changes vs 0d1111c',
   () => ['firmware/components/lume-engine/lume_engine.c'],
-  'firmware/ runtime/ differ from 4a2bd29 only in the (empty) r129 allowlist', changedFiles);
+  'firmware/ runtime/ differ from 3514c76 only in the (empty) r129 allowlist', changedFiles);
 
 console.log('ALL SNTP CONSUMER HARNESS CASES PASSED');
