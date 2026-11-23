@@ -3450,3 +3450,35 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `6dddec1`（app + playground 生成物） / test `674d461`（harness + BASE 重钉） / docs（本节 + KNOWN-SIMPLIFICATIONS r165 节）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r165 节。
+
+### r167 result — color_demo 注册进 playground（62 apps）+ manifest 断言级联（纯工具清单层；appended, milestone checkboxes untouched）
+
+**开工**：`bash /home/ubuntu/.hermes/scripts/lume_model_guard.sh` → `GUARD: settings.json model=hy4flash-free ✓` / `GUARD: model=hy4flash-free ✓ (settings + runtime audit clean)`，退出码 0，无 429，未在 `/home/ubuntu/lume` 写任何文件。新 worktree `/tmp/lume-r167-wt`（分支 `r167-colorpicker-playground`，基线 `2b9a72f`）；`tools/lume/bin/qjsc` 与 `tools/lume/node_modules` 只读软链对齐主仓、软链不入 git。
+
+**实证先行（以源码为准，不照抄简报数字）**：
+1. `grep -n "const apps" tools/playground/build.mjs` → :10 硬编码列表；node 解析当前 61 app，末尾 `'minigolf', 'ipod_music'`。
+2. `grep -rn "=== 61\|apps.length, 61" tests/*.js` → 17 处数值断言（12 处 `list.length === 61` + 5 处 `assert.equal(apps.length, 61, ...)`，含 `tests/wordle.js:586`）；另 4 处文本标签「61-app playground manifest」按 r161 先例刻意不动。
+3. `git show caa12f2`（r161 的 59→61 cascade）完整 diff：只改数字、保留文本标签、needle 精确追加、ALLOWED 预加生成物路径、无 BASE 重钉。
+4. `tests/sd_files.js:200` 的 manifest-mutation needle 原文含 `'minigolf', 'ipod_music'];`。
+5. `grep -rn "gitChanged" tests/*.js | grep "tools/playground"` → NONE：**无任何 harness 的零 diff 守卫范围含 `tools/playground/`**（全为 `firmware/`、`runtime/`、`tools/lume/`），故 build.mjs 不触发转红，无需按 r162/r165 先例重钉 BASE；`gitChanged([])` allChanged 守卫仅 `tests/ota_consumers.js` 一处。
+6. `git diff 2b9a72f HEAD -- firmware/ runtime/ tools/lume/` 与工作树版 `git diff 2b9a72f -- firmware/ runtime/ tools/lume/` 原始输出均为空（基线空）。
+
+**实现（纯工具清单层）**：`tools/playground/build.mjs` apps 列表末尾追加 `'color_demo'`（列表其余内容逐字不动），重建生成 62 apps：新增 `website/playground/apps/color_demo.js`（24207 bytes）+ `website/playground/sources/color_demo.js`，`sources.js` 加键；`apps/wordle.js` 因 esbuild 压缩变量名漂移再生成（r165 版本与当前工具链输出功能等价，无 harness 锁定 `apps/` bundle 字节，已在 ALLOWED）。`firmware/`、`runtime/`、`runtime/types/lume.d.ts`、vendored、`examples/color_demo/app.js` 零改动；未跑 `idf.py build`。
+
+**断言级联（不改断言语义）**：17 处数值断言 61→62，文本标签不动；`tests/sd_files.js` needle 精确追加 `'color_demo'` 后删列表 mutation 仍转红；`tests/ota_consumers.js` ALLOWED 预加两个未跟踪生成物路径（git diff 看不见 untracked，提交后转红）。无 BASE 重钉、无守卫删除或放宽。`tests/colorpicker.js` / `tests/color_demo.js` 无 app 数量断言，无需同步。
+
+**验证（原始输出见 `/tmp/r167-final-verify.txt`；宿主/编译证据，非真机）**：
+- `npm run build:playground --prefix tools/lume` → `PASS bundle color_demo 24207 bytes` / `PASS esbuild-wasm assets and 62 editable sources` / `PASS prelude 67428 bytes; 62 apps`；二次构建及提交后重建的 `git status --short` 均为空（幂等）。
+- `node tests/colorpicker.js` → `ALL COLORPICKER CASES PASSED`，`COLORPICKER_EXIT=0`；`node tests/color_demo.js` → `ALL COLOR_DEMO CASES PASSED`，`COLOR_DEMO_EXIT=0`。
+- `timeout 600 bash -c 'for t in tests/*.js; do node "$t" >/dev/null 2>&1 || echo FAIL "$t"; done; echo done'` → 仅 `done`，**0 FAIL**（98 个 harness）；本轮未触发 wordle 存量 flake。
+- `npm test --prefix tools/lume` → `# tests 50 / # pass 50 / # fail 0 / # cancelled 0 / # skipped 0`（基线同值；简报所述 skipped 1 为过期口径，无回归），`NPM_TEST_EXIT=0`。
+- `python3 scripts/check_website.py` → 161 entries，`API missing/invented/duplicates/signatures not found in lume.d.ts` 均 none。
+- `node tools/lume/lume.js check examples/color_demo --no-emu` → `[PASS] bundle 24207 bytes` / `RESULT: PASS (4 steps, 0 failed; exit 0)`；哨兵 `examples/counter --no-emu` → `RESULT: PASS`。
+- **固件/runtime 零改动，未跑 `idf.py build`**：`git diff 2b9a72f HEAD -- firmware/ runtime/` 与工作树版 `git diff 2b9a72f -- firmware/ runtime/` 原始输出均为空。
+- ASCII 纪律：`grep -Pn '[^\x00-\x7F]' tools/playground/build.mjs` → `NONE`。
+
+**里程碑口径与取舍**：M5 gallery 行不动——`website/examples.html` 是策展型七卡结构，本轮刻意不改画廊（color_demo 只在 playground 清单中可编辑/预览，不新增策展卡），checkbox 不动。playground 是浏览器 stub，`lume check --no-emu` 只做 esbuild bundle（不跑 eval/layout/perf）；ColorPicker 色环手感、S/V 滑条精度、hex 展示与 KV 恢复的真机行为**全部 deferred，不声称真机验证**。未改 vendored（QuickJS/LVGL）、未改 `.d.ts`；未跑 codex review（主控轮负责）；未推送。磁盘 `/` 紧张，artifacts 只留 `/tmp/r167-final-verify.txt`，worktree 重建后 git 状态干净。
+
+**commits（未推送，拆分）**：feat `3e54f4c`（build.mjs + 生成物） / test `fe57938`（17 断言 + needle + ALLOWED） / docs（本节 + KNOWN-SIMPLIFICATIONS r167 节）。
+
+详见 docs/KNOWN-SIMPLIFICATIONS.md r167 节。
