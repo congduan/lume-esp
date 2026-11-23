@@ -12,7 +12,15 @@ import { promisify } from 'node:util';
 import { build } from 'esbuild';
 import { bundle } from './bundle.js';
 import { create } from './create.js';
-import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN, FWTAG_CMD, MAGIC_REPL, REPL_OUT_CAP, replFrame, parseFrame, clampReplOutput, decodeReplLines } from './protocol.js';
+import { frame, cmdFrame, storeCommand, storeCommandBuffer, simpleCommand, fputCommand, crc32, CONTROL, MAX_PAYLOAD, MAGIC_CMD, MAGIC_BYTECODE, bytecodeFrame, bytecodePayload, parseBytecodePayload, BC_MAGIC, BC_HDR_LEN, FWTAG_CMD, MAGIC_REPL, REPL_OUT_CAP, replFrame, parseFrame, clampReplOutput, decodeReplLines } from './protocol.js';
+
+test('file chunk command keeps raw bytes and app frames unchanged', () => {
+  const body = fputCommand('sd:/a.bin', 0, 4, Buffer.from([0, 10, 255, 1]));
+  assert.deepEqual(parseFrame(cmdFrame(body)).payload, body);
+  assert.deepEqual(body.subarray(body.indexOf(10) + 1), Buffer.from([0, 10, 255, 1]));
+  assert.equal(parseFrame(frame('var x=1')).magic, 'LUME');
+  assert.throws(() => fputCommand('sd:/../a', 0, 1, Buffer.from([1])));
+});
 import { queryFirmwareTag } from './fwtag.js';
 import { parseQjsVersion, qjsVersion, assertEngineVersion, queryEngineVersion, compileBytecode, localQjsc } from './bytecode.js';
 import { openOta, otaMac, otaAuthResponse, OTA_PORT_DEFAULT } from './ota.js';
