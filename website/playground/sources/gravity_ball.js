@@ -51,8 +51,10 @@ function tick() {
     ax = mappedAcceleration(sample, AXIS_X, SIGN_X);
     ay = mappedAcceleration(sample, AXIS_Y, SIGN_Y);
   } else ay = 9.80665 * GAIN; /* simulator: visible downward motion */
+  var oldX = ball.x, oldY = ball.y;
   ball = physicsStep(ball, ax, ay, dt).ball;
-  frame.set(frame() + 1);
+  if (Math.round(ball.x) !== Math.round(oldX) || Math.round(ball.y) !== Math.round(oldY))
+    frame.set(frame() + 1);
 }
 function start() { if (timer === null) { lastTick = Date.now(); timer = lume.system.setInterval(tick, 50); } }
 function stop() { if (timer !== null) lume.system.clearInterval(timer); timer = null; }
