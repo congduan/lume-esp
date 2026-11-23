@@ -1,1 +1,0 @@
-{"assets":[{"name":"bootloader.bin","size":22288},{"name":"flash_args","size":115},{"name":"lume.bin","size":3036480},{"name":"partition-table.bin","size":3072},{"name":"README-flash.txt","size":484}],"name":"Lume firmware v0.3.2","tagName":"v0.3.2"}

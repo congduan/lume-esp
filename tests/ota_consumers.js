@@ -531,6 +531,19 @@ const ALLOWED = [
   'artifacts/r174/website-check.log',
   'artifacts/r174/wordle-recheck.log',
   'artifacts/r174/git-diff-stat.log',
+  // artifact cleanup: unreferenced historical files removed from artifacts/.
+  'artifacts/emu/lcd_dual/game_b.png',
+  'artifacts/emu/oom-inject/counter.frame',
+  'artifacts/r88/build-playground.txt',
+  'artifacts/r88/check-clock.txt',
+  'artifacts/r88/check-dashboard.txt',
+  'artifacts/r88/check-website.txt',
+  'artifacts/r88/playwright.txt',
+  'artifacts/r90/fish-v7-final.png',
+  'artifacts/r154/flash_args.build-original',
+  'artifacts/r154/npm-ci.txt',
+  'artifacts/r154/release-upload.txt',
+  'artifacts/r175/sdkconfig-diff-groups.txt',
 ];
 
 // --- checks -----------------------------------------------------------------
