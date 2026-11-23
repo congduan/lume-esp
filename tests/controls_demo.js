@@ -119,7 +119,7 @@ const checks = [
     s === app]],
 
   ['controls_demo is in the 57-app playground manifest', [apps,
-    list => list.length === 61 && list.includes('controls_demo')]],
+    list => list.length === 62 && list.includes('controls_demo')]],
 
   ['firmware/ and runtime/ identical to the r151 feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
