@@ -42,6 +42,25 @@ left untouched. The emulator step needs the esp32s3 firmware images and
 `esp32sim` (see `tools/emu/README.md`); `run.sh` builds the firmware with
 `idf.py` unless they already exist. `--no-emu` needs only Node.js.
 
+### Browser visual check (`lume check --visual`)
+
+`node tools/lume/lume.js check examples/counter --visual` bundles the app and runs
+its `app.js` in the browser simulator with headless Playwright. Set
+`PLAYWRIGHT_MODULE=/path/to/playwright` when Playwright is not installed in the
+CLI package. This mode skips the firmware emulator and its layout assertions.
+It captures the device at 1, 3 and 6 seconds after page load. The three PNGs
+and `visual.json` are written to `artifacts/check/<app>/visual/`.
+
+Each frame records its URL, timestamp, Canvas draw message count, rendered
+message count, nonempty pixel ratio, five most common nonempty colors, and
+boolean assertions. For Canvas apps, the ratio measures Canvas pixels and a
+blank Canvas fails. For DOM apps such as counter, the ratio measures the full
+device screenshot and rendered messages stand in for Canvas draw messages.
+A frame fails on no visible pixels, no draw/render messages, 250 or more
+messages, or a simulator error. When the app declares a `bg` theme color,
+the DOM screenshot's top five colors must include it. These checks establish
+basic rendering health; they do not judge visual quality or match LVGL output.
+
 ### Host Simulator
 
 From the repository root, run `node tools/simulator/sim.js examples/counter/app.js` and open `http://localhost:8765`. The 480×480 browser device frame replays the exact embedded prelude's UI messages. Saving the app file reruns it and resets the preview; clicking `Count` sends `onPress` back to the same Node VM and updates the screen. A project made with `lume create` can run `npm run sim` from its directory while this repository checkout is available. The simulator needs Node.js and a browser, with no simulator npm dependencies or board.
