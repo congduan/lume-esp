@@ -60,7 +60,9 @@ def device():
                     path = fields[1]
                     entries = [{'name': k.split('/')[-1], 'size': len(v), 'dir': False}
                                for k, v in files.items() if k.startswith(path)]
-                    reply = b'FLS\t' + json.dumps(entries).encode() + b'\n' + f'CMD OK fls {len(entries)}\n'.encode()
+                    document = json.dumps(entries).encode()
+                    mid = len(document) // 2
+                    reply = b'FLS\t' + document[:mid] + b'\nFLS\t' + document[mid:] + b'\n' + f'CMD OK fls {len(entries)}\n'.encode()
                 elif op == 'FDEL':
                     del files[fields[1]]
                     reply = b'CMD OK fdel\n'
