@@ -1,4 +1,10 @@
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
+  'firmware/components/lume-hotreload/CMakeLists.txt',
+  'firmware/components/lume-hotreload/include/lume_cmd.h',
+  'firmware/components/lume-hotreload/lume_cmd.c',
+  'firmware/components/lume-hotreload/lume_hotreload.c',
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 /* r133 host harness for examples/adc_meter (pure app + host stub layer).
  * Standalone CommonJS:  node tests/adc_meter.js
  *

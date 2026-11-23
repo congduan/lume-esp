@@ -89,7 +89,13 @@ function gitChanged(paths) {
  * firmware/runtime/CLI-tooling surface is still pinned. Scope the diff to
  * tools/lume/ so manifest registration is not misreported as a tooling
  * behaviour change. */
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
+  'firmware/components/lume-hotreload/CMakeLists.txt',
+  'firmware/components/lume-hotreload/include/lume_cmd.h',
+  'firmware/components/lume-hotreload/lume_cmd.c',
+  'firmware/components/lume-hotreload/lume_hotreload.c',
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
@@ -488,6 +494,15 @@ const ALLOWED = [
   'artifacts/r172/playground-verify.txt',
   'artifacts/r172/host-regression.txt',
   'artifacts/r172/playground-count.txt',
+  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI + evidence.
+  // Evidence artifacts are admitted by the artifacts/r173/ prefix in the check
+  // below; the source files are listed explicitly.
+  'docs/r173-companion-p1-report.md',
+  'firmware/components/lume-hotreload/CMakeLists.txt',
+  'tests/file_cli_mock.py',
+  'tests/file_emu.py',
+  'tests/file_protocol.c',
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -558,7 +573,7 @@ const checks = [
   ['firmware/ runtime/ CLI tooling identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
   ['only known r132 + r133 + r134 + r135 + r136 files differ from 80e76b2', [allChanged, c =>
-    c.length > 0 && c.every(f => ALLOWED.includes(f))]],
+    c.length > 0 && c.every(f => ALLOWED.includes(f) || f.startsWith('artifacts/r173/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {

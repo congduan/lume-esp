@@ -22,7 +22,11 @@ const { runApp } = require('./lib/prelude_runner');
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
-const HEAD_BASE = '31adb96'; // r150 trunk: firmware/ must be byte-identical
+const HEAD_BASE = '31adb96'; // r150 trunk: firmware/ byte-identical except r173 companion P1
+const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
+  'firmware/components/lume-hotreload/include/lume_cmd.h',
+  'firmware/components/lume-hotreload/lume_cmd.c',
+  'firmware/components/lume-hotreload/lume_hotreload.c']; // r173 companion P1
 
 const app = read('examples/controls_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -62,7 +66,13 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js']; // r166 ColorPicker and r171 check --visual
+const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
+  'firmware/components/lume-hotreload/CMakeLists.txt',
+  'firmware/components/lume-hotreload/include/lume_cmd.h',
+  'firmware/components/lume-hotreload/lume_cmd.c',
+  'firmware/components/lume-hotreload/lume_hotreload.c',
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/']);
 const trunkFirmware = gitChanged(['firmware/'], HEAD_BASE);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], 'dafa1ed');
@@ -123,7 +133,7 @@ const checks = [
 
   ['firmware/ and runtime/ identical to the r151 feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
-  ['firmware/ byte-identical to the r150 trunk baseline', [trunkFirmware, c => c.length === 0]],
+  ['firmware/ identical to the r150 trunk baseline except r173 companion P1', [trunkFirmware, c => c.every(f => R173_FIRMWARE.includes(f))]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
 ];
@@ -264,7 +274,7 @@ const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/controls_demo.js byte-identical to example';
 const MANIFEST = 'controls_demo is in the playground manifest';
 const GUARD = 'firmware/ and runtime/ identical to the r151 feat commit';
-const TRUNK = 'firmware/ byte-identical to the r150 trunk baseline';
+const TRUNK = 'firmware/ identical to the r150 trunk baseline except r173 companion P1';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
 
 must('drop the Progress registration',

@@ -64,6 +64,9 @@ const guardOut = execFileSync('git', [
   'diff', 'dafa1ed', 'HEAD', '--',
   ':!firmware/components/lume-board',
   ':!firmware/components/lume-board-hal',
+  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL landed in
+  // lume-hotreload; everything else under firmware/ still fails the guard.
+  ':!firmware/components/lume-hotreload',
   ':!runtime/', ':!website/', ':!examples/', ':!tools/', ':!tests/', ':!docs',
   // r150: docs-refresh round lands README.md / README.zh-CN.md (43->53 apps,
   // SNTP/TF/SafeArea/esp-emu sections). Root READMEs live outside docs/, so
