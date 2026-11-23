@@ -112,9 +112,9 @@ async function runFileCommand(options) {
     const path = options.devicePath;
     if (options.command === 'fls') {
       const r = await device.command(`FLS\t${path}`);
-      const line = r.lines.find(s => s.startsWith('FLS\t'));
-      if (r.verb !== 'fls' || !line) throw new Error('incomplete FLS reply');
-      const entries = JSON.parse(line.slice(4));
+      const parts = r.lines.filter(s => s.startsWith('FLS\t'));
+      if (r.verb !== 'fls' || !parts.length) throw new Error('incomplete FLS reply');
+      const entries = JSON.parse(parts.map(s => s.slice(4)).join(''));
       process.stdout.write(JSON.stringify(entries) + '\n');
     } else if (options.command === 'fdel') {
       const r = await device.command(`FDEL\t${path}`);

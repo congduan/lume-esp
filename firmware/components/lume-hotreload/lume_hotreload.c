@@ -554,9 +554,17 @@ static void handle_file_cmd(reply_sink_t sink, const lume_cmd_t *cmd)
     }
     closedir(dir);
     if (!ok) { free(json); cmd_reply(sink, false, NULL, NULL, 0, "listing"); return; }
-    json[pos++] = ']'; json[pos++] = '\n';
-    file_reply_bytes(sink, "FLS\t", 4);
-    file_reply_bytes(sink, json, pos);
+    json[pos++] = ']';
+    /* Each transport write is one complete, independently tagged line. Logs
+     * may interleave between lines; the CLI concatenates only FLS fragments. */
+    for (size_t off = 0; off < pos; off += 200) {
+        size_t n = pos - off < 200 ? pos - off : 200;
+        char line[205];
+        memcpy(line, "FLS\t", 4);
+        memcpy(line + 4, json + off, n);
+        line[n + 4] = '\n';
+        reply_write(sink, line, n + 5);
+    }
     free(json);
     file_reply_number(sink, "fls", count);
 }
