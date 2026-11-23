@@ -49,8 +49,42 @@
     ['svg_icon','◇','SVG icon','SVG 图标','Vector icon rendering','矢量图标渲染'],
     ['gestures','↗','Gestures','手势','Tap, swipe, hold and pan','点击、滑动、长按与拖动'],
     ['aurora_clock','o','Aurora Clock','极光时钟','Flowing ribbons and time','流动极光与时间'],
-    ['flapdot','b','Flapdot','拍拍鸟','One-tap arcade flyer','一键街机飞行']
+    ['flapdot','b','Flapdot','拍拍鸟','One-tap arcade flyer','一键街机飞行'],
+    ['wordring','WR','Word Ring','字母环','Tap-only 5-letter word game','点选字母的 5 字母猜词'],
+    ['image_gallery','IM','Image Gallery','图片画廊','TF-card photos with Fs fallback','TF 卡图片，回退到 Fs'],
+    ['files','FS','File Manager','文件管理器','Browse directories and preview text','浏览目录并预览文本'],
+    ['adc_meter','AD','ADC Meter','电压表','ADC1 pin and attenuation voltage readout','ADC1 引脚与衰减档位电压读数'],
+    ['crypto_check','CR','Crypto Check','加密校验','SHA-256, HMAC, CRC32 and AES loopback','SHA-256、HMAC、CRC32 与 AES 回环'],
+    ['archive_view','AR','Archive Viewer','压缩包查看','DEFLATE inflate of embedded payloads','内置 DEFLATE 数据解压展示'],
+    ['img_view','SC','Image Scaler','图像缩放','RGB565 nearest / bilinear zoom demo','RGB565 最近邻与双线性缩放'],
+    ['vec_demo','V2','Vector Physics','向量物理','lume.math integrate and dot particles','lume.math 积分与点积粒子'],
+    ['settings','ST','Settings','系统设置','WiFi, BLE, volume and power settings','WiFi、蓝牙、音量与电源设置'],
+    ['hr_monitor','HR','HR Monitor','心率广播','BLE peripheral streams simulated heart rate','BLE 外设广播模拟心率'],
+    ['keyboard_demo','KB','Keyboard Demo','键盘演示','QWERTY soft keyboard input demo','QWERTY 软键盘输入演示'],
+    ['wordle','WD','Wordle','猜词游戏','Five letters, six tries, on-screen keyboard','5 字母 6 次机会的屏幕键盘猜词'],
+    ['controls_demo','UI','Controls Demo','控件演示','Switch, Slider and Progress shell controls','开关、滑块与进度条控件'],
+    ['timer_kit','TM','Timer Kit','计时工具','Countdown and stopwatch via shell controls','基于 shell 控件的倒计时与秒表'],
+    ['control_center','CC','Control Center','控制中心','Quick settings cards in a safe area','安全区内的快捷设置卡片'],
+    ['launcher_grid','LG','Launcher Grid','应用宫格','3x3 app grid built with shell.Launcher','shell.Launcher 的 3x3 应用宫格'],
+    ['minigolf','GF','Mini Golf','迷你高尔夫','Drag or IMU swing putting demo','拖拽或体感挥杆推杆演示'],
+    ['color_demo','CL','Color Studio','调色台','ColorPicker tint saved to KV','ColorPicker 调色并存入 KV'],
+    ['mochi','MC','Mochi','吉祥物','Programmatic Canvas mascot expressions','Canvas 绘制的吉祥物表情演示'],
+    ['shell_demo','SB','Shell Demo','外壳组件','StatusBar and EdgeNavigation demo','状态栏与边缘导航演示']
   ];
+  // r169: LUME_SOURCES is the authoritative catalog; `examples` holds display
+  // metadata only. Both the picker and the editor dropdown derive from the
+  // catalog, so the rendered list can no longer drift from the manifest.
+  function catalogNames() {
+    const names = examples.map(entry => entry[0]).filter(name => Object.hasOwn(LUME_SOURCES, name));
+    const seen = new Set(names);
+    for (const name of Object.keys(LUME_SOURCES)) {
+      if (!seen.has(name)) { names.push(name); seen.add(name); }
+    }
+    return names;
+  }
+  function meta(name) {
+    return examples.find(entry => entry[0] === name) || [name, '?', name, name, name, name];
+  }
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');
   const shapeButtons = [...document.querySelectorAll('[data-screen-shape]')];
@@ -117,7 +151,7 @@
     document.querySelector('#firmware-tab').setAttribute('aria-selected', String(next === 'firmware'));
     document.querySelector('#examples-tab').setAttribute('aria-selected', String(next === 'examples'));
     if (next === 'firmware') { title.textContent = document.documentElement.lang === 'zh' ? '真机固件' : 'Real firmware'; return; }
-    title.textContent = next === 'editor' ? (document.documentElement.lang === 'zh' ? '编辑器预览' : 'Editor preview') : (examples.find(entry => entry[0] === current)?.[document.documentElement.lang === 'zh' ? 3 : 2] || current);
+    title.textContent = next === 'editor' ? (document.documentElement.lang === 'zh' ? '编辑器预览' : 'Editor preview') : meta(current)[document.documentElement.lang === 'zh' ? 3 : 2];
   }
   const gestures = new Set();
   function showError(error) { errorBox.hidden = false; errorBox.textContent = error?.stack || String(error); }
@@ -161,7 +195,8 @@
   function renderList() {
     const zh = document.documentElement.lang === 'zh';
     list.replaceChildren();
-    for (const [name, icon, en, cn, description, descriptionZh] of examples) {
+    for (const name of catalogNames()) {
+      const [, icon, en, cn, description, descriptionZh] = meta(name);
       const button = document.createElement('button');
       button.type = 'button'; button.className = 'app-item'; button.dataset.app = name;
       button.setAttribute('aria-current', String(name === current));
@@ -206,8 +241,9 @@
   device.addEventListener('pointermove', e => { if (pointer?.pointerId === e.pointerId) dispatch(1, e); });
   device.addEventListener('pointerup', e => { if (pointer?.pointerId === e.pointerId) { dispatch(2, e); pointer = null; } });
   device.addEventListener('pointercancel', e => { if (pointer?.pointerId === e.pointerId) pointer = null; });
-  for (const [name, , en, zh] of examples) {
-    const option = document.createElement('option'); option.value = name; option.textContent = document.documentElement.lang === 'zh' ? zh : en; sourcePicker.append(option);
+  for (const name of catalogNames()) {
+    const entry = meta(name);
+    const option = document.createElement('option'); option.value = name; option.textContent = document.documentElement.lang === 'zh' ? entry[3] : entry[2]; sourcePicker.append(option);
   }
   sourceCode.value = LUME_SOURCES.counter;
   sourcePicker.addEventListener('change', () => { sourceCode.value = LUME_SOURCES[sourcePicker.value]; });
