@@ -30,7 +30,7 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = 'c3ca253'; // r164 feat commit: pure app layer, zero firmware/runtime diff
+const BASE = '4a2bd29'; // r176: re-pinned to the HAL registration feat commit (firmware only)
 
 const settings = read('examples/settings/app.js');
 const hrSrc = read('examples/hr_monitor/app.js');

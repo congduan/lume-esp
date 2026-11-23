@@ -126,7 +126,7 @@ const R128_FIRMWARE_FILES = [
   'firmware/components/lume-hotreload/lume_hotreload.c',
 ];
 function gitDiffEmpty() {
-  const out = execFileSync('git', ['diff', '--name-only', '80e76b2',
+  const out = execFileSync('git', ['diff', '--name-only', '4a2bd29',
     '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
   const files = out ? out.split('\n') : [];
   return files.every(f => R128_FIRMWARE_FILES.includes(f));
@@ -140,8 +140,8 @@ for (const c of checks) {
   assert.ok(c.test(app), 'FAIL sd_files: ' + c.name);
   console.log('PASS sd_files: ' + c.name);
 }
-assert.ok(gitDiffEmpty(), 'FAIL sd_files: only known firmware files may differ from 80e76b2');
-console.log('PASS sd_files: firmware/ runtime/ differ from 80e76b2 only in known files');
+assert.ok(gitDiffEmpty(), 'FAIL sd_files: only known firmware files may differ from 4a2bd29');
+console.log('PASS sd_files: firmware/ runtime/ differ from 4a2bd29 only in known files');
 assert.ok(manifestHasApps(manifest), 'FAIL sd_files: playground manifest must list image_gallery and files');
 console.log('PASS sd_files: playground manifest lists image_gallery and files');
 

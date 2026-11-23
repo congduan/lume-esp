@@ -40,7 +40,8 @@ check('struct has four ops then board_id',
 check('header declares lume_board_get singleton',
   /const lume_board_t \*lume_board_get\(void\);/.test(hdr));
 check('header states profile-is-source-of-truth division of labour',
-  hdr.includes('REMAINS the single source of') && hdr.includes('runtime dispatch stub'));
+  hdr.includes('REMAINS the single source of') && hdr.includes('runtime board registry') &&
+  hdr.includes('no dispatch consumer yet'));
 check('impl defines a single not_supported stub',
   src.includes('static int lume_board_not_supported(void)') &&
   (src.match(/lume_board_not_supported\(\);/g) || []).length >= 4);
@@ -51,6 +52,35 @@ check('impl points all four ops at not_supported faces',
    'touch_init = lume_board_not_supported_touch_init',
    'touch_read = lume_board_not_supported_touch_read',
    'power_init = lume_board_not_supported_power_init'].every(s => src.includes(s)));
+
+// --- 1b. r176 registration API + one-way dependency ----------------------
+check('header declares registration API and invalid-arg code',
+  /int lume_board_hal_register\(const lume_board_t \*board\);/.test(hdr) &&
+  hdr.includes('LUME_BOARD_ERR_INVALID_ARG') &&
+  hdr.includes('LUME_BOARD_ERR_INVALID_ARG   (-2)'));
+check('impl copies the board and keeps a stable current pointer',
+  src.includes('static lume_board_t s_lume_board_registered;') &&
+  src.includes('static const lume_board_t *s_lume_board_current = &s_lume_board_generic;') &&
+  src.includes('int lume_board_hal_register(const lume_board_t *board)') &&
+  src.includes('s_lume_board_registered = *board;') &&
+  src.includes('s_lume_board_current = &s_lume_board_registered;'));
+const boardSrc = read('firmware/components/lume-board/lume_board.c');
+const boardCmake = read('firmware/components/lume-board/CMakeLists.txt');
+const halCmake = read('firmware/components/lume-board-hal/CMakeLists.txt');
+check('lume-board registers real drivers with the profile board name',
+  boardSrc.includes('#include "lume_board_hal.h"') &&
+  boardSrc.includes('(void)lume_board_hal_register(&s_runtime_board);') &&
+  boardSrc.includes('.board_id   = LUME_BOARD_NAME,') &&
+  boardSrc.includes('lume_display_init((lv_display_t **)out_panel)') &&
+  boardSrc.includes('lume_touch_init((i2c_master_bus_handle_t)bus,') &&
+  boardSrc.includes('lume_pmic_display_power_on((i2c_master_bus_handle_t)bus)'));
+check('touch_read drift documented: no standalone driver point-read API',
+  boardSrc.includes('no standalone point-read API') &&
+  boardSrc.includes('return LUME_BOARD_ERR_NOT_SUPPORTED;') &&
+  hdr.includes('NO standalone driver API') && hdr.includes('exists today'));
+const halReg = (halCmake.match(/idf_component_register\(([\s\S]*?)\)/) || [])[1] || '';
+check('dependency points lume-board -> lume-board-hal, never the reverse',
+  boardCmake.includes('REQUIRES lume-board-hal') && !/REQUIRES/.test(halReg));
 
 // --- 2. zero-diff guard (extended for the new sibling component) --------
 /* r148: the guard was pinned to the r146 merge (4155d15) and had already gone

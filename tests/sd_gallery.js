@@ -96,11 +96,11 @@ const R128_FIRMWARE_FILES = [
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
 ];
-const diffFiles = execFileSync('git', ['diff', '--name-only', '80e76b2',
+const diffFiles = execFileSync('git', ['diff', '--name-only', '4a2bd29',
   '--', 'firmware/', 'runtime/'], { cwd: root, encoding: 'utf8' }).trim();
 const changed = diffFiles ? diffFiles.split('\n') : [];
 assert.ok(changed.every(f => R128_FIRMWARE_FILES.includes(f)),
-  'only known firmware files may differ from 80e76b2: ' + changed.join(', '));
+  'only known firmware files may differ from 4a2bd29: ' + changed.join(', '));
 
 console.log('PASS sd_gallery: Sd-first read path wired before Fs fallback');
 console.log('PASS sd_gallery: per-image try/catch degrades one image only');

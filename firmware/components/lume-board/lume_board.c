@@ -26,9 +26,57 @@
 #include "lume_pins.h"
 #include "lume_board.h"
 #include "lume_board_internal.h"
+#include "lume_board_hal.h"
 #include "lume_perf.h"
 
 static const char *TAG = "lume-board";
+
+/* r176: publish the real drivers into the runtime HAL registry. This is an
+ * OBSERVATION POINT only -- lume_board_init() below still calls the drivers
+ * directly, so nothing changes at runtime. esp_err_t uses positive error
+ * codes while the HAL uses 0 / negative, hence the mapping. */
+static int hal_err(esp_err_t err)
+{
+    if (err == ESP_OK) return 0;
+    return err > 0 ? -err : err;
+}
+
+static int hal_panel_init(void **out_panel)
+{
+    return hal_err(lume_display_init((lv_display_t **)out_panel));
+}
+
+static int hal_touch_init(void *bus, void *panel)
+{
+    return hal_err(lume_touch_init((i2c_master_bus_handle_t)bus,
+                                   (lv_display_t *)panel));
+}
+
+static int hal_touch_read(int *out_x, int *out_y, int *out_pressed)
+{
+    (void)out_x;
+    (void)out_y;
+    (void)out_pressed;
+    /* lume_touch.c has no standalone point-read API: the real read happens
+     * inside its static LVGL indev callback. Exposing a raw read would mean
+     * refactoring the driver, which is out of scope for this zero-behaviour-
+     * change slice. Advertise this op as unsupported (non-NULL, returns -1)
+     * until such an API exists; all three init ops above are real. */
+    return LUME_BOARD_ERR_NOT_SUPPORTED;
+}
+
+static int hal_power_init(void *bus)
+{
+    return hal_err(lume_pmic_display_power_on((i2c_master_bus_handle_t)bus));
+}
+
+static const lume_board_t s_runtime_board = {
+    .panel_init = hal_panel_init,
+    .touch_init = hal_touch_init,
+    .touch_read = hal_touch_read,
+    .power_init = hal_power_init,
+    .board_id   = LUME_BOARD_NAME,   /* selected profile's board-name macro */
+};
 
 /* Shared I2C bus handle, published for other components (lume-pmic) via
  * lume_board_get_i2c_bus(). Set once by lume_board_init(), never deleted. */
@@ -261,6 +309,11 @@ esp_err_t lume_io_expander_reset(uint8_t rst_bits)
 
 esp_err_t lume_board_init(void)
 {
+    /* 0. Publish the real driver vtable to the HAL registry (r176). This is
+     * non-fatal and purely observational: the steps below still call the
+     * drivers directly, so registration cannot change board behaviour. */
+    (void)lume_board_hal_register(&s_runtime_board);
+
     /* 1. Shared I2C master bus: AXP2101 / CST9220 / IMU / codec / RTC all use
      * the addresses from the board profile (lume_pins.h). */
     const i2c_master_bus_config_t i2c_cfg = {

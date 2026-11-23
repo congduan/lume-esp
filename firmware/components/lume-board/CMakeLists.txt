@@ -4,5 +4,8 @@
 idf_component_register(
     SRCS "lume_board.c" "lume_pmic.c" "lume_display.c" "lume_touch.c"
     INCLUDE_DIRS "include" "${CMAKE_SOURCE_DIR}/boards/${CONFIG_LUME_BOARD_DIR}"
+    # r176: one-way dependency -- this component registers into the HAL at
+    # boot; lume-board-hal never includes or requires lume-board.
+    REQUIRES lume-board-hal
     PRIV_REQUIRES driver esp_lcd esp_timer lvgl lume-ui-bridge lume-perf
 )
