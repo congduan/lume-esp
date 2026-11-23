@@ -24,13 +24,17 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '80e76b2'; // r162: re-pinned to the onEditingChange feat commit (runtime/ shell + types)
+const BASE = '6dddec1'; // r165: re-pinned to this round's daily-pick feat commit (app layer only)
 const source = read('examples/wordle/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
 const playgroundSrc = read('website/playground/sources/wordle.js');
 const marker = '/* ------------------------------ GAME UI';
 const QWERTY = 'QWERTYUIOPASDFGHJKLZXCVBNM';
+/* r165: fixed wall clock for the daily pick. Host _systemTime defaults to
+ * Date.now(); pinned here so day-index assertions are deterministic. */
+const FIXED_DAY_MS = Date.UTC(2026, 0, 15, 12, 0, 0);
+const FIXED_DAY = Math.floor(FIXED_DAY_MS / 86400000);
 
 function sliceBetween(s, a, b) {
   const i = s.indexOf(a);
@@ -43,7 +47,9 @@ const wiring = sliceBetween(source, 'var keyboard = lume.ui.shell.Keyboard({', '
 
 /* ---------------------------- part 1: logic ---------------------------- */
 let kvStore = {};
+let mockNowMs = FIXED_DAY_MS;
 const mockLume = {
+  system: { time: () => mockNowMs },
   storage: { kv: {
     get: k => (k in kvStore ? kvStore[k] : null),
     set: (k, v) => { kvStore[k] = v; return 0; },
@@ -265,7 +271,9 @@ check('letter marks: highest feedback priority G > Y > X', () => {
 check('KV keys <= 15 chars, storage failures non-fatal', () => {
   assert.ok(s.KV_BEST.length <= 15, 'KV_BEST ' + s.KV_BEST);
   assert.ok(s.KV_CUR.length <= 15, 'KV_CUR ' + s.KV_CUR);
+  assert.ok(s.KV_DAY.length <= 15, 'KV_DAY ' + s.KV_DAY);
   assert.equal(s.KV_BEST, 'hisc.wordle');
+  assert.equal(s.KV_DAY, 'wr.day');
   const g0 = mockLume.storage.kv.get, s0 = mockLume.storage.kv.set;
   mockLume.storage.kv.get = () => { throw new Error('nvs unavailable'); };
   mockLume.storage.kv.set = () => { throw new Error('nvs full'); };
@@ -292,6 +300,46 @@ check('canvas budget 109440/230400 px, grid in bounds', () => {
   assert.ok(300 + 4 * 40 + 2 * 4 <= 480, '4-row keyboard fits the 480 px screen');
 });
 
+// 14. r165: day ordinal + deterministic pick from the wall clock
+check('r165 wdDayIndex + deterministic daily pick (no random path)', () => {
+  mockNowMs = FIXED_DAY_MS;
+  assert.equal(s.wdDayIndex(), FIXED_DAY);
+  assert.equal(s.MS_PER_DAY, 86400000);
+  assert.equal(s.wdPick(), s.WORDS[FIXED_DAY % s.WORDS.length]);
+  assert.equal(s.wdPick(FIXED_DAY), s.wdPick(), 'same day picks the same word');
+  const a = s.wdNewGame();
+  const b = s.wdNewGame();
+  assert.equal(b.answer, a.answer, 'same day reopen -> same word');
+  assert.equal(a.answer, s.WORDS[FIXED_DAY % s.WORDS.length]);
+  assert.equal(a.day, FIXED_DAY, 'state carries the ordinal for the HUD');
+  mockNowMs = FIXED_DAY_MS + 86400000;
+  const c = s.wdNewGame();
+  assert.equal(c.day, FIXED_DAY + 1);
+  assert.notEqual(c.answer, a.answer, 'next day -> different word');
+  assert.equal(c.answer, s.WORDS[(FIXED_DAY + 1) % s.WORDS.length]);
+  mockNowMs = 1000; // cold boot before SNTP: honest 1970-era value
+  assert.equal(s.wdDayIndex(), 0);
+  assert.equal(s.wdPick(), s.WORDS[0], 'clock-not-set maps to first word, honestly');
+  mockNowMs = FIXED_DAY_MS;
+});
+
+// 15. r165: streak counts consecutive days won, enforced by the wr.day key
+check('r165 streak gap: 2+ days since last win breaks the run', () => {
+  mockNowMs = FIXED_DAY_MS;
+  kvStore = { 'wordle.cur': 4, 'hisc.wordle': 5, 'wr.day': FIXED_DAY - 1 };
+  assert.equal(s.wdNewGame().streak, 4, 'next day carries the streak');
+  kvStore = { 'wordle.cur': 4, 'hisc.wordle': 5, 'wr.day': FIXED_DAY };
+  assert.equal(s.wdNewGame().streak, 4, 'same day carries the streak');
+  kvStore = { 'wordle.cur': 4, 'hisc.wordle': 5, 'wr.day': FIXED_DAY - 2 };
+  const st = s.wdNewGame();
+  assert.equal(st.streak, 0, 'a missed day resets the current streak');
+  assert.equal(st.best, 5, 'best survives the reset');
+  assert.equal(kvStore['wordle.cur'], 0);
+  assert.equal(kvStore['hisc.wordle'], 5);
+  kvStore = {};
+  mockNowMs = FIXED_DAY_MS;
+});
+
 /* ------------------------ part 2: live prelude ------------------------- */
 let ui = null;
 const uiKv = {};
@@ -303,11 +351,16 @@ function lastAttr(st, id, attr) {
   const hits = st.messages.filter(m => m[0] === 'attr' && m[1] === id && m[2] === attr);
   return hits.length ? hits[hits.length - 1][3] : undefined;
 }
-function probe(appSrc) {
+function probe(clockMs, appSrc) {
   uiKv.cur = undefined; delete uiKv.cur;
   Object.keys(uiKv).forEach(k => delete uiKv[k]);
   logs.length = 0;
-  const st = runApp(shell + '\n' + stripImport(appSrc === undefined ? source : appSrc), {
+  /* r165: pin the wall clock before the app evaluates. The prelude reads
+   * lume._systemTime dynamically, so this survives the boot-time wdNewGame.
+   * No shared runner change: tests/sntp.js locks the literal Date.now() stub. */
+  const clock = clockMs === undefined ? FIXED_DAY_MS : clockMs;
+  const clockInit = 'lume._systemTime = function () { return ' + clock + '; };\n';
+  const st = runApp(clockInit + shell + '\n' + stripImport(appSrc === undefined ? source : appSrc), {
     filename: 'examples/wordle/app.js',
     kv: {
       get: k => (k in uiKv ? uiKv[k] : null),
@@ -452,6 +505,30 @@ check('~60 s smoke: bounded state, draws and invalidates in canvas', () => {
     ', restarts=' + restarts + ', draws=' + draws.length + ', paints=' + invs.length + ')');
 });
 
+// 20. r165 live: fixed clock -> same word twice; +1 day -> new word; DAY #N
+check('r165 live: same clock same word, +1 day new word, DAY #N in HUD', () => {
+  const p = probe(FIXED_DAY_MS);
+  const w1 = vm.runInContext('wdGetGame().answer', p.s.ctx);
+  assert.equal(w1, vm.runInContext('wdPick(' + FIXED_DAY + ')', p.s.ctx), 'boot word is day-indexed');
+  p.s.press(p.newBtn);
+  const w2 = vm.runInContext('wdGetGame().answer', p.s.ctx);
+  assert.equal(w2, w1, 'same-day NEW -> same word');
+
+  const hud = p.s.messages.filter(m => m[0] === 'attr' && m[2] === 0)
+    .map(m => m[3]).filter(v => typeof v === 'string' && v.indexOf('DAY #') === 0);
+  assert.ok(hud.length > 0, 'HUD carries DAY #N');
+  assert.ok(hud.some(v => v.indexOf('DAY #' + FIXED_DAY) === 0), 'DAY # matches injected clock');
+
+  vm.runInContext('lume._systemTime = function () { return ' + (FIXED_DAY_MS + 86400000) + '; };', p.s.ctx);
+  p.s.press(p.newBtn);
+  const w3 = vm.runInContext('wdGetGame().answer', p.s.ctx);
+  assert.notEqual(w3, w2, 'one day later -> different word');
+  assert.equal(w3, vm.runInContext('wdPick(' + (FIXED_DAY + 1) + ')', p.s.ctx));
+  assert.ok(p.s.messages.filter(m => m[0] === 'attr' && m[2] === 0)
+    .some(m => typeof m[3] === 'string' && m[3].indexOf('DAY #' + (FIXED_DAY + 1)) === 0),
+    'HUD DAY # advances with the clock');
+});
+
 /* ------------------- part 3: static guards + mutations ----------------- */
 function gitChanged(paths, base) {
   const b = base || BASE;
@@ -508,9 +585,26 @@ const checks = [
   ['wordle is in the 57-app playground manifest', [apps,
     list => list.length === 61 && list.includes('wordle')]],
 
-  ['firmware/ runtime/ tools/lume/ identical to 80e76b2', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ tools/lume/ identical to 6dddec1', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
   ['prelude lume_scripts.c unchanged since dafa1ed', [preludeChanged, c => c.length === 0]],
+
+  ['r165 wdDayIndex derives the ordinal from lume.system.time()', [source, x =>
+    x.includes('function wdDayIndex()') &&
+    x.includes('var t = lume.system.time();') &&
+    x.includes('Math.floor(t / MS_PER_DAY)') &&
+    x.includes('var MS_PER_DAY = 86400000;')]],
+
+  ['r165 wdPick is deterministic day % WORDS.length, no random path', [source, x =>
+    x.includes('var i = d % WORDS.length') &&
+    !x.includes('Math.random') &&
+    !/\brnd\b/.test(x)]],
+
+  ['r165 KV_DAY key fits the 15-char NVS cap', [source, x =>
+    x.includes("KV_DAY = 'wr.day'")]],
+
+  ['r165 HUD renders DAY #N', [source, x =>
+    x.includes("hudSig.set('DAY #' + state.day")]],
 ];
 
 for (const [name, [src, test]] of checks) {
@@ -536,8 +630,12 @@ const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
 const SRC = 'playground sources/wordle.js byte-identical to example';
 const MANIFEST = 'wordle is in the 57-app playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 80e76b2';
+const GUARD = 'firmware/ runtime/ tools/lume/ identical to 6dddec1';
 const PRELUDE = 'prelude lume_scripts.c unchanged since dafa1ed';
+const DAY_INDEX = 'r165 wdDayIndex derives the ordinal from lume.system.time()';
+const DAILY_PICK = 'r165 wdPick is deterministic day % WORDS.length, no random path';
+const DAY_KV = 'r165 KV_DAY key fits the 15-char NVS cap';
+const HUD_DAY = 'r165 HUD renders DAY #N';
 
 must('drop shell.Keyboard registration',
   x => x.replace('shell.Keyboard = Keyboard;', ''), REG, shell);
@@ -559,5 +657,14 @@ must('a firmware/runtime/CLI file changes after the feat commit',
   () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
 must('the prelude changes vs dafa1ed',
   () => ['firmware/components/lume-engine/lume_scripts.c'], PRELUDE, preludeChanged);
+must('wdPick falls back to random pick',
+  x => x.replace('var i = d % WORDS.length;', 'var i = Math.floor(Math.random() * WORDS.length);'),
+  DAILY_PICK, source);
+must('wdDayIndex ignores the wall clock',
+  x => x.replace('var t = lume.system.time();', 'var t = 1000;'), DAY_INDEX, source);
+must('KV_DAY grows past the NVS cap',
+  x => x.replace("KV_DAY = 'wr.day'", "KV_DAY = 'wordle.last.day.index'"), DAY_KV, source);
+must('HUD drops the DAY #N label',
+  x => x.replace("hudSig.set('DAY #' + state.day", "hudSig.set('TRY' + state.day"), HUD_DAY, source);
 
 console.log('ALL WORDLE HARNESS CASES PASSED');
