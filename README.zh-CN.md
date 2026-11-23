@@ -53,7 +53,7 @@ CI 自动截取；启动器那张是 `lume screenshot` 通过 USB 从实体板�
 |:--:|:--:|:--:|
 | <img src="artifacts/emu/ui-refresh/games_2048.png" width="230"><br>**2048**<br><sub>滑动 + 合并</sub> | <img src="artifacts/emu/ui-refresh/games_snake.png" width="230"><br>**贪吃蛇**<br><sub>倾斜或滑动操控</sub> | <img src="artifacts/emu/ui-refresh/games_breakout.png" width="230"><br>**打砖块**<br><sub>触摸挡板、6 关</sub> |
 
-**壳层组件**（[runtime/shell.js](runtime/shell.js) —— 状态栏、启动器、对话框、Toast）
+**壳层组件**（[runtime/shell.js](runtime/shell.js) —— 13 个可选 JS 组件：StatusBar / EdgeNavigation / Launcher（+onEditingChange）/ Keyboard（+keyStates）/ Switch / Slider / Progress / ClickWheel / ColorPicker / Dialog / Card / IconButton / Toast）
 
 | | | |
 |:--:|:--:|:--:|
@@ -127,7 +127,7 @@ WiFi 后，同一个 bundle 也能走 TCP：`node tools/lume/lume.js deploy my-a
 
 ### 在浏览器中体验
 
-[Playground](https://congduan.github.io/lume-esp/playground/) 收录 53 个屏幕应用，可直接在浏览器中试用。这里是带硬件桩的 prelude 语义模拟；触摸手感、时序和硬件行为仍需真机验收。
+[Playground](https://congduan.github.io/lume-esp/playground/) 收录 66 份屏幕应用 bundle；当前选择器列出的 48 个可直接在浏览器中试用。这里是带硬件桩的 prelude 语义模拟；触摸手感、时序和硬件行为仍需真机验收。
 
 ### 浏览器中的真实固件
 
@@ -294,7 +294,7 @@ lume.power.sleepNow();                // touch the screen to wake up
 | **M2 —— 硬件 API 面**（GPIO/PWM/ADC、电源、IMU、WiFi+HTTP、KV、文件、音频、TF 卡、crypto、compress、FFT、SNTP） | ✅ 代码完成 |
 | **M3 —— 声明式 UI 完整性**（flex、样式、动画、canvas、手势、生命周期、主题、虚拟化列表、图片、SafeArea） | ✅ 代码完成 |
 | **M4 —— 工具链**（`lume` CLI ✅、宿主模拟器 ✅、WiFi OTA 代码完成 + HMAC 鉴权 ✅、esp-emu 网络 runner 已具备（r144 关联仍失败）/ 真机射频待确认） | 🚧 |
-| **M5 —— 生态**（组件库、含 SafeArea 的启动器壳层、板抽象） | 🚧 可选的 JS 壳层组件与双语文档站已落地；板抽象未开始 |
+| **M5 —— 生态**（组件库、含 SafeArea 的启动器壳层、板抽象） | 🚧 13 个可选 JS 壳层组件与双语文档站已落地；板抽象未开始 |
 
 > **如实说明**：“代码完成”意味着编译通过、宿主测试通过并已复审。真机验收（视觉、触摸手感、
 > 睡眠电流、射频距离）仍待接板，逐项跟踪在 [docs/roadmap.md](docs/roadmap.md)。

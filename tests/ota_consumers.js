@@ -400,6 +400,7 @@ const ALLOWED = [
   'artifacts/r168/lume-check.json',
   'artifacts/r168/playground-build.txt',
   'artifacts/r168/website-check.txt',
+  'docs/hardware-api.md',
   'artifacts/r152/regression-summary.txt',  // r156: skycombat 3D dogfight app + harness + evidence.
   'examples/skycombat/app.js',
   'tests/skycombat.js',
