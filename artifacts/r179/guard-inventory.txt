@@ -1,0 +1,225 @@
+=== adc_meter ===
+1:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+34:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+50:function gitChanged(paths) {
+152:  assert.deepEqual(gitChanged(['firmware/', 'runtime/']).filter(f => !R166_ALLOWED.includes(f)), []));
+167:    assert.ok(gitChanged(['firmware/', 'runtime/']).length > 0,
+172:  assert.deepEqual(gitChanged(['firmware/', 'runtime/']).filter(f => !R166_ALLOWED.includes(f)), []);
+=== archive_view ===
+1:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+41:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+44:const PLAIN_A = '[Lume] boot log sample (synthetic)\n' +
+50:const PLAIN_B = 't=0   acc 0.01 0.02 9.81  gyro 0.0 0.1 -0.1\n' +
+54:const MAX_CHARS = 120;
+100:function gitChanged(paths) {
+223:  assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']).filter(f => !R166_ALLOWED.includes(f)), []));
+253:    assert.ok(gitChanged(paths).length > 0, rel + ' modification must be visible to the diff check');
+257:  assert.deepEqual(gitChanged(paths).filter(f => !R166_ALLOWED.includes(f)), []);
+=== confirm_sweep ===
+33:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+56:function gitChanged(paths) {
+66:const POWER = sliceBetween(settings,
+69:const BLE = sliceBetween(hrSrc,
+73:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+84:const fwChanged = gitChanged(['firmware/', 'runtime/']);
+145:  ['firmware/ runtime/ identical to the r164 feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+198:const SETTINGS_EXPOSE = `
+202:const HR_EXPOSE = `
+=== control_center ===
+28:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+33:const KEYS = { wifi: 'cc.wifi', ble: 'cc.ble', vol: 'cc.vol', brt: 'cc.brt' };
+34:const NODE_BUDGET = 60;
+57:function gitChanged(paths, base) {
+67:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+78:const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+167:  ['firmware/ runtime/ tools/lume/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+185:const IMPORT = 'shell.js imported by the documented relative path';
+186:const SAFE = 'SafeArea consumed as the round-screen safe container';
+187:const CARD = 'Card consumed by four setting cards';
+188:const ICON = 'IconButton consumed by WiFi, Bluetooth and RESET';
+189:const SIGNAL = 'all four values live in signals';
+190:const KEYS_C = 'KV key block uses the four documented <=15-char keys';
+191:const KVFLAG = 'flag KV get wrapped in try/catch, accepts only 0 or 1';
+=== controls_demo ===
+24:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+25:const HEAD_BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+26:const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
+61:function gitChanged(paths, base) {
+71:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+82:const fwChanged = gitChanged(['firmware/', 'runtime/']);
+83:const trunkFirmware = gitChanged(['firmware/'], HEAD_BASE);
+84:const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
+140:  ['firmware/ and runtime/ identical to the r176 feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+142:  ['firmware/ identical to the r176 feat commit except r173 companion P1', [trunkFirmware, c => c.every(f => R173_FIRMWARE.includes(f))]],
+272:const REG = 'all three components registered on lume.ui.shell';
+273:const CONTROL = 'controlled mode: value read at event time, onChange is the only output';
+274:const FLOOR = '40 px touch floor enforced on Switch and Slider heights';
+275:const CLEAN = 'every node registered for cleanup, dispose idempotent';
+=== crypto_check ===
+1:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+42:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+45:const CRC_TABLE = new Int32Array(256);
+112:function gitChanged(paths) {
+258:  assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']).filter(f => !R166_ALLOWED.includes(f)), []));
+286:    assert.ok(gitChanged(paths).length > 0, rel + ' modification must be visible to the diff check');
+290:  assert.deepEqual(gitChanged(paths).filter(f => !R166_ALLOWED.includes(f)), []);
+=== hr_monitor ===
+26:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+63:function gitChanged(paths) {
+72:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+83:const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+135:  ['firmware/ runtime/ CLI tooling identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+=== img_view ===
+1:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+38:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+39:const SW = 24, SH = 24, FACTORS = [2, 4, 8];
+112:function gitChanged(paths) {
+237:  assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']).filter(f => !R166_ALLOWED.includes(f)), []));
+272:    assert.ok(gitChanged(paths).length > 0, rel + ' modification must be visible to the diff check');
+276:  assert.deepEqual(gitChanged(paths).filter(f => !R166_ALLOWED.includes(f)), []);
+=== keyboard_demo ===
+23:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+29:const QWERTY = 'QWERTYUIOPASDFGHJKLZXCVBNM';
+71:function gitChanged(paths, base) {
+81:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+92:const fwChanged = gitChanged(['firmware/', 'runtime/']);
+93:const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
+146:  ['firmware/ and runtime/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+219:const REG = 'Keyboard registered on lume.ui.shell via the existing attach point';
+220:const VALID = 'all three callbacks validated through the shell callback() helper';
+221:const ROWS = 'three QWERTY rows plus SPACE / BKSP / ENTER, all ASCII';
+222:const FLOOR = '40 px touch floor and theme.spacing-derived key sizing';
+223:const DISPATCH = 'onKey / onBackspace / onSubmit dispatch into the app callbacks';
+224:const CLEAN = 'cleanup registered on the root through the existing dispose chain';
+225:const WIRING = 'app wires onKey / onBackspace / onSubmit to its signals';
+=== keyboard_states ===
+25:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+29:const TINT = {
+69:function gitChanged(paths, base) {
+79:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+90:const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+91:const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
+122:  ['firmware/ runtime/ tools/lume/ identical to the feat commit', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+139:const TABLE = checks[0][0];
+140:const VALID = checks[1][0];
+141:const BIND = checks[2][0];
+142:const ABSENT = checks[3][0];
+143:const CONTROL = checks[4][0];
+144:const TYPES = checks[6][0];
+=== launcher_grid ===
+34:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+41:const APPS_N = 9;
+42:const ICON_PX = 48;
+43:const ICON_AREA = ICON_PX * ICON_PX;         // 2304
+44:const TOTAL_AREA = APPS_N * ICON_AREA;       // 20736
+45:const FRAME_AREA = 480 * 480;                // 230400
+61:function gitChanged(paths, base) {
+78:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+89:const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+178:  ['firmware/ runtime/ tools/lume/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+195:const IMPORT = 'shell.js imported by the documented relative path';
+196:const LAUNCHER = 'shell.Launcher is consumed';
+197:const APPS = 'explicit 9-app literal list passed to Launcher';
+198:const FIELDS = 'every app carries id / label / color / ASCII glyph';
+=== ota_consumers ===
+29:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+35:const S_BEGIN = '/* ---- r132: OTA status + token rotation BEGIN';
+36:const S_END = '/* ---- r132: OTA status + token rotation END ---- */';
+37:const ROW_BEGIN = '/* r132 OTA ROW BEGIN';
+38:const ROW_END = '/* r132 OTA ROW END */';
+39:const D_BEGIN = '/* ---- r132: OTA status line BEGIN ---- */';
+40:const D_END = '/* ---- r132: OTA status line END ---- */';
+76:function gitChanged(paths) {
+92:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+107:const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+108:const allChanged = gitChanged([]);
+109:const ALLOWED = [
+670:  ['firmware/ runtime/ CLI tooling identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+673:    c.length > 0 && c.every(f => ALLOWED.includes(f) ||
+=== reboot_consumers ===
+25:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+29:const S_BEGIN = '/* ---- r143: reboot consumer (pure app layer) BEGIN';
+30:const S_END = '/* ---- r143: reboot consumer END ---- */';
+31:const ROW_BEGIN = '/* r143 REBOOT ROW BEGIN';
+32:const ROW_END = '/* r143 REBOOT ROW END */';
+33:const CALL = 'lume.system.reboot();'; // with parens+semicolon: not the comment mention
+61:function gitChanged(paths) {
+70:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+81:const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+123:  ['firmware/ runtime/ CLI tooling untouched vs 3514c76 (shell.js/types only)', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+=== sd_files ===
+115:const R128_FIRMWARE_FILES = [
+134:  return files.every(f => R128_FIRMWARE_FILES.includes(f));
+=== sd_gallery ===
+86:const R128_FIRMWARE_FILES = [
+104:assert.ok(changed.every(f => R128_FIRMWARE_FILES.includes(f)),
+=== settings_dialog ===
+31:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+47:function gitChanged(paths) {
+57:const ROTATE = sliceBetween(app, 'function rotateOtaToken()',
+59:const REBOOT = sliceBetween(app, 'function rebootNow()',
+61:const OTA_ROW = sliceBetween(app, '/* r132 OTA ROW BEGIN', '/* r132 OTA ROW END */');
+62:const REBOOT_ROW = sliceBetween(app, '/* r143 REBOOT ROW BEGIN', '/* r143 REBOOT ROW END */');
+67:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+78:const fwChanged = gitChanged(['firmware/', 'runtime/']);
+145:  ['firmware/ runtime/ identical to 3514c76 (pure app layer)', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+197:const EXPOSE = `
+=== sntp_consumers2 ===
+19:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+20:const BEGIN = '/* ---- r130: SNTP sync BEGIN ---- */';
+21:const END = '/* ---- r130: SNTP sync END ---- */';
+40:const APPS = [
+61:function gitChanged(paths) {
+73:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+84:const changed = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+112:  [changed, c => c.every(f => R166_ALLOWED.includes(f))]]);
+=== sntp_consumers ===
+41:const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts', // r166 ColorPicker
+48:function gitChanged() {
+57:const changedFiles = gitChanged();
+121:    [changedFiles, changed => changed.every(f => R129_ALLOWLIST.includes(f))]],
+=== timer_kit ===
+27:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+32:const KV_TIMER = 'hisc.timer', KV_STOP = 'timer.best';
+33:const CANVAS_PX = 432 * 40;
+53:function gitChanged(paths, base) {
+63:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+74:const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+153:  ['firmware/ runtime/ tools/lume/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+171:const IMPORT = 'shell.js imported by the documented relative path';
+172:const SWITCH = 'Switch consumed with mode signal and setMode onChange';
+173:const SLIDER = 'Slider consumed 0..60 step 1, minutes value, setMinutes onChange';
+174:const PROGRESS = 'Progress consumed with remainFrac getter';
+175:const CLOCK = 'clock is lume.system.time() (no nonexistent system.now)';
+176:const ABSDIFF = 'countdown advances from an absolute-time difference';
+177:const PAUSE = 'pause snapshots remaining then re-anchors on resume';
+=== vec_demo ===
+1:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+37:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+102:function gitChanged(paths) {
+281:  assert.deepEqual(gitChanged(['firmware/', 'runtime/', 'tools/lume/']).filter(f => !R166_ALLOWED.includes(f)), []));
+328:    assert.ok(gitChanged(paths).length > 0, rel + ' modification must be visible to the diff check');
+332:  assert.deepEqual(gitChanged(paths).filter(f => !R166_ALLOWED.includes(f)), []);
+=== weather_sntp ===
+26:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+27:const BEGIN = '/* ---- r131: SNTP-first BEGIN ---- */';
+28:const END = '/* ---- r131: SNTP-first END ---- */';
+53:function gitChanged(paths) {
+65:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+76:const changed = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+135:    [changed, c => c.every(f => R166_ALLOWED.includes(f))]],
+=== wordle ===
+27:const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+33:const QWERTY = 'QWERTYUIOPASDFGHJKLZXCVBNM';
+36:const FIXED_DAY_MS = Date.UTC(2026, 0, 15, 12, 0, 0);
+37:const FIXED_DAY = Math.floor(FIXED_DAY_MS / 86400000);
+156:  assert.ok(st.events.some(e => e.startsWith('new words=300')));
+200:  assert.ok(st.events.some(e => e.startsWith('WIN attempt=2')));
+219:  assert.ok(st.events.some(e => e.startsWith('LOSE answer=crane')));
+539:function gitChanged(paths, base) {
+549:const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+559:const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
+560:const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
+603:  ['firmware/ runtime/ tools/lume/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+640:const REG = 'Keyboard registered on lume.ui.shell';
+641:const WIRE = 'app wires onKey/onBackspace/onSubmit into game logic';
