@@ -107,6 +107,11 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
+  // r182: Luna app, offline texture generator, harness, playground, and evidence.
+  'examples/luna/app.js', 'examples/luna/moon_tex.js',
+  'tools/luna-mktex/generate.js', 'tests/luna.js',
+  'website/playground/apps/luna.js', 'website/playground/sources/luna.js',
+  'docs/r182-luna-report.md',
   // r171: manifest guard and optional browser visual check.
   'tools/lume/check.js',
   'tools/lume/lume.js',
@@ -672,7 +677,8 @@ const checks = [
   ['only known r132 + r133 + r134 + r135 + r136 files differ from 3514c76', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f) ||
       f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
-      f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/'))]],
+      f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
+      f.startsWith('artifacts/r182/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {
