@@ -1,0 +1,14 @@
+PASS luna: phase 2024-04-08; mutation proof
+PASS luna: phase 2024-02-24; mutation proof
+PASS luna: phase 2025-01-13; mutation proof
+PASS luna: 2000 new-moon epoch; mutation proof
+PASS luna: eight phase boundaries; mutation proof
+PASS luna: distance April perigee window; mutation proof
+PASS luna: terminator longitude wrap; mutation proof
+PASS luna: texture wrap and nonflat albedo; mutation proof
+PASS luna: latitude compression; mutation proof
+PASS luna: inertia ends within 20 frames; mutation proof
+PASS luna: frame call cap; mutation proof
+PASS luna: idle tick causes zero draws; mutation proof
+PASS luna: unset clock is labelled and uses example phase; mutation proof
+PASS luna: pan and double tap reset; mutation proof
