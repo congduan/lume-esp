@@ -40,6 +40,14 @@ CONFIG_FATFS_API_ENCODING_UTF_8=y
 CONFIG_ESP_WIFI_IRAM_OPT=n
 CONFIG_ESP_WIFI_RX_IRAM_OPT=n
 
+# r179: WiFi station must associate through esp-emu. BT_ENABLED=y (r25 NimBLE)
+# selects CONFIG_ESP_COEX_SW_COEXIST_ENABLE; r175 R4b proved that turning it
+# off flips assoc -> init (0x400) into assoc -> run (0x10). All three legacy
+# aliases in sdkconfig.rename map to this one symbol; setting it n here is
+# the single declarative source of truth. Combined with esp_wifi_set_ps()
+# in lume_net.c. Real-board coexistence/WiFi behaviour remains deferred.
+CONFIG_ESP_COEX_SW_COEXIST_ENABLE=n
+
 # BLE peripheral / NimBLE (r25, lume-ble). These are the Kconfig inputs;
 # firmware/sdkconfig was regenerated with idf.py v5.5.5 so a plain build has
 # Bluetooth enabled. Host build + size: IRAM 16384/16384 (100%, no overflow),
