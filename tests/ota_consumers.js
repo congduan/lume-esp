@@ -111,7 +111,10 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
   // r181: emu frame-injection pacing (scan.js) + UI-queue backpressure bridge.
   'tools/lume/scan.js',
-  'firmware/components/lume-ui-bridge/lume_ui_bridge.c'];
+  'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
+  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
+  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
+  'firmware/sdkconfig.defaults'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
@@ -626,6 +629,11 @@ const ALLOWED = [
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_scripts.c',
+  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
+  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
+  'firmware/sdkconfig.defaults',
+  // r179: WiFi PS/coexist knife report; evidence admitted by r179 prefix below.
+  'docs/r179-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -700,7 +708,7 @@ const checks = [
       f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
       f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
       f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
-      f.startsWith('artifacts/r183/'))]],
+      f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r179/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {
