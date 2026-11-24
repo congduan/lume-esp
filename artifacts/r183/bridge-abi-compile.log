@@ -1,0 +1,3 @@
+# bridge_protocol.c _Static_assert host compile (r183, ABI untouched)
+gcc -std=c11 -fsyntax-only -I firmware/components/lume-ui-bridge/include -I firmware/components/lume-hotreload/include -I firmware/components/lume-engine/include tests/bridge_protocol.c
+EXIT=0

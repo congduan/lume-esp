@@ -1,0 +1,9 @@
+FAIL tests/confirm_sweep.js
+FAIL tests/controls_demo.js
+FAIL tests/hr_monitor.js
+FAIL tests/ota_consumers.js
+FAIL tests/reboot_consumers.js
+FAIL tests/settings_dialog.js
+FAIL tests/sntp_consumers2.js
+FAIL tests/sntp_consumers.js
+FAIL tests/weather_sntp.js

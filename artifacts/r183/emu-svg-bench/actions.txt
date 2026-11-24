@@ -1,0 +1,6 @@
+2.500 serial-file /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench/app.frame.part-aa
+2.510 serial-file /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench/app.frame.part-ab
+2.520 serial-file /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench/app.frame.part-ac
+2.530 serial-file /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench/app.frame.part-ad
+2.540 serial-file /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench/app.frame.part-ae
+2.550 serial-file /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench/app.frame.part-af

@@ -1,0 +1,10 @@
+bundle /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench: source 24205 bytes; payload 24205 bytes; frame 24217 bytes (source)
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433236 bytes
+I (1810) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1941) lume-engine: app eval ok; entering event loop
+I (2744) lume-engine: engine recv RELOAD -> recycle runtime
+I (2976) lume-engine: runtime up; eval app '<embedded-demo>' (24205 bytes)
+I (3240) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 182557585 + core1 183077250 insns in 9.6s wall = 38.1 Minsn/s; emulated 8.000s (1920000000 cycles); 359464 exceptions, 24762 interrupts
+TFT: /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench/tft.png
+serial: /tmp/lume-r183-wt/artifacts/r183/emu-svg-bench/serial.log
