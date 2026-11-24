@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/compass",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 3820,
+      "ms": 21
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for compass"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/compass/tft.png"
+}

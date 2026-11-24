@@ -1,0 +1,10 @@
+lume check examples/flapdot
+
+[PASS] bundle   5601 bytes (102 ms)
+[SKIP] eval     --visual uses browser simulator
+[SKIP] layout   requires emulator screenshot (--visual)
+[SKIP] perf     profile disabled
+[FAIL] visual
+       error: visual assertions failed; see artifacts/check/flapdot/visual/visual.json
+
+RESULT: FAIL (5 steps, 1 failed; exit 1)

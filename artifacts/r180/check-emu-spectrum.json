@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/spectrum",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 3828,
+      "ms": 20
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for spectrum"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/spectrum/tft.png"
+}

@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/minesweeper",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 6398,
+      "ms": 20
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for minesweeper"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/minesweeper/tft.png"
+}

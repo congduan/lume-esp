@@ -1,0 +1,13 @@
+PASS memory deal: 16 cards, 8 faces x2
+PASS memory shuffle: deterministic under injected rnd, true permutation
+PASS memory single flip: one-open, moves not yet counted
+PASS memory match: pair removed, counter advanced
+PASS memory miss: face-up window, flipback on tick, cards stay in play
+PASS memory negative: no double-flip, no third-card flip
+PASS memory negative: range/matched/won guards
+PASS memory full game: 8-pair clear, WIN event, best=8 saved
+PASS memory best: worse keeps / fewer overwrites / equal keeps
+PASS memory spans: 8 faces decoded, palette refs all valid
+PASS memory canvas budget: 230400 px single canvas, grid in bounds
+PASS memory solvability: 20 random deals all contain exactly 8 pairs
+ALL tests/memory.js PASS

@@ -1,0 +1,8 @@
+PASS: REPL frame layout magic/len/crc/payload
+PASS: parser emits LUME_FRAME_EV_REPL
+PASS: bad CRC rejected
+PASS: empty payload rejected
+PASS: overlong length rejected
+PASS: REPL output clamp/truncation marker
+PASS: UTF-8 expression round trip
+ALL REPL PROTOCOL CASES PASSED

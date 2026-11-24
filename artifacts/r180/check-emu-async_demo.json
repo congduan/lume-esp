@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/async_demo",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 510,
+      "ms": 32
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for async_demo"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/async_demo/tft.png"
+}

@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/clock",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 3433,
+      "ms": 36
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for clock"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/clock/tft.png"
+}

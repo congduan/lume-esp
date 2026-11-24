@@ -1,0 +1,14 @@
+EVIDENCE 1000 items / 12 visible: actual created nodes=17 (15 rows + container + spacer)
+PASS 1000 items, 12 visible: initial 15 rows, 17 total nodes
+EVIDENCE 1000 items / 12 visible: middle window live nodes=20 (18 rows + 2 fixed)
+PASS scroll maps to 18-row middle window
+PASS scroll window reclaims old rows before creating replacements
+PASS small scroll within same window does not churn nodes
+PASS same-length items replacement rebuilds window and keeps offset
+PASS length change rebuilds and resets scroll to top
+PASS removed row loses press callback and signal effects
+PASS 1000-item traversal stays within the 127-node table
+PASS bridge throttle and overflow policy are present
+EVIDENCE files seedTestEntries(): 1000 entries, 40 new nodes
+PASS files example seeds 1000 entries without creating 1000 rows
+PASS 10 list virtualization cases

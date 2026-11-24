@@ -1,0 +1,19 @@
+PASS three rectangular levels and bounded map values
+PASS BFS reaches exit or every enemy spawn in all stages
+PASS three textures carry exactly 768 in-range indices
+PASS 16x16 brick and portal texels are distinct
+PASS collision blocks wall with player radius
+PASS collision admits open corridor
+PASS step moves forward and reveals fog
+PASS closed door opens and becomes passable
+PASS pickup grants 100 only once
+PASS patrol reverses at a wall
+PASS hunter changes to chase only with line of sight
+PASS wall blocks line of sight
+PASS shoot rejects occluded or off-axis target
+PASS shoot clears aligned visible target and scores
+PASS exit cell completes stages one and two
+PASS arena requires every enemy cleared
+PASS damage has cooldown and resets current stage on death
+PASS four sound heads remain within 48 ms stereo PCM
+raycast game: 18 cases PASS

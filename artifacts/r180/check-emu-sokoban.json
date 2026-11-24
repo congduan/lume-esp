@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/sokoban",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 7834,
+      "ms": 24
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for sokoban"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/sokoban/tft.png"
+}

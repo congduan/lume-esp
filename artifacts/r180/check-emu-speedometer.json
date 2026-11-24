@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/speedometer",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 3705,
+      "ms": 22
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for speedometer"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/speedometer/tft.png"
+}

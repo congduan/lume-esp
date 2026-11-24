@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/calculator",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 2968,
+      "ms": 34
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for calculator"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/calculator/tft.png"
+}

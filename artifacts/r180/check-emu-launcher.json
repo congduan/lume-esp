@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/launcher",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 1406,
+      "ms": 22
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for launcher"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/launcher/tft.png"
+}

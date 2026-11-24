@@ -1,0 +1,27 @@
+{
+  "ok": false,
+  "app": "examples/settings",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 37449,
+      "ms": 39
+    },
+    {
+      "step": "eval",
+      "ok": false,
+      "error": "emulator failed (exit 1)",
+      "tail": "I (1942) lume-ui-bridge: create id=5 kind=0 parent=1\nI (1943) lume-ui-bridge: create id=6 kind=0 parent=1\nI (1944) lume-ui-bridge: create id=7 kind=1 parent=0\nI (1944) lume-ui-bridge: create id=8 kind=1 parent=0\nI (1945) lume-ui-bridge: create id=9 kind=0 parent=1\n[script] t=2.500s serial-file (37461 bytes)\n[emu] stop: Halted — core0 66743148 + core1 50453199 insns in 3.4s wall = 34.1 Minsn/s; emulated 8.000s (1920000000 cycles); 267874 exceptions, 23483 interrupts\n[irq] per core, cpu-int: count (peripheral sources mapped to it)\n  core0 int2          2  sources [59]\n  core0 int3       3204  sources [79]\n  core0 int5       7888  sources [57]\n  core0 int9        882  sources [42]\n  core0 int12        48  sources []\n  core0 int13      2969  sources [96]\n  core1 int0        583  sources [80]\n  core1 int1       7907  sources [58]\n[emu] i2s frames out: 0 (i2s0 @ 44100 Hz) 0 (i2s1 @ 44100 Hz)\n[emu] crypto: 0 AES blocks, 47887 SHA blocks, 0 RSA/MPI operations\n[emu] blocks: 24329 built (0 cache flushes) core0, 21418 (0) core1; jit: 0 compiled, 0 KB code\n[emu] wrote /tmp/lume-r180-wt/artifacts/check/settings/tft.png"
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for settings"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/settings/tft.png"
+}

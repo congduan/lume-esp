@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/particles",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 5318,
+      "ms": 24
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for particles"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/particles/tft.png"
+}

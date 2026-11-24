@@ -1,0 +1,7 @@
+PASS Image create/source/size message order
+PASS Image participates in View flex child adoption
+PASS Image preserves aspect ratio for one explicit dimension
+PASS Image forwards two explicit raster dimensions
+PASS Image propagates decoder error and removes failed node
+PASS Image rejects invalid input and propagates header error
+PASS embedded PNG 1x1 decodes to exact opaque red RGBA bytes

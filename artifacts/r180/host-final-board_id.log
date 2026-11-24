@@ -1,0 +1,25 @@
+PASS board_id: d.ts declares readonly board: string in lume.system
+PASS board_id: d.ts documents compile-time macro value domain and HAL source
+PASS board_id: d.ts documents no setter and both stub return values honestly
+PASS board_id: engine includes the board HAL header
+PASS board_id: C native reads board_id from lume_board_get and copies into JS
+PASS board_id: C registers _systemBoard as a zero-arg native
+PASS board_id: board native stays in flash (no IRAM attribute)
+PASS board_id: engine REQUIRES lume-board-hal (consumer -> registry, no reverse edge)
+PASS board_id: prelude exposes a getter (not a function) that calls the native
+PASS board_id: host runner stubs _systemBoard with an injectable string default
+PASS board_id: playground runtime stubs _systemBoard with an honest browser string
+PASS board_id: generated playground prelude carries the getter
+PASS board_id mutation: drop the .d.ts board declaration -> FAIL as expected
+PASS board_id mutation: change the .d.ts board type to number -> FAIL as expected
+PASS board_id mutation: drop the prelude board getter -> FAIL as expected
+PASS board_id mutation: drop the C _systemBoard registration -> FAIL as expected
+PASS board_id mutation: change the C native to a non-string return -> FAIL as expected
+PASS board_id mutation: change the host stub default to a number -> FAIL as expected
+PASS board_id mutation: change the browser stub to a number -> FAIL as expected
+PASS board_id live: getter exists, typeof string, value == injected stub
+PASS board_id live: default host-stub value is a string
+PASS board_id live: app assignment cannot mutate the board getter
+PASS board_id live mutation: number stub -> type check FAIL as expected
+PASS board_id live mutation: native deleted -> getter FAIL as expected
+ALL BOARD_ID HARNESS CASES PASSED

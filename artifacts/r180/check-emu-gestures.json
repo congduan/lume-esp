@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/gestures",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 2294,
+      "ms": 31
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for gestures"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/gestures/tft.png"
+}

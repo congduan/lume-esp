@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/memory",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 5574,
+      "ms": 28
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for memory"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/memory/tft.png"
+}

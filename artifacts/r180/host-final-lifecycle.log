@@ -1,0 +1,10 @@
+PASS registration, unregistration and start/pause/resume sequence
+PASS onBack unregistered selects default
+PASS onBack false selects default
+PASS onBack true intercepts
+PASS timeout once and interval skips missed periods
+PASS timer clear is idempotent
+PASS paused timer waits and resumes without catch-up burst
+PASS hot replacement disposes effect, canvas onDraw, animation and timer
+PASS shutdown clears lifecycle and timer registries
+PASS replacement starts fresh app without old callbacks

@@ -1,0 +1,38 @@
+PASS stt: multipart WAV header, downmix, model + auth
+PASS chat: model + system/user messages + transcript + auth
+PASS chat: OPENAI_CHAT_BASE_URL overrides LLM endpoint only
+PASS tts: one request per sentence + model/voice/format/auth
+PASS tts: per-sentence 24k->16k resample + 3840-byte frame sequence
+PASS delta: one-per-SSE-chunk + single final marker + exact reassembly
+PASS turn: thinking -> speaking -> idle + close(1000, done)
+PASS sendText: device text folded into chat user message
+PASS negative: stt 401 -> no retry, idle + non-fatal error
+PASS negative: chat 5xx -> 1 retry cap, idle + fatal error
+PASS negative: tts timeout -> 1 retry, idle + upstream_closed, no hang
+PASS retry: 429 -> success on second attempt, full turn completes
+PASS negative: tts 5xx -> retry cap, idle, no audio
+PASS helpers: wav/resample/chunk/split/joinUrl invariants
+PASS zero-audio: stop -> idle, no HTTP, no close (advisory stop)
+PASS stop: idempotent, never cancels in-flight response
+PASS sse: split-line chunks + CRLF + comment + [DONE] + accumulated TTS text
+PASS sse: mid-stream disconnect -> deltas kept + final + non-fatal + no retry
+PASS sse: stop() aborts active read, keeps prior deltas, no error/hang
+PASS sse: non-SSE 200 -> upstream_error, no fallback deltas
+PASS splitter: stateful boundaries, CJK/ASCII, ellipsis, quotes, residual
+PASS streaming: first audio before chat SSE end + final delta
+PASS streaming: sentence order + serial TTS + 51-frame sequence
+PASS streaming: single sentence TTS failure skipped, rest continue
+PASS streaming: chat break -> queued sentences played + truncated final
+PASS streaming: stop abort in-flight TTS + drop queue + clean close
+PASS streaming: stop after chat sealed aborts TTS -> clean close, no error
+PASS asr: interim deltas + independent seq + single final before chat
+PASS asr: 3x3840B frames forwarded on arrival, before stop + commit
+PASS fallback: no hello.caps -> one-shot REST, no transcript (r113 intact)
+PASS fallback: config off -> r113 REST + chat + TTS unchanged
+PASS asr: stop mid-stream aborts WS, no duplicate final, clean close
+PASS asr: stream error -> REST fallback + one final, chat/TTS intact
+PASS asr: end before handshake queues commit, final without timeout
+PASS r120: two turns on one session inject prior user+assistant into chat body
+PASS r120: history-limit=0 keeps r119 single-turn body (real adapter)
+PASS r122: real adapter injects resumed user+assistant across disconnect
+ALL GATEWAY UPSTREAM CASES PASSED (37 cases)

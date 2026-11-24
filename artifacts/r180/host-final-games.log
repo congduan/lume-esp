@@ -1,0 +1,23 @@
+PASS 2048 left
+PASS 2048 right
+PASS 2048 up
+PASS 2048 down
+PASS 2048 no change
+PASS 2048 game over
+PASS snake turns
+PASS snake eats
+PASS snake wall
+PASS snake body
+PASS snake IMU threshold and axis sign
+PASS 2048 high score KV key
+PASS snake high score KV key
+PASS brkout high score KV key
+PASS breakout wall rebound
+PASS breakout brick
+PASS breakout level
+PASS breakout game over
+PASS tetris clockwise wall kick
+PASS tetris line clear, score and speed floor
+PASS tetris lock scores cleared row
+PASS tetris high score KV and graceful failure
+PASS tetris canvas, tap rotation, pan follow, soft and hard drop, line log

@@ -1,0 +1,206 @@
+[emu] ROM loaded from /home/ubuntu/.espressif/tools/esp-rom-elfs/20241011/esp32s3_rev0_rom.elf
+[emu] ROM boot from reset vector 0x40000400
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0xf (SPI_FAST_FLASH_BOOT)
+configspi:0x00000008
+SPIWP:0x00
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x16a8
+load:0x403c8700,len:0xe88
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0xf (SPI_FAST_FLASH_BOOT)
+configspi:0x00000008
+SPIWP:0x00
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x16a8
+load:0x403c8700,len:0xe88
+load:0x403cb700,len:0x3184
+load:0x403cb700,len:0x3184
+entry 0x403c8948
+I (7) boot: ESP-IDF v5.5.5 2nd stage bootloader
+I (7) boot: compile time Nov 24 2026 12:29:54
+I (7) boot: Multicore bootloader
+I (7) boot: chip revision: v0.0
+I (7) boot: efuse block revision: v1.0
+entry 0x403c8948
+I (7) qio_mode: Enabling default flash chip QIO
+I (7) boot.esp32s3: Boot SPI Speed : 80MHz
+I (7) boot.esp32s3: SPI Mode       : QIO
+I (7) boot.esp32s3: SPI Flash Size : 16MB
+I (7) boot: Enabling RNG early entropy source...
+I (8) boot: Partition Table:
+I (8) boot: ## Label            Usage          Type ST Offset   Length
+I (8) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (8) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (8) boot:  2 factory          factory app      00 00 00010000 00640000
+I (8) boot:  3 storage          Unknown data     01 83 00750000 00100000
+I (8) boot: End of partition table
+I (8) esp_image: segment 0: paddr=00010020 vaddr=3c200020 size=d069ch (853660) map
+I (65) esp_image: segment 1: paddr=000e06c4 vaddr=3fca0e00 size=05c5ch ( 23644) load
+I (68) esp_image: segment 2: paddr=000e6328 vaddr=40374000 size=09cf0h ( 40176) load
+I (71) esp_image: segment 3: paddr=000f0020 vaddr=42000020 size=1f3bb8h (2046904) map
+I (208) esp_image: segment 4: paddr=002e3be0 vaddr=4037dcf0 size=13040h ( 77888) load
+I (215) esp_image: segment 5: paddr=002f6c28 vaddr=50000000 size=00020h (    32) load
+I (215) esp_image: segment 6: paddr=002f6c50 vaddr=600fe000 size=00030h (    48) load
+I (220) boot: Loaded app from partition at offset 0x10000
+I (220) boot: Disabling RNG early entropy source...
+I (221) octal_psram: vendor id    : 0x0d (AP)
+I (221) octal_psram: dev id       : 0x01 (generation 2)
+I (221) octal_psram: density      : 0x03 (64 Mbit)
+I (221) octal_psram: good-die     : 0x01 (Pass)
+I (221) octal_psram: Latency      : 0x01 (Fixed)
+I (221) octal_psram: VCC          : 0x00 (1.8V)
+I (222) octal_psram: SRF          : 0x00 (Slow Refresh)
+I (222) octal_psram: BurstType    : 0x00 ( Wrap)
+I (222) octal_psram: BurstLen     : 0x03 (1024 Byte)
+I (222) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (222) octal_psram: DriveStrength: 0x00 (1/1)
+I (222) MSPI Timing: Enter psram timing tuning
+W MSPI Timing: tuning fail, best point is fallen back to index 5
+I (222) esp_psram: Found 8MB PSRAM device
+I (222) esp_psram: Speed: 80MHz
+I (230) mmu_psram: Read only data copied and mapped to SPIRAM
+I (246) mmu_psram: Instructions copied and mapped to SPIRAM
+I (246) cpu_start: Multicore app
+I (272) esp_psram: SPI SRAM memory test OK
+I (280) cpu_start: Pro cpu start user code
+I (280) cpu_start: cpu freq: 240000000 Hz
+I (280) app_init: Application information:
+I (280) app_init: Project name:     lume
+I (280) app_init: App version:      v0.3.2-137-gfb85a93-dirty
+I (280) app_init: Compile time:     Nov 24 2026 13:11:31
+I (280) app_init: ELF file SHA256:  ebbdf433e...
+I (280) app_init: ESP-IDF:          v5.5.5
+I (280) efuse_init: Min chip rev:     v0.0
+I (280) efuse_init: Max chip rev:     v0.99 
+I (280) efuse_init: Chip rev:         v0.0
+I (280) heap_init: Initializing. RAM available for dynamic allocation:
+I (280) heap_init: At 3FCC47B8 len 00024F58 (147 KiB): RAM
+I (280) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (280) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (280) heap_init: At 600FE030 len 00001FB8 (7 KiB): RTCRAM
+I (280) esp_psram: Adding pool of 5248K of PSRAM memory to heap allocator
+I (280) esp_psram: Adding pool of 62K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (280) spi_flash: detected chip: generic
+I (281) spi_flash: flash io: qio
+I (281) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (281) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (281) main_task: Started on CPU0
+I (281) esp_psram: Reserving pool of 4K of internal memory for DMA/internal allocations
+I (281) main_task: Calling app_main()
+I (281) lume: Lume runtime booting...
+I (281) lume-pmic: AXP2101 detected (chip id 0x4a)
+I (292) lume-pmic: ALDO3+BLDO1+BLDO2 rails enabled
+I (1652) lume-display: CO5300 QSPI + LVGL display up (480x480 RGB565, 2x19200 B SRAM draw buf)
+I (1726) lume-touch: checkcode ABCD1234
+I (1728) lume-touch: resolution 480 x 480
+I (1730) lume-touch: chip type 0x0000 project id 0x0000
+I (1730) lume-touch: CST9220 -> LVGL indev ready (addr 0x5a, INT=11)
+I (1730) lume-ui-bridge: init: queue=384 msgs, drain timer=5ms
+I (1738) lume-board: board init done: CO5300 QSPI + CST9220 + LVGL pipeline up
+I (1738) lume-engine: engine_start: evt queue=16, stage mutex up, task lume-js up
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433332 bytes
+I (1738) lume-hotreload: USB hot-reload up; frame LUME|len:u32le|crc32:u32le|payload, max=262144 bytes
+E (1738) esp_littlefs: ./managed_components/joltwallet__littlefs/src/littlefs/lfs.c:1383:error: Corrupted dir pair at {0x0, 0x1}
+
+W (1740) esp_littlefs: mount failed,  (-84). formatting...
+I (1741) lume-fs: LittleFS mounted at /lume_fs
+I (1742) lume-ota: WiFi OTA token: 6396764c4125ac0a4f486e6b85680950  (use: lume deploy --host <ip> --token 6396764c4125ac0a4f486e6b85680950)
+I (1743) main_task: Returned from app_main()
+I (1747) lume-pmic-hw: AXP2101 telemetry ready (chip id 0x4a)
+I (1769) lume-imu-hw: QMI8658 ready (WHO_AM_I=0x05, polled mode, accel +/-4g / gyro +/-64dps)
+I (1769) lume-kv: NVS KV ready (partition 'nvs', namespace 'lume', key<=15 chars, value<4000 B)
+I (1770) pp: pp rom version: e7ae62f
+I (1771) net80211: net80211 rom version: e7ae62f
+I (1772) wifi:wifi driver task: 3fcf23ac, prio:23, stack:6656, core=0
+I (1773) wifi:wifi firmware version: b9f67df
+I (1774) wifi:wifi certification version: v7.0
+I (1774) wifi:config NVS flash: enabled
+I (1774) wifi:config nano formatting: disabled
+I (1775) wifi:Init data frame dynamic rx buffer num: 32
+I (1776) wifi:Init static rx mgmt buffer num: 5
+I (1776) wifi:Init management short buffer num: 32
+I (1777) wifi:Init dynamic tx buffer num: 32
+I (1777) wifi:Init static tx FG buffer num: 2
+I (1777) wifi:Init static rx buffer size: 1600
+I (1778) wifi:Init static rx buffer num: 10
+I (1778) wifi:Init dynamic rx buffer num: 32
+I (1779) wifi_init: rx ba win: 6
+I (1779) wifi_init: accept mbox: 6
+I (1779) wifi_init: tcpip mbox: 32
+I (1780) wifi_init: udp mbox: 6
+I (1780) wifi_init: tcp mbox: 6
+I (1780) wifi_init: tcp tx win: 5760
+I (1780) wifi_init: tcp rx win: 5760
+I (1780) wifi_init: tcp mss: 1440
+I (1781) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+W (1781) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1785) phy: error: pll_cal exceeds 2ms!!!
+I (1788) phy: error: pll_cal exceeds 2ms!!!
+I (1791) phy: error: pll_cal exceeds 2ms!!!
+I (1797) phy: error: pll_cal exceeds 2ms!!!
+I (1800) phy: error: pll_cal exceeds 2ms!!!
+I (1804) phy: error: pll_cal exceeds 2ms!!!
+I (1805) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1808) wifi:mode : sta (44:1b:f6:75:dc:e0)
+I (1809) wifi:enable tsf
+I (1809) lume-net: WiFi station up (WPA2-PSK only; handlers on sys_evt/core0, engine task core1; WiFi IRAM opts disabled)
+I (1810) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1911) lume-engine: script cache '<lume-prelude>': compiled 116763 bytes total (116747 body), qjs 0.18.0, src hash 0xd6cf89a6
+I (1925) lume-ui-bridge: global gesture registered on the screen (node 0)
+I (1925) lume-ui-bridge: gesture registered id=0
+I (1933) lume-engine: script cache '<lume-home>': compiled 8416 bytes total (8400 body), qjs 0.18.0, src hash 0x7a121147
+W (1936) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+I (1939) lume-ui-bridge: create id=1 kind=0 parent=0
+I (1940) lume-ui-bridge: create id=2 kind=1 parent=0
+I (1940) lume-ui-bridge: create id=3 kind=1 parent=0
+I (1941) lume-engine: app eval ok; entering event loop
+I (1941) lume-ui-bridge: create id=4 kind=1 parent=0
+I (1942) lume-ui-bridge: create id=5 kind=0 parent=1
+I (1943) lume-ui-bridge: create id=6 kind=0 parent=1
+I (1944) lume-ui-bridge: create id=7 kind=1 parent=0
+I (1944) lume-ui-bridge: create id=8 kind=1 parent=0
+I (1945) lume-ui-bridge: create id=9 kind=0 parent=1
+[script] t=2.500s serial-file (8338 bytes)
+I (2692) lume-engine: engine recv RELOAD -> recycle runtime
+I (2697) lume-ui-bridge: transition: overlay created (480x480)
+I (2916) lume-ui-bridge: transition: covered (fade-in done)
+I (2922) lume-ui-bridge: app UI reset complete
+I (2927) lume-engine: runtime up; eval app '<embedded-demo>' (8326 bytes)
+I (2945) lume-ui-bridge: global gesture registered on the screen (node 0)
+I (2945) lume-ui-bridge: gesture registered id=0
+I (2979) lume-ui-bridge: create id=1 kind=0 parent=0
+I (2981) lume-ui-bridge: create id=2 kind=3 parent=1
+I (2991) lume-engine: app eval ok; entering event loop
+E (3276) lume-ui-bridge: post: ui queue full after 8 attempts (op=6 id=2); JS/UI state may diverge (M1 log-only, resync in M3)
+E (3277) lume-engine: JS exception [__lume_tick]: InternalError: lume: ui queue full
+E (3277) lume-engine: JS stack [__lume_tick]:     at canvasDraw (native)
+    at circle (<lume-prelude>:1172:149)
+    at vt (<lume-app>:1:4853)
+    at <anonymous> (<lume-prelude>:1192:43)
+    at __runEffect (<lume-prelude>:295:13)
+    at __drain (<lume-prelude>:316:19)
+    at <anonymous> (<lume-prelude>:350:5)
+    at ct (<lume-app>:1:8008)
+    at __lume_tick (<lume-prelude>:493:7)
+
+I (3428) lume-ui-bridge: gesture registered id=1
+I (6028) lume-ui-bridge: transition: revealed (overlay removed)
+
+[emu] stop: Halted — core0 823181511 + core1 103620392 insns in 22.1s wall = 41.8 Minsn/s; emulated 8.000s (1920000000 cycles); 366711 exceptions, 23183 interrupts
+[irq] per core, cpu-int: count (peripheral sources mapped to it)
+  core0 int2          2  sources [59]
+  core0 int3       1715  sources [79]
+  core0 int5       7882  sources [57]
+  core0 int9        592  sources [42]
+  core0 int12       311  sources []
+  core0 int13      3928  sources [96]
+  core1 int0        846  sources [80]
+  core1 int1       7907  sources [58]
+
+[emu] i2s frames out: 0 (i2s0 @ 44100 Hz) 0 (i2s1 @ 44100 Hz)
+[emu] crypto: 0 AES blocks, 47887 SHA blocks, 0 RSA/MPI operations
+[emu] blocks: 31357 built (0 cache flushes) core0, 31329 (0) core1; jit: 0 compiled, 0 KB code
+[emu] wrote /tmp/lume-r180-wt/artifacts/check/skycombat/tft.png

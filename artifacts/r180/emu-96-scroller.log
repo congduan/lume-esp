@@ -1,0 +1,10 @@
+bundle /tmp/lume-r180-wt/examples/scroller: source 7805 bytes; payload 7805 bytes; frame 7817 bytes (source)
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433236 bytes
+I (1810) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1941) lume-engine: app eval ok; entering event loop
+I (2692) lume-engine: engine recv RELOAD -> recycle runtime
+I (2927) lume-engine: runtime up; eval app '<embedded-demo>' (7805 bytes)
+I (3352) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 524523946 + core1 390072277 insns in 23.6s wall = 38.7 Minsn/s; emulated 8.000s (1920000000 cycles); 694480 exceptions, 30989 interrupts
+TFT: artifacts/r180/emu-96-scroller/tft.png
+serial: artifacts/r180/emu-96-scroller/serial.log

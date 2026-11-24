@@ -1,0 +1,35 @@
+PASS sntp_consumers: clock tries setTimeNtp() first with default args, before the HTTP list
+PASS sntp_consumers: clock NTP success resets epochOffsetMs=0 and returns before any httpGet
+PASS sntp_consumers: clock keeps the -2/-3 HTTP fallback list (httpGet over TIME_SOURCES)
+PASS sntp_consumers: clock guards a missing/throwing setTimeNtp API
+PASS sntp_consumers: clock epochOffsetMs=0 identity: wallDate reads Date.now()
+PASS sntp_consumers: clock HTTP path still persists clock.tzMin in kv
+PASS sntp_consumers: clock re-sync cadence SYNC_OK_MS / SYNC_RETRY_MS unchanged
+PASS sntp_consumers: settings General page has a Sync now Button wired to syncTimeNow
+PASS sntp_consumers: settings General page has the live status Text bound to timeSyncLine
+PASS sntp_consumers: settings sync row adds at most 3 nodes (View + Text + Button)
+PASS sntp_consumers: settings status copy covers NTP OK / NOT SYNCED / SYNC FAILED / NO WIFI
+PASS sntp_consumers: settings syncTimeNow gates on GOT_IP before calling setTimeNtp()
+PASS sntp_consumers: settings maps setTimeNtp 0 / -2 / -3 to the status strings
+PASS sntp_consumers: settings status heuristic reads both lume.system.time() and Date.now()
+PASS sntp_consumers: clock string literals are ASCII-only
+PASS sntp_consumers: settings string literals are ASCII-only
+PASS sntp_consumers: firmware/ runtime/ differ from 3514c76 only in the (empty) r129 allowlist
+PASS sntp_consumers mutation: clock drops the setTimeNtp-first call -> FAIL as expected
+PASS sntp_consumers mutation: clock skips the offset reset on NTP success -> FAIL as expected
+PASS sntp_consumers mutation: clock drops the HTTP fallback loop -> FAIL as expected
+PASS sntp_consumers mutation: clock drops the missing-API guard -> FAIL as expected
+PASS sntp_consumers mutation: clock reverts wallDate to the monotonic _nowMs anchor -> FAIL as expected
+PASS sntp_consumers mutation: clock stops persisting clock.tzMin -> FAIL as expected
+PASS sntp_consumers mutation: clock shortens the re-sync cadence -> FAIL as expected
+PASS sntp_consumers mutation: settings drops the Sync now button -> FAIL as expected
+PASS sntp_consumers mutation: settings unbinds the status Text from timeSyncLine -> FAIL as expected
+PASS sntp_consumers mutation: settings adds a fourth node to the sync row -> FAIL as expected
+PASS sntp_consumers mutation: settings drops the SYNC FAILED copy -> FAIL as expected
+PASS sntp_consumers mutation: settings drops the GOT_IP gate -> FAIL as expected
+PASS sntp_consumers mutation: settings drops the -2 -> SYNC FAILED mapping -> FAIL as expected
+PASS sntp_consumers mutation: settings status heuristic stops reading system.time() -> FAIL as expected
+PASS sntp_consumers mutation: clock UI copy gains a non-ASCII string -> FAIL as expected
+PASS sntp_consumers mutation: settings UI copy gains a non-ASCII string -> FAIL as expected
+PASS sntp_consumers mutation: a firmware file changes vs 0d1111c -> FAIL as expected
+ALL SNTP CONSUMER HARNESS CASES PASSED

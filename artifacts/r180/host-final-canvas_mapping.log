@@ -1,0 +1,21 @@
+PASS canvas create dimensions and fixed wire kind
+PASS drawing command order and final invalidate
+PASS r48 native arc emits one LUME_DRAW_ARC (opcode 5) with normalised args
+PASS r48 native arc rounds fractional degrees and rejects bad angles
+PASS optional dirty rectangles preserve local coordinates
+PASS signal change redraws once; equal value stays idle
+PASS canvas is adopted into flex layout flow at fixed size
+PASS dimensions/coordinates/color/text/point bounds reject
+PASS injected 390x390 screen governs canvas size, budget and draw bounds
+PASS counter example retains count and theme behavior
+SAMPLE messages (first 12): [["create",1,0],["attr",1,12,12],["attr",1,0,"taps: 0"],["create",0,0],["attr",2,1,2377581],["attr",2,16,100],["attr",2,3,120],["attr",2,7,1],["attr",2,8,2],["attr",2,9,2],["attr",2,11,6],["attr",2,12,12]]
+SAMPLE totals: {"create":7,"attr":42,"press":3}
+PASS 33 contiguous lines split at 32
+CANVAS 240 points: old=239 messages / 27724 queue bytes; new=8 messages / 928 queue bytes + 3824 payload bytes
+PASS 240-point polyline uses eight batches
+CANVAS retained path: 2 segments uploaded once, 2 draws / 1 upload
+PASS retained path uploads geometry once and replays from C
+PASS retainSegments uploads independent segments
+PASS retained sprite uploads pixels once and replays from C
+PASS sprite argument validation matches the native contract
+PASS sprite slot redefinition re-uploads (animation frame swap)

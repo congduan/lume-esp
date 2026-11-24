@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/game_of_life",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 4674,
+      "ms": 23
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for game_of_life"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/game_of_life/tft.png"
+}

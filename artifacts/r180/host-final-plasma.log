@@ -1,0 +1,5 @@
+PASS motion bounds 6000 ticks, speed 2.55 -> 0.16 px/tick
+PASS palette lookup, IMU direction/fallback, idle wake and ripple expiry
+PASS concentric three-ring ellipses; real prelude <=60 calls/frame (normal max 46; overlap+ripple 47), no-IMU fallback, gesture
+EVIDENCE plasma 50ms timer = 20 scheduled paints/s; max 46 calls/paint; colors precomputed
+ALL PLASMA HARNESS CASES PASSED

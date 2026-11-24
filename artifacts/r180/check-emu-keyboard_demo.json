@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/keyboard_demo",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 23999,
+      "ms": 30
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for keyboard_demo"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/keyboard_demo/tft.png"
+}

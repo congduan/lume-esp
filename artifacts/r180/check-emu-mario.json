@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/mario",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 6028,
+      "ms": 23
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for mario"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/mario/tft.png"
+}

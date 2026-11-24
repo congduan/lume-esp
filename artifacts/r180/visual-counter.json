@@ -1,0 +1,126 @@
+{
+  "app": "examples/counter",
+  "frames": [
+    {
+      "file": "frame-01.png",
+      "url": "http://localhost:33031/",
+      "timestamp": "2026-11-24T04:31:45.889Z",
+      "elapsedMs": 1676,
+      "canvasDrawCalls": 0,
+      "renderCalls": 110,
+      "nonEmptyRatio": 1,
+      "top5": [
+        {
+          "color": "#07111D",
+          "pixels": 106521
+        },
+        {
+          "color": "#132435",
+          "pixels": 94324
+        },
+        {
+          "color": "#40D8B0",
+          "pixels": 23003
+        },
+        {
+          "color": "#1C3449",
+          "pixels": 606
+        },
+        {
+          "color": "#323B49",
+          "pixels": 396
+        }
+      ],
+      "themeColor": "#07111D",
+      "assertions": {
+        "nonEmpty": true,
+        "drawCalls": true,
+        "drawBudget": true,
+        "simulator": true,
+        "themeColor": true
+      },
+      "error": null
+    },
+    {
+      "file": "frame-02.png",
+      "url": "http://localhost:33031/",
+      "timestamp": "2026-11-24T04:31:47.752Z",
+      "elapsedMs": 3539,
+      "canvasDrawCalls": 0,
+      "renderCalls": 110,
+      "nonEmptyRatio": 1,
+      "top5": [
+        {
+          "color": "#07111D",
+          "pixels": 106521
+        },
+        {
+          "color": "#132435",
+          "pixels": 94324
+        },
+        {
+          "color": "#40D8B0",
+          "pixels": 23003
+        },
+        {
+          "color": "#1C3449",
+          "pixels": 606
+        },
+        {
+          "color": "#323B49",
+          "pixels": 396
+        }
+      ],
+      "themeColor": "#07111D",
+      "assertions": {
+        "nonEmpty": true,
+        "drawCalls": true,
+        "drawBudget": true,
+        "simulator": true,
+        "themeColor": true
+      },
+      "error": null
+    },
+    {
+      "file": "frame-03.png",
+      "url": "http://localhost:33031/",
+      "timestamp": "2026-11-24T04:31:50.607Z",
+      "elapsedMs": 6394,
+      "canvasDrawCalls": 0,
+      "renderCalls": 110,
+      "nonEmptyRatio": 1,
+      "top5": [
+        {
+          "color": "#07111D",
+          "pixels": 106521
+        },
+        {
+          "color": "#132435",
+          "pixels": 94324
+        },
+        {
+          "color": "#40D8B0",
+          "pixels": 23003
+        },
+        {
+          "color": "#1C3449",
+          "pixels": 606
+        },
+        {
+          "color": "#323B49",
+          "pixels": 396
+        }
+      ],
+      "themeColor": "#07111D",
+      "assertions": {
+        "nonEmpty": true,
+        "drawCalls": true,
+        "drawBudget": true,
+        "simulator": true,
+        "themeColor": true
+      },
+      "error": null
+    }
+  ],
+  "ok": true
+}

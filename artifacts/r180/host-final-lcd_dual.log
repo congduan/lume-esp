@@ -1,0 +1,11 @@
+PASS lcd ghost geometry bounded (A=124, B=99) + lit/ghost split
+PASS lcd dual state machines independent
+PASS lcd bread catch + score
+PASS lcd MISS count + 3-miss game over
+PASS lcd bread 3-stage fall + phase wrap
+PASS lcd lane collision = one-hit game over
+PASS lcd lane clamp + dodge scoring
+PASS lcd MODE switch cleanup + score preservation + reset
+PASS lcd score KV (<=15 char key, graceful failure)
+PASS lcd canvas/ghost-once/dirty budget, A+B swipes, MODE button
+ALL LCD_DUAL HARNESS CASES PASSED

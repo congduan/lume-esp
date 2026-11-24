@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/watchface",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 9146,
+      "ms": 21
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for watchface"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/watchface/tft.png"
+}

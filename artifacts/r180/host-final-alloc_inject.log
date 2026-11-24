@@ -1,0 +1,8 @@
+setup: calls=69 net=167632 live=54
+inject: armed-at=83 window=1
+engine: exception=InternalError: out of memory
+inject: denied=1 calls=83
+resume: malloc-after-window ok net=167720 live=55
+teardown: net=0 live=0
+RESULT: PASS
+PASS alloc_inject: countdown OOM -> deterministic failure, counter consistent, no crash

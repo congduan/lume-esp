@@ -1,0 +1,52 @@
+PASS timer_kit static: shell.js imported by the documented relative path
+PASS timer_kit static: Switch consumed with mode signal and setMode onChange
+PASS timer_kit static: Slider consumed 0..60 step 1, minutes value, setMinutes onChange
+PASS timer_kit static: Progress consumed with remainFrac getter
+PASS timer_kit static: clock is lume.system.time() (no nonexistent system.now)
+PASS timer_kit static: countdown advances from an absolute-time difference
+PASS timer_kit static: pause snapshots remaining then re-anchors on resume
+PASS timer_kit static: stopwatch pause accumulates absolute delta then re-anchors
+PASS timer_kit static: KV get wrapped in try/catch, accepts only non-negative finite number
+PASS timer_kit static: KV set wrapped in try/catch (failure silent)
+PASS timer_kit static: bell synthesised PCM under try/catch, 40 ms budget
+PASS timer_kit static: KV keys within the 15-char NVS cap
+PASS timer_kit static: LAP_LIMIT is three and laps keep only the last three
+PASS timer_kit static: all source literals ASCII-only (r64)
+PASS timer_kit static: Text fontSize limited to bundled 14/20/32 faces
+PASS timer_kit static: canvas budget locked: slider only, 17280 <= 230400 px
+PASS timer_kit static: playground sources/timer_kit.js byte-identical to the example
+PASS timer_kit static: timer_kit is in the playground manifest
+PASS timer_kit static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS timer_kit mutation: drop the shell import -> FAIL as expected
+PASS timer_kit mutation: app stops consuming Switch -> FAIL as expected
+PASS timer_kit mutation: app stops consuming Slider -> FAIL as expected
+PASS timer_kit mutation: app stops consuming Progress -> FAIL as expected
+PASS timer_kit mutation: clock drifts back to a nonexistent system.now -> FAIL as expected
+PASS timer_kit mutation: countdown becomes a decrementing counter -> FAIL as expected
+PASS timer_kit mutation: pause forgets the snapshot -> FAIL as expected
+PASS timer_kit mutation: stopwatch pause discards accumulated time -> FAIL as expected
+PASS timer_kit mutation: KV get loses try/catch -> FAIL as expected
+PASS timer_kit mutation: KV set loses try/catch -> FAIL as expected
+PASS timer_kit mutation: bell loses its guarded PCM path -> FAIL as expected
+PASS timer_kit mutation: KV key exceeds the NVS cap -> FAIL as expected
+PASS timer_kit mutation: lap rows grow without bound -> FAIL as expected
+PASS timer_kit mutation: a CJK UI literal slips in -> FAIL as expected
+PASS timer_kit mutation: font size escapes the bundled faces -> FAIL as expected
+PASS timer_kit mutation: canvas budget rises past 230400 px -> FAIL as expected
+PASS timer_kit mutation: playground generated source drifts -> FAIL as expected
+PASS timer_kit mutation: playground manifest drops timer_kit -> FAIL as expected
+PASS timer_kit mutation: a firmware/runtime/CLI file changes after 6426f7b -> FAIL as expected
+PASS timer_kit live: controls exposed and canvas bounded
+PASS timer_kit live: slider drag writes a step-quantised minute value
+PASS timer_kit live: switch toggles TIMER / STOPWATCH view
+PASS timer_kit live: countdown advances by absolute now difference
+PASS timer_kit live: pause freezes wall time and resume excludes it
+PASS timer_kit live: zero settles, rings and persists the shortest completed setting
+PASS timer_kit live: stopwatch reports centiseconds and appends only three laps
+PASS timer_kit live: stopwatch pause excludes wall time
+PASS timer_kit live: KV load rejects negative codes / wrong types; save survives throws
+PASS timer_kit live: dispose and shutdown clear gestures, timers and effects
+PASS timer_kit live mutation: live: countdown reverts to a counter -> FAIL as expected
+PASS timer_kit live mutation: live: pause loses its snapshot -> FAIL as expected
+PASS timer_kit live mutation: live: lap rows stop evicting the oldest -> FAIL as expected
+ALL TIMER KIT HARNESS CASES PASSED

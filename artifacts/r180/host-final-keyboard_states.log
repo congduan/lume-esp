@@ -1,0 +1,27 @@
+PASS keyboard_states static: three-state tint table maps Wordle verdicts to green/yellow/grey
+PASS keyboard_states static: keyStates validated as object or signal function before any node
+PASS keyboard_states static: each letter key binds its own per-key background getter
+PASS keyboard_states static: absent keyStates returns the exact r148 colour helper
+PASS keyboard_states static: SPACE / BKSP / ENTER keep their fixed control backgrounds
+PASS keyboard_states static: cleanup chain still removes every keyboard node idempotently
+PASS keyboard_states static: lume.d.ts declares the three states and the keyStates prop
+PASS keyboard_states static: firmware/ runtime/ tools/lume/ identical to the feat commit
+PASS keyboard_states static: prelude lume_scripts.c unchanged since 3514c76
+PASS keyboard_states mutation: recolour the present verdict -> FAIL as expected
+PASS keyboard_states mutation: drop keyStates type validation -> FAIL as expected
+PASS keyboard_states mutation: query the wrong (uppercase) key name -> FAIL as expected
+PASS keyboard_states mutation: drop the absent-prop r148 fallback -> FAIL as expected
+PASS keyboard_states mutation: tint the ENTER control key -> FAIL as expected
+PASS keyboard_states mutation: drop keyStates from the type contract -> FAIL as expected
+PASS keyboard_states mutation: a firmware/runtime/CLI file changes after the feat commit -> FAIL as expected
+PASS keyboard_states mutation: the prelude changes vs 3514c76 -> FAIL as expected
+PASS keyboard_states live: hit / present / miss tint the matching key caps only
+PASS keyboard_states live: unknown map keys and uppercase keys are ignored
+PASS keyboard_states live: absent keyStates keeps every r148 letter colour and control key
+PASS keyboard_states live: a plain getter (non-signal) also supplies the tint
+PASS keyboard_states live: publishing a new state map rewrites only key backgrounds, no nodes
+PASS keyboard_states live: dispose then re-mount applies fresh state; dispose stays idempotent
+PASS keyboard_states live: non-object / non-function keyStates is rejected before nodes are built
+PASS keyboard_states live mutation: wrong key name loses every cap tint -> FAIL as expected
+PASS keyboard_states live mutation: dropping the verdict mapping paints no cap -> FAIL as expected
+ALL KEYBOARD STATES HARNESS CASES PASSED

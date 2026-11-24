@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/web_config",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 2186,
+      "ms": 26
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for web_config"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/web_config/tft.png"
+}

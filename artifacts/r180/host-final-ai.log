@@ -1,0 +1,3 @@
+request construction + key storage: PASS
+HTTP error + timeout + bad JSON + truncation: PASS
+Node local POST round trip: PASS

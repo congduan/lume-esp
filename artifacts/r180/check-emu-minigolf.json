@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/minigolf",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 9711,
+      "ms": 32
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for minigolf"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/minigolf/tft.png"
+}

@@ -424,6 +424,13 @@ const ALLOWED = [
   'docs/DESIGN-TOKENS.md',
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
+  // r180: game-over draw gate and measured performance report.
+  'examples/lcd_dual/app.js',
+  'tests/lcd_dual.js',
+  'website/playground/apps/lcd_dual.js',
+  'website/playground/sources/lcd_dual.js',
+  'docs/r180-perf-report.md',
+  'tests/ota_consumers.js',
   'artifacts/r156/far.png',
   'artifacts/r156/near.png',
   'artifacts/r156/skycombat-harness.txt',
@@ -665,7 +672,7 @@ const checks = [
   ['only known r132 + r133 + r134 + r135 + r136 files differ from 3514c76', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f) ||
       f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
-      f.startsWith('artifacts/r177/'))]],
+      f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {

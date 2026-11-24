@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/golf",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 9151,
+      "ms": 47
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for golf"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/golf/tft.png"
+}

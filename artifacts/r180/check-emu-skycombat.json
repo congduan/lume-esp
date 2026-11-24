@@ -1,0 +1,26 @@
+{
+  "ok": false,
+  "app": "examples/skycombat",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 8326,
+      "ms": 24
+    },
+    {
+      "step": "eval",
+      "ok": false,
+      "error": "InternalError: lume: ui queue full"
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for skycombat"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/skycombat/tft.png"
+}

@@ -1,0 +1,2 @@
+PASS: create-failed notice disposes signal effects and warns once
+PASS: Canvas failure latches dead id and native attrs become no-op

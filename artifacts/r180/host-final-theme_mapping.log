@@ -1,0 +1,12 @@
+PASS set/get returns an isolated snapshot
+PASS named background and borderColor resolve
+PASS hex literals remain valid
+dark→light ATTR messages: [[1,1,15332090],[1,12,16],[1,14,2310751]]
+PASS theme.set invalidates every named color and implicit radius
+PASS unreferenced literal colors and explicit radius post no messages
+PASS removing default radius clears inherited radius
+PASS invalid theme is atomic
+PASS disposed node stops receiving theme updates
+PASS unknown token falls through to literal parser
+demo dark→light ATTR messages: [[2,1,16777215],[7,1,15332090]]
+PASS demo buttons recolor card, controls and full-screen root

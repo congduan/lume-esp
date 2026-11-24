@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/games_tetris",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 5911,
+      "ms": 51
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for games_tetris"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/games_tetris/tft.png"
+}

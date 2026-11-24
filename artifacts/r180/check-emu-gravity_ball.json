@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/gravity_ball",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 2527,
+      "ms": 33
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for gravity_ball"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/gravity_ball/tft.png"
+}

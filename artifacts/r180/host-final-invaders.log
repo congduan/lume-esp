@@ -1,0 +1,12 @@
+PASS invaders formation direction flip at right edge
+PASS invaders edge contact descends one row
+PASS invaders bullet hit removes member + score
+PASS invaders player hit loses lives / game over
+PASS invaders UFO adds bonus score
+PASS invaders wave speed-up and formation reset
+PASS invaders last kill enters next wave
+PASS invaders high-score KV + graceful failure
+PASS invaders sprite spans precomputed once, stable across ticks
+PASS invaders game over restart
+PASS invaders canvas/dirty budget, pan follow, tap fire, swipe pause
+ALL INVADERS HARNESS CASES PASSED

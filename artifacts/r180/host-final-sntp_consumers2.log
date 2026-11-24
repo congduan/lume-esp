@@ -1,0 +1,37 @@
+PASS sntp_consumers2: clock_round: GOT_IP-gated setTimeNtp call in sync block
+PASS sntp_consumers2: clock_round: only setTimeNtp()===0 sets clockWallValid=true (enables wall rendering)
+PASS sntp_consumers2: clock_round: status Text gated by clockWallValid and bound to clockSyncStatus()
+PASS sntp_consumers2: clock_round: failure copy ASCII (SYNCING/NO WIFI/NO SYNC)
+PASS sntp_consumers2: clock_round: sync cadence-gated in tick via clockNextSyncMs
+PASS sntp_consumers2: aurora_clock: GOT_IP-gated setTimeNtp call in sync block
+PASS sntp_consumers2: aurora_clock: only setTimeNtp()===0 sets acWallValid=true (enables wall rendering)
+PASS sntp_consumers2: aurora_clock: status Text gated by acWallValid and bound to acSyncStatus()
+PASS sntp_consumers2: aurora_clock: failure copy ASCII (SYNCING/NO WIFI/NO SYNC)
+PASS sntp_consumers2: aurora_clock: sync cadence-gated in tick via acNextSyncMs
+PASS sntp_consumers2: watchface: GOT_IP-gated setTimeNtp call in sync block
+PASS sntp_consumers2: watchface: only setTimeNtp()===0 sets faceWallValid=true (enables wall rendering)
+PASS sntp_consumers2: watchface: status Text gated by faceWallValid and bound to faceSyncStatus()
+PASS sntp_consumers2: watchface: failure copy ASCII (SYNCING/NO WIFI/NO SYNC)
+PASS sntp_consumers2: watchface: sync cadence-gated in tick via faceNextSyncMs
+PASS sntp_consumers2: all three migrated apps are in the playground manifest
+PASS sntp_consumers2: worldclock absent (no example dir, not in manifest)
+PASS sntp_consumers2: firmware/ runtime/ CLI tooling identical to 3514c76 (manifest excluded)
+PASS sntp_consumers2 mutation: clock_round: drop the GOT_IP gate -> FAIL as expected
+PASS sntp_consumers2 mutation: clock_round: success branch no longer requires r===0 -> FAIL as expected
+PASS sntp_consumers2 mutation: clock_round: unbind status Text from the wallValid flag -> FAIL as expected
+PASS sntp_consumers2 mutation: clock_round: inject non-ASCII failure copy -> FAIL as expected
+PASS sntp_consumers2 mutation: clock_round: call setTimeNtp on every tick -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: drop the GOT_IP gate -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: success branch no longer requires r===0 -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: unbind status Text from the wallValid flag -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: inject non-ASCII failure copy -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: call setTimeNtp on every tick -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: drop the GOT_IP gate -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: success branch no longer requires r===0 -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: unbind status Text from the wallValid flag -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: inject non-ASCII failure copy -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: call setTimeNtp on every tick -> FAIL as expected
+PASS sntp_consumers2 mutation: playground manifest drops clock_round -> FAIL as expected
+PASS sntp_consumers2 mutation: playground manifest gains worldclock -> FAIL as expected
+PASS sntp_consumers2 mutation: a firmware file changes vs ffdd757 -> FAIL as expected
+ALL SNTP CONSUMERS2 HARNESS CASES PASSED

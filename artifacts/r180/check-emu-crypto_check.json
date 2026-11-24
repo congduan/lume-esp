@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/crypto_check",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 3175,
+      "ms": 21
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for crypto_check"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/crypto_check/tft.png"
+}

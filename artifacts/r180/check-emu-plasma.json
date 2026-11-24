@@ -1,0 +1,26 @@
+{
+  "ok": false,
+  "app": "examples/plasma",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 5569,
+      "ms": 22
+    },
+    {
+      "step": "eval",
+      "ok": false,
+      "error": "InternalError: lume: ui queue full"
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for plasma"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/plasma/tft.png"
+}

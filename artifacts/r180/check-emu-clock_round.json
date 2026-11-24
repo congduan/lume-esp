@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/clock_round",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 1931,
+      "ms": 24
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for clock_round"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/clock_round/tft.png"
+}

@@ -1,0 +1,17 @@
+PASS golf UI strings are ASCII-only (r64 font rule)
+PASS golf seeded generation deterministic, safe, water/sand/slope spread
+PASS golf terrain classification (tee managed ground, hole green)
+PASS golf straight drive rolls and stops on managed grass
+PASS golf sand friction kills the roll
+PASS golf water splash detection deterministic
+PASS golf hole capture speed gate
+PASS golf swing peak -> power ramp clamps and monotonic
+PASS golf all 10 holes solvable by grid search, round total=18
+PASS golf water penalty +1 and reset to pre-shot spot
+PASS golf strike guards (rolling/holed rejected, wild input finite)
+PASS golf boots in demo mode with HUD
+PASS golf tap aim + demo strike through the gesture pipeline
+EVIDENCE golf ready 0 paints/20 ticks; max 26 draw calls/paint
+PASS golf dirty-rect discipline + canvas pixel budget
+PASS golf round completion + restart through the real prelude
+ALL golf harness checks passed

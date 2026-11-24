@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/color_demo",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 24207,
+      "ms": 45
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for color_demo"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/color_demo/tft.png"
+}

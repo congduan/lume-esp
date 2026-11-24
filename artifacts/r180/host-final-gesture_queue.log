@@ -1,0 +1,2 @@
+PASS: DOWN MOVE UP retain FIFO order
+PASS: MOVE pressure reserves capacity and UP reaches queue tail

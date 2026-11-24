@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/spectrum_music",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 3165,
+      "ms": 32
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for spectrum_music"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/spectrum_music/tft.png"
+}

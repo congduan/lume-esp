@@ -1,0 +1,11 @@
+PASS compass heading wraps 0-360
+PASS compass demo mode angular speed (18 deg/s)
+PASS compass gyro-Z integration wraps and scales by dt
+PASS compass retained ring: 36 segments + 2 paths uploaded once
+PASS compass DRIFT badge condition (IMU mode, |spin|>30deg)
+PASS compass no-IMU fallback to demo (honest, no crash)
+PASS compass serial smoke: COMPASS HDG <deg> mode=<demo|imu>
+PASS compass IMU mode integrates gz and shows DRIFT badge
+PASS compass mode toggle returns to demo, badge clears
+PASS compass honest wording: inertial/relative only, no north promise in UI
+PASS compass host harness: 10/10 assertions

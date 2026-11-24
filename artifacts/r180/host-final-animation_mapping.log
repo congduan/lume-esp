@@ -1,0 +1,6 @@
+PASS initial transition value uses SET_ATTR
+PASS transition signal.set emits ANIMATE with omitted from and ease-out
+PASS ANIMATE_CANCEL path
+PASS onComplete registered and dispatched through reverse event hook
+PASS same-property replacement discards old completion
+PASS color animation rejected

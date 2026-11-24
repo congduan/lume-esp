@@ -1,0 +1,26 @@
+PASS tap: short press with small displacement -> one tap with end coords
+PASS tap boundary: displacement >= tapMovePx(10) is NOT a tap
+PASS tap boundary: duration >= tapMaxMs(400) is NOT a tap (becomes longpress)
+PASS longpress boundary: fires while still down once t-start >= 400ms
+PASS longpress suppresses tap AND swipe on release (no double-fire)
+EVIDENCE pan stream types=["panstart","pan","pan","panend"] final dx/dy=35/2
+PASS pan stream: panstart -> pan* -> panend, with dx/dy from press start
+PASS swipe: LVGL gesture-dir hint (right=2) wins over axis inference
+PASS swipe: axis fallback when no LVGL dir hint (vertical -> down)
+PASS swipe speed gate: a 5s STATIONARY hold is a longpress, never a swipe
+PASS r21-fix: a SLOW drag held past 400ms is pan, NEVER longpress (movement gate)
+PASS r21-fix: a slow drag that ends fast stays swipe-eligible (no longpress steal)
+PASS r21-fix: slow long drag (dist>=50px, vel<min) is neither longpress nor swipe
+PASS swipeMinVel is a real, tunable gate (raise it -> slow drag stops swiping)
+PASS scroll-cancelled UP: a List scroll wins, no tap/swipe/longpress
+PASS tuning is centralized and tunable: swipeMinPx can be raised at runtime
+PASS on() enables LVGL events once per node and rejects bad type/callback
+PASS  dispatched GestureEvent reaches the right callback with coordinates
+PASS unregister function is idempotent and stops future delivery
+PASS longpress then release: no tap delivered; onPress (CLICKED) suppressed
+PASS normal tap: onPress AND gesture tap both fire (no longpress latch)
+PASS dispose clears per-node gesture state (removed node stops dispatching)
+EVIDENCE demo tap -> status="tap (61,100)" taps=1
+PASS examples/gestures/app.js evaluates and its tap counter responds
+PASS example swipe changes page and longpress toggles color
+PASS 20 r21 gesture cases

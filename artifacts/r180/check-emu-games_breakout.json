@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/games_breakout",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 4308,
+      "ms": 34
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for games_breakout"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/games_breakout/tft.png"
+}

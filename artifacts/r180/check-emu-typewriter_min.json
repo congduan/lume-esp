@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/typewriter_min",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 393,
+      "ms": 20
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for typewriter_min"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/typewriter_min/tft.png"
+}

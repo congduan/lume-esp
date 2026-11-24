@@ -1,0 +1,54 @@
+PASS control_center static: shell.js imported by the documented relative path
+PASS control_center static: SafeArea consumed as the round-screen safe container
+PASS control_center static: Card consumed by four setting cards
+PASS control_center static: IconButton consumed by WiFi, Bluetooth and RESET
+PASS control_center static: all four values live in signals
+PASS control_center static: KV key block uses the four documented <=15-char keys
+PASS control_center static: flag KV get wrapped in try/catch, accepts only 0 or 1
+PASS control_center static: step KV get wrapped in try/catch, accepts only legal integer steps
+PASS control_center static: KV set wrapped in try/catch (NVS failure is volatile)
+PASS control_center static: startup reads every key back into its signal
+PASS control_center static: volume wraps 10 -> 0 and brightness wraps 5 -> 1
+PASS control_center static: RESET restores all four defaults through kvSave
+PASS control_center static: no Slider consumption (timer_kit owns that r157 point)
+PASS control_center static: zero Canvas nodes
+PASS control_center static: entire app file is ASCII-only (r64)
+PASS control_center static: UI string literals ASCII-only (r64)
+PASS control_center static: Text fontSize limited to bundled 14/20/32 faces
+PASS control_center static: static tree within the node budget
+PASS control_center static: playground sources/control_center.js byte-identical to the example
+PASS control_center static: control_center is in the 58-app playground manifest
+PASS control_center static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS control_center mutation: drop the shell import -> FAIL as expected
+PASS control_center mutation: app stops consuming SafeArea -> FAIL as expected
+PASS control_center mutation: app stops consuming Card -> FAIL as expected
+PASS control_center mutation: app stops consuming IconButton -> FAIL as expected
+PASS control_center mutation: a value escapes the signal graph -> FAIL as expected
+PASS control_center mutation: KV key exceeds the NVS cap -> FAIL as expected
+PASS control_center mutation: flag KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: step KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: KV set loses try/catch -> FAIL as expected
+PASS control_center mutation: startup forgets to read a key back -> FAIL as expected
+PASS control_center mutation: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center mutation: RESET forgets brightness -> FAIL as expected
+PASS control_center mutation: Slider slips into the app -> FAIL as expected
+PASS control_center mutation: a Canvas slips into the app -> FAIL as expected
+PASS control_center mutation: a non-ASCII byte slips into the file -> FAIL as expected
+PASS control_center mutation: a CJK UI literal slips in -> FAIL as expected
+PASS control_center mutation: font size escapes the bundled faces -> FAIL as expected
+PASS control_center mutation: static tree overflows the node budget -> FAIL as expected
+PASS control_center mutation: playground generated source drifts -> FAIL as expected
+PASS control_center mutation: playground manifest drops control_center -> FAIL as expected
+PASS control_center mutation: a firmware/runtime/CLI file changes after 76d2c0c -> FAIL as expected
+PASS control_center live: handles, safe square and zero canvas
+PASS control_center live: IconButton tap toggles WiFi and writes KV
+PASS control_center live: IconButton tap toggles Bluetooth and writes KV
+PASS control_center live: volume card cycles 0..10 and persists
+PASS control_center live: brightness card cycles 1..5 and persists
+PASS control_center live: RESET restores every default and rewrites all four keys
+PASS control_center live: KV load rejects illegal values and a throwing NVS degrades
+PASS control_center live: dispose and shutdown clear effects and timers
+PASS control_center live mutation: live: WiFi IconButton stops toggling -> FAIL as expected
+PASS control_center live mutation: live: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center live mutation: live: RESET forgets brightness -> FAIL as expected
+ALL CONTROL CENTER HARNESS CASES PASSED

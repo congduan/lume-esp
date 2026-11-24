@@ -1,0 +1,26 @@
+{
+  "ok": false,
+  "app": "examples/aurora_clock",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 5432,
+      "ms": 38
+    },
+    {
+      "step": "eval",
+      "ok": false,
+      "error": "InternalError: lume: ui queue full"
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for aurora_clock"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/aurora_clock/tft.png"
+}

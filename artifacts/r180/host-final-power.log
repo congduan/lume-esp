@@ -1,0 +1,3 @@
+PASS wake registration, unregister, and success-only dispatch
+PASS touch feeds idle timer and wake resets activity
+PASS shutdown clears wake callbacks

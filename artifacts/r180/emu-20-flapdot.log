@@ -1,0 +1,10 @@
+bundle /tmp/lume-r180-wt/examples/flapdot: source 5601 bytes; payload 5601 bytes; frame 5613 bytes (source)
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433332 bytes
+I (1810) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1941) lume-engine: app eval ok; entering event loop
+I (2691) lume-engine: engine recv RELOAD -> recycle runtime
+I (2921) lume-engine: runtime up; eval app '<embedded-demo>' (5601 bytes)
+I (2973) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 212102804 + core1 252846661 insns in 13.4s wall = 34.6 Minsn/s; emulated 8.000s (1920000000 cycles); 714905 exceptions, 34667 interrupts
+TFT: artifacts/r180/emu-20-flapdot/tft.png
+serial: artifacts/r180/emu-20-flapdot/serial.log

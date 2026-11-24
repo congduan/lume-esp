@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/image_gallery",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 3276,
+      "ms": 36
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for image_gallery"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/image_gallery/tft.png"
+}

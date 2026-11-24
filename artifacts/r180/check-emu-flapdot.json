@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/flapdot",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 5601,
+      "ms": 23
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for flapdot"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/flapdot/tft.png"
+}

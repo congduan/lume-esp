@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/adc_meter",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 2453,
+      "ms": 17
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for adc_meter"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/adc_meter/tft.png"
+}

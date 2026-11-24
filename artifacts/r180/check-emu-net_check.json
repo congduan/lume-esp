@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/net_check",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 1549,
+      "ms": 22
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for net_check"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/net_check/tft.png"
+}

@@ -1,0 +1,20 @@
+PASS reboot_consumers: Dialog confirmation replaces the 3 s arm gate
+PASS reboot_consumers: no two-stage confirm signal or arm timer remains
+PASS reboot_consumers: typeof guard precedes reboot; stub without binding degrades to ASCII note
+PASS reboot_consumers: row is exactly View + Text + Button; Reboot opens a Dialog
+PASS reboot_consumers: row status is the guarded ASCII default or the note
+PASS reboot_consumers: all UI string literals ASCII-only (r64)
+PASS reboot_consumers: playground sources/settings.js byte-identical to example
+PASS reboot_consumers: settings is in the playground manifest
+PASS reboot_consumers: firmware/ runtime/ CLI tooling untouched vs 3514c76 (shell.js/types only)
+PASS reboot_consumers mutation: drop the reboot Dialog -> FAIL as expected
+PASS reboot_consumers mutation: downgrade the Reboot button to plain -> FAIL as expected
+PASS reboot_consumers mutation: resurrect the two-stage reboot signal -> FAIL as expected
+PASS reboot_consumers mutation: drop the typeof guard -> FAIL as expected
+PASS reboot_consumers mutation: Reboot button no longer opens a Dialog -> FAIL as expected
+PASS reboot_consumers mutation: row status drops its guarded ASCII default -> FAIL as expected
+PASS reboot_consumers mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS reboot_consumers mutation: playground generated source drifts from the example -> FAIL as expected
+PASS reboot_consumers mutation: playground manifest drops settings -> FAIL as expected
+PASS reboot_consumers mutation: a firmware file changes vs 92b6f29 -> FAIL as expected
+ALL REBOOT CONSUMERS HARNESS CASES PASSED
