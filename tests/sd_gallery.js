@@ -84,6 +84,9 @@ for (const s of stringLits) {
 // instead of being deleted. Anything else under firmware/ or runtime/
 // changing vs the r127 baseline still fails this harness.
 const R128_FIRMWARE_FILES = [
+  // r183 SVG raster-result cache (engine component).
+  'firmware/components/lume-engine/lume_svg_cache.c',
+  'firmware/components/lume-engine/include/lume_svg_cache.h',
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_scripts.c',
