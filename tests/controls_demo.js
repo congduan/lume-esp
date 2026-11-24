@@ -28,7 +28,10 @@ const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'firmware/components/lume-svg/lume_svg.c',
-  'firmware/components/lvgl/lv_conf.h']; // r173 companion P1 and r75 already on main
+  'firmware/components/lvgl/lv_conf.h',
+  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
+  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
+  'firmware/sdkconfig.defaults']; // r173 companion P1, r75 and r179 already on main
 
 const app = read('examples/controls_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -78,6 +81,9 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   // r75 raster and refresh changes already present on origin/main.
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
+  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
+  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
+  'firmware/sdkconfig.defaults',
 ];
 const fwChanged = gitChanged(['firmware/', 'runtime/']);
 const trunkFirmware = gitChanged(['firmware/'], HEAD_BASE);

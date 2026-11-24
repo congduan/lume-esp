@@ -8,6 +8,9 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   // r75 raster and refresh changes already present on origin/main.
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
+  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
+  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
+  'firmware/sdkconfig.defaults',
 ];
 /* r136 host harness for examples/img_view (pure app + real host imgscale stub).
  * Standalone CommonJS:  node tests/img_view.js
