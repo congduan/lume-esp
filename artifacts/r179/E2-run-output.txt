@@ -1,0 +1,9 @@
+esptool.py v4.13.0
+SHA digest in image updated
+Wrote 0x2f5460 bytes to file merged_flash.bin, ready to flash to offset 0x0
+prepared /tmp/lume-r179-wt/artifacts/r179/E2/flash.bin: 8716288 bytes; app 2837 bytes
+I (1881) lume-engine: js: [NETCHECK] init PASS ret=0
+I (1885) lume-engine: js: [NETCHECK] connect PASS ret=0
+serial: /tmp/lume-r179-wt/artifacts/r179/E2/serial.log
+exit-on string absent (esp-emu timeout): [NETCHECK] ALL PASS
+failure diag: /tmp/lume-r179-wt/artifacts/r179/E2/failure-diag.txt

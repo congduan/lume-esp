@@ -1,0 +1,198 @@
+diff --git a/tests/adc_meter.js b/tests/adc_meter.js
+index 135a2ac..f0fe7e0 100644
+--- a/tests/adc_meter.js
++++ b/tests/adc_meter.js
+@@ -10,0 +11,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/archive_view.js b/tests/archive_view.js
+index 677b33d..38b7492 100644
+--- a/tests/archive_view.js
++++ b/tests/archive_view.js
+@@ -10,0 +11,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/confirm_sweep.js b/tests/confirm_sweep.js
+index 2d869aa..e0681af 100644
+--- a/tests/confirm_sweep.js
++++ b/tests/confirm_sweep.js
+@@ -82,0 +83,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/control_center.js b/tests/control_center.js
+index 50f012f..d6d6284 100644
+--- a/tests/control_center.js
++++ b/tests/control_center.js
+@@ -76,0 +77,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/controls_demo.js b/tests/controls_demo.js
+index 082361a..5cacdd6 100644
+--- a/tests/controls_demo.js
++++ b/tests/controls_demo.js
+@@ -31 +31,4 @@ const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
+-  'firmware/components/lvgl/lv_conf.h']; // r173 companion P1 and r75 already on main
++  'firmware/components/lvgl/lv_conf.h',
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults']; // r173 companion P1, r75 and r179 already on main
+@@ -80,0 +84,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/crypto_check.js b/tests/crypto_check.js
+index ce9ebbc..dc4dbaa 100644
+--- a/tests/crypto_check.js
++++ b/tests/crypto_check.js
+@@ -10,0 +11,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/hr_monitor.js b/tests/hr_monitor.js
+index 5658388..572ab8b 100644
+--- a/tests/hr_monitor.js
++++ b/tests/hr_monitor.js
+@@ -81,0 +82,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/img_view.js b/tests/img_view.js
+index e7a6f42..6b994eb 100644
+--- a/tests/img_view.js
++++ b/tests/img_view.js
+@@ -10,0 +11,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/keyboard_demo.js b/tests/keyboard_demo.js
+index 0724b4c..5f4c933 100644
+--- a/tests/keyboard_demo.js
++++ b/tests/keyboard_demo.js
+@@ -90,0 +91,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/keyboard_states.js b/tests/keyboard_states.js
+index 4c6fea1..bb4bfc7 100644
+--- a/tests/keyboard_states.js
++++ b/tests/keyboard_states.js
+@@ -88,0 +89,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/launcher_grid.js b/tests/launcher_grid.js
+index 04c52e3..98840b1 100644
+--- a/tests/launcher_grid.js
++++ b/tests/launcher_grid.js
+@@ -87,0 +88,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/ota_consumers.js b/tests/ota_consumers.js
+index 750de16..8f80ee7 100644
+--- a/tests/ota_consumers.js
++++ b/tests/ota_consumers.js
+@@ -106 +106,4 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
+-  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
++  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults'];
+@@ -602,0 +606,5 @@ const ALLOWED = [
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
++  // r179: WiFi PS/coexist knife report; evidence admitted by r179 prefix below.
++  'docs/r179-report.md',
+@@ -675 +683,2 @@ const checks = [
+-      f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/'))]],
++      f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
++      f.startsWith('artifacts/r179/'))]],
+diff --git a/tests/reboot_consumers.js b/tests/reboot_consumers.js
+index d9ff81d..c28ceaf 100644
+--- a/tests/reboot_consumers.js
++++ b/tests/reboot_consumers.js
+@@ -79,0 +80,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/sd_files.js b/tests/sd_files.js
+index 4e9b260..dacd095 100644
+--- a/tests/sd_files.js
++++ b/tests/sd_files.js
+@@ -128,0 +129,3 @@ const R128_FIRMWARE_FILES = [
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/sd_gallery.js b/tests/sd_gallery.js
+index 7bb2a49..6a0cb9b 100644
+--- a/tests/sd_gallery.js
++++ b/tests/sd_gallery.js
+@@ -99,0 +100,3 @@ const R128_FIRMWARE_FILES = [
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/settings_dialog.js b/tests/settings_dialog.js
+index c13993b..efec1d3 100644
+--- a/tests/settings_dialog.js
++++ b/tests/settings_dialog.js
+@@ -76,0 +77,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/sntp_consumers.js b/tests/sntp_consumers.js
+index b6b1963..3107803 100644
+--- a/tests/sntp_consumers.js
++++ b/tests/sntp_consumers.js
+@@ -47 +47,4 @@ const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts', // r166 C
+-  'firmware/components/lvgl/lv_conf.h']; // r173 companion P1 and r75 already on main
++  'firmware/components/lvgl/lv_conf.h',
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults']; // r173 companion P1, r75 and r179 already on main
+diff --git a/tests/sntp_consumers2.js b/tests/sntp_consumers2.js
+index aa0c2e5..8487d7a 100644
+--- a/tests/sntp_consumers2.js
++++ b/tests/sntp_consumers2.js
+@@ -82,0 +83,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/timer_kit.js b/tests/timer_kit.js
+index c35c341..00ebabd 100644
+--- a/tests/timer_kit.js
++++ b/tests/timer_kit.js
+@@ -72,0 +73,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/vec_demo.js b/tests/vec_demo.js
+index ac6eb8f..22e8bf3 100644
+--- a/tests/vec_demo.js
++++ b/tests/vec_demo.js
+@@ -10,0 +11,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/weather_sntp.js b/tests/weather_sntp.js
+index afd9dfb..b08f006 100644
+--- a/tests/weather_sntp.js
++++ b/tests/weather_sntp.js
+@@ -74,0 +75,3 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults',
+diff --git a/tests/wordle.js b/tests/wordle.js
+index 2ad63b8..84f68b1 100644
+--- a/tests/wordle.js
++++ b/tests/wordle.js
+@@ -558 +558,4 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
+-  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
++  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
++  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
++  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
++  'firmware/sdkconfig.defaults'];

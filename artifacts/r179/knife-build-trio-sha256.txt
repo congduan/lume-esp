@@ -1,0 +1,3 @@
+2fd6cce03091d98e0acd8bf63e5fe8a92e718f3bc89453e5c8d493e568ff5472  firmware/build/lume.bin
+7bb9307f0b2b76178390dee87076614617f57233875cc6a33c89dace9dc2cf52  firmware/build/bootloader/bootloader.bin
+d7d0b8669babfa4cd290e344722a288c848d4255d665bd6d91ab3a22ed7393ac  firmware/build/partition_table/partition-table.bin
