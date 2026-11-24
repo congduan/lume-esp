@@ -1,0 +1,53 @@
+PASS engine gates cache with lume_svg_detect (SVG only)
+PASS cache is reset on every runtime teardown
+PASS cache source uses SPIRAM caps and FNV-1a
+PASS component registers the new source
+PASS: cold entry is a miss
+PASS: put A 320x320 ok
+PASS: one entry after put
+PASS: byte budget tracks RGB565A8 raster
+PASS: hit returns the exact raster bytes
+PASS: hit returns correct dimensions/alpha
+PASS: hit returns the exact raster bytes
+PASS: second hit after freeing first copy (copy-on-hit, no shared buffer)
+PASS: put A 64x64
+PASS: different source bytes = miss
+PASS: put B 64x64
+PASS: hit returns the exact raster bytes
+PASS: B hits after put
+PASS: hit returns the exact raster bytes
+PASS: A still hits (distinct key)
+PASS: put A at 320x320
+PASS: same source, different tw/th = miss
+PASS: put A at 160x160
+PASS: two size variants coexist
+PASS: put small A
+PASS: put small B
+PASS: put small C
+PASS: put small D
+PASS: hit returns the exact raster bytes
+PASS: touch A (now most recent)
+PASS: put small E
+PASS: entry cap holds at 4
+PASS: LRU (B) evicted
+PASS: hit returns the exact raster bytes
+PASS: touched A survives
+PASS: hit returns the exact raster bytes
+PASS: newest E present
+PASS: full A
+PASS: full B
+PASS: full C
+PASS: full D triggers eviction
+PASS: byte budget caps at 3 full-size rasters
+PASS: resident bytes <= 1 MiB
+PASS: oldest full raster evicted
+PASS: hit returns the exact raster bytes
+PASS: newest full raster present
+PASS: reset empties the cache
+PASS: post-reset lookup is a miss
+PASS: no SPIRAM bytes leaked after reset (allocs=36 frees=36)
+PASS: zero-length source is a miss
+PASS: zero-size raster is rejected
+svg_cache_test: ALL CHECKS PASSED (allocs=36 frees=36 live=0)
+PASS svg_cache_test.c compiled and ran with exit 0
+svg_cache: 5 checks green
