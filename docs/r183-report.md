@@ -79,7 +79,7 @@ I (4464) ... R183-COLD SVG sample=2 ms=1 rc=0 glyph=B
 
 - `node tools/lume/lume.js check examples/abc123 --timeout 180`：**PASS**（`artifacts/r183/check-emu-abc123.log`）。r180 记录过 8 s / 20 s 窗口都见不到 `engine recv RELOAD`；r181 的 `tools/emu/run.sh` 分帧注入节奏修复已在本基线，本次复现正常（`artifacts/r183/check-emu-abc123-serial.log`）。未改任何工具代码。
 - 宿主缓存单测：`tests/svg_cache.js` + `tests/svg_cache_test.c`，gcc 编译真实 `lume_svg_cache.c` 并打桩 `heap_caps_malloc/free`（带 magic 守卫检测 double-free / 无效释放）。覆盖：冷 miss、put→hit、命中副本独立（释放第一次命中副本后再次命中仍正确）、内容变化 miss、尺寸键不同 miss、4 条条目上限 + LRU 逐出、1 MiB 字节上限（满幅只容 3 条）、reset 清空且无泄漏、退化输入。结果 `ALL CHECKS PASSED (allocs=36 frees=36 live=0)`。
-- 全量 host harness：`artifacts/r183/host-all-final-summary.log`，103 个 `node tests/*.js`，**103 PASS / 0 FAIL**（重钉前 20 项红，见 `artifacts/r183/host-all-before-repin.log`）。
+- 全量 host harness：提交后最终复核 `artifacts/r183/host-all-post-commit.log`，103 个 `node tests/*.js`，**103 PASS / 0 FAIL**（重钉前 20 项红，见 `artifacts/r183/host-all-before-repin.log`；提交后发现 3 项新增文件守卫红，补钉过程见 `artifacts/r183/host-all-post-commit.log`）。
 - `npm test --prefix tools/lume`：`artifacts/r183/npm-test.log`，51 pass / 0 fail / 1 skipped。
 - 未动 website，跳过 `check_website.py`。
 
@@ -87,7 +87,7 @@ I (4464) ... R183-COLD SVG sample=2 ms=1 rc=0 glyph=B
 
 按 r173/r176/r177/r179/r181 先例，只动 allowlist / 夹具，不改任何断言谓词：
 
-- 20 个守卫（R166_ALLOWED / R173_FIRMWARE / R129_ALLOWLIST / ota_consumers ALLOWED）加入本轮具名对象：`lume-engine/CMakeLists.txt`、`lume_engine.c`、新 `lume_svg_cache.c` 与头文件、新测试、`docs/r183-report.md`、`artifacts/r183/` 前缀。
+- 23 个守卫加入本轮具名对象：R166_ALLOWED / R173_FIRMWARE / R129_ALLOWLIST / ota_consumers ALLOWLIST 共 20 个在首轮重钉；提交后 `board_abi` 的零差异排除表与 `sd_files` / `sd_gallery` 的 R128_FIRMWARE_FILES 又补了 3 个——`git diff` 只看已提交的 HEAD 内容，新增文件在提交前是 untracked，提交后才进入这些守卫的视野。具名对象：`lume-engine/CMakeLists.txt`、`lume_engine.c`、新 `lume_svg_cache.c` 与头文件、新测试、`docs/r183-report.md`、`artifacts/r183/` 前缀。
 - 8 个守卫的 mutation proof 原以 `lume_engine.c` 作为“必须被守卫拒绝”的夹具；该文件本轮已合法进 allowlist，夹具改为同样不在 allowlist 的 `firmware/components/lume-adc/lume_adc.c`，使证明仍然 load-bearing。
 - `tests/ota_consumers.js` 的 `allChanged` 守卫在基线 HEAD 已是红的（`git show HEAD:tests/ota_consumers.js` 独立运行同样失败，原始输出 `artifacts/r183/ota-guard-baseline-check.log`）：HEAD 提交 `674684a` 更新了 `website/wasm/fw/partition-table.bin`，而该守卫的 BASE 停在 r177 的 `3514c76`。把 BASE 重钉到基线 `674684a`，谓词与 allowlist 语义不变。
 
