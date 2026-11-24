@@ -1,0 +1,397 @@
+[emu] ROM loaded from /home/ubuntu/.espressif/tools/esp-rom-elfs/20241011/esp32s3_rev0_rom.elf
+[emu] ROM boot from reset vector 0x40000400
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0xf (SPI_FAST_FLASH_BOOT)
+configspi:0x00000008
+SPIWP:0x00
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x16a8
+load:0x403c8700,len:0xe88
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0xf (SPI_FAST_FLASH_BOOT)
+configspi:0x00000008
+SPIWP:0x00
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x16a8
+load:0x403c8700,len:0xe88
+load:0x403cb700,len:0x3184
+load:0x403cb700,len:0x3184
+entry 0x403c8948
+I (7) boot: ESP-IDF v5.5.5 2nd stage bootloader
+I (7) boot: compile time Nov 24 2026 12:29:54
+I (7) boot: Multicore bootloader
+I (7) boot: chip revision: v0.0
+I (7) boot: efuse block revision: v1.0
+entry 0x403c8948
+I (7) qio_mode: Enabling default flash chip QIO
+I (7) boot.esp32s3: Boot SPI Speed : 80MHz
+I (7) boot.esp32s3: SPI Mode       : QIO
+I (7) boot.esp32s3: SPI Flash Size : 16MB
+I (7) boot: Enabling RNG early entropy source...
+I (8) boot: Partition Table:
+I (8) boot: ## Label            Usage          Type ST Offset   Length
+I (8) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (8) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (8) boot:  2 factory          factory app      00 00 00010000 00640000
+I (8) boot:  3 storage          Unknown data     01 83 00750000 00100000
+I (8) boot: End of partition table
+I (8) esp_image: segment 0: paddr=00010020 vaddr=3c200020 size=d069ch (853660) map
+I (65) esp_image: segment 1: paddr=000e06c4 vaddr=3fca0e00 size=05c5ch ( 23644) load
+I (68) esp_image: segment 2: paddr=000e6328 vaddr=40374000 size=09cf0h ( 40176) load
+I (71) esp_image: segment 3: paddr=000f0020 vaddr=42000020 size=1f3bb8h (2046904) map
+I (208) esp_image: segment 4: paddr=002e3be0 vaddr=4037dcf0 size=13040h ( 77888) load
+I (215) esp_image: segment 5: paddr=002f6c28 vaddr=50000000 size=00020h (    32) load
+I (215) esp_image: segment 6: paddr=002f6c50 vaddr=600fe000 size=00030h (    48) load
+I (220) boot: Loaded app from partition at offset 0x10000
+I (220) boot: Disabling RNG early entropy source...
+I (221) octal_psram: vendor id    : 0x0d (AP)
+I (221) octal_psram: dev id       : 0x01 (generation 2)
+I (221) octal_psram: density      : 0x03 (64 Mbit)
+I (221) octal_psram: good-die     : 0x01 (Pass)
+I (221) octal_psram: Latency      : 0x01 (Fixed)
+I (221) octal_psram: VCC          : 0x00 (1.8V)
+I (222) octal_psram: SRF          : 0x00 (Slow Refresh)
+I (222) octal_psram: BurstType    : 0x00 ( Wrap)
+I (222) octal_psram: BurstLen     : 0x03 (1024 Byte)
+I (222) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (222) octal_psram: DriveStrength: 0x00 (1/1)
+I (222) MSPI Timing: Enter psram timing tuning
+W MSPI Timing: tuning fail, best point is fallen back to index 5
+I (222) esp_psram: Found 8MB PSRAM device
+I (222) esp_psram: Speed: 80MHz
+I (230) mmu_psram: Read only data copied and mapped to SPIRAM
+I (246) mmu_psram: Instructions copied and mapped to SPIRAM
+I (246) cpu_start: Multicore app
+I (272) esp_psram: SPI SRAM memory test OK
+I (280) cpu_start: Pro cpu start user code
+I (280) cpu_start: cpu freq: 240000000 Hz
+I (280) app_init: Application information:
+I (280) app_init: Project name:     lume
+I (280) app_init: App version:      v0.3.2-137-gfb85a93-dirty
+I (280) app_init: Compile time:     Nov 24 2026 13:11:31
+I (280) app_init: ELF file SHA256:  ebbdf433e...
+I (280) app_init: ESP-IDF:          v5.5.5
+I (280) efuse_init: Min chip rev:     v0.0
+I (280) efuse_init: Max chip rev:     v0.99 
+I (280) efuse_init: Chip rev:         v0.0
+I (280) heap_init: Initializing. RAM available for dynamic allocation:
+I (280) heap_init: At 3FCC47B8 len 00024F58 (147 KiB): RAM
+I (280) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (280) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (280) heap_init: At 600FE030 len 00001FB8 (7 KiB): RTCRAM
+I (280) esp_psram: Adding pool of 5248K of PSRAM memory to heap allocator
+I (280) esp_psram: Adding pool of 62K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (280) spi_flash: detected chip: generic
+I (281) spi_flash: flash io: qio
+I (281) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (281) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (281) main_task: Started on CPU0
+I (281) esp_psram: Reserving pool of 4K of internal memory for DMA/internal allocations
+I (281) main_task: Calling app_main()
+I (281) lume: Lume runtime booting...
+I (281) lume-pmic: AXP2101 detected (chip id 0x4a)
+I (292) lume-pmic: ALDO3+BLDO1+BLDO2 rails enabled
+I (1652) lume-display: CO5300 QSPI + LVGL display up (480x480 RGB565, 2x19200 B SRAM draw buf)
+I (1726) lume-touch: checkcode ABCD1234
+I (1728) lume-touch: resolution 480 x 480
+I (1730) lume-touch: chip type 0x0000 project id 0x0000
+I (1730) lume-touch: CST9220 -> LVGL indev ready (addr 0x5a, INT=11)
+I (1730) lume-ui-bridge: init: queue=384 msgs, drain timer=5ms
+I (1738) lume-board: board init done: CO5300 QSPI + CST9220 + LVGL pipeline up
+I (1738) lume-engine: engine_start: evt queue=16, stage mutex up, task lume-js up
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433332 bytes
+I (1738) lume-hotreload: USB hot-reload up; frame LUME|len:u32le|crc32:u32le|payload, max=262144 bytes
+E (1738) esp_littlefs: ./managed_components/joltwallet__littlefs/src/littlefs/lfs.c:1383:error: Corrupted dir pair at {0x0, 0x1}
+
+W (1740) esp_littlefs: mount failed,  (-84). formatting...
+I (1741) lume-fs: LittleFS mounted at /lume_fs
+I (1742) lume-ota: WiFi OTA token: 6396764c4125ac0a4f486e6b85680950  (use: lume deploy --host <ip> --token 6396764c4125ac0a4f486e6b85680950)
+I (1743) main_task: Returned from app_main()
+I (1747) lume-pmic-hw: AXP2101 telemetry ready (chip id 0x4a)
+I (1769) lume-imu-hw: QMI8658 ready (WHO_AM_I=0x05, polled mode, accel +/-4g / gyro +/-64dps)
+I (1769) lume-kv: NVS KV ready (partition 'nvs', namespace 'lume', key<=15 chars, value<4000 B)
+I (1770) pp: pp rom version: e7ae62f
+I (1771) net80211: net80211 rom version: e7ae62f
+I (1772) wifi:wifi driver task: 3fcf23ac, prio:23, stack:6656, core=0
+I (1773) wifi:wifi firmware version: b9f67df
+I (1774) wifi:wifi certification version: v7.0
+I (1774) wifi:config NVS flash: enabled
+I (1774) wifi:config nano formatting: disabled
+I (1775) wifi:Init data frame dynamic rx buffer num: 32
+I (1776) wifi:Init static rx mgmt buffer num: 5
+I (1776) wifi:Init management short buffer num: 32
+I (1777) wifi:Init dynamic tx buffer num: 32
+I (1777) wifi:Init static tx FG buffer num: 2
+I (1777) wifi:Init static rx buffer size: 1600
+I (1778) wifi:Init static rx buffer num: 10
+I (1778) wifi:Init dynamic rx buffer num: 32
+I (1779) wifi_init: rx ba win: 6
+I (1779) wifi_init: accept mbox: 6
+I (1779) wifi_init: tcpip mbox: 32
+I (1780) wifi_init: udp mbox: 6
+I (1780) wifi_init: tcp mbox: 6
+I (1780) wifi_init: tcp tx win: 5760
+I (1780) wifi_init: tcp rx win: 5760
+I (1780) wifi_init: tcp mss: 1440
+I (1781) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+W (1781) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1785) phy: error: pll_cal exceeds 2ms!!!
+I (1788) phy: error: pll_cal exceeds 2ms!!!
+I (1791) phy: error: pll_cal exceeds 2ms!!!
+I (1797) phy: error: pll_cal exceeds 2ms!!!
+I (1800) phy: error: pll_cal exceeds 2ms!!!
+I (1804) phy: error: pll_cal exceeds 2ms!!!
+I (1805) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1808) wifi:mode : sta (44:1b:f6:75:dc:e0)
+I (1809) wifi:enable tsf
+I (1809) lume-net: WiFi station up (WPA2-PSK only; handlers on sys_evt/core0, engine task core1; WiFi IRAM opts disabled)
+I (1810) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1911) lume-engine: script cache '<lume-prelude>': compiled 116763 bytes total (116747 body), qjs 0.18.0, src hash 0xd6cf89a6
+I (1925) lume-ui-bridge: global gesture registered on the screen (node 0)
+I (1925) lume-ui-bridge: gesture registered id=0
+I (1933) lume-engine: script cache '<lume-home>': compiled 8416 bytes total (8400 body), qjs 0.18.0, src hash 0x7a121147
+W (1936) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+I (1939) lume-ui-bridge: create id=1 kind=0 parent=0
+I (1940) lume-ui-bridge: create id=2 kind=1 parent=0
+I (1940) lume-ui-bridge: create id=3 kind=1 parent=0
+I (1941) lume-engine: app eval ok; entering event loop
+I (1941) lume-ui-bridge: create id=4 kind=1 parent=0
+I (1942) lume-ui-bridge: create id=5 kind=0 parent=1
+I (1943) lume-ui-bridge: create id=6 kind=0 parent=1
+I (1944) lume-ui-bridge: create id=7 kind=1 parent=0
+I (1944) lume-ui-bridge: create id=8 kind=1 parent=0
+I (1945) lume-ui-bridge: create id=9 kind=0 parent=1
+[script] t=2.500s serial-file (4096 bytes)
+[script] t=2.510s serial-file (4096 bytes)
+[script] t=2.520s serial-file (4096 bytes)
+[script] t=2.530s serial-file (4096 bytes)
+[script] t=2.540s serial-file (4096 bytes)
+[script] t=2.550s serial-file (4096 bytes)
+[script] t=2.560s serial-file (4096 bytes)
+[script] t=2.570s serial-file (4096 bytes)
+[script] t=2.580s serial-file (4096 bytes)
+[script] t=2.590s serial-file (597 bytes)
+I (2785) lume-engine: engine recv RELOAD -> recycle runtime
+I (2787) lume-ui-bridge: transition: overlay created (480x480)
+I (3006) lume-ui-bridge: transition: covered (fade-in done)
+I (3012) lume-ui-bridge: app UI reset complete
+I (3017) lume-engine: runtime up; eval app '<embedded-demo>' (37449 bytes)
+I (3035) lume-ui-bridge: global gesture registered on the screen (node 0)
+I (3035) lume-ui-bridge: gesture registered id=0
+I (3159) lume-ui-bridge: create id=1 kind=1 parent=0
+I (3160) lume-ui-bridge: create id=2 kind=2 parent=0
+I (3161) lume-ui-bridge: press registered id=2
+I (3161) lume-ui-bridge: create id=3 kind=2 parent=0
+I (3162) lume-ui-bridge: press registered id=3
+I (3163) lume-ui-bridge: create id=4 kind=2 parent=0
+I (3163) lume-ui-bridge: press registered id=4
+I (3164) lume-ui-bridge: create id=5 kind=2 parent=0
+I (3165) lume-ui-bridge: press registered id=5
+I (3166) lume-ui-bridge: create id=6 kind=2 parent=0
+I (3166) lume-ui-bridge: press registered id=6
+I (3167) lume-ui-bridge: create id=7 kind=2 parent=0
+I (3168) lume-ui-bridge: press registered id=7
+I (3168) lume-ui-bridge: create id=8 kind=2 parent=0
+I (3169) lume-ui-bridge: press registered id=8
+I (3170) lume-ui-bridge: create id=9 kind=2 parent=0
+I (3170) lume-ui-bridge: press registered id=9
+I (3171) lume-ui-bridge: create id=10 kind=2 parent=0
+I (3172) lume-ui-bridge: press registered id=10
+I (3172) lume-ui-bridge: create id=11 kind=2 parent=0
+I (3173) lume-ui-bridge: press registered id=11
+I (3174) lume-ui-bridge: create id=12 kind=0 parent=0
+I (3175) lume-ui-bridge: create id=13 kind=2 parent=0
+I (3176) lume-ui-bridge: press registered id=13
+I (3176) lume-ui-bridge: create id=14 kind=2 parent=0
+I (3177) lume-ui-bridge: press registered id=14
+I (3178) lume-ui-bridge: create id=15 kind=2 parent=0
+I (3178) lume-ui-bridge: press registered id=15
+I (3179) lume-ui-bridge: create id=16 kind=2 parent=0
+I (3180) lume-ui-bridge: press registered id=16
+I (3181) lume-ui-bridge: create id=17 kind=2 parent=0
+I (3181) lume-ui-bridge: press registered id=17
+I (3182) lume-ui-bridge: create id=18 kind=2 parent=0
+I (3183) lume-ui-bridge: press registered id=18
+I (3183) lume-ui-bridge: create id=19 kind=2 parent=0
+I (3184) lume-ui-bridge: press registered id=19
+I (3185) lume-ui-bridge: create id=20 kind=2 parent=0
+I (3185) lume-ui-bridge: press registered id=20
+I (3186) lume-ui-bridge: create id=21 kind=2 parent=0
+I (3187) lume-ui-bridge: press registered id=21
+I (3188) lume-ui-bridge: create id=22 kind=2 parent=0
+I (3188) lume-ui-bridge: press registered id=22
+I (3189) lume-ui-bridge: create id=23 kind=0 parent=0
+I (3190) lume-ui-bridge: create id=24 kind=2 parent=0
+I (3191) lume-ui-bridge: press registered id=24
+I (3192) lume-ui-bridge: create id=25 kind=2 parent=0
+I (3192) lume-ui-bridge: press registered id=25
+I (3193) lume-ui-bridge: create id=26 kind=2 parent=0
+I (3194) lume-ui-bridge: press registered id=26
+I (3194) lume-ui-bridge: create id=27 kind=2 parent=0
+I (3195) lume-ui-bridge: press registered id=27
+I (3196) lume-ui-bridge: create id=28 kind=2 parent=0
+I (3196) lume-ui-bridge: press registered id=28
+I (3197) lume-ui-bridge: create id=29 kind=2 parent=0
+I (3198) lume-ui-bridge: press registered id=29
+I (3198) lume-ui-bridge: create id=30 kind=2 parent=0
+I (3199) lume-ui-bridge: press registered id=30
+I (3200) lume-ui-bridge: create id=31 kind=2 parent=0
+I (3200) lume-ui-bridge: press registered id=31
+I (3201) lume-ui-bridge: create id=32 kind=2 parent=0
+I (3202) lume-ui-bridge: press registered id=32
+I (3203) lume-ui-bridge: create id=33 kind=0 parent=0
+I (3204) lume-ui-bridge: create id=34 kind=2 parent=0
+I (3204) lume-ui-bridge: press registered id=34
+I (3205) lume-ui-bridge: create id=35 kind=2 parent=0
+I (3206) lume-ui-bridge: press registered id=35
+I (3207) lume-ui-bridge: create id=36 kind=2 parent=0
+I (3207) lume-ui-bridge: press registered id=36
+I (3208) lume-ui-bridge: create id=37 kind=2 parent=0
+I (3209) lume-ui-bridge: press registered id=37
+I (3209) lume-ui-bridge: create id=38 kind=2 parent=0
+I (3210) lume-ui-bridge: press registered id=38
+I (3211) lume-ui-bridge: create id=39 kind=2 parent=0
+I (3211) lume-ui-bridge: press registered id=39
+I (3212) lume-ui-bridge: create id=40 kind=2 parent=0
+I (3213) lume-ui-bridge: press registered id=40
+I (3213) lume-ui-bridge: create id=41 kind=0 parent=0
+I (3214) lume-ui-bridge: create id=42 kind=0 parent=0
+I (3215) lume-ui-bridge: create id=43 kind=1 parent=0
+I (3216) lume-ui-bridge: create id=44 kind=1 parent=0
+I (3217) lume-ui-bridge: create id=45 kind=1 parent=0
+I (3218) lume-ui-bridge: create id=46 kind=1 parent=0
+I (3219) lume-ui-bridge: create id=47 kind=1 parent=0
+I (3219) lume-ui-bridge: create id=48 kind=1 parent=0
+I (3220) lume-ui-bridge: create id=49 kind=1 parent=0
+I (3221) lume-ui-bridge: create id=50 kind=0 parent=0
+I (3222) lume-ui-bridge: press registered id=50
+I (3222) lume-ui-bridge: create id=51 kind=1 parent=0
+I (3223) lume-ui-bridge: create id=52 kind=1 parent=0
+I (3224) lume-ui-bridge: create id=53 kind=1 parent=0
+I (3225) lume-ui-bridge: create id=54 kind=1 parent=0
+I (3226) lume-ui-bridge: create id=55 kind=0 parent=0
+I (3226) lume-ui-bridge: press registered id=55
+I (3227) lume-ui-bridge: create id=56 kind=1 parent=0
+I (3228) lume-ui-bridge: create id=57 kind=1 parent=0
+I (3229) lume-ui-bridge: create id=58 kind=1 parent=0
+I (3230) lume-ui-bridge: create id=59 kind=1 parent=0
+I (3230) lume-ui-bridge: create id=60 kind=1 parent=0
+I (3231) lume-ui-bridge: create id=61 kind=0 parent=0
+I (3232) lume-ui-bridge: press registered id=61
+I (3233) lume-ui-bridge: create id=62 kind=1 parent=0
+I (3233) lume-ui-bridge: create id=63 kind=0 parent=0
+I (3235) lume-ui-bridge: create id=64 kind=1 parent=0
+I (3235) lume-ui-bridge: create id=65 kind=1 parent=0
+I (3236) lume-ui-bridge: create id=66 kind=1 parent=0
+I (3237) lume-ui-bridge: create id=67 kind=0 parent=0
+I (3238) lume-ui-bridge: create id=68 kind=2 parent=0
+I (3238) lume-ui-bridge: press registered id=68
+I (3239) lume-ui-bridge: create id=69 kind=2 parent=0
+I (3240) lume-ui-bridge: press registered id=69
+I (3241) lume-ui-bridge: create id=70 kind=2 parent=0
+I (3241) lume-ui-bridge: press registered id=70
+I (3242) lume-ui-bridge: create id=71 kind=0 parent=0
+I (3243) lume-ui-bridge: create id=72 kind=1 parent=0
+I (3244) lume-ui-bridge: create id=73 kind=0 parent=0
+I (3244) lume-ui-bridge: create id=74 kind=0 parent=73
+W (3245) lume-ble: BLE stack not initialized (init/start failed or not called)
+I (3245) lume-ui-bridge: create id=75 kind=0 parent=0
+W (3246) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (3247) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+I (3247) lume-ui-bridge: create id=76 kind=1 parent=0
+E (3248) i2s_common: i2s_alloc_dma_desc(541): allocate DMA buffer failed
+E (3248) i2s_std: i2s_std_set_slot(138): allocate memory for dma descriptor failed
+E (3248) i2s_std: i2s_channel_init_std_mode(327): initialize channel failed while setting slot
+I (3249) lume-ui-bridge: create id=77 kind=1 parent=0
+I (3249) lume-engine: app eval ok; entering event loop
+I (3250) lume-ui-bridge: create id=78 kind=1 parent=0
+I (3251) lume-ui-bridge: create id=79 kind=0 parent=0
+I (3252) lume-ui-bridge: create id=80 kind=2 parent=0
+I (3252) lume-ui-bridge: press registered id=80
+I (3253) lume-ui-bridge: create id=81 kind=0 parent=0
+I (3254) lume-ui-bridge: create id=82 kind=0 parent=0
+I (3255) lume-ui-bridge: create id=83 kind=0 parent=82
+I (3255) lume-ui-bridge: create id=84 kind=1 parent=0
+I (3256) lume-ui-bridge: create id=85 kind=0 parent=0
+I (3257) lume-ui-bridge: create id=86 kind=1 parent=0
+I (3258) lume-ui-bridge: create id=87 kind=1 parent=0
+I (3258) lume-ui-bridge: create id=88 kind=1 parent=0
+I (3259) lume-ui-bridge: create id=89 kind=0 parent=0
+I (3260) lume-ui-bridge: create id=90 kind=2 parent=0
+I (3261) lume-ui-bridge: press registered id=90
+I (3262) lume-ui-bridge: create id=91 kind=2 parent=0
+I (3262) lume-ui-bridge: press registered id=91
+I (3263) lume-ui-bridge: create id=92 kind=2 parent=0
+I (3264) lume-ui-bridge: press registered id=92
+I (3264) lume-ui-bridge: create id=93 kind=0 parent=0
+I (3265) lume-ui-bridge: create id=94 kind=1 parent=0
+I (3266) lume-ui-bridge: create id=95 kind=0 parent=0
+I (3267) lume-ui-bridge: create id=96 kind=1 parent=0
+I (3268) lume-ui-bridge: create id=97 kind=1 parent=0
+I (3269) lume-ui-bridge: create id=98 kind=2 parent=0
+I (3269) lume-ui-bridge: press registered id=98
+I (3270) lume-ui-bridge: create id=99 kind=1 parent=0
+I (3271) lume-ui-bridge: create id=100 kind=2 parent=0
+I (3271) lume-ui-bridge: press registered id=100
+I (3272) lume-ui-bridge: create id=101 kind=0 parent=0
+I (3273) lume-ui-bridge: create id=102 kind=1 parent=0
+I (3274) lume-ui-bridge: create id=103 kind=1 parent=0
+I (3274) lume-ui-bridge: create id=104 kind=0 parent=0
+I (3275) lume-ui-bridge: create id=105 kind=1 parent=0
+I (3276) lume-ui-bridge: create id=106 kind=1 parent=0
+I (3277) lume-ui-bridge: create id=107 kind=0 parent=0
+I (3278) lume-ui-bridge: create id=108 kind=1 parent=0
+I (3278) lume-ui-bridge: create id=109 kind=2 parent=0
+I (3279) lume-ui-bridge: press registered id=109
+I (3280) lume-ui-bridge: create id=110 kind=0 parent=0
+I (3281) lume-ui-bridge: create id=111 kind=1 parent=0
+I (3282) lume-ui-bridge: create id=112 kind=2 parent=0
+I (3282) lume-ui-bridge: press registered id=112
+I (3283) lume-ui-bridge: create id=113 kind=0 parent=0
+I (3284) lume-ui-bridge: create id=114 kind=1 parent=0
+I (3285) lume-ui-bridge: create id=115 kind=2 parent=0
+I (3285) lume-ui-bridge: press registered id=115
+I (3286) lume-ui-bridge: create id=116 kind=0 parent=0
+I (3287) lume-ui-bridge: create id=117 kind=2 parent=0
+I (3288) lume-ui-bridge: press registered id=117
+I (3289) lume-ui-bridge: create id=118 kind=2 parent=0
+I (3289) lume-ui-bridge: press registered id=118
+I (3290) lume-ui-bridge: create id=119 kind=0 parent=0
+I (3291) lume-ui-bridge: create id=120 kind=1 parent=0
+I (3291) lume-ui-bridge: create id=121 kind=0 parent=0
+I (3293) lume-ui-bridge: create id=122 kind=0 parent=0
+I (3515) lume-ui-bridge: transition: revealed (overlay removed)
+W (3850) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (3851) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+W (4452) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (4453) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+W (5054) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (5055) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+W (5656) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (5657) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+W (6258) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (6259) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+W (6860) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (6861) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+W (7462) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (7463) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+W (8064) lume-pmic-hw: battVoltage: no battery connected (STATUS1 bit3 clear)
+W (8065) lume-pmic-hw: battPercent: no battery connected (STATUS1 bit3 clear)
+
+[emu] stop: Halted — core0 184528858 + core1 107364675 insns in 9.7s wall = 30.1 Minsn/s; emulated 8.000s (1920000000 cycles); 602974 exceptions, 34657 interrupts
+[irq] per core, cpu-int: count (peripheral sources mapped to it)
+  core0 int2          2  sources [59]
+  core0 int3       3080  sources [79]
+  core0 int5       7833  sources [57]
+  core0 int9        874  sources [42]
+  core0 int12       408  sources []
+  core0 int13     13748  sources [96]
+  core1 int0        806  sources [80]
+  core1 int1       7906  sources [58]
+
+[emu] i2s frames out: 0 (i2s0 @ 44100 Hz) 0 (i2s1 @ 44100 Hz)
+[emu] crypto: 0 AES blocks, 47887 SHA blocks, 0 RSA/MPI operations
+[emu] blocks: 36931 built (0 cache flushes) core0, 29479 (0) core1; jit: 0 compiled, 0 KB code
+[emu] wrote /tmp/lume-r181-wt/artifacts/emu/settings/tft.png
