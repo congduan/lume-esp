@@ -51,6 +51,7 @@
 #include "lume_power.h"
 #include "lume_image.h"
 #include "lume_svg.h"
+#include "lume_svg_cache.h"  /* r183: SVG raster-result cache */
 #include "lume_raycast.h"
 #include "lume_pins.h"       /* r27: display geometry from the board profile */
 #include "quickjs.h"
@@ -970,12 +971,19 @@ static JSValue js_image_set_source(JSContext *ctx, JSValueConst self, int argc, 
     if (argc > 3 && JS_ToInt32(ctx, &th, argv[3]) < 0) {
         JS_FreeValue(ctx, JS_GetException(ctx)); th = 0;
     }
-    if (tw > 0 && th > 0 && (tw > 480 || th > 480) && lume_svg_detect(bytes, len))
+    bool svg = lume_svg_detect(bytes, len);
+    if (svg && tw > 0 && th > 0 && (tw > 480 || th > 480))
         return JS_NewInt32(ctx, -2);
-    int r = lume_image_decode_ex(bytes, len, tw > 0 && tw <= 65535 ? tw : 0,
-                                 th > 0 && th <= 65535 ? th : 0,
-                                 &pixels, &w, &h, &alpha);
-    if (r) return JS_NewInt32(ctx, r);
+    uint16_t ew = (tw > 0 && tw <= 65535) ? (uint16_t)tw : 0;
+    uint16_t eh = (th > 0 && th <= 65535) ? (uint16_t)th : 0;
+    int r = 0;
+    /* r183: SVG-only raster cache. A hit returns a fresh copy that the bridge
+     * will own and free; PNG/JPEG never enter the cache. */
+    if (!(svg && lume_svg_cache_get(bytes, len, ew, eh, &pixels, &w, &h, &alpha))) {
+        r = lume_image_decode_ex(bytes, len, ew, eh, &pixels, &w, &h, &alpha);
+        if (r) return JS_NewInt32(ctx, r);
+        if (svg) (void)lume_svg_cache_put(bytes, len, ew, eh, pixels, w, h, alpha);
+    }
     lume_ui_msg_t m; msg_init(&m);
     m.op = LUME_OP_IMAGE_SOURCE;
     m.node_id = id; m.image_pixels = pixels;
@@ -4433,6 +4441,7 @@ static void engine_task(void *arg)
         JSContext *ctx = JS_NewContext(rt);
         if (ctx == NULL) {
             ESP_LOGE(TAG, "JS_NewContext failed");
+            lume_svg_cache_reset();
             JS_FreeRuntime(rt);
             abort();
         }
@@ -4509,6 +4518,7 @@ static void engine_task(void *arg)
             s_ctx = NULL;
             raycast_release(ctx);
             JS_FreeContext(ctx);
+            lume_svg_cache_reset();  /* r183: cache is scoped to this runtime */
             JS_FreeRuntime(rt);
             const bool attempted_home = cand_is_home && cand_src == NULL;
             if (cand_src != NULL) {            /* discard the bad candidate */
@@ -4784,6 +4794,7 @@ static void engine_task(void *arg)
         raycast_release(ctx);
         JS_FreeContext(ctx);
         lume_perf_switch_mark(LUME_SW_POST_FREECTX);
+        lume_svg_cache_reset();  /* r183: cache is scoped to this runtime */
         JS_FreeRuntime(rt);
         lume_perf_switch_mark(LUME_SW_POST_FREERT);
 
