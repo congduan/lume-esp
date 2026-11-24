@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/control_center",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 27154,
+      "ms": 30
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for control_center"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/control_center/tft.png"
+}

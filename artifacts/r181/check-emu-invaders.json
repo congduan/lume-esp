@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/invaders",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 8945,
+      "ms": 26
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for invaders"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/invaders/tft.png"
+}

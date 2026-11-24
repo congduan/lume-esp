@@ -103,7 +103,10 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_scripts.c',
-  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
+  // r181: emu frame-injection pacing (scan.js) + UI-queue backpressure bridge.
+  'tools/lume/scan.js',
+  'firmware/components/lume-ui-bridge/lume_ui_bridge.c'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
@@ -436,6 +439,13 @@ const ALLOWED = [
   'website/playground/sources/lcd_dual.js',
   'docs/r180-perf-report.md',
   'tests/ota_consumers.js',
+  // r181: CI flake guards, emu injection pacing, nettest_open API fix, report.
+  'tests/gateway_upstream.js',
+  'tools/emu/run.sh',
+  'tools/lume/scan.js',
+  'examples/nettest_open/app.js',
+  'docs/r181-report.md',
+  'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   'artifacts/r156/far.png',
   'artifacts/r156/near.png',
   'artifacts/r156/skycombat-harness.txt',
@@ -678,7 +688,7 @@ const checks = [
     c.length > 0 && c.every(f => ALLOWED.includes(f) ||
       f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
       f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
-      f.startsWith('artifacts/r182/'))]],
+      f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {

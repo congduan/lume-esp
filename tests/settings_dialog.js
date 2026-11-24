@@ -65,6 +65,8 @@ const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
 assert.ok(listBlock, 'playground app list not found');
 const apps = listBlock.split(',').map(x => x.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
 const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r181: emu frame-injection pacing + UI-queue backpressure (named objects only).
+  'tools/lume/scan.js', 'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
   'firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',

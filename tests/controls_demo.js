@@ -28,7 +28,8 @@ const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'firmware/components/lume-svg/lume_svg.c',
-  'firmware/components/lvgl/lv_conf.h']; // r173 companion P1 and r75 already on main
+  'firmware/components/lvgl/lv_conf.h',
+  'firmware/components/lume-ui-bridge/lume_ui_bridge.c']; // r181 backpressure
 
 const app = read('examples/controls_demo/app.js');
 const shell = read('runtime/shell.js');
@@ -69,6 +70,8 @@ function gitChanged(paths, base) {
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
 const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r181: emu frame-injection pacing + UI-queue backpressure (named objects only).
+  'tools/lume/scan.js', 'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
   'firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',

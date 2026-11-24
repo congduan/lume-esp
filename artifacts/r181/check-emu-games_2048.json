@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/games_2048",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 3243,
+      "ms": 21
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for games_2048"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/games_2048/tft.png"
+}

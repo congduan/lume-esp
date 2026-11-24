@@ -33,7 +33,22 @@ prepare_args=("$app" "$output/app.frame")
 # EMU_BYTECODE=1 compiles the bundle with qjsc and injects a "LUMB" frame.
 if [[ ${EMU_BYTECODE:-0} == 1 ]]; then prepare_args+=(--bytecode); fi
 node "$root/tools/emu/prepare.mjs" "${prepare_args[@]}"
-printf '2.5 serial-file %s\n' "$output/app.frame" > "$output/actions.txt"
+# r181: injecting a whole frame in one script action strands bytes in
+# esp32sim's USB Serial/JTAG model once the frame exceeds ~32 KiB: host_input()
+# queues every 64-byte packet at once with no backpressure to the script writer,
+# and the parser silently stalls mid-body (no CRC error, no RELOAD). Feed the
+# identical frame in 4 KiB pieces spaced 10 ms apart instead — the device still
+# sees one contiguous byte stream, and even a 42 KiB frame is fully delivered
+# by ~2.93s, well inside the default 8s RELOAD window. This is an emulator
+# injection-r pacing fix only: the wire format and firmware are unchanged.
+rm -f "$output"/app.frame.part-*
+split -b 4096 "$output/app.frame" "$output/app.frame.part-"
+t_ms=2500
+: > "$output/actions.txt"
+for part in "$output"/app.frame.part-*; do
+  printf '%d.%03d serial-file %s\n' "$((t_ms / 1000))" "$((t_ms % 1000))" "$part" >> "$output/actions.txt"
+  t_ms=$((t_ms + 10))
+done
 "$sim" --chip s3 --board "${EMU_BOARD:-lume-amoled216}" --boot rom --rom "$rom" \
   --bootloader "$root/firmware/build/bootloader/bootloader.bin" \
   --ptable "$root/firmware/build/partition_table/partition-table.bin" \

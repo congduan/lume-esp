@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/aurora_clock",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 5432,
+      "ms": 25
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for aurora_clock"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/aurora_clock/tft.png"
+}

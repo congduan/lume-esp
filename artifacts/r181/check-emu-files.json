@@ -1,0 +1,40 @@
+{
+  "ok": false,
+  "app": "examples/files",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 29182,
+      "ms": 32
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "ok": false,
+      "rules": {
+        "R1": "PASS",
+        "R2": "PASS",
+        "R3": "PASS",
+        "R4": "PASS",
+        "R5": "FAIL",
+        "R6": "FAIL",
+        "R7": "PASS"
+      },
+      "failed": [
+        "R5",
+        "R6"
+      ]
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/files/tft.png"
+}

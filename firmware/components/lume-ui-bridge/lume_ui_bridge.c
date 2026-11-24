@@ -39,8 +39,15 @@ static const char *TAG = "lume-ui-bridge";
 #define UI_QUEUE_LEN 384
 #define DRAIN_PERIOD_MS 5
 #define LUME_POST_MAX_ATTEMPTS 8   /* finite retries when Queue A is full */
+/* r181 backpressure: a 20 Hz full-canvas redraw can enqueue draw primitives
+ * faster than the LVGL task rasterises them. Reclaim at most this many superseded
+ * draws from the queue head — far below one frame's worth of ops, so the newest
+ * frame near the tail is never touched. */
+#define UI_BACKPRESSURE_DROP_MAX 64
+#define UI_BACKPRESSURE_HOLD_MAX 16   /* non-stale records skipped while reclaiming */
 
 static QueueHandle_t s_ui_queue;                  /* Queue A */
+static bool s_queue_high_water_logged;            /* r181: one-shot warning */
 static void (*s_wake_cb)(void);                   /* r93: LVGL task wake hook */
 static lv_obj_t *s_nodes[LUME_MAX_NODES];         /* id -> lv_obj* (LVGL task) */
 static uint8_t s_kinds[LUME_MAX_NODES];           /* id -> kind   (LVGL task) */
@@ -1787,6 +1794,59 @@ int lume_ui_bridge_post(const lume_ui_msg_t *msg)
             return 0;
         }
     }
+    /* r181 backpressure / graceful degradation. Animations redraw their whole
+     * canvas every tick, so draw primitives from an older frame are obsolete
+     * once a newer frame is queued. CANVAS_DRAW / CANVAS_INVALIDATE / CANVAS_BATCH
+     * are the only ops reclaimed; batch payloads are freed exactly as drain()
+     * does. CREATE/REMOVE/IMAGE_SOURCE/RAYCAST records own live state and are
+     * never dropped. Only the queue HEAD is examined and the count is capped,
+     * so the current frame (near the tail) is preserved and FIFO order of
+     * survivors is unchanged. */
+    if (msg->op == LUME_OP_CANVAS_DRAW || msg->op == LUME_OP_CANVAS_INVALIDATE ||
+        msg->op == LUME_OP_CANVAS_BATCH) {
+        int dropped = 0, held_n = 0;
+        lume_ui_msg_t head;
+        /* A one-shot setup op (e.g. SET_GESTURE) can sit ahead of the stale
+         * draws. Hold such records aside and keep scanning; they are restored
+         * to the front in original order below, so no op is lost or reordered
+         * relative to the surviving messages. */
+        lume_ui_msg_t held[UI_BACKPRESSURE_HOLD_MAX];
+        for (int i = 0; i < UI_BACKPRESSURE_DROP_MAX &&
+                        xQueueReceive(s_ui_queue, &head, 0) == pdTRUE; i++) {
+            /* Lines are queued as CANVAS_BATCH with an owned PSRAM payload;
+             * free it exactly as drain() does so reclaim cannot leak. */
+            bool stale = (head.op == LUME_OP_CANVAS_DRAW ||
+                          head.op == LUME_OP_CANVAS_INVALIDATE ||
+                          head.op == LUME_OP_CANVAS_BATCH) &&
+                         head.node_id == msg->node_id;
+            if (!stale) {
+                if (held_n == UI_BACKPRESSURE_HOLD_MAX) {
+                    xQueueSendToFront(s_ui_queue, &head, 0);  /* don't lose it */
+                    break;
+                }
+                held[held_n++] = head;
+                continue;
+            }
+            if (head.text_heap) heap_caps_free(head.text_heap);
+            if (head.op == LUME_OP_CANVAS_BATCH) heap_caps_free(head.image_pixels);
+            dropped++;
+        }
+        for (int j = held_n - 1; j >= 0; j--) {
+            xQueueSendToFront(s_ui_queue, &held[j], 0);
+        }
+        if (dropped > 0 && xQueueSend(s_ui_queue, msg, 0) == pdTRUE) {
+            if (s_wake_cb != NULL) s_wake_cb();
+            if (!s_queue_high_water_logged) {
+                s_queue_high_water_logged = true;
+                ESP_LOGW(TAG,
+                         "ui queue high-water: dropped %d stale canvas draws "
+                         "(node=%u); backpressure active",
+                         dropped, (unsigned)msg->node_id);
+            }
+            return 0;
+        }
+    }
+
     ESP_LOGE(TAG,
              "post: ui queue full after %d attempts (op=%u id=%u); "
              "JS/UI state may diverge (M1 log-only, resync in M3)",
@@ -1809,6 +1869,7 @@ void lume_ui_bridge_init(void)
         ESP_LOGE(TAG, "init: ui queue create failed (OOM)");
         abort();
     }
+    s_queue_high_water_logged = false;   /* r181: one warning per bridge init */
     memset(s_nodes, 0, sizeof(s_nodes));
     memset(s_kinds, 0, sizeof(s_kinds));
 

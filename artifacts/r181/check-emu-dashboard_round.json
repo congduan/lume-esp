@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/dashboard_round",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 1878,
+      "ms": 31
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for dashboard_round"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/dashboard_round/tft.png"
+}

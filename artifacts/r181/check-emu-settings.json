@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/settings",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 37449,
+      "ms": 34
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for settings"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/settings/tft.png"
+}

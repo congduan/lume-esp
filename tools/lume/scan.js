@@ -179,7 +179,18 @@ async function defaultCapture(appDir, outDir, N, spec, timeoutMs) {
   const framed = frame(payload);
   const framePath = join(outDir, 'app.frame');
   await writeFile(framePath, framed);
-  const actions = [`2.5 serial-file ${framePath}`, ...(spec.scriptLines || [])];
+  // r181: pace large frames (see tools/emu/run.sh) — a single >~32 KiB burst
+  // strands bytes in esp32sim's USB model and leaves the frame parser mid-body.
+  // 4 KiB pieces at 10 ms keep even a 42 KiB frame inside the capture window.
+  const CHUNK = 4096, STEP_MS = 10;
+  const pieces = [];
+  for (let off = 0, i = 0; off < framed.length; off += CHUNK, i++) {
+    const part = join(outDir, `app.frame.part-${String(i).padStart(3, '0')}`);
+    await writeFile(part, framed.subarray(off, off + CHUNK));
+    const t = 2500 + i * STEP_MS;
+    pieces.push(`${Math.floor(t / 1000)}.${String(t % 1000).padStart(3, '0')} serial-file ${part}`);
+  }
+  const actions = [...pieces, ...(spec.scriptLines || [])];
   const actionsPath = join(outDir, 'actions.txt');
   await writeFile(actionsPath, actions.join('\n') + '\n');
 

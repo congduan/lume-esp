@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/lcd_dual",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 6995,
+      "ms": 27
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for lcd_dual"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/lcd_dual/tft.png"
+}

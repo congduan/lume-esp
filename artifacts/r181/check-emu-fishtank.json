@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/fishtank",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 6626,
+      "ms": 25
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for fishtank"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/fishtank/tft.png"
+}

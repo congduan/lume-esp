@@ -95,6 +95,8 @@ const R128_FIRMWARE_FILES = [
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
+  // r181 UI-queue backpressure.
+  'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
 ];

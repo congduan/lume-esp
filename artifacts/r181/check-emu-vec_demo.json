@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/vec_demo",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 2712,
+      "ms": 26
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for vec_demo"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/vec_demo/tft.png"
+}

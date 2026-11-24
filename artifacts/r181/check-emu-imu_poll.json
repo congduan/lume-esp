@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "app": "examples/imu_poll",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 2170,
+      "ms": 23
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "ok": true,
+      "rules": {
+        "R1": "PASS",
+        "R2": "PASS",
+        "R3": "PASS",
+        "R4": "PASS",
+        "R5": "PASS",
+        "R6": "PASS",
+        "R7": "PASS"
+      }
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/imu_poll/tft.png"
+}

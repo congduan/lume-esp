@@ -44,7 +44,8 @@ const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts', // r166 C
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'firmware/components/lume-svg/lume_svg.c',
-  'firmware/components/lvgl/lv_conf.h']; // r173 companion P1 and r75 already on main
+  'firmware/components/lvgl/lv_conf.h',
+  'firmware/components/lume-ui-bridge/lume_ui_bridge.c']; // r181 backpressure
 function gitChanged() {
   const head = execFileSync('git',
     ['diff', '--name-only', '3514c76', 'HEAD', '--', 'firmware/', 'runtime/'],
