@@ -29,6 +29,7 @@
     ['compass','⊙','Heading dial','方位仪表','Inertial heading, no magnetometer','惯性方位，无磁力计'],
     ['skyfire','✈','Skyfire','打飞机','Vertical shooter','纵向弹幕射击'],
     ['skycombat','3D','SkyCombat 3D','体感空战','Tilt and fire in 3D','倾斜瞄准，点击开火'],
+    ['luna','◐','Luna','月球','Explore the real lunar surface','浏览真实月面'],
     ['invaders','▴','Invaders','太空侵略者','Arcade-style shooter','街机风格射击'],
     ['frogger','✦','Frogger','过河青蛙','Road and river crossing','公路河道穿越'],
     ['abc123','A','ABC 123','字母数字卡','Tap-to-learn alphabet cards','点击学习字母数字'],

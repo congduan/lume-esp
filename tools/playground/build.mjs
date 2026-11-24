@@ -9,7 +9,7 @@ const require = createRequire(join(root, 'tools/lume/package.json'));
 const { build } = require('esbuild');
 const apps = ['counter', 'clock', 'clock_round', 'dashboard_round', 'games_snake', 'games_2048', 'games_breakout',
   'games_tetris', 'mario', 'game_of_life', 'pet', 'calculator', 'weather', 'music_player',
-  'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo',
+  'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo', 'luna',
   'watchface', 'async_demo', 'piano', 'compass', 'invaders', 'frogger', 'abc123', 'sokoban', 'lcd_dual', 'memory', 'minesweeper', 'golf', 'scroller', 'raycast', 'fishtank', 'particles', 'voice_assistant', 'spectrum_music', 'plasma', 'skyfire', 'skycombat', 'aurora_clock', 'flapdot', 'wordring',
   'image_gallery', 'files', 'adc_meter', 'crypto_check', 'archive_view', 'img_view', 'vec_demo', 'settings', 'hr_monitor', 'keyboard_demo', 'wordle', 'controls_demo', 'timer_kit', 'control_center', 'launcher_grid', 'minigolf', 'ipod_music', 'color_demo', 'ble_uart', 'spectrum', 'svg_icon', 'gestures',
   'storybook', 'mochi', 'shell_demo'];
