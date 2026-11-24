@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/abc123",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 42574,
+      "ms": 38
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for abc123"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/abc123/tft.png"
+}

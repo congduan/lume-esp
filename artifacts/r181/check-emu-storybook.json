@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/storybook",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 9293,
+      "ms": 25
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for storybook"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/storybook/tft.png"
+}

@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/svg_icon",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 506,
+      "ms": 22
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for svg_icon"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/svg_icon/tft.png"
+}

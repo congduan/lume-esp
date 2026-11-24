@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/nettest_open",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 440,
+      "ms": 21
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for nettest_open"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/nettest_open/tft.png"
+}

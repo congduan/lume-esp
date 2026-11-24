@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/mochi",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 8460,
+      "ms": 25
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for mochi"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/mochi/tft.png"
+}

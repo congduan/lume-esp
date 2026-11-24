@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/voice_assistant",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 13374,
+      "ms": 26
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for voice_assistant"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/voice_assistant/tft.png"
+}

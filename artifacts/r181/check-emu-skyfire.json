@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/skyfire",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 7161,
+      "ms": 24
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for skyfire"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/skyfire/tft.png"
+}

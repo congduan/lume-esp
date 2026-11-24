@@ -1,0 +1,48 @@
+=== examples/counter ===
+bundle /tmp/lume-r181-wt/examples/counter: source 2160 bytes; payload 2160 bytes; frame 2172 bytes (source)
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433236 bytes
+I (1810) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1941) lume-engine: app eval ok; entering event loop
+I (2689) lume-engine: engine recv RELOAD -> recycle runtime
+I (2921) lume-engine: runtime up; eval app '<embedded-demo>' (2160 bytes)
+I (2950) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 154120552 + core1 59268355 insns in 5.9s wall = 36.2 Minsn/s; emulated 8.000s (1920000000 cycles); 352038 exceptions, 24783 interrupts
+TFT: artifacts/emu/counter/tft.png
+serial: artifacts/emu/counter/serial.log
+exit=0 reload=1 evalok=2
+=== examples/files ===
+bundle /tmp/lume-r181-wt/examples/files: source 29182 bytes; payload 29182 bytes; frame 29194 bytes (source)
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433236 bytes
+I (1810) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1941) lume-engine: app eval ok; entering event loop
+I (2764) lume-engine: engine recv RELOAD -> recycle runtime
+I (2996) lume-engine: runtime up; eval app '<embedded-demo>' (29182 bytes)
+I (3131) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 154416040 + core1 85902328 insns in 7.1s wall = 34.0 Minsn/s; emulated 8.000s (1920000000 cycles); 458506 exceptions, 26036 interrupts
+TFT: artifacts/emu/files/tft.png
+serial: artifacts/emu/files/serial.log
+exit=0 reload=1 evalok=2
+=== examples/games_2048 ===
+bundle /tmp/lume-r181-wt/examples/games_2048: source 3243 bytes; payload 3243 bytes; frame 3255 bytes (source)
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433236 bytes
+I (1810) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1941) lume-engine: app eval ok; entering event loop
+I (2690) lume-engine: engine recv RELOAD -> recycle runtime
+I (2921) lume-engine: runtime up; eval app '<embedded-demo>' (3243 bytes)
+I (2975) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 156934238 + core1 65233605 insns in 6.2s wall = 36.1 Minsn/s; emulated 8.000s (1920000000 cycles); 392756 exceptions, 27515 interrupts
+TFT: artifacts/emu/games_2048/tft.png
+serial: artifacts/emu/games_2048/serial.log
+exit=0 reload=1 evalok=2
+=== examples/gravity_ball ===
+bundle /tmp/lume-r181-wt/examples/gravity_ball: source 2527 bytes; payload 2527 bytes; frame 2539 bytes (source)
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433236 bytes
+I (1789) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1920) lume-engine: app eval ok; entering event loop
+I (2689) lume-engine: engine recv RELOAD -> recycle runtime
+I (2922) lume-engine: runtime up; eval app '<embedded-demo>' (2527 bytes)
+I (2950) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 149127997 + core1 90303297 insns in 6.6s wall = 36.0 Minsn/s; emulated 8.000s (1920000000 cycles); 412756 exceptions, 30037 interrupts
+TFT: artifacts/emu/gravity_ball_no_imu/tft.png
+serial: artifacts/emu/gravity_ball_no_imu/serial.log
+exit=0 reload=1 evalok=2

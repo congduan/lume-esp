@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "app": "examples/wordle",
+  "steps": [
+    {
+      "step": "bundle",
+      "ok": true,
+      "bytes": 33452,
+      "ms": 40
+    },
+    {
+      "step": "eval",
+      "ok": true,
+      "marker": "app eval ok",
+      "evalOkCount": 2
+    },
+    {
+      "step": "layout",
+      "skipped": "no layout expectations for wordle"
+    },
+    {
+      "step": "perf",
+      "skipped": "profile disabled"
+    }
+  ],
+  "screenshot": "artifacts/check/wordle/tft.png"
+}

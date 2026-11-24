@@ -101,6 +101,7 @@ const guardOut = execFileSync('git', [
   // r75 raster and refresh changes are already present on origin/main.
   ':!firmware/components/lume-svg/lume_svg.c',
   ':!firmware/components/lvgl/lv_conf.h',
+  ':!firmware/components/lume-ui-bridge', // r181 UI-queue backpressure
   ':!runtime/', ':!website/', ':!examples/', ':!tools/', ':!tests/', ':!docs',
   // r150: docs-refresh round lands README.md / README.zh-CN.md (43->53 apps,
   // SNTP/TF/SafeArea/esp-emu sections). Root READMEs live outside docs/, so
