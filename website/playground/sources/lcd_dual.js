@@ -140,10 +140,11 @@ function tap(e){var g=lcdActive(state);
   if(g.over){lcdReset(state);drain();sync();return;}
   if(state.mode==='a')lcdMoveChef(state,e.x<IW/2?-1:1);else lcdMoveLane(state,e.y<IH/2?-1:1);drain();sync();}
 lume.gesture.on(root,'swipe',swipe);lume.gesture.on(root,'tap',tap);
-function tick(){var t0=Date.now();lcdStep(state);drain();
+function tick(){var t0=Date.now(),wasOver=lcdActive(state).over;lcdStep(state);drain();
   updateSignals();
   if(state.tick%10===0)status();
-  frame.set(frame()+1);perfSample(Date.now()-t0);
+  if(!wasOver)frame.set(frame()+1);
+  perfSample(Date.now()-t0);
 }
 var pc=0,ps=0,pm=0;
 function perfSample(dt){pc++;ps+=dt;pm=Math.max(pm,dt);if(pc===25){logEvent('PERF js_avg_ms='+(ps/25).toFixed(2)+' js_max_ms='+pm);pc=0;ps=0;pm=0;}}

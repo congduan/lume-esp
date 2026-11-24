@@ -179,6 +179,14 @@ const ROOT = 1, IW = 480, IH = 480;
     const area = m.length >= 6 ? m[4] * m[5] : 480 * 480;
     assert.ok(area > 0 && area <= 0.5 * IW * IH, 'per-frame dirty budget ' + area);
   }
+  // A finished game keeps its last frame until a restart or mode switch.
+  ui.ctx.state.a.over = true;
+  const frozenFrame = ui.ctx.frame();
+  const frozenDraws = ui.messages.filter(m => m[0] === 'invalidate').length;
+  ui.ctx.tick(); ui.ctx.tick();
+  assert.equal(ui.ctx.frame(), frozenFrame, 'game over does not redraw');
+  assert.equal(ui.messages.filter(m => m[0] === 'invalidate').length, frozenDraws);
+  ui.ctx.state.a.over = false;
 
   // GAME A: swipe left moves the chef one column to the left
   const chef0 = ui.ctx.state.a.chef;
