@@ -39,6 +39,11 @@ function asciiStrings(s) {
 // r129 is app-only: no firmware/runtime file may differ from the r128
 // baseline. Same allowlist pattern as r128, but the exception set is empty.
 const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts', // r166 ColorPicker
+  // r183: SVG raster-result cache (engine component only).
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_svg_cache.c',
+  'firmware/components/lume-engine/include/lume_svg_cache.h',
   'firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
@@ -188,7 +193,8 @@ must('settings UI copy gains a non-ASCII string',
   s => s + "\nvar __bad = '时间';",
   'settings string literals are ASCII-only', settings);
 must('a firmware file changes vs 0d1111c',
-  () => ['firmware/components/lume-engine/lume_engine.c'],
+  // r183: engine.c is now allowlisted; keep the mutation fixture disallowed.
+  () => ['firmware/components/lume-adc/lume_adc.c'],
   'firmware/ runtime/ differ from 3514c76 only in the (empty) r129 allowlist', changedFiles);
 
 console.log('ALL SNTP CONSUMER HARNESS CASES PASSED');

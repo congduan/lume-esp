@@ -24,6 +24,11 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const HEAD_BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
 const R173_FIRMWARE = ['firmware/components/lume-hotreload/CMakeLists.txt',
+  // r183: SVG raster-result cache (engine component only).
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_svg_cache.c',
+  'firmware/components/lume-engine/include/lume_svg_cache.h',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
@@ -70,6 +75,11 @@ function gitChanged(paths, base) {
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
 const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r183: SVG raster-result cache (engine component only).
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_svg_cache.c',
+  'firmware/components/lume-engine/include/lume_svg_cache.h',
   // r181: emu frame-injection pacing + UI-queue backpressure (named objects only).
   'tools/lume/scan.js', 'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
@@ -310,7 +320,8 @@ must('playground manifest drops controls_demo',
 must('a runtime file changes after the feat commit',
   () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
 must('a firmware file changes vs the r176 feat commit',
-  () => ['firmware/components/lume-engine/lume_engine.c'], TRUNK, trunkFirmware);
+  // r183: engine.c is now allowlisted; keep the mutation fixture disallowed.
+  () => ['firmware/components/lume-adc/lume_adc.c'], TRUNK, trunkFirmware);
 must('the prelude changes vs 3514c76',
   () => ['firmware/components/lume-engine/lume_scripts.c'], PRELUDE, preludeChanged);
 

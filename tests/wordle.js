@@ -547,6 +547,11 @@ function gitChanged(paths, base) {
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
 const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r183: SVG raster-result cache (engine component only).
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_svg_cache.c',
+  'firmware/components/lume-engine/include/lume_svg_cache.h',
   // r181: emu frame-injection pacing + UI-queue backpressure (named objects only).
   'tools/lume/scan.js', 'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.

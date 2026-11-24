@@ -68,6 +68,11 @@ function gitChanged(paths) {
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
 const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r183: SVG raster-result cache (engine component only).
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_svg_cache.c',
+  'firmware/components/lume-engine/include/lume_svg_cache.h',
   // r181: emu frame-injection pacing + UI-queue backpressure (named objects only).
   'tools/lume/scan.js', 'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
@@ -170,7 +175,8 @@ must('playground manifest drops settings',
   list => list.filter(x => x !== 'settings'),
   'settings is in the playground manifest', playgroundApps);
 must('a firmware file changes vs 92b6f29',
-  () => ['firmware/components/lume-engine/lume_engine.c'],
+  // r183: engine.c is now allowlisted; keep the mutation fixture disallowed.
+  () => ['firmware/components/lume-adc/lume_adc.c'],
   'firmware/ runtime/ CLI tooling untouched vs 3514c76 (shell.js/types only)', fwChanged);
 
 console.log('ALL REBOOT CONSUMERS HARNESS CASES PASSED');

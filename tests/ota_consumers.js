@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+const BASE = '674684a'; // r183: re-pinned to the baseline HEAD (r182 fw-sync moved wasm/fw/partition-table.bin after 3514c76)
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
@@ -90,6 +90,11 @@ function gitChanged(paths) {
  * tools/lume/ so manifest registration is not misreported as a tooling
  * behaviour change. */
 const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+  // r183: SVG raster-result cache (engine component only).
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'firmware/components/lume-engine/lume_svg_cache.c',
+  'firmware/components/lume-engine/include/lume_svg_cache.h',
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
   'firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
@@ -110,6 +115,12 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
+  // r183: SVG raster-result cache, host harness, report and evidence.
+  'firmware/components/lume-engine/lume_svg_cache.c',
+  'firmware/components/lume-engine/include/lume_svg_cache.h',
+  'tests/svg_cache.js',
+  'tests/svg_cache_test.c',
+  'docs/r183-report.md',
   // r182: Luna app, offline texture generator, harness, playground, and evidence.
   'examples/luna/app.js', 'examples/luna/moon_tex.js',
   'tools/luna-mktex/generate.js', 'tests/luna.js',
@@ -682,13 +693,14 @@ const checks = [
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],
 
-  ['firmware/ runtime/ CLI tooling identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
+  ['firmware/ runtime/ CLI tooling identical to 674684a', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 
-  ['only known r132 + r133 + r134 + r135 + r136 files differ from 3514c76', [allChanged, c =>
+  ['only known r132 + r133 + r134 + r135 + r136 files differ from 674684a', [allChanged, c =>
     c.length > 0 && c.every(f => ALLOWED.includes(f) ||
       f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
       f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
-      f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/'))]],
+      f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
+      f.startsWith('artifacts/r183/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {
@@ -761,9 +773,9 @@ must('a non-ASCII UI literal slips in',
   'all UI string literals ASCII-only (r64)', lits);
 must('a firmware file changes vs d85e69a',
   () => ['firmware/components/lume-board/lume_board.c'],
-  'firmware/ runtime/ CLI tooling identical to 3514c76', fwChanged);
+  'firmware/ runtime/ CLI tooling identical to 674684a', fwChanged);
 must('an out-of-scope file changes vs d85e69a',
   () => allChanged.concat(['docs/unexpected.md']),
-  'only known r132 + r133 + r134 + r135 + r136 files differ from 3514c76', allChanged);
+  'only known r132 + r133 + r134 + r135 + r136 files differ from 674684a', allChanged);
 
 console.log('ALL OTA CONSUMERS HARNESS CASES PASSED');
