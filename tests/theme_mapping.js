@@ -2,7 +2,7 @@
 const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/lume_scripts.c', 'utf8');
+const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 let messages = [], nextId = 0;
 const ctx = vm.createContext({lume: {
@@ -46,8 +46,7 @@ assert.deepStrictEqual(rows(), []);
 pass('disposed node stops receiving theme updates');
 assert.throws(() => run("View({style:{background:'missing'}})"), /expected #RRGGBB/);
 pass('unknown token falls through to literal parser');
-const demoBlock = source.match(/const char lume_demo_js\[\] =\n([\s\S]*?);\n/);
-const demo = [...demoBlock[1].matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(m => JSON.parse(m[0])).join('');
+const demo = fs.readFileSync('firmware/components/lume-engine/prelude/demo.js', 'utf8');
 let demoMessages = [], demoId = 0;
 const demoCtx = vm.createContext({lume: {
   createNode: () => ++demoId,

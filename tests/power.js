@@ -2,7 +2,7 @@
 const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/lume_scripts.c', 'utf8');
+const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 let now = 0, sleeps = 0, sleepResult = 0, deinit = 0, nextNode = 1;
 const lume = {

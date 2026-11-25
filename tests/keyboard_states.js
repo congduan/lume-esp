@@ -18,7 +18,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const { execFileSync } = require('node:child_process');
-const { runApp } = require('./lib/prelude_runner');
+const { runApp, preludeChangesSince3514c76 } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
@@ -76,7 +76,7 @@ function gitChanged(paths, base) {
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmware/components/lume-engine/gen_lume_scripts.py', 'firmware/components/lume-engine/prelude/demo.js', 'firmware/components/lume-engine/prelude/home.js', 'firmware/components/lume-engine/prelude/prelude.js', 'runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
   // r183: SVG raster-result cache (engine component only).
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
@@ -98,7 +98,7 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/sdkconfig.defaults',
 ];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
-const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
+const preludeChanged = preludeChangesSince3514c76();
 
 /* ------------------------- part 1: static source ----------------------- */
 const checks = [
@@ -166,7 +166,7 @@ must('tint the ENTER control key',
 must('drop keyStates from the type contract',
   s => s.replace('keyStates?: KeyboardKeyStates | (() => KeyboardKeyStates);', ''), TYPES, types);
 must('a firmware/runtime/CLI file changes after the feat commit',
-  () => ['firmware/components/lume-engine/lume_scripts.c'], checks[7][0], fwChanged);
+  () => ['firmware/components/lume-engine/lume_math.c'], checks[7][0], fwChanged);
 must('the prelude changes vs 3514c76',
   () => ['firmware/components/lume-engine/lume_scripts.c'], checks[8][0], preludeChanged);
 

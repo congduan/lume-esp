@@ -107,7 +107,7 @@ assert.deepEqual(sdCodes, fsCodes,
 assert.ok(header.includes('LUME_SD_ERR_NO_CD (-4)'), 'CD-missing is -4');
 
 // --- 3. prelude untouched -------------------------------------------------
-const scripts = read('firmware/components/lume-engine/lume_scripts.c');
+const scripts = read('firmware/components/lume-engine/prelude/prelude.js');
 assert.ok(!scripts.includes('storage.Sd') && !scripts.includes('storage["Sd"]'),
           'prelude must stay Sd-free (natives self-register)');
 

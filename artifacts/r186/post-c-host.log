@@ -1,0 +1,214 @@
+
+===== tests/apps.js =====
+PASS apps entries merges meta.json and falls back per field
+PASS apps entries tolerates a store without native metadata
+PASS apps entries ignores malformed meta instead of throwing
+PASS apps current() reports the running app id
+PASS apps launch/home/remove return the native status codes
+PASS apps setBoot pins independently of launch and home, then clears
+PASS apps setBoot reports invalid ids and storage errors
+PASS apps launcher pins itself and its edit exit clears the pin before home
+PASS apps Launcher defaults to the installed app set
+PASS apps Launcher tap launches the app by default (no host callback)
+PASS apps explicit apps + onLaunch still override the store
+PASS apps Launcher rejects a non-array app list
+PASS apps embedded home renders a clock and one tile per installed app
+PASS apps embedded home launches a tile and keeps BACK at the root
+PASS apps embedded home shows an empty state with no apps
+PASS 15 multi-app cases
+
+===== tests/board_id.js =====
+PASS board_id: d.ts declares readonly board: string in lume.system
+PASS board_id: d.ts documents compile-time macro value domain and HAL source
+PASS board_id: d.ts documents no setter and both stub return values honestly
+PASS board_id: engine includes the board HAL header
+PASS board_id: C native reads board_id from lume_board_get and copies into JS
+PASS board_id: C registers _systemBoard as a zero-arg native
+PASS board_id: board native stays in flash (no IRAM attribute)
+PASS board_id: engine REQUIRES lume-board-hal (consumer -> registry, no reverse edge)
+PASS board_id: prelude exposes a getter (not a function) that calls the native
+PASS board_id: host runner stubs _systemBoard with an injectable string default
+PASS board_id: playground runtime stubs _systemBoard with an honest browser string
+PASS board_id: generated playground prelude carries the getter
+PASS board_id mutation: drop the .d.ts board declaration -> FAIL as expected
+PASS board_id mutation: change the .d.ts board type to number -> FAIL as expected
+PASS board_id mutation: drop the prelude board getter -> FAIL as expected
+PASS board_id mutation: drop the C _systemBoard registration -> FAIL as expected
+PASS board_id mutation: change the C native to a non-string return -> FAIL as expected
+PASS board_id mutation: change the host stub default to a number -> FAIL as expected
+PASS board_id mutation: change the browser stub to a number -> FAIL as expected
+PASS board_id live: getter exists, typeof string, value == injected stub
+PASS board_id live: default host-stub value is a string
+PASS board_id live: app assignment cannot mutate the board getter
+PASS board_id live mutation: number stub -> type check FAIL as expected
+PASS board_id live mutation: native deleted -> getter FAIL as expected
+ALL BOARD_ID HARNESS CASES PASSED
+
+===== tests/sntp.js =====
+PASS sntp: d.ts declares time() with unix-ms unit
+PASS sntp: d.ts declares setTimeNtp(server?, timeoutMs?)
+PASS sntp: d.ts documents the unsynced 1970 value honestly
+PASS sntp: d.ts locks error codes -1 / -2 / -3
+PASS sntp: d.ts states setTimeNtp BLOCKING semantics
+PASS sntp: d.ts pins the default SNTP server and timeout bounds
+PASS sntp: d.ts documents idempotent re-sync
+PASS sntp: engine includes esp_netif_sntp.h and sys/time.h
+PASS sntp: C registers _systemTime native
+PASS sntp: C registers _systemSetTimeNtp native
+PASS sntp: time() reads gettimeofday and returns unix ms (JS_NewInt64)
+PASS sntp: setTimeNtp uses esp_netif_sntp bounded wait + teardown
+PASS sntp: setTimeNtp gates on WiFi having an IP (-3)
+PASS sntp: setTimeNtp maps arg / transport failures to -1 / -2
+PASS sntp: C comment states engine task blocking (httpGet precedent)
+PASS sntp: C comment pins default server and bounds
+PASS sntp: no IRAM attribute added (code stays in flash)
+PASS sntp: engine links esp_netif
+PASS sntp: sdkconfig.defaults enables one SNTP server slot
+PASS sntp: firmware prelude wraps both natives into lume.system
+PASS sntp: host prelude runner stubs both natives
+PASS sntp: playground runtime stubs both natives with browser semantics
+PASS sntp: generated playground prelude carries the wrappers
+PASS sntp: generated API docs carry both entries
+PASS sntp mutation: drop d.ts time() declaration -> FAIL as expected
+PASS sntp mutation: drop d.ts setTimeNtp() declaration -> FAIL as expected
+PASS sntp mutation: flip error code -3 to -4 in d.ts -> FAIL as expected
+PASS sntp mutation: drop _systemTime native registration -> FAIL as expected
+PASS sntp mutation: drop the SNTP sync wait call -> FAIL as expected
+PASS sntp mutation: change the default server away from pool.ntp.org -> FAIL as expected
+PASS sntp mutation: drop SNTP server slot from sdkconfig.defaults -> FAIL as expected
+PASS sntp mutation: drop the prelude setTimeNtp wrapper -> FAIL as expected
+PASS sntp mutation: drop the host _systemTime stub -> FAIL as expected
+ALL SNTP HARNESS CASES PASSED
+
+===== tests/ota_consumers.js =====
+PASS ota_consumers: OTA helper reads lume.ota.status() locally
+PASS ota_consumers: number return discriminated via typeof === object, ASCII err code
+PASS ota_consumers: four flags + port rendered; .token / [token] never read in either app
+PASS ota_consumers: OTA row is exactly View + Text + Button (3 nodes)
+PASS ota_consumers: row Text shows only status; New-token opens a Dialog
+PASS ota_consumers: setToken sits in the danger Rotate onPress of a Dialog
+PASS ota_consumers: Dialog guard degrades to an ASCII note; no 3 s arm timer remains
+PASS ota_consumers: replacement token is 32 lowercase hex chars from Math.random
+PASS ota_consumers: setToken failure renders ASCII code; success refreshes status
+PASS ota_consumers: 600 ms poll refreshes OTA status
+PASS ota_consumers: header registers Math.random as NOT cryptographically secure
+PASS ota_consumers: dashboard SYSTEM reads status() with typeof === object discrimination
+PASS ota_consumers: dashboard publishes OTA row with 9 separators inside 360 px
+PASS ota_consumers: dashboard OTA line never reads token
+PASS ota_consumers: playground sources/dashboard.js byte-identical to example
+PASS ota_consumers: dashboard is in the playground manifest
+PASS ota_consumers: all UI string literals ASCII-only (r64)
+PASS ota_consumers: firmware/ runtime/ CLI tooling identical to 674684a
+PASS ota_consumers: only known r132 + r133 + r134 + r135 + r136 files differ from 674684a
+PASS ota_consumers mutation: drop the lume.ota.status() read -> FAIL as expected
+PASS ota_consumers mutation: truthy test replaces typeof === object discrimination -> FAIL as expected
+PASS ota_consumers mutation: render the full token straight into the status text -> FAIL as expected
+PASS ota_consumers mutation: drop the OTA row Text -> FAIL as expected
+PASS ota_consumers mutation: New-token button no longer opens a Dialog -> FAIL as expected
+PASS ota_consumers mutation: danger Rotate button downgraded -> FAIL as expected
+PASS ota_consumers mutation: Dialog guard hardened (no ASCII fallback) -> FAIL as expected
+PASS ota_consumers mutation: token length shrinks from 32 to 16 hex chars -> FAIL as expected
+PASS ota_consumers mutation: setToken failure loses its ASCII return code -> FAIL as expected
+PASS ota_consumers mutation: poll no longer refreshes OTA status -> FAIL as expected
+PASS ota_consumers mutation: header drops the non-CSPRNG registration -> FAIL as expected
+PASS ota_consumers mutation: dashboard truthy test replaces typeof === object -> FAIL as expected
+PASS ota_consumers mutation: dashboard separators revert to 8 -> FAIL as expected
+PASS ota_consumers mutation: dashboard renders the full token on canvas -> FAIL as expected
+PASS ota_consumers mutation: playground generated source drifts from the example -> FAIL as expected
+PASS ota_consumers mutation: playground manifest drops dashboard -> FAIL as expected
+PASS ota_consumers mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS ota_consumers mutation: a firmware file changes vs d85e69a -> FAIL as expected
+PASS ota_consumers mutation: an out-of-scope file changes vs d85e69a -> FAIL as expected
+ALL OTA CONSUMERS HARNESS CASES PASSED
+
+===== tests/sd_files.js =====
+PASS sd_files: Sd defensively resolved from lume.storage
+PASS sd_files: browse gated on Sd.mounted() === true
+PASS sd_files: SD/ virtual root entry appended only in Fs root when ready
+PASS sd_files: SD/ entry flagged and handled as SD mode entry
+PASS sd_files: Sd.list dispatch with Fs fallback
+PASS sd_files: Sd.read dispatch for text preview
+PASS sd_files: Sd remove/mkdir/exists dispatch (delete semantics reuse Fs recursion)
+PASS sd_files: sdOrFs falls back to Fs same path on negative code or throw
+PASS sd_files: isDirPath degrades on native throw
+PASS sd_files: loadDir degrades per operation (list failure -> empty dir)
+PASS sd_files: loadDir failure branch clears selected + preview
+PASS sd_files: removeTree degrades per operation (JS recursion, try/catch)
+PASS sd_files: previewSelected degrades on read failure
+PASS sd_files: makeDir degrades on exists/mkdir throw
+PASS sd_files: SD/ virtual entry cannot be deleted
+PASS sd_files: single shared delete Dialog (no duplicate flow)
+PASS sd_files: HUD queries Sd.statvfs()
+PASS sd_files: statvfs number error code discriminated via typeof === object
+PASS sd_files: statvfs error code renders NO CARD
+PASS sd_files: card free bytes floored to integer MB
+PASS sd_files: status label switches to card info only in SD mode
+PASS sd_files: SD root BACK exits SD mode instead of launcher
+PASS sd_files: all app string literals (UI copy) ASCII-only (r64)
+PASS sd_files: firmware/ runtime/ differ from 4a2bd29 only in known files
+PASS sd_files: playground manifest lists image_gallery and files
+PASS sd_files mutation: drop Sd resolution -> FAIL as expected
+PASS sd_files mutation: drop mounted gate -> FAIL as expected
+PASS sd_files mutation: drop SD/ root entry -> FAIL as expected
+PASS sd_files mutation: force Sd.list dispatch back to Fs -> FAIL as expected
+PASS sd_files mutation: force Sd.read dispatch back to Fs -> FAIL as expected
+PASS sd_files mutation: drop sdOrFs fallback on negative code -> FAIL as expected
+PASS sd_files mutation: drop sdOrFs fallback on native throw -> FAIL as expected
+PASS sd_files mutation: drop loadDir failure preview clear -> FAIL as expected
+PASS sd_files mutation: drop loadDir try/catch -> FAIL as expected
+PASS sd_files mutation: drop removeTree try/catch -> FAIL as expected
+PASS sd_files mutation: drop statvfs call -> FAIL as expected
+PASS sd_files mutation: drop typeof discrimination -> FAIL as expected
+PASS sd_files mutation: drop NO CARD -> FAIL as expected
+PASS sd_files mutation: drop integer MB floor -> FAIL as expected
+PASS sd_files mutation: inject CJK UI copy -> FAIL as expected
+PASS sd_files mutation: drop image_gallery from playground manifest -> FAIL as expected
+ALL SD FILES HARNESS CASES PASSED
+
+===== tests/sd_gallery.js =====
+PASS sd_gallery: Sd-first read path wired before Fs fallback
+PASS sd_gallery: per-image try/catch degrades one image only
+PASS sd_gallery: Fs fallback + embedded red PNG intact
+PASS sd_gallery: statvfs error-code discrimination + integer MB HUD
+PASS sd_gallery: all app string literals ASCII-only (r64)
+PASS sd_gallery: firmware/ runtime/ differ only in known files vs 0d1111c
+ALL SD GALLERY HARNESS CASES PASSED
+
+===== tests/controls_demo.js =====
+PASS controls_demo: all three components registered on lume.ui.shell
+PASS controls_demo: controlled mode: value read at event time, onChange is the only output
+PASS controls_demo: 40 px touch floor enforced on Switch and Slider heights
+PASS controls_demo: every node registered for cleanup, dispose idempotent
+PASS controls_demo: gesture unsubscribers run on Slider dispose
+PASS controls_demo: Progress updates only fill width ATTR_WIDTH via a bound numeric style
+PASS controls_demo: app wires all three values through signals (controlled consumers)
+PASS controls_demo: all UI string literals ASCII-only (r64)
+PASS controls_demo: playground sources/controls_demo.js byte-identical to example
+PASS controls_demo: controls_demo is in the playground manifest
+PASS controls_demo: firmware/ and runtime/ identical to the r176 feat commit
+PASS controls_demo: firmware/ identical to the r176 feat commit except r173 companion P1
+PASS controls_demo: prelude lume_scripts.c unchanged since 3514c76
+PASS controls_demo live: three components return nodes and are callable from the app
+PASS controls_demo live: Switch press routes onChange(!value) through the signal
+PASS controls_demo live: Slider pan maps dx back into range and quantises to step
+PASS controls_demo live: Slider clamps to [min,max] on an over-range drag
+PASS controls_demo live: Slider onChange fires once per changed step, not per pan frame
+PASS controls_demo live: Progress clamps value and updates fill ATTR_WIDTH only
+PASS controls_demo live: signals drive native re-render (Switch bg attr, Slider canvas draw)
+PASS controls_demo live: dispose removes every node once; second call is a no-op
+PASS controls_demo live: dispose unsubscribes gestures: no onChange after teardown
+PASS controls_demo live: uncontrolled use proves the component holds no state
+PASS controls_demo mutation: drop the Progress registration -> FAIL as expected
+PASS controls_demo mutation: drop the Switch onChange dispatch -> FAIL as expected
+PASS controls_demo mutation: lower the touch floor on one component -> FAIL as expected
+PASS controls_demo mutation: drop the Canvas cleanup registration -> FAIL as expected
+PASS controls_demo mutation: drop the gesture unsubscriber call -> FAIL as expected
+PASS controls_demo mutation: make Progress re-create its fill on every value change -> FAIL as expected
+PASS controls_demo mutation: app stops forwarding slider changes -> FAIL as expected
+PASS controls_demo mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS controls_demo mutation: playground generated source drifts from the example -> FAIL as expected
+PASS controls_demo mutation: playground manifest drops controls_demo -> FAIL as expected
+PASS controls_demo mutation: a runtime file changes after the feat commit -> FAIL as expected
+PASS controls_demo mutation: a firmware file changes vs the r176 feat commit -> FAIL as expected
+PASS controls_demo mutation: the prelude changes vs 3514c76 -> FAIL as expected
+ALL CONTROLS DEMO HARNESS CASES PASSED

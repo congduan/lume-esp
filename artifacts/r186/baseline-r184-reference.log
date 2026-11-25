@@ -1,0 +1,778 @@
+Executing action: all (aliases: build)
+Running make in directory /tmp/lume-r184-wt/firmware/build
+Executing "make -j 4 all"...
+[  0%] Built target partition_table_bin
+[  0%] Built target memory.ld
+[  0%] Built target custom_bundle
+[  0%] Built target sections.ld.in
+[  0%] Built target _project_elf_src
+[  0%] Performing build step for 'bootloader'
+[  1%] Built target __idf_esp_https_ota
+[  1%] Built target __idf_esp_http_server
+[  1%] Built target _project_elf_src
+[  9%] Built target __idf_log
+[  1%] Built target __idf_esp_http_client
+[ 19%] Built target __idf_esp_rom
+[ 21%] Built target __idf_esp_common
+[  2%] Built target __idf_tcp_transport
+[ 30%] Built target __idf_esp_hw_support
+[  2%] Built target __idf_esp_adc
+[ 32%] Built target __idf_esp_system
+[  3%] Built target __idf_esp-tls
+[  3%] Built target __idf_http_parser
+[ 40%] Built target __idf_efuse
+[  4%] Built target __idf_driver
+[ 59%] Built target __idf_bootloader_support
+[  4%] Built target __idf_esp_driver_twai
+[ 60%] Built target __idf_esp_bootloader_format
+[ 62%] Built target __idf_spi_flash
+[  5%] Built target __idf_esp_driver_ledc
+[  5%] Built target __idf_esp_driver_i2c
+[ 68%] Built target __idf_hal
+[ 69%] Built target __idf_micro-ecc
+[  5%] Built target __idf_esp_driver_sdm
+[ 92%] Built target __idf_soc
+[  5%] Built target __idf_esp_driver_tsens
+[ 94%] Built target __idf_xtensa
+[  6%] Built target __idf_esp_driver_rmt
+[ 96%] Built target __idf_main
+[  6%] Built target __idf_esp_driver_sdspi
+[ 98%] Built target bootloader.elf
+[  6%] Built target __idf_esp_driver_sdmmc
+[100%] Built target gen_project_binary
+[  7%] Built target __idf_sdmmc
+Bootloader binary size 0x5710 bytes. 0x28f0 bytes (32%) free.
+[  7%] Built target __idf_esp_driver_i2s
+[100%] Built target bootloader_check_size
+[  7%] Built target __idf_esp_driver_mcpwm
+[100%] Built target app
+[  7%] No install step for 'bootloader'
+[  7%] Built target __idf_esp_driver_pcnt
+[  7%] Completed 'bootloader'
+[  7%] Built target __idf_esp_gdbstub
+[  7%] Built target bootloader
+[  7%] Built target __idf_esp_driver_spi
+[  8%] Built target __idf_esp_wifi
+[  8%] Built target __idf_esp_coex
+[ 13%] Built target __idf_wpa_supplicant
+[ 14%] Built target __idf_esp_netif
+[ 20%] Built target __idf_lwip
+[ 20%] Built target __idf_vfs
+[ 20%] Built target __idf_esp_vfs_console
+[ 20%] Built target __idf_esp_driver_usb_serial_jtag
+[ 20%] Built target __idf_esp_phy
+[ 21%] Built target __idf_nvs_flash
+[ 21%] Built target __idf_esp_event
+[ 21%] Built target __idf_esp_driver_uart
+[ 21%] Built target __idf_esp_psram
+[ 21%] Built target __idf_esp_ringbuf
+[ 21%] Built target __idf_esp_driver_gptimer
+[ 22%] Built target __idf_esp_timer
+[ 22%] Built target __idf_cxx
+[ 22%] Built target __idf_pthread
+[ 23%] Built target __idf_newlib
+[ 24%] Built target __idf_freertos
+[ 27%] Built target __idf_esp_hw_support
+[ 27%] Built target __idf_esp_security
+[ 29%] Built target __idf_soc
+[ 30%] Built target __idf_heap
+[ 31%] Built target __idf_log
+[ 34%] Built target __idf_hal
+[ 35%] Built target __idf_esp_rom
+[ 35%] Built target __idf_esp_common
+[ 37%] Built target __idf_esp_system
+[ 38%] Built target __idf_spi_flash
+[ 38%] Built target __idf_esp_mm
+[ 39%] Built target __idf_bootloader_support
+[ 39%] Built target __idf_efuse
+[ 39%] Built target __idf_esp_partition
+[ 39%] Built target __idf_app_update
+[ 39%] Built target __idf_esp_bootloader_format
+[ 40%] Built target __idf_esp_app_format
+[ 41%] Built target mbedtls
+[ 42%] Built target mbedx509
+[ 48%] Built target mbedcrypto
+[ 48%] Built target p256m
+[ 49%] Built target everest
+[ 49%] Built target __idf_mbedtls
+[ 50%] Built target __idf_esp_pm
+[ 51%] Built target __idf_esp_driver_gpio
+[ 52%] Built target __idf_xtensa
+[ 52%] Built target __idf_lume-perf
+[ 53%] Built target __idf_wear_levelling
+[ 53%] Built target __idf_esp_lcd
+[ 53%] Built target __idf_lume-raycast
+[ 53%] Built target __idf_lume-gpio
+[ 53%] Built target __idf_lume-board-hal
+[ 53%] Building C object esp-idf/lume-adc/CMakeFiles/__idf_lume-adc.dir/lume_adc.c.obj
+[ 54%] Built target __idf_joltwallet__littlefs
+[ 60%] Built target __idf_bt
+[ 60%] Built target __idf_lume-ble
+[ 60%] Built target __idf_espressif__esp_websocket_client
+[ 60%] Built target __idf_lume-svg
+[ 60%] Built target __idf_app_trace
+[ 60%] Built target __idf_unity
+[ 61%] Built target __idf_console
+[ 61%] Built target __idf_esp_driver_cam
+[ 62%] Built target __idf_esp_driver_touch_sens
+[ 86%] Built target __idf_lvgl
+[ 87%] Built target __idf_esp_eth
+[ 88%] Built target __idf_esp_hid
+[ 88%] Built target __idf_esp_https_server
+[ 88%] Built target __idf_protobuf-c
+[ 88%] Built target __idf_espcoredump
+[ 88%] Built target __idf_json
+[ 89%] Built target __idf_mqtt
+[ 89%] Linking C static library liblume-adc.a
+[ 89%] Built target __idf_nvs_sec_provider
+[ 90%] Built target __idf_perfmon
+[ 90%] Built target __idf_rt
+[ 90%] Built target __idf_spiffs
+[ 90%] Built target __idf_lume-adc
+[ 90%] Built target __idf_touch_element
+[ 91%] Built target __idf_usb
+[ 91%] Building C object esp-idf/quickjs-ng/CMakeFiles/__idf_quickjs-ng.dir/quickjs.c.obj
+[ 92%] Built target __idf_lume-net
+[ 93%] Built target __idf_fatfs
+[ 94%] Built target __idf_cmock
+[ 95%] Built target __idf_protocomm
+[ 95%] Built target __idf_wifi_provisioning
+[ 96%] Built target __idf_esp_local_ctrl
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'JS_DumpAtoms':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:3319:23: warning: format '%d' expects argument of type 'int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+ 3319 |             printf(" %d }\n", p->hash_next);
+      |                      ~^       ~~~~~~~~~~~~
+      |                       |        |
+      |                       int      uint32_t {aka long unsigned int}
+      |                      %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'JS_AtomGetStrRT':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:3837:35: warning: format '%u' expects argument of type 'unsigned int', but argument 4 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+ 3837 |         snprintf(buf, buf_size, "%u", __JS_AtomToUInt32(atom));
+      |                                  ~^   ~~~~~~~~~~~~~~~~~~~~~~~
+      |                                   |   |
+      |                                   |   uint32_t {aka long unsigned int}
+      |                                   unsigned int
+      |                                  %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:3842:44: warning: format '%x' expects argument of type 'unsigned int', but argument 4 has type 'JSAtom' {aka 'long unsigned int'} [-Wformat=]
+ 3842 |         snprintf(buf, buf_size, "<invalid %x>", atom);
+      |                                           ~^    ~~~~
+      |                                            |    |
+      |                                            |    JSAtom {aka long unsigned int}
+      |                                            unsigned int
+      |                                           %lx
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:3847:45: warning: format '%x' expects argument of type 'unsigned int', but argument 4 has type 'JSAtom' {aka 'long unsigned int'} [-Wformat=]
+ 3847 |             snprintf(buf, buf_size, "<free %x>", atom);
+      |                                            ~^    ~~~~
+      |                                             |    |
+      |                                             |    JSAtom {aka long unsigned int}
+      |                                             unsigned int
+      |                                            %lx
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'js_free_value_rt':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:7195:48: warning: format '%d' expects argument of type 'int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+ 7195 |         printf("js_free_value_rt: unknown tag=%d\n", tag);
+      |                                               ~^     ~~~
+      |                                                |     |
+      |                                                int   uint32_t {aka long unsigned int}
+      |                                               %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'js_bigint_dump1':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:12723:21: warning: format '%x' expects argument of type 'unsigned int', but argument 2 has type 'js_limb_t' {aka 'long unsigned int'} [-Wformat=]
+12723 |         printf(" %08x", tab[i]);
+      |                  ~~~^   ~~~~~~
+      |                     |      |
+      |                     |      js_limb_t {aka long unsigned int}
+      |                     unsigned int
+      |                  %08lx
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'JS_ToQuotedString':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:14762:51: warning: format '%x' expects argument of type 'unsigned int', but argument 4 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+14762 |                 snprintf(buf, sizeof(buf), "\\u%04x", c);
+      |                                                ~~~^   ~
+      |                                                   |   |
+      |                                                   |   uint32_t {aka long unsigned int}
+      |                                                   unsigned int
+      |                                                %04lx
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'JS_DumpValue':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:14968:40: warning: format '%d' expects argument of type 'int', but argument 2 has type 'long unsigned int' [-Wformat=]
+14968 |                 printf("BigInt.asIntN(%d,", p->len * JS_LIMB_BITS);
+      |                                       ~^
+      |                                        |
+      |                                        int
+      |                                       %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:14973:28: warning: format '%x' expects argument of type 'unsigned int', but argument 2 has type 'js_limb_t' {aka 'long unsigned int'} [-Wformat=]
+14973 |                 printf("%08x", p->tab[i]);
+      |                         ~~~^   ~~~~~~~~~
+      |                            |         |
+      |                            |         js_limb_t {aka long unsigned int}
+      |                            unsigned int
+      |                         %08lx
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:14990:32: warning: format '%d' expects argument of type 'int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+14990 |             printf("[rope len=%d depth=%d]", r->len, r->depth);
+      |                               ~^             ~~~~~~
+      |                                |              |
+      |                                int            uint32_t {aka long unsigned int}
+      |                               %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:15025:31: warning: format '%d' expects argument of type 'int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+15025 |         printf("[unknown tag %d]", tag);
+      |                              ~^    ~~~
+      |                               |    |
+      |                               int  uint32_t {aka long unsigned int}
+      |                              %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'dump_byte_code':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33351:23: warning: format '%u' expects argument of type 'unsigned int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33351 |             printf(" %u", get_u8(tab + pos));
+      |                      ~^   ~~~~~~~~~~~~~~~~~
+      |                       |   |
+      |                       |   uint32_t {aka long unsigned int}
+      |                       unsigned int
+      |                      %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33354:23: warning: format '%d' expects argument of type 'int', but argument 2 has type 'int32_t' {aka 'long int'} [-Wformat=]
+33354 |             printf(" %d", get_i8(tab + pos));
+      |                      ~^   ~~~~~~~~~~~~~~~~~
+      |                       |   |
+      |                       int int32_t {aka long int}
+      |                      %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33358:23: warning: format '%u' expects argument of type 'unsigned int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33358 |             printf(" %u", get_u16(tab + pos));
+      |                      ~^   ~~~~~~~~~~~~~~~~~~
+      |                       |   |
+      |                       |   uint32_t {aka long unsigned int}
+      |                       unsigned int
+      |                      %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33361:23: warning: format '%u' expects argument of type 'unsigned int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33361 |             printf(" %u,%u", get_u16(tab + pos), get_u16(tab + pos + 2));
+      |                      ~^      ~~~~~~~~~~~~~~~~~~
+      |                       |      |
+      |                       |      uint32_t {aka long unsigned int}
+      |                       unsigned int
+      |                      %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33361:26: warning: format '%u' expects argument of type 'unsigned int', but argument 3 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33361 |             printf(" %u,%u", get_u16(tab + pos), get_u16(tab + pos + 2));
+      |                         ~^                       ~~~~~~~~~~~~~~~~~~~~~~
+      |                          |                       |
+      |                          unsigned int            uint32_t {aka long unsigned int}
+      |                         %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33364:23: warning: format '%d' expects argument of type 'int', but argument 2 has type 'int32_t' {aka 'long int'} [-Wformat=]
+33364 |             printf(" %d", get_i16(tab + pos));
+      |                      ~^   ~~~~~~~~~~~~~~~~~~
+      |                       |   |
+      |                       int int32_t {aka long int}
+      |                      %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33367:23: warning: format '%d' expects argument of type 'int', but argument 2 has type 'int32_t' {aka 'long int'} [-Wformat=]
+33367 |             printf(" %d", get_i32(tab + pos));
+      |                      ~^   ~~~~~~~~~~~~~~~~~~
+      |                       |   |
+      |                       int int32_t {aka long int}
+      |                      %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33370:23: warning: format '%u' expects argument of type 'unsigned int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33370 |             printf(" %u", get_u32(tab + pos));
+      |                      ~^   ~~~~~~~~~~~~~~~~~~
+      |                       |   |
+      |                       |   uint32_t {aka long unsigned int}
+      |                       unsigned int
+      |                      %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33373:23: warning: format '%u' expects argument of type 'unsigned int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33373 |             printf(" %u:%u", get_u32(tab + pos), get_u32(tab + pos + 4));
+      |                      ~^      ~~~~~~~~~~~~~~~~~~
+      |                       |      |
+      |                       |      uint32_t {aka long unsigned int}
+      |                       unsigned int
+      |                      %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33373:26: warning: format '%u' expects argument of type 'unsigned int', but argument 3 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33373 |             printf(" %u:%u", get_u32(tab + pos), get_u32(tab + pos + 4));
+      |                         ~^                       ~~~~~~~~~~~~~~~~~~~~~~
+      |                          |                       |
+      |                          unsigned int            uint32_t {aka long unsigned int}
+      |                         %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33396:27: warning: format '%u' expects argument of type 'unsigned int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33396 |                 printf(",%u", get_u16(tab + pos + 4));
+      |                          ~^   ~~~~~~~~~~~~~~~~~~~~~~
+      |                           |   |
+      |                           |   uint32_t {aka long unsigned int}
+      |                           unsigned int
+      |                          %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33417:23: warning: format '%d' expects argument of type 'int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33417 |             printf(",%d", get_u8(tab + pos + 4));
+      |                      ~^   ~~~~~~~~~~~~~~~~~~~~~
+      |                       |   |
+      |                       int uint32_t {aka long unsigned int}
+      |                      %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33422:23: warning: format '%d' expects argument of type 'int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33422 |             printf(",%d", get_u16(tab + pos + 4));
+      |                      ~^   ~~~~~~~~~~~~~~~~~~~~~~
+      |                       |   |
+      |                       int uint32_t {aka long unsigned int}
+      |                      %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33436:27: warning: format '%u' expects argument of type 'unsigned int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33436 |                 printf(",%u", get_u8(tab + pos + 8));
+      |                          ~^   ~~~~~~~~~~~~~~~~~~~~~
+      |                           |   |
+      |                           |   uint32_t {aka long unsigned int}
+      |                           unsigned int
+      |                          %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:33438:27: warning: format '%u' expects argument of type 'unsigned int', but argument 2 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+33438 |                 printf(",%u", get_u16(tab + pos + 8));
+      |                          ~^   ~~~~~~~~~~~~~~~~~~~~~~
+      |                           |   |
+      |                           |   uint32_t {aka long unsigned int}
+      |                           unsigned int
+      |                          %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'ss_check':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:36776:71: warning: format '%d' expects argument of type 'int', but argument 3 has type 'int32_t' {aka 'long int'} [-Wformat=]
+36776 |             JS_ThrowInternalError(ctx, "inconsistent catch position: %d %d (pc=%d)",
+      |                                                                      ~^
+      |                                                                       |
+      |                                                                       int
+      |                                                                      %ld
+36777 |                                   s->catch_pos_tab[pos], catch_pos, pos);
+      |                                   ~~~~~~~~~~~~~~~~~~~~~                
+      |                                                   |
+      |                                                   int32_t {aka long int}
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'JS_WriteObjectRec':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:39295:58: warning: format '%d' expects argument of type 'int', but argument 3 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+39295 |         JS_ThrowInternalError(s->ctx, "unsupported tag (%d)", tag);
+      |                                                         ~^    ~~~
+      |                                                          |    |
+      |                                                          int  uint32_t {aka long unsigned int}
+      |                                                         %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'JS_ReadObjectRec':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:40472:32: warning: format '%d' expects argument of type 'int', but argument 3 has type 'int32_t' {aka 'long int'} [-Wformat=]
+40472 |             bc_read_trace(s, "%d\n", val);
+      |                               ~^     ~~~
+      |                                |     |
+      |                                int   int32_t {aka long int}
+      |                               %ld
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:40543:32: warning: format '%u' expects argument of type 'unsigned int', but argument 3 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+40543 |             bc_read_trace(s, "%u\n", val);
+      |                               ~^     ~~~
+      |                                |     |
+      |                                |     uint32_t {aka long unsigned int}
+      |                                unsigned int
+      |                               %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:40545:77: warning: format '%u' expects argument of type 'unsigned int', but argument 3 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+40545 |                 return JS_ThrowSyntaxError(ctx, "invalid object reference (%u >= %u)",
+      |                                                                            ~^
+      |                                                                             |
+      |                                                                             unsigned int
+      |                                                                            %lu
+40546 |                                            val, s->objects_count);
+      |                                            ~~~                               
+      |                                            |
+      |                                            uint32_t {aka long unsigned int}
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'JS_ReadObjectAtoms':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:40605:66: warning: format '%u' expects argument of type 'unsigned int', but argument 3 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+40605 |         JS_ThrowInternalError(s->ctx, "unreasonable atom count: %u",
+      |                                                                 ~^
+      |                                                                  |
+      |                                                                  unsigned int
+      |                                                                 %lu
+40606 |                               s->idx_to_atom_count);
+      |                               ~~~~~~~~~~~~~~~~~~~~                
+      |                                |
+      |                                uint32_t {aka long unsigned int}
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:40610:24: warning: format '%u' expects argument of type 'unsigned int', but argument 3 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+40610 |     bc_read_trace(s, "%u atom indexes {\n", s->idx_to_atom_count);
+      |                       ~^                    ~~~~~~~~~~~~~~~~~~~~
+      |                        |                     |
+      |                        unsigned int          uint32_t {aka long unsigned int}
+      |                       %lu
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c: In function 'js_regexp_escape':
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:49788:43: warning: format '%x' expects argument of type 'unsigned int', but argument 4 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+49788 |             snprintf(s, sizeof(s), "\\x%02x", c);
+      |                                        ~~~^   ~
+      |                                           |   |
+      |                                           |   uint32_t {aka long unsigned int}
+      |                                           unsigned int
+      |                                        %02lx
+/tmp/lume-r184-wt/firmware/components/quickjs-ng/quickjs.c:49791:43: warning: format '%x' expects argument of type 'unsigned int', but argument 4 has type 'uint32_t' {aka 'long unsigned int'} [-Wformat=]
+49791 |             snprintf(s, sizeof(s), "\\u%04x", c);
+      |                                        ~~~^   ~
+      |                                           |   |
+      |                                           |   uint32_t {aka long unsigned int}
+      |                                           unsigned int
+      |                                        %04lx
+At top level:
+cc1: note: unrecognized command-line option '-Wno-implicit-const-int-float-conversion' may have been intended to silence earlier diagnostics
+[ 96%] Linking C static library libquickjs-ng.a
+[ 96%] Built target __idf_quickjs-ng
+[ 96%] Building C object esp-idf/lume-crypto/CMakeFiles/__idf_lume-crypto.dir/lume_crypto.c.obj
+[ 96%] Building C object esp-idf/lume-compress/CMakeFiles/__idf_lume-compress.dir/lume_compress.c.obj
+[ 96%] Linking C static library liblume-crypto.a
+[ 96%] Built target __idf_lume-crypto
+[ 96%] Linking C static library liblume-compress.a
+[ 96%] Built target __idf_lume-compress
+[ 96%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_engine.c.obj
+[ 96%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_math.c.obj
+[ 96%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_imgscale.c.obj
+[ 97%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_fft.c.obj
+[ 97%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_image.c.obj
+[ 97%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_svg_cache.c.obj
+[ 97%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_image_header.c.obj
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r184-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r184-wt/firmware/components/lume-engine/lume_image.c:6:
+/tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r184-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+[ 97%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_image_pixels.c.obj
+[ 97%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_image_decode.c.obj
+[ 97%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_apps.c.obj
+[ 97%] Building C object esp-idf/lume-engine/CMakeFiles/__idf_lume-engine.dir/lume_scripts.c.obj
+[ 97%] Linking C static library liblume-engine.a
+[ 97%] Built target __idf_lume-engine
+[ 97%] Building C object esp-idf/lume-power/CMakeFiles/__idf_lume-power.dir/lume_power.c.obj
+[ 97%] Linking C static library liblume-power.a
+[ 97%] Built target __idf_lume-power
+[ 97%] Building C object esp-idf/mp3_decoder/CMakeFiles/__idf_mp3_decoder.dir/id3v2.c.obj
+[ 97%] Building C object esp-idf/mp3_decoder/CMakeFiles/__idf_mp3_decoder.dir/mp3_decoder.c.obj
+[ 97%] Linking C static library libmp3_decoder.a
+[ 97%] Built target __idf_mp3_decoder
+[ 98%] Building C object esp-idf/lume-audio/CMakeFiles/__idf_lume-audio.dir/lume_audio.c.obj
+[ 98%] Linking C static library liblume-audio.a
+[ 98%] Built target __idf_lume-audio
+[ 98%] Building C object esp-idf/lume-storage/CMakeFiles/__idf_lume-storage.dir/lume_sd.c.obj
+[ 98%] Building C object esp-idf/lume-storage/CMakeFiles/__idf_lume-storage.dir/lume_kv.c.obj
+[ 98%] Building C object esp-idf/lume-storage/CMakeFiles/__idf_lume-storage.dir/lume_fs.c.obj
+[100%] Linking C static library liblume-storage.a
+[100%] Built target __idf_lume-storage
+[100%] Building C object esp-idf/lume-imu/CMakeFiles/__idf_lume-imu.dir/lume_imu_hw.c.obj
+[100%] Linking C static library liblume-imu.a
+[100%] Built target __idf_lume-imu
+[100%] Building C object esp-idf/lume-pmic/CMakeFiles/__idf_lume-pmic.dir/lume_pmic_hw.c.obj
+[100%] Linking C static library liblume-pmic.a
+[100%] Built target __idf_lume-pmic
+[100%] Building C object esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/lume_board.c.obj
+[100%] Building C object esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/lume_touch.c.obj
+[100%] Building C object esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/lume_pmic.c.obj
+[100%] Building C object esp-idf/lume-board/CMakeFiles/__idf_lume-board.dir/lume_display.c.obj
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r184-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r184-wt/firmware/components/lume-board/lume_board_internal.h:6,
+                 from /tmp/lume-r184-wt/firmware/components/lume-board/lume_pmic.c:31:
+/tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r184-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r184-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r184-wt/firmware/components/lume-board/lume_touch.c:36:
+/tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r184-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r184-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r184-wt/firmware/components/lume-board/lume_board.c:25:
+/tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r184-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r184-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r184-wt/firmware/components/lume-board/lume_display.c:39:
+/tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r184-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+/tmp/lume-r184-wt/firmware/components/lume-board/lume_pmic.c:58:18: warning: 'axp_set_voltage' defined but not used [-Wunused-function]
+   58 | static esp_err_t axp_set_voltage(i2c_master_dev_handle_t dev, uint8_t reg, uint8_t step)
+      |                  ^~~~~~~~~~~~~~~
+[100%] Linking C static library liblume-board.a
+[100%] Built target __idf_lume-board
+[100%] Building C object esp-idf/lume-ui-bridge/CMakeFiles/__idf_lume-ui-bridge.dir/lume_ui_bridge.c.obj
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_init.h:16,
+                 from /tmp/lume-r184-wt/firmware/components/lvgl/lvgl.h:21,
+                 from /tmp/lume-r184-wt/firmware/components/lume-ui-bridge/lume_ui_bridge.c:21:
+/tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:4496:13: warning: "LV_LOG_LEVEL" redefined
+ 4496 |     #define LV_LOG_LEVEL            LV_LOG_LEVEL_NONE
+      |             ^~~~~~~~~~~~
+In file included from /tmp/lume-r184-wt/firmware/components/lvgl/src/lv_conf_internal.h:56:
+/tmp/lume-r184-wt/firmware/components/lvgl/lv_conf.h:49:9: note: this is the location of the previous definition
+   49 | #define LV_LOG_LEVEL LV_LOG_LEVEL_USER
+      |         ^~~~~~~~~~~~
+[100%] Linking C static library liblume-ui-bridge.a
+[100%] Built target __idf_lume-ui-bridge
+[100%] Building C object esp-idf/lume-hotreload/CMakeFiles/__idf_lume-hotreload.dir/lume_frame.c.obj
+[100%] Building C object esp-idf/lume-hotreload/CMakeFiles/__idf_lume-hotreload.dir/lume_hotreload.c.obj
+[100%] Building C object esp-idf/lume-hotreload/CMakeFiles/__idf_lume-hotreload.dir/lume_cmd.c.obj
+[100%] Linking C static library liblume-hotreload.a
+[100%] Built target __idf_lume-hotreload
+[100%] Building C object esp-idf/main/CMakeFiles/__idf_main.dir/lume_main.c.obj
+[100%] Linking C static library libmain.a
+[100%] Built target __idf_main
+[100%] Generating esp-idf/esp_system/ld/sections.ld
+[100%] Built target __ldgen_output_sections.ld
+[100%] Building C object CMakeFiles/lume.elf.dir/project_elf_src_esp32s3.c.obj
+[100%] Linking CXX executable lume.elf
+[100%] Built target lume.elf
+[100%] Generating binary image from built executable
+esptool.py v4.13.0
+Creating esp32s3 image...
+Merged 3 ELF sections
+Successfully created esp32s3 image.
+Generated /tmp/lume-r184-wt/firmware/build/lume.bin
+[100%] Built target gen_project_binary
+lume.bin binary size 0x2e5a10 bytes. Smallest app partition is 0x640000 bytes. 0x35a5f0 bytes (54%) free.
+[100%] Built target app_check_size
+[100%] Built target app
+
+Project build complete. To flash, run:
+ idf.py flash
+or
+ idf.py -p PORT flash
+or
+ python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash --flash_mode dio --flash_size 16MB --flash_freq 80m 0x0 build/bootloader/bootloader.bin 0x8000 build/partition_table/partition-table.bin 0x10000 build/lume.bin
+or from the "/tmp/lume-r184-wt/firmware/build" directory
+ python -m esptool --chip esp32s3 -b 460800 --before default_reset --after hard_reset write_flash "@flash_args"
+Executing action: size
+Running make in directory /tmp/lume-r184-wt/firmware/build
+Executing "make -j 4 all"...
+-- Component directory /opt/esp/esp-idf/components/esp_blockdev does not contain a CMakeLists.txt file. No component will be added
+-- Minimal build - OFF
+-- Building ESP-IDF components for target esp32s3
+NOTICE: Processing 3 dependencies:
+NOTICE: [1/3] espressif/esp_websocket_client (1.8.0)
+NOTICE: [2/3] joltwallet/littlefs (1.22.3)
+NOTICE: [3/3] idf (5.5.5)
+-- ESP-TEE is currently supported only on the esp32c6;esp32h2;esp32c5 SoCs
+-- Project sdkconfig file /tmp/lume-r184-wt/firmware/sdkconfig
+Loading defaults file /tmp/lume-r184-wt/firmware/sdkconfig.defaults...
+Loading defaults file /tmp/lume-r184-wt/firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/sdkconfig.defaults...
+warning: unknown kconfig symbol 'LV_COLOR_DEPTH_16' assigned to 'y' in /tmp/lume-r184-wt/firmware/boards/waveshare_esp32_s3_touch_amoled_2_16/sdkconfig.defaults
+-- Compiler supported targets: xtensa-esp-elf
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- USING O3
+-- App "lume" version: v0.3.2-165-gdd53362
+-- Adding linker script /tmp/lume-r184-wt/firmware/build/esp-idf/esp_system/ld/memory.ld
+-- Adding linker script /tmp/lume-r184-wt/firmware/build/esp-idf/esp_system/ld/sections.ld.in
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.api.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.bt_funcs.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.libgcc.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.wdt.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.version.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.ble_cca.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.ble_test.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.libc.ld
+-- Adding linker script /opt/esp/esp-idf/components/esp_rom/esp32s3/ld/esp32s3.rom.newlib.ld
+-- Adding linker script /opt/esp/esp-idf/components/soc/esp32s3/ld/esp32s3.peripherals.ld
+-- Components: app_trace app_update bootloader bootloader_support bt cmock console cxx driver efuse esp-tls esp_adc esp_app_format esp_bootloader_format esp_coex esp_common esp_driver_ana_cmpr esp_driver_bitscrambler esp_driver_cam esp_driver_dac esp_driver_gpio esp_driver_gptimer esp_driver_i2c esp_driver_i2s esp_driver_isp esp_driver_jpeg esp_driver_ledc esp_driver_mcpwm esp_driver_parlio esp_driver_pcnt esp_driver_ppa esp_driver_rmt esp_driver_sdio esp_driver_sdm esp_driver_sdmmc esp_driver_sdspi esp_driver_spi esp_driver_touch_sens esp_driver_tsens esp_driver_twai esp_driver_uart esp_driver_usb_serial_jtag esp_eth esp_event esp_gdbstub esp_hal_ieee802154 esp_hid esp_http_client esp_http_server esp_https_ota esp_https_server esp_hw_support esp_lcd esp_local_ctrl esp_mm esp_netif esp_netif_stack esp_partition esp_phy esp_pm esp_psram esp_ringbuf esp_rom esp_security esp_system esp_timer esp_vfs_console esp_wifi espcoredump espressif__esp_websocket_client esptool_py fatfs freertos hal heap http_parser idf_test ieee802154 joltwallet__littlefs json log lume-adc lume-audio lume-ble lume-board lume-board-hal lume-compress lume-crypto lume-engine lume-gpio lume-hotreload lume-imu lume-net lume-perf lume-pmic lume-power lume-raycast lume-storage lume-svg lume-ui-bridge lvgl lwip main mbedtls mp3_decoder mqtt newlib nvs_flash nvs_sec_provider openthread partition_table perfmon protobuf-c protocomm pthread quickjs-ng rt sdmmc soc spi_flash spiffs tcp_transport touch_element ulp unity usb vfs wear_levelling wifi_provisioning wpa_supplicant xtensa
+-- Component paths: /opt/esp/esp-idf/components/app_trace /opt/esp/esp-idf/components/app_update /opt/esp/esp-idf/components/bootloader /opt/esp/esp-idf/components/bootloader_support /opt/esp/esp-idf/components/bt /opt/esp/esp-idf/components/cmock /opt/esp/esp-idf/components/console /opt/esp/esp-idf/components/cxx /opt/esp/esp-idf/components/driver /opt/esp/esp-idf/components/efuse /opt/esp/esp-idf/components/esp-tls /opt/esp/esp-idf/components/esp_adc /opt/esp/esp-idf/components/esp_app_format /opt/esp/esp-idf/components/esp_bootloader_format /opt/esp/esp-idf/components/esp_coex /opt/esp/esp-idf/components/esp_common /opt/esp/esp-idf/components/esp_driver_ana_cmpr /opt/esp/esp-idf/components/esp_driver_bitscrambler /opt/esp/esp-idf/components/esp_driver_cam /opt/esp/esp-idf/components/esp_driver_dac /opt/esp/esp-idf/components/esp_driver_gpio /opt/esp/esp-idf/components/esp_driver_gptimer /opt/esp/esp-idf/components/esp_driver_i2c /opt/esp/esp-idf/components/esp_driver_i2s /opt/esp/esp-idf/components/esp_driver_isp /opt/esp/esp-idf/components/esp_driver_jpeg /opt/esp/esp-idf/components/esp_driver_ledc /opt/esp/esp-idf/components/esp_driver_mcpwm /opt/esp/esp-idf/components/esp_driver_parlio /opt/esp/esp-idf/components/esp_driver_pcnt /opt/esp/esp-idf/components/esp_driver_ppa /opt/esp/esp-idf/components/esp_driver_rmt /opt/esp/esp-idf/components/esp_driver_sdio /opt/esp/esp-idf/components/esp_driver_sdm /opt/esp/esp-idf/components/esp_driver_sdmmc /opt/esp/esp-idf/components/esp_driver_sdspi /opt/esp/esp-idf/components/esp_driver_spi /opt/esp/esp-idf/components/esp_driver_touch_sens /opt/esp/esp-idf/components/esp_driver_tsens /opt/esp/esp-idf/components/esp_driver_twai /opt/esp/esp-idf/components/esp_driver_uart /opt/esp/esp-idf/components/esp_driver_usb_serial_jtag /opt/esp/esp-idf/components/esp_eth /opt/esp/esp-idf/components/esp_event /opt/esp/esp-idf/components/esp_gdbstub /opt/esp/esp-idf/components/esp_hal_ieee802154 /opt/esp/esp-idf/components/esp_hid /opt/esp/esp-idf/components/esp_http_client /opt/esp/esp-idf/components/esp_http_server /opt/esp/esp-idf/components/esp_https_ota /opt/esp/esp-idf/components/esp_https_server /opt/esp/esp-idf/components/esp_hw_support /opt/esp/esp-idf/components/esp_lcd /opt/esp/esp-idf/components/esp_local_ctrl /opt/esp/esp-idf/components/esp_mm /opt/esp/esp-idf/components/esp_netif /opt/esp/esp-idf/components/esp_netif_stack /opt/esp/esp-idf/components/esp_partition /opt/esp/esp-idf/components/esp_phy /opt/esp/esp-idf/components/esp_pm /opt/esp/esp-idf/components/esp_psram /opt/esp/esp-idf/components/esp_ringbuf /opt/esp/esp-idf/components/esp_rom /opt/esp/esp-idf/components/esp_security /opt/esp/esp-idf/components/esp_system /opt/esp/esp-idf/components/esp_timer /opt/esp/esp-idf/components/esp_vfs_console /opt/esp/esp-idf/components/esp_wifi /opt/esp/esp-idf/components/espcoredump /tmp/lume-r184-wt/firmware/managed_components/espressif__esp_websocket_client /opt/esp/esp-idf/components/esptool_py /opt/esp/esp-idf/components/fatfs /opt/esp/esp-idf/components/freertos /opt/esp/esp-idf/components/hal /opt/esp/esp-idf/components/heap /opt/esp/esp-idf/components/http_parser /opt/esp/esp-idf/components/idf_test /opt/esp/esp-idf/components/ieee802154 /tmp/lume-r184-wt/firmware/managed_components/joltwallet__littlefs /opt/esp/esp-idf/components/json /opt/esp/esp-idf/components/log /tmp/lume-r184-wt/firmware/components/lume-adc /tmp/lume-r184-wt/firmware/components/lume-audio /tmp/lume-r184-wt/firmware/components/lume-ble /tmp/lume-r184-wt/firmware/components/lume-board /tmp/lume-r184-wt/firmware/components/lume-board-hal /tmp/lume-r184-wt/firmware/components/lume-compress /tmp/lume-r184-wt/firmware/components/lume-crypto /tmp/lume-r184-wt/firmware/components/lume-engine /tmp/lume-r184-wt/firmware/components/lume-gpio /tmp/lume-r184-wt/firmware/components/lume-hotreload /tmp/lume-r184-wt/firmware/components/lume-imu /tmp/lume-r184-wt/firmware/components/lume-net /tmp/lume-r184-wt/firmware/components/lume-perf /tmp/lume-r184-wt/firmware/components/lume-pmic /tmp/lume-r184-wt/firmware/components/lume-power /tmp/lume-r184-wt/firmware/components/lume-raycast /tmp/lume-r184-wt/firmware/components/lume-storage /tmp/lume-r184-wt/firmware/components/lume-svg /tmp/lume-r184-wt/firmware/components/lume-ui-bridge /tmp/lume-r184-wt/firmware/components/lvgl /opt/esp/esp-idf/components/lwip /tmp/lume-r184-wt/firmware/main /opt/esp/esp-idf/components/mbedtls /tmp/lume-r184-wt/firmware/components/mp3_decoder /opt/esp/esp-idf/components/mqtt /opt/esp/esp-idf/components/newlib /opt/esp/esp-idf/components/nvs_flash /opt/esp/esp-idf/components/nvs_sec_provider /opt/esp/esp-idf/components/openthread /opt/esp/esp-idf/components/partition_table /opt/esp/esp-idf/components/perfmon /opt/esp/esp-idf/components/protobuf-c /opt/esp/esp-idf/components/protocomm /opt/esp/esp-idf/components/pthread /tmp/lume-r184-wt/firmware/components/quickjs-ng /opt/esp/esp-idf/components/rt /opt/esp/esp-idf/components/sdmmc /opt/esp/esp-idf/components/soc /opt/esp/esp-idf/components/spi_flash /opt/esp/esp-idf/components/spiffs /opt/esp/esp-idf/components/tcp_transport /opt/esp/esp-idf/components/touch_element /opt/esp/esp-idf/components/ulp /opt/esp/esp-idf/components/unity /opt/esp/esp-idf/components/usb /opt/esp/esp-idf/components/vfs /opt/esp/esp-idf/components/wear_levelling /opt/esp/esp-idf/components/wifi_provisioning /opt/esp/esp-idf/components/wpa_supplicant /opt/esp/esp-idf/components/xtensa
+-- Configuring done (8.3s)
+-- Generating done (1.8s)
+-- Build files have been written to: /tmp/lume-r184-wt/firmware/build
+[  0%] Built target memory.ld
+[  0%] Built target partition_table_bin
+[  0%] Built target sections.ld.in
+[  0%] Built target custom_bundle
+[  0%] Built target _project_elf_src
+[  0%] Performing build step for 'bootloader'
+[  1%] Built target __idf_esp_https_ota
+[  1%] Built target __idf_esp_http_server
+[  1%] Built target _project_elf_src
+[  1%] Built target __idf_esp_http_client
+[  9%] Built target __idf_log
+[  2%] Built target __idf_tcp_transport
+[ 19%] Built target __idf_esp_rom
+[ 21%] Built target __idf_esp_common
+[  2%] Built target __idf_esp_adc
+[ 30%] Built target __idf_esp_hw_support
+[  3%] Built target __idf_esp-tls
+[ 32%] Built target __idf_esp_system
+[  3%] Built target __idf_http_parser
+[ 40%] Built target __idf_efuse
+[  4%] Built target __idf_driver
+[ 59%] Built target __idf_bootloader_support
+[  4%] Built target __idf_esp_driver_twai
+[ 60%] Built target __idf_esp_bootloader_format
+[  5%] Built target __idf_esp_driver_ledc
+[  5%] Built target __idf_esp_driver_i2c
+[ 62%] Built target __idf_spi_flash
+[  5%] Built target __idf_esp_driver_sdm
+[ 68%] Built target __idf_hal
+[  5%] Built target __idf_esp_driver_tsens
+[ 69%] Built target __idf_micro-ecc
+[  6%] Built target __idf_esp_driver_rmt
+[ 92%] Built target __idf_soc
+[  6%] Built target __idf_esp_driver_sdspi
+[ 94%] Built target __idf_xtensa
+[  6%] Built target __idf_esp_driver_sdmmc
+[ 96%] Built target __idf_main
+[ 98%] Built target bootloader.elf
+[  7%] Built target __idf_sdmmc
+[100%] Built target gen_project_binary
+[  7%] Built target __idf_esp_driver_i2s
+[  7%] Built target __idf_esp_driver_mcpwm
+Bootloader binary size 0x5710 bytes. 0x28f0 bytes (32%) free.
+[  7%] Built target __idf_esp_driver_pcnt
+[100%] Built target bootloader_check_size
+[  7%] Built target __idf_esp_gdbstub
+[100%] Built target app
+[  7%] No install step for 'bootloader'
+[  7%] Built target __idf_esp_driver_spi
+[  7%] Completed 'bootloader'
+[  8%] Built target __idf_esp_wifi
+[  8%] Built target bootloader
+[  8%] Built target __idf_esp_coex
+[ 13%] Built target __idf_wpa_supplicant
+[ 14%] Built target __idf_esp_netif
+[ 20%] Built target __idf_lwip
+[ 20%] Built target __idf_vfs
+[ 20%] Built target __idf_esp_vfs_console
+[ 20%] Built target __idf_esp_driver_usb_serial_jtag
+[ 20%] Built target __idf_esp_phy
+[ 21%] Built target __idf_nvs_flash
+[ 21%] Built target __idf_esp_event
+[ 21%] Built target __idf_esp_driver_uart
+[ 21%] Built target __idf_esp_psram
+[ 21%] Built target __idf_esp_ringbuf
+[ 21%] Built target __idf_esp_driver_gptimer
+[ 22%] Built target __idf_esp_timer
+[ 22%] Built target __idf_cxx
+[ 22%] Built target __idf_pthread
+[ 23%] Built target __idf_newlib
+[ 24%] Built target __idf_freertos
+[ 27%] Built target __idf_esp_hw_support
+[ 27%] Built target __idf_esp_security
+[ 29%] Built target __idf_soc
+[ 30%] Built target __idf_heap
+[ 31%] Built target __idf_log
+[ 34%] Built target __idf_hal
+[ 35%] Built target __idf_esp_rom
+[ 35%] Built target __idf_esp_common
+[ 37%] Built target __idf_esp_system
+[ 38%] Built target __idf_spi_flash
+[ 38%] Built target __idf_esp_mm
+[ 39%] Built target __idf_bootloader_support
+[ 39%] Built target __idf_efuse
+[ 39%] Built target __idf_esp_partition
+[ 39%] Built target __idf_app_update
+[ 39%] Built target __idf_esp_bootloader_format
+[ 39%] Building C object esp-idf/esp_app_format/CMakeFiles/__idf_esp_app_format.dir/esp_app_desc.c.obj
+[ 40%] Linking C static library libesp_app_format.a
+[ 40%] Built target __idf_esp_app_format
+[ 41%] Built target mbedtls
+[ 42%] Built target mbedx509
+[ 48%] Built target mbedcrypto
+[ 48%] Built target p256m
+[ 49%] Built target everest
+[ 49%] Built target __idf_mbedtls
+[ 50%] Built target __idf_esp_pm
+[ 51%] Built target __idf_esp_driver_gpio
+[ 52%] Built target __idf_xtensa
+[ 52%] Built target __idf_lume-perf
+[ 53%] Built target __idf_wear_levelling
+[ 53%] Built target __idf_lume-raycast
+[ 53%] Built target __idf_esp_lcd
+[ 53%] Built target __idf_lume-gpio
+[ 53%] Building C object esp-idf/lume-adc/CMakeFiles/__idf_lume-adc.dir/lume_adc.c.obj
+[ 53%] Built target __idf_lume-board-hal
+[ 53%] Built target __idf_joltwallet__littlefs
+[ 53%] Built target __idf_espressif__esp_websocket_client
+[ 60%] Built target __idf_bt
+[ 60%] Built target __idf_lume-svg
+[ 60%] Linking C static library liblume-adc.a
+[ 60%] Built target __idf_app_trace
+[ 60%] Built target __idf_lume-adc
+[ 60%] Built target __idf_unity
+[ 60%] Built target __idf_esp_driver_cam
+[ 61%] Built target __idf_console
+[ 62%] Built target __idf_esp_driver_touch_sens
+[ 62%] Built target __idf_esp_https_server
+[ 63%] Built target __idf_esp_eth
+[ 64%] Built target __idf_esp_hid
+[ 64%] Built target __idf_protobuf-c
+[ 64%] Built target __idf_json
+[ 64%] Built target __idf_espcoredump
+[ 65%] Built target __idf_mqtt
+[ 65%] Built target __idf_nvs_sec_provider
+[ 66%] Built target __idf_perfmon
+[ 66%] Built target __idf_rt
+[ 66%] Built target __idf_spiffs
+[ 66%] Built target __idf_touch_element
+[ 66%] Built target __idf_quickjs-ng
+[ 67%] Built target __idf_usb
+[ 67%] Built target __idf_lume-ble
+[ 68%] Built target __idf_fatfs
+[ 69%] Built target __idf_lume-net
+[ 70%] Built target __idf_cmock
+[ 70%] Built target __idf_lume-crypto
+[ 70%] Built target __idf_lume-compress
+[ 71%] Built target __idf_protocomm
+[ 72%] Built target __idf_esp_local_ctrl
+[ 72%] Built target __idf_wifi_provisioning
+[ 96%] Built target __idf_lvgl
+[ 97%] Built target __idf_lume-engine
+[ 97%] Built target __idf_lume-power
+[ 97%] Built target __idf_mp3_decoder
+[ 98%] Built target __idf_lume-audio
+[100%] Built target __idf_lume-storage
+[100%] Built target __idf_lume-imu
+[100%] Built target __idf_lume-pmic
+[100%] Built target __idf_lume-board
+[100%] Built target __idf_lume-ui-bridge
+[100%] Built target __idf_lume-hotreload
+[100%] Built target __idf_main
+[100%] Generating esp-idf/esp_system/ld/sections.ld
+[100%] Built target __ldgen_output_sections.ld
+[100%] Linking CXX executable lume.elf
+[100%] Built target lume.elf
+[100%] Generating binary image from built executable
+esptool.py v4.13.0
+Creating esp32s3 image...
+Merged 3 ELF sections
+Successfully created esp32s3 image.
+Generated /tmp/lume-r184-wt/firmware/build/lume.bin
+[100%] Built target gen_project_binary
+lume.bin binary size 0x2e5a10 bytes. Smallest app partition is 0x640000 bytes. 0x35a5f0 bytes (54%) free.
+[100%] Built target app_check_size
+[100%] Built target app
+Running make in directory /tmp/lume-r184-wt/firmware/build
+Executing "make -j 4 size"...
+                            Memory Type Usage Summary                             
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory Type/Section ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code          │      2044024 │          │                │               │
+│    .text            │      2044024 │          │                │               │
+│ Flash Data          │       852308 │          │                │               │
+│    .rodata          │       852052 │          │                │               │
+│    .appdesc         │          256 │          │                │               │
+│ DIRAM               │       247159 │    72.32 │          94601 │        341760 │
+│    .bss             │       122368 │    35.81 │                │               │
+│    .text            │       101523 │    29.71 │                │               │
+│    .data            │        23268 │     6.81 │                │               │
+│ IRAM                │        16384 │    100.0 │              0 │         16384 │
+│    .text            │        15356 │    93.73 │                │               │
+│    .vectors         │         1028 │     6.27 │                │               │
+│ RTC FAST            │           72 │     0.88 │           8120 │          8192 │
+│    .text            │           44 │     0.54 │                │               │
+│    .rtc_reserved    │           24 │     0.29 │                │               │
+│    .force_fast      │            4 │     0.05 │                │               │
+│ RTC SLOW            │           32 │     0.39 │           8160 │          8192 │
+│    .force_slow      │           32 │     0.39 │                │               │
+└─────────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 3037587 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical reference manual due to reserved memory and application configuration. The total flash size available for the application is not included by default, as it cannot be reliably determined due to the presence of other data like the bootloader, partition table, and application partition size.
+Built target size

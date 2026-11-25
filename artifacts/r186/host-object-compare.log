@@ -1,0 +1,12 @@
+old cc exit=0
+new cc exit=0
+.rodata              74568      0
+Total                74646
+.rodata              74568      0
+Total                74646
+00000000000107e0 000000000000074c R lume_demo_js
+0000000000010f40 0000000000001408 R lume_home_js
+0000000000000000 00000000000107db R lume_prelude_js
+00000000000107e0 000000000000074c R lume_demo_js
+0000000000010f40 0000000000001408 R lume_home_js
+0000000000000000 00000000000107db R lume_prelude_js

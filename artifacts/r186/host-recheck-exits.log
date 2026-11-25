@@ -1,0 +1,5 @@
+tests/adc_meter.js exit=0
+tests/board_abi.js exit=0
+tests/color_demo.js exit=0
+tests/sd_files.js exit=0
+tests/sd_gallery.js exit=0
