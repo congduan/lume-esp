@@ -1,0 +1,16 @@
+PASS flapdot UI strings are ASCII-only (r64 font rule)
+PASS flapdot pipe geometry deterministic, gaps sane, ramp stepwise
+PASS flapdot pipe window covers exactly the visible pipes
+PASS flapdot scoring gate at pipe right edge
+PASS flapdot collision: pipes/ground kill, gap passes, top clamps
+PASS flapdot physics: gravity/flap/terminal, no NaN
+PASS flapdot state machine ready/run/dead/restart
+PASS flapdot course winnable: scripted policy cleared 135 pipes
+PASS flapdot boots in ready mode with HUD and full first paint
+PASS flapdot tap -> run through the gesture pipeline
+PASS flapdot dirty-band discipline + canvas pixel budget (max inc 20680 px)
+PASS flapdot eight-tick frame skip clears full bird path; old union misses 43 vertical px; draw calls=57
+PASS flapdot death + restart through the real prelude
+PASS flapdot 60 s smoke (draws=97893, paints=4951, phase=run, score=0)
+PASS flapdot r185 idle gate: 12 ticks -> 2 bird-only paints (draws=10), tap repaints full canvas immediately
+ALL flapdot harness checks passed
