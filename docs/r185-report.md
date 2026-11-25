@@ -142,6 +142,8 @@ RESULT: PASS (5 steps, 0 failed; exit 0)
 - 全量 sweep 首轮 `tests/ota_consumers.js` 转红（r183 先例）。按"只重钉 allowlist、
   不改谓词"补钉：加入 r185 的 app/harness/playground/report 路径，以及基线 `670020e`
   fw-sync 产物 `website/wasm/fw/partition-table.bin`。补钉后该守卫全绿，断言逻辑未动。
+- 三刀提交后按 r183 教训再跑一遍全量 sweep：仍 **0 FAIL / 1555 PASS**，
+  无新增转红守卫；原始输出 `artifacts/r185/harness-all-post-commit.txt`。
 
 ## 7. 提交拆分
 
