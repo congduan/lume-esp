@@ -626,6 +626,15 @@ const ALLOWED = [
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_scripts.c',
+  // r185: flapdot visual draw-budget close-out -- app/harness, regenerated playground
+  // bundles, report and evidence. No firmware/runtime/CLI predicate change.
+  'examples/flapdot/app.js',
+  'tests/flapdot.js',
+  'website/playground/apps/flapdot.js',
+  'website/playground/sources/flapdot.js',
+  'docs/r185-report.md',
+  // r185 base 670020e is a chore/fw-sync commit; allow its regenerated image.
+  'website/wasm/fw/partition-table.bin',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -700,7 +709,7 @@ const checks = [
       f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
       f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
       f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
-      f.startsWith('artifacts/r183/'))]],
+      f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r185/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {
