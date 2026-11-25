@@ -14,6 +14,13 @@ const { createGateway, connect: gwConnect, MockUpstream } = require('../tools/ga
 const source = fs.readFileSync('examples/voice_assistant/app.js', 'utf8');
 const CANNED = ['HI. I AM LISTENING ON THE WATCH.', 'THE CLOCK FACE HAS THE LOCAL TIME.',
   'OPEN THE POWER PAGE FOR LEVEL.', 'A BYTE WALKED INTO A BAR. IT DID NOT COMPUTE.'];
+/* r195: the r119 open-LAN hello, frozen byte-for-byte for the no-token case. */
+const OPEN_LAN_HELLO = {
+  v: 1, type: 'hello',
+  device: { model: 'lume', fw: 'r108', app: 'voice_assistant' },
+  /* r117: device opts in to the v1.1 transcript-delta downlink. */
+  caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: true }
+};
 let checks = 0;
 const pass = label => { checks++; console.log('PASS ' + label); };
 
@@ -23,9 +30,15 @@ function makeBridge() {
   let nextId = 1;
   const bridge = {
     ctx: null,
-    stats: { connects: 0, text: [], binary: [], closes: 0, dispatchErrors: [] },
+    /* r195: record the upgrade URL and the headers string built by the
+     * prelude, plus the raw text frames, so handshake auth and byte-identical
+     * hello can be asserted at the live boundary. */
+    stats: { connects: 0, text: [], textRaw: [], headers: [], connectUrls: [],
+      binary: [], closes: 0, dispatchErrors: [] },
     _connect(url, headers) {
       bridge.stats.connects++;
+      bridge.stats.connectUrls.push(url);
+      bridge.stats.headers.push(headers);
       const id = nextId++;
       const fire = (kind, ref) => {
         try {
@@ -53,6 +66,7 @@ function makeBridge() {
       if (!cli) return -1;
       if (typeof data === 'string') {
         bridge.stats.text.push(JSON.parse(data));
+        bridge.stats.textRaw.push(data);
         cli.sendText(data);
       } else {
         const buf = Buffer.from(data);
@@ -76,6 +90,10 @@ function makeBridge() {
 function boot(url, opts = {}) {
   const bridge = makeBridge();
   const logs = [], play = [];
+  /* r195: counting token KV reads lets the live reuse assertion catch a
+   * regression that starts reading/building the handshake token even without
+   * opening a new connection. */
+  const kvGets = { voice_gateway_token: 0 };
   const audio = Object.assign({
     _recordStream: () => 0,           /* prelude wraps this into recordStream */
     _stopStream: () => 0,
@@ -87,12 +105,15 @@ function boot(url, opts = {}) {
   }, opts.net || {});
   const ui = runApp(source, {
     onLog: (...a) => logs.push(a.join(' ')),
-    kv: { get: k => (k === 'voice_gateway_url' && url) ? url : ((opts.keys && opts.keys[k]) || null) },
+    kv: { get: k => {
+      if (k === 'voice_gateway_token') kvGets.voice_gateway_token++;
+      return (k === 'voice_gateway_url' && url) ? url : ((opts.keys && opts.keys[k]) || null);
+    } },
     net: netStub,
     audio
   });
   bridge.ctx = ui.ctx;
-  return { ui, bridge, logs, play, c: ui.ctx };
+  return { ui, bridge, logs, play, kvGets, c: ui.ctx };
 }
 
 /* Feed one native 1024-stereo-frame (4096 B) recordStream chunk into the
@@ -207,12 +228,12 @@ function smoke(b, gwLog, answer) {
       assert.equal(b.c.vaState(), 'THINK');
       b.c.vaDeferredSend();                   /* deferred frame runs the transport */
       await waitFor(() => b.bridge.stats.text.some(m => m.type === 'hello'), 'hello sent');
-      assert.deepEqual(b.bridge.stats.text[0], {
-        v: 1, type: 'hello',
-        device: { model: 'lume', fw: 'r108', app: 'voice_assistant' },
-        /* r117: device opts in to the v1.1 transcript-delta downlink. */
-        caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: true }
-      });
+      assert.deepEqual(b.bridge.stats.text[0], OPEN_LAN_HELLO);
+      /* r195: no token -> no handshake headers AND the hello frame is still
+       * byte-identical to the r119 frozen value (open LAN compatibility). */
+      assert.equal(b.bridge.stats.headers[0], '', 'r195: open LAN sends no upgrade headers');
+      assert.equal(b.bridge.stats.textRaw[0], JSON.stringify(OPEN_LAN_HELLO),
+        'r195: open LAN hello frame byte-identical to r119');
       await waitFor(() => b.c.vaStreamAcked, 'hello-ack');
 
       /* Three native 4096 B chunks -> 3 x 3840 B wire frames, no mono 1920 B. */
@@ -381,6 +402,9 @@ function smoke(b, gwLog, answer) {
       drive(b.c);
       await waitFor(() => b.bridge.stats.text.some(m => m.type === 'hello'), 'hello sent');
       assert.equal(b.bridge.stats.text[0].auth && b.bridge.stats.text[0].auth.token, APP_TOKEN);
+      /* r195: the same KV token also gates the upgrade request. */
+      assert.equal(b.bridge.stats.headers[0], 'Authorization: Bearer ' + APP_TOKEN + '\r\n',
+        'r195: token -> Authorization: Bearer on the WS upgrade');
       assert.ok(b.logs.includes('VA WS HELLO AUTH'), 'app logs auth flag (never the token value)');
       assert.equal(b.logs.some(l => l.indexOf(APP_TOKEN) >= 0), false, 'token absent from device logs');
       await waitFor(() => b.c.vaStreamFinished, 'turn finished');
@@ -416,7 +440,9 @@ function smoke(b, gwLog, answer) {
   const gwLog10 = [], mtSeen10 = [];
   const ANSWERS10 = ['FIRST-REPLY', 'SECOND-REPLY'];
   await withGw(makeMTFactory(mtSeen10, ANSWERS10), gwLog10, async (gw, url) => {
-    const b = boot(url, { keys: { voice_gateway_multiturn: '1' } });
+    const b = boot(url, { keys: {
+      voice_gateway_multiturn: '1', voice_gateway_token: 'MT-REUSE-TOKEN-r195'
+    } });
     assert.equal(b.c.vaGatewayMultiturn(), true, 'KV toggles device multiturn');
     drive(b.c);                                     /* turn 1 */
     await waitFor(() => b.c.vaStreamAcked, 'turn1 ack');
@@ -431,6 +457,11 @@ function smoke(b, gwLog, answer) {
     assert.ok(b.logs.includes('VA WS KEEP session'));
     assert.equal(b.c.vaTurnCount(), 1);
     assert.equal(b.c.vaLastReply(), ANSWERS10[0]);
+    /* r195: tokened turn 1 builds exactly one upgrade header and reads the
+     * token twice (upgrade + hello); freeze the KV read count for reuse. */
+    assert.equal(b.bridge.stats.headers.length, 1, 'r195: one header on the fresh connect');
+    const tokenGetsAfterT1 = b.kvGets.voice_gateway_token;
+    assert.ok(tokenGetsAfterT1 >= 2, 'r195: turn 1 read the token for header + hello');
     /* The clean turn-1 close re-arms a fresh adapter on the SAME session
      * synchronously, so its start() snapshot already carries turn 1 history. */
     assert.equal(mtSeen10.length, 2, 'turn1 adapter + re-armed adapter');
@@ -442,6 +473,12 @@ function smoke(b, gwLog, answer) {
 
     drive(b.c);                                     /* turn 2, same connection */
     assert.equal(b.bridge.stats.connects, 1, 'turn 2 opens no new WS');
+    /* r195: reuse returns before the header is built -- no second header,
+     * and no token read at all (so a future regression that builds headers
+     * in the reuse branch turns this live assertion red). */
+    assert.equal(b.bridge.stats.headers.length, 1, 'r195: reuse builds no handshake header');
+    assert.equal(b.kvGets.voice_gateway_token, tokenGetsAfterT1,
+      'r195: reuse path performs zero token reads');
     assert.equal(b.bridge.stats.text.filter(m => m.type === 'hello').length, 1,
       'turn 2 sends no second hello');
     await waitFor(() => b.c.vaStreamSession && b.c.vaStreamSession.active, 'turn2 mic');
@@ -576,6 +613,26 @@ function smoke(b, gwLog, answer) {
     assert.equal(b.bridge.stats.dispatchErrors.length, 0);
     pass('r122: barge-in close -> reconnect with resume -> history of prior turns still continues');
   }, { multiturn: true });
+
+  /* ---- 14. r195: URL query never logged; real connect keeps full URL ---- */
+  const URL_SECRET = 'URL-TOKEN-r195-NOT-REAL';
+  const HDR_SECRET = 'HDR-TOKEN-r195-NOT-REAL';
+  const b14 = boot('ws://127.0.0.1:' + dead + '/?token=' + URL_SECRET + '#frag', {
+    keys: { voice_gateway_token: HDR_SECRET }
+  });
+  drive(b14.c);
+  await waitFor(() => b14.logs.some(l => /^VA WS (ERR|CONNECT ERR)/.test(l)), 'connect failure');
+  assert.equal(b14.bridge.stats.connectUrls[0],
+    'ws://127.0.0.1:' + dead + '/?token=' + URL_SECRET + '#frag',
+    'r195: the real connect still uses the full URL with query + fragment');
+  assert.equal(b14.bridge.stats.headers[0], 'Authorization: Bearer ' + HDR_SECRET + '\r\n',
+    'r195: upgrade header is built independently of the URL');
+  assert.ok(b14.logs.includes('VA WS CONNECT ws://127.0.0.1:' + dead + '/'),
+    'r195: logged URL is scheme+host+port+path only');
+  assert.equal(b14.logs.some(l => l.indexOf(URL_SECRET) >= 0 || l.indexOf(HDR_SECRET) >= 0), false,
+    'r195: neither URL token nor header token appears in any device log line');
+  assert.equal(b14.bridge.stats.dispatchErrors.length, 0);
+  pass('r195: URL query redacted in log, full URL connected, header still sent');
 
   console.log(`ALL VA WS HARNESS CASES PASSED (${checks} cases)`);
 })().catch(e => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });

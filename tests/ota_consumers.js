@@ -149,6 +149,14 @@ const ALLOWED = [
   'website/playground/apps/sparkline_demo.js',
   'website/playground/sources/sparkline_demo.js',
   'docs/archive/r193-shell-sparkline-report.md',
+  // r195: voice_assistant WS handshake auth, its live harness, generated
+  // playground cascade and report. Pre-added before commit so untracked
+  // files do not turn the allChanged allowlist red once the test commit lands.
+  'examples/voice_assistant/app.js',
+  'tests/va_ws.js',
+  'website/playground/apps/voice_assistant.js',
+  'website/playground/sources/voice_assistant.js',
+  'docs/r195-report.md',
   // r171: manifest guard and optional browser visual check.
   'tools/lume/check.js',
   'tools/lume/lume.js',
@@ -831,6 +839,8 @@ const checks = [
       // r191: retained C-harness / zero-diff CI logs; r192: knife evidence.
       f.startsWith('artifacts/r191/') || f.startsWith('artifacts/r192/') ||
       f.startsWith('artifacts/r193/') || f.startsWith('artifacts/r194/') ||
+      // r195: handshake-auth verification evidence (harness, mutations, checks).
+      f.startsWith('artifacts/r195/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 
