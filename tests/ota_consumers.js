@@ -707,6 +707,26 @@ const ALLOWED = [
   'tools/gateway/device-sim.js',
   'tools/gateway/server.js',
   'tools/gateway/ws.js',
+
+  // r191: CI C-host assertion gate expanded from 8 to 24 harnesses. The
+  // workflow, seven new/changed C harnesses, the round report and its retained
+  // evidence are all host-only; no firmware/runtime/CLI behaviour changed.
+  // These are the tracked paths the guard's real diff vs BASE 94f5d4e lists
+  // outside ALLOWED (the r191 report only named the first 8, written before
+  // its report/artifacts landed on main).
+  '.github/workflows/tests.yml',
+  'tests/canvas_prims.c',
+  'tests/compress_host.c',
+  'tests/crypto_host.c',
+  'tests/decode_host.c',
+  'tests/fft_host.c',
+  'tests/imgscale_host.c',
+  'tests/ws_frame.c',
+  'docs/r191-report.md',
+  // r192: admit this knife's own report/evidence BEFORE commit because
+  // `git diff` cannot see untracked files; otherwise the allChanged guard
+  // turns red once the test commit lands. No firmware/runtime change.
+  'docs/r192-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -787,6 +807,8 @@ const checks = [
       f.startsWith('artifacts/r188/') || f.startsWith('artifacts/r189/') ||
       // r190: host verification logs (regression, generator, check, website).
       f.startsWith('artifacts/r190/') ||
+      // r191: retained C-harness / zero-diff CI logs; r192: knife evidence.
+      f.startsWith('artifacts/r191/') || f.startsWith('artifacts/r192/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 

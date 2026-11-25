@@ -1,0 +1,40 @@
+PASS ota_consumers: OTA helper reads lume.ota.status() locally
+PASS ota_consumers: number return discriminated via typeof === object, ASCII err code
+PASS ota_consumers: four flags + port rendered; .token / [token] never read in either app
+PASS ota_consumers: OTA row is exactly View + Text + Button (3 nodes)
+PASS ota_consumers: row Text shows only status; New-token opens a Dialog
+PASS ota_consumers: setToken sits in the danger Rotate onPress of a Dialog
+PASS ota_consumers: Dialog guard degrades to an ASCII note; no 3 s arm timer remains
+PASS ota_consumers: replacement token is 32 lowercase hex chars from Math.random
+PASS ota_consumers: setToken failure renders ASCII code; success refreshes status
+PASS ota_consumers: 600 ms poll refreshes OTA status
+PASS ota_consumers: header registers Math.random as NOT cryptographically secure
+PASS ota_consumers: dashboard SYSTEM reads status() with typeof === object discrimination
+PASS ota_consumers: dashboard publishes OTA row with 9 separators inside 360 px
+PASS ota_consumers: dashboard OTA line never reads token
+PASS ota_consumers: playground sources/dashboard.js byte-identical to example
+PASS ota_consumers: dashboard is in the playground manifest
+PASS ota_consumers: all UI string literals ASCII-only (r64)
+PASS ota_consumers: firmware/ runtime/ CLI tooling identical to 674684a
+node:internal/assert/utils:77
+    throw err;
+    ^
+
+AssertionError [ERR_ASSERTION]: FAIL ota_consumers: only known r132 + r133 + r134 + r135 + r136 files differ from 674684a
+    at Object.<anonymous> (/tmp/lume-r192-wt/tests/ota_consumers.js:794:10)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v22.23.1
