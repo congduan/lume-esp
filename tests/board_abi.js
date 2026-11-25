@@ -113,6 +113,9 @@ const guardOut = execFileSync('git', [
   // they need their own exclusion; everything else outside the listed surfaces
   // still fails the guard.
   ':!README.md', ':!README.zh-CN.md',
+  // r188: artifacts-retention policy documented in AGENTS.md (docs-only edit,
+  // same class as the r150 README refresh).
+  ':!AGENTS.md',
   ':!.gitignore', // already changed on origin/main after the historical guard base
   // r148 controller follow-up: stale r82/r84/r92 host-run evidence logs were
   // deliberately removed (disk hygiene, e4f2d47); artifacts/ is regenerable
