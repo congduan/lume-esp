@@ -1,0 +1,20 @@
+=== voice_assistant ===
+lume check examples/voice_assistant
+
+[PASS] bundle   13554 bytes (24 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+voice_exit=0
+=== counter sentinel ===
+lume check examples/counter
+
+[PASS] bundle   2160 bytes (22 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+counter_exit=0

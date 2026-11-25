@@ -1,0 +1,50 @@
+--- SMOKE gateway side (raw) ---
+[GW] hello {"sessionId":"s1","device":"{\"model\":\"lume\",\"fw\":\"r108\",\"app\":\"voice_assistant\"}","streamTranscript":true}
+[GW] uplink.pcm {"sessionId":"s1","bytes":3840,"frames":1}
+[GW] uplink.pcm {"sessionId":"s1","bytes":3840,"frames":2}
+[GW] uplink.pcm {"sessionId":"s1","bytes":3840,"frames":3}
+[GW] turn.end {"sessionId":"s1"}
+[GW] session.close {"sessionId":"s1","code":1000}
+--- SMOKE device side (raw) ---
+[DEV] VA MODE GATEWAY
+[DEV] VA WS CONNECT ws://127.0.0.1:34921/
+[DEV] VA WS HELLO
+[DEV] VA WS MIC START
+[DEV] VA WS ACK fmt=pcm_s16le_16000_2ch
+[DEV] VA WS STATE thinking
+[DEV] VA WS UPLINK frames=1
+[DEV] VA WS UPLINK frames=2
+[DEV] VA WS UPLINK frames=3
+[DEV] VA WS MIC STOP
+[DEV] VA WS SEND END
+[DEV] VA WS DELTA n=0 chars=1
+[DEV] VA WS DELTA n=1 chars=2
+[DEV] VA WS DELTA n=2 chars=3
+[DEV] VA WS DELTA n=3 chars=4
+[DEV] VA WS DELTA n=4 chars=5
+[DEV] VA WS DELTA n=5 chars=6
+[DEV] VA WS DELTA n=6 chars=7
+[DEV] VA WS DELTA n=7 chars=8
+[DEV] VA WS STATE speaking
+[DEV] VA WS AUDIO hdr=1/1/1/16000/2/16 seq=0 bytes=3840
+[DEV] VA WS AUDIO hdr=1/1/1/16000/2/16 seq=1 bytes=3840
+[DEV] VA WS AUDIO hdr=1/1/1/16000/2/16 seq=2 bytes=3840
+[DEV] VA WS STATE idle
+[DEV] VA WS CLOSE
+[DEV] VA WS REPLY chars=8 audio=3 deltas=9
+--- SMOKE reassembled answer: "HI LUME." (gateway answer "HI LUME.") ---
+PASS happy: hello -> 3x3840B uplink -> end -> 9 deltas -> 3 audio -> idle/close -> IDLE
+PASS negative 1: gateway refuse -> IDLE, no uplink, not hung
+PASS negative 2: mid-stream upstream disconnect -> partial text, IDLE, no hang
+PASS negative 3: gateway fatal upstream_error -> IDLE, no hang
+PASS barge-in: SPEAK -> IDLE, end frame delivered, mic stopped, upstream released
+PASS fallback: no gateway -> legacy canned; vaSetTransport(non-fn) restores legacy
+PASS r117: transcript consumed into signal, answer intact, final before chat delta
+PASS r119: device KV token -> hello.auth -> locked gateway full round
+PASS r119: app token mismatch -> fatal error -> IDLE, no upstream, not hung
+PASS r121: 2 turns / 1 connection / 1 hello, history carries, no close
+PASS r122: close retires history, reconnect resumes it + re-sends token, no log leak
+PASS r121: wrong token blocked on initial + reconnect, upstream never created
+PASS r122: barge-in close -> reconnect with resume -> history of prior turns still continues
+FAIL AssertionError [ERR_ASSERTION]: r195: logged URL is scheme+host+port+path only
+    at /tmp/lume-r195-wt/tests/va_ws.js:630:10

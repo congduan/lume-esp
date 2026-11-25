@@ -22,7 +22,7 @@ HTTP 401 并断开。`tools/gateway/device-sim.js --token TOKEN` 使用 Bearer �
 设备端 `lume.net.ws.connect(url, {headers: {Authorization: 'Bearer ' + token}})`
 可发送请求头；也可在 URL 中用 query token，但 URL 不应进入日志。当前
 `examples/voice_assistant/app.js` 会记录连接 URL，故该示例不能安全地用 query
-token；其握手鉴权接入留待解除示例改动限制后完成。没有配置握手 token 时保持旧行为，
+token；其握手鉴权接入已于 r195 用 header 方式接入（URL 保持无 token，日志裁剪 query）。没有配置握手 token 时保持旧行为，
 但 CLI 会打印醒目的警告。
 此握手 token 与 §8.2 的 `--device-token` / `hello.auth.token` 是两个独立配置；
 前者在升级前拒绝未授权连接，后者在会话 `hello` 帧校验。
