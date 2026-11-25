@@ -634,6 +634,10 @@ const ALLOWED = [
   'firmware/sdkconfig.defaults',
   // r179: WiFi PS/coexist knife report; evidence admitted by r179 prefix below.
   'docs/r179-report.md',
+  // r184: revival report + evidence; both r179 and r184 paths are legal here.
+  'docs/r184-report.md',
+  // r184 baseline re-pin: fw-sync after r183 republished this binary again.
+  'website/wasm/fw/partition-table.bin',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -708,7 +712,8 @@ const checks = [
       f.startsWith('artifacts/r173/') || f.startsWith('artifacts/r176/') ||
       f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
       f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
-      f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r179/'))]],
+      f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r179/') ||
+      f.startsWith('artifacts/r184/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {
