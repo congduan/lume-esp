@@ -1,0 +1,451 @@
+PASS header defines four op typedefs
+PASS struct has four ops then board_id
+PASS header declares lume_board_get singleton
+PASS header states profile-is-source-of-truth division of labour
+PASS impl defines a single not_supported stub
+PASS impl default singleton uses generic board id
+PASS impl points all four ops at not_supported faces
+PASS header declares registration API and invalid-arg code
+PASS impl copies the board and keeps a stable current pointer
+PASS lume-board registers real drivers with the profile board name
+PASS touch_read drift documented: no standalone driver point-read API
+PASS dependency points lume-board -> lume-board-hal, never the reverse
+FAIL zero-diff guard: no changes outside board components and r148 surfaces
+diff --git a/.github/workflows/tests.yml b/.github/workflows/tests.yml
+index 2dfc2f6..5764827 100644
+--- a/.github/workflows/tests.yml
++++ b/.github/workflows/tests.yml
+@@ -17,6 +17,16 @@ on:
+       - 'tools/simulator/**'
+       - 'examples/**'
+       - 'firmware/components/lume-engine/**'
++      # r191: the expanded C harness step also compiles these component
++      # sources directly. Without their paths a change to e.g. lume_ws_frame.c
++      # or vendored quickjs.c would not trigger this workflow.
++      - 'firmware/components/lume-board-hal/**'
++      - 'firmware/components/lume-compress/**'
++      - 'firmware/components/lume-crypto/**'
++      - 'firmware/components/lume-net/**'
++      - 'firmware/components/lume-svg/**'
++      - 'firmware/components/quickjs-ng/**'
++      - 'firmware/boards/**'
+       - '.github/workflows/tests.yml'
+   pull_request:
+     paths:
+@@ -26,6 +36,16 @@ on:
+       - 'tools/simulator/**'
+       - 'examples/**'
+       - 'firmware/components/lume-engine/**'
++      # r191: the expanded C harness step also compiles these component
++      # sources directly. Without their paths a change to e.g. lume_ws_frame.c
++      # or vendored quickjs.c would not trigger this workflow.
++      - 'firmware/components/lume-board-hal/**'
++      - 'firmware/components/lume-compress/**'
++      - 'firmware/components/lume-crypto/**'
++      - 'firmware/components/lume-net/**'
++      - 'firmware/components/lume-svg/**'
++      - 'firmware/components/quickjs-ng/**'
++      - 'firmware/boards/**'
+       - '.github/workflows/tests.yml'
+   workflow_dispatch:
+ 
+@@ -66,14 +86,18 @@ jobs:
+           set -euo pipefail
+           curl -sL --fail -o /tmp/mbedtls.tar.gz \
+             https://github.com/Mbed-TLS/mbedtls/archive/refs/tags/v3.6.2.tar.gz
+-          echo "f4a876b1f6921ad0aefb445f974ef62414d33928640b2c45555c5e64a196a1a8  /tmp/mbedtls.tar.gz" | sha256sum --check -
+-          mkdir -p /tmp/mbedtls && tar xzf /tmp/mbedtls.tar.gz -C /tmp/mbedtls --strip-components=1
++          printf '%s  %s\n' \
++            f4a876b1f6921ad0aefb445f974ef62414d33928640b2c45555c5e64a196a1a8 \
++            /tmp/mbedtls.tar.gz | sha256sum --check -
++          mkdir -p /tmp/mbedtls && tar xzf /tmp/mbedtls.tar.gz \
++            -C /tmp/mbedtls --strip-components=1
+           echo "LUME_MBEDTLS_ROOT=/tmp/mbedtls" >> "$GITHUB_ENV"
+ 
+       # 22 standalone CommonJS harnesses. They read repo-root-relative paths
+       # (e.g. firmware/components/lume-engine/lume_scripts.c, examples/*/app.js)
+       # and files_dialog.js requires esbuild from tools/lume/node_modules, so
+-      # run them from the repo root (the default working-directory) after npm ci.
++      # run them from the repo root (the default working-directory) after
++      # npm ci.
+       # Output is tee'd to a log so the failure() artifact can collect it.
+       - name: JS host harnesses (22)
+         run: |
+@@ -94,26 +118,55 @@ jobs:
+           set -euo pipefail
+           npm test --prefix tools/lume 2>&1 | tee artifacts/ci/npm-test.log
+ 
+-      # 8 C host assertion harnesses. Compile commands are copied verbatim from
+-      # docs/build.md "Debug screenshot" + the .c file-header comments; the last
+-      # three have NO command in their header, so their provenance is recorded:
++      # 24 C host assertion harnesses (8 original + 16 added in r191). Compile
++      # commands are copied from docs/build.md "Debug screenshot" + the .c
++      # file-header comments, or derived from the matching tests/*.js driver
++      # and recorded in the harness header. The original last three have NO
++      # command in their header, so their provenance is recorded:
+       #   id3v2.c        -> docs/r38b-preboard-report.md:66 (cc)
+-      #   mp3_decoder.c  -> derived empirically (minimp3 header-only, fixture
+-      #                     tests/fixtures/silence-44100.mp3, cwd=repo root, -lm)
+-      #   record_buffer.c-> derived from the r38b note + tools/lume/fetch-qjsc.sh
+-      #                     recipe: vendored QuickJS sources + an sdkconfig.h stub
++      #   mp3_decoder.c  -> derived empirically (minimp3 header-only,
++      #                     fixture tests/fixtures/silence-44100.mp3,
++      #                     cwd=repo root, -lm)
++      #   record_buffer.c-> derived from the r38b note +
++      #                     tools/lume/fetch-qjsc.sh recipe: vendored QuickJS
++      #                     sources + an sdkconfig.h stub
+       #                     (CONFIG_LUME_PERF_PROFILE 0) because quickjs.c pulls
+       #                     lume_perf.h unconditionally.
+       # image_header.c needs the board include dir on the path (lume_pins.h).
+-      - name: C host assertion harnesses (8)
++      #
++      # r191 additions [9/24]..[24/24] cover 16 of the 17 previously ungated
++      # tests/*.c harnesses, each verified local compile-green + run PASS:
++      # board_175c_profile, board_abi, canvas_blit, canvas_prims,
++      # fwtag_protocol, webserv_parse, ws_frame, file_protocol,
++      # lume_svg_test, svg_cache_test,
++      # alloc_inject_host, fft_host, imgscale_host, decode_host, crypto_host,
++      # compress_host.
++      #
++      # SKIPPED: tests/perf_r78.c. Its only driver is tests/perf_r78.sh, which
++      # first builds the gitignored host `qjsc` compiler from the vendored
++      # QuickJS-NG sources (a second full QuickJS build, via fetch-qjsc.sh),
++      # generates a ~3 MB classic script, compiles it to bytecode, then does a
++      # third full QuickJS build for the harness itself. Its numeric/functional
++      # assertions overlap tests/vec_demo.js and its timings are host-only
++      # samples, not a correctness gate. Keeping it out avoids a multi-minute
++      # compile in the hot CI path; see docs/r191-report.md.
++      - name: C host assertion harnesses (24)
+         run: |
+           set -euo pipefail
+           command -v gcc >/dev/null || { echo "gcc missing" >&2; exit 1; }
+           {
+             echo "===== [1/8] ota_protocol.c (docs/build.md) ====="
+             gcc -std=c11 -Wall -Wextra -Werror \
++              -DMBEDTLS_CONFIG_FILE='"r91_crypto_mbedtls_config.h"' \
++              -I tests/lib \
+               -I firmware/components/lume-hotreload/include \
+-              tests/ota_protocol.c firmware/components/lume-hotreload/lume_frame.c \
++              -I "$LUME_MBEDTLS_ROOT/include" \
++              tests/ota_protocol.c \
++              firmware/components/lume-hotreload/lume_frame.c \
++              "$LUME_MBEDTLS_ROOT/library/sha256.c" \
++              "$LUME_MBEDTLS_ROOT/library/md.c" \
++              "$LUME_MBEDTLS_ROOT/library/platform_util.c" \
++              "$LUME_MBEDTLS_ROOT/library/constant_time.c" \
+               -o /tmp/lume_ota_protocol && /tmp/lume_ota_protocol
+             echo "ota_protocol EXIT=0"
+ 
+@@ -132,24 +185,28 @@ jobs:
+               -I firmware/components/lume-ui-bridge/include \
+               -I firmware/components/lume-hotreload/include \
+               -I firmware/components/lume-engine/include \
+-              tests/bridge_protocol.c -o /tmp/lume_bridge_protocol && /tmp/lume_bridge_protocol
++              tests/bridge_protocol.c -o /tmp/lume_bridge_protocol && \
++              /tmp/lume_bridge_protocol
+             echo "bridge_protocol EXIT=0"
+ 
+-            echo "===== [4/8] image_header.c (docs/build.md; board include path) ====="
++            echo "===== [4/8] image_header.c (docs/build.md; board path) ====="
+             gcc -std=c11 -Wall -Wextra -Werror \
+               -I firmware/components/lume-engine/include \
++              -I firmware/components/lume-svg/include \
+               -I firmware/components/lume-board/include \
+               -I firmware/boards/waveshare_esp32_s3_touch_amoled_2_16 \
+               tests/image_header.c \
+               firmware/components/lume-engine/lume_image_header.c \
+               firmware/components/lume-engine/lume_image_pixels.c \
+-              -o /tmp/lume_image_header && /tmp/lume_image_header
++              firmware/components/lume-svg/lume_svg.c \
++              -o /tmp/lume_image_header -lm && /tmp/lume_image_header
+             echo "image_header EXIT=0"
+ 
+             echo "===== [5/8] canvas_aa.c (file-header comment; -lm) ====="
+             gcc -std=c11 -Wall -Wextra -Werror \
+               -I firmware/components/lume-ui-bridge/include \
+-              tests/canvas_aa.c -o /tmp/lume_canvas_aa -lm && /tmp/lume_canvas_aa
++              tests/canvas_aa.c -o /tmp/lume_canvas_aa -lm && \
++              /tmp/lume_canvas_aa
+             echo "canvas_aa EXIT=0"
+ 
+             echo "===== [6/8] id3v2.c (r38b report:66; cc) ====="
+@@ -158,15 +215,17 @@ jobs:
+               -o /tmp/lume-id3v2-test && /tmp/lume-id3v2-test
+             echo "id3v2 EXIT=0"
+ 
+-            echo "===== [7/8] mp3_decoder.c (derived; minimp3 header-only) ====="
++            echo "===== [7/8] mp3_decoder.c (derived; minimp3) ====="
+             gcc -std=c11 -Wall -Wextra -Werror \
+-              tests/mp3_decoder.c -o /tmp/lume_mp3_decoder -lm && /tmp/lume_mp3_decoder
++              tests/mp3_decoder.c -o /tmp/lume_mp3_decoder -lm && \
++              /tmp/lume_mp3_decoder
+             echo "mp3_decoder EXIT=0"
+ 
+-            echo "===== [8/8] record_buffer.c (derived; vendored QuickJS host build) ====="
++            echo "===== [8/8] record_buffer.c (derived; QuickJS host) ====="
+             stub=$(mktemp -d)
+             printf '#define CONFIG_LUME_PERF_PROFILE 0\n' > "$stub/sdkconfig.h"
+-            gcc -O2 -std=gnu11 -D_GNU_SOURCE -DQUICKJS_NG_BUILD -funsigned-char \
++            gcc -O2 -std=gnu11 -D_GNU_SOURCE \
++              -DQUICKJS_NG_BUILD -funsigned-char \
+               -I firmware/components/quickjs-ng \
+               -I "$stub" -I firmware/components/lume-perf/include \
+               tests/record_buffer.c \
+@@ -174,10 +233,233 @@ jobs:
+               firmware/components/quickjs-ng/dtoa.c \
+               firmware/components/quickjs-ng/libregexp.c \
+               firmware/components/quickjs-ng/libunicode.c \
+-              -o /tmp/lume_record_buffer -lm -lpthread -ldl && /tmp/lume_record_buffer
++              -o /tmp/lume_record_buffer -lm -lpthread -ldl && \
++              /tmp/lume_record_buffer
+             rm -rf "$stub"
+             echo "record_buffer EXIT=0"
+ 
++            echo "===== [9/24] board_175c_profile.c (file-header comment) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/boards/waveshare_esp32_s3_touch_amoled_1_75c \
++              tests/board_175c_profile.c -o /tmp/lume_board_175c_profile && \
++              /tmp/lume_board_175c_profile
++            echo "board_175c_profile EXIT=0"
++
++            echo "===== [10/24] board_abi.c (derived; board_abi.js) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/components/lume-board-hal/include \
++              tests/board_abi.c \
++              firmware/components/lume-board-hal/lume_board_hal.c \
++              -o /tmp/lume_board_abi && /tmp/lume_board_abi
++            echo "board_abi EXIT=0"
++
++            echo "===== [11/24] canvas_blit.c (file-header comment) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/components/lume-ui-bridge/include \
++              tests/canvas_blit.c -o /tmp/lume_canvas_blit && \
++              /tmp/lume_canvas_blit
++            echo "canvas_blit EXIT=0"
++
++            echo "===== [12/24] canvas_prims.c (derived; canvas_blit) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/components/lume-ui-bridge/include \
++              tests/canvas_prims.c -o /tmp/lume_canvas_prims && \
++              /tmp/lume_canvas_prims
++            echo "canvas_prims EXIT=0"
++
++            echo "===== [13/24] fwtag_protocol.c (file-header comment) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/components/lume-engine/include \
++              tests/fwtag_protocol.c -o /tmp/lume_fwtag_protocol && \
++              /tmp/lume_fwtag_protocol
++            echo "fwtag_protocol EXIT=0"
++
++            echo "===== [14/24] webserv_parse.c (file-header gcc command) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/components/lume-net/include \
++              tests/webserv_parse.c \
++              firmware/components/lume-net/lume_webserv_parse.c \
++              -o /tmp/lume_webserv_parse && /tmp/lume_webserv_parse
++            echo "webserv_parse EXIT=0"
++
++            echo "===== [15/24] ws_frame.c (derived; lume_ws_frame.c) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/components/lume-net/include \
++              tests/ws_frame.c firmware/components/lume-net/lume_ws_frame.c \
++              -o /tmp/lume_ws_frame && /tmp/lume_ws_frame
++            echo "ws_frame EXIT=0"
++
++            echo "===== [16/24] file_protocol.c (derived; lume_cmd.c) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/components/lume-hotreload/include \
++              -I firmware/components/lume-engine/include \
++              tests/file_protocol.c \
++              firmware/components/lume-hotreload/lume_cmd.c \
++              -o /tmp/lume_file_protocol && /tmp/lume_file_protocol
++            echo "file_protocol EXIT=0"
++
++            echo "===== [17/24] lume_svg_test.c (derived; lume_svg.c -lm) ====="
++            gcc -std=c11 -Wall -Wextra -Werror \
++              -I firmware/components/lume-svg/include \
++              tests/lume_svg_test.c firmware/components/lume-svg/lume_svg.c \
++              -o /tmp/lume_svg_test -lm && /tmp/lume_svg_test
++            echo "lume_svg_test EXIT=0"
++
++            echo "===== [18/24] svg_cache_test.c (derived; svg_cache.js) ====="
++            gcc -std=c11 -O2 -Wall -Wextra -Werror \
++              -I firmware/components/lume-engine/include \
++              tests/svg_cache_test.c \
++              firmware/components/lume-engine/lume_svg_cache.c \
++              -o /tmp/lume_svg_cache_test && /tmp/lume_svg_cache_test
++            echo "svg_cache_test EXIT=0"
++
++            echo "===== [19/24] alloc_inject_host.c (derived) ====="
++            gcc -O2 -std=gnu11 -D_GNU_SOURCE \
++              -DQUICKJS_NG_BUILD -funsigned-char \
++              -I firmware/components/quickjs-ng \
++              tests/alloc_inject_host.c \
++              firmware/components/quickjs-ng/quickjs.c \
++              firmware/components/quickjs-ng/dtoa.c \
++              firmware/components/quickjs-ng/libregexp.c \
++              firmware/components/quickjs-ng/libunicode.c \
++              -o /tmp/lume_alloc_inject_host -lm -lpthread -ldl && \
++              /tmp/lume_alloc_inject_host
++            echo "alloc_inject_host EXIT=0"
++
++            echo "===== [20/24] fft_host.c (derived; fft.js + stub) ====="
++            fft_stub=$(mktemp -d)
++            printf '#define CONFIG_LUME_PERF_PROFILE 0\n' \
++              > "$fft_stub/sdkconfig.h"
++            gcc -O2 -std=gnu11 -D_GNU_SOURCE \
++              -DQUICKJS_NG_BUILD -funsigned-char \
++              -I firmware/components/quickjs-ng -I "$fft_stub" \
++              tests/fft_host.c firmware/components/lume-engine/lume_fft.c \
++              firmware/components/quickjs-ng/quickjs.c \
++              firmware/components/quickjs-ng/dtoa.c \
++              firmware/components/quickjs-ng/libregexp.c \
++              firmware/components/quickjs-ng/libunicode.c \
++              -o /tmp/lume_fft_host -lm -lpthread -ldl && \
++              /tmp/lume_fft_host tests/lib/fft_cases.js
++            rm -rf "$fft_stub"
++            echo "fft_host EXIT=0"
++
++            echo "===== [21/24] imgscale_host.c (derived; imgscale.js) ====="
++            gcc -O2 -std=gnu11 -D_GNU_SOURCE \
++              -DQUICKJS_NG_BUILD -funsigned-char \
++              -I firmware/components/quickjs-ng \
++              -I firmware/components/lume-engine/include \
++              tests/imgscale_host.c \
++              firmware/components/lume-engine/lume_imgscale.c \
++              firmware/components/quickjs-ng/quickjs.c \
++              firmware/components/quickjs-ng/dtoa.c \
++              firmware/components/quickjs-ng/libregexp.c \
++              firmware/components/quickjs-ng/libunicode.c \
++              -o /tmp/lume_imgscale_host -lm -lpthread -ldl && \
++              /tmp/lume_imgscale_host tests/lib/imgscale_cases.js
++            echo "imgscale_host EXIT=0"
++
++            echo "===== [22/24] decode_host.c (derived; decode.js -lz) ====="
++            gcc -O2 -std=gnu11 -D_GNU_SOURCE \
++              -DQUICKJS_NG_BUILD -funsigned-char \
++              -I firmware/components/quickjs-ng \
++              -I firmware/components/lume-engine/include \
++              tests/decode_host.c \
++              firmware/components/lume-engine/lume_image_decode.c \
++              firmware/components/lume-engine/lume_imgscale.c \
++              firmware/components/lume-engine/lume_image_pixels.c \
++              firmware/components/quickjs-ng/quickjs.c \
++              firmware/components/quickjs-ng/dtoa.c \
++              firmware/components/quickjs-ng/libregexp.c \
++              firmware/components/quickjs-ng/libunicode.c \
++              -o /tmp/lume_decode_host -lm -lpthread -ldl -lz && \
++              /tmp/lume_decode_host tests/lib/decode_cases.js
++            echo "decode_host EXIT=0"
++
++            echo "===== [23/24] crypto_host.c (derived; mbedTLS) ====="
++            : "${LUME_MBEDTLS_ROOT:?set by Provision step}"
++            gcc -O2 -std=gnu11 -D_GNU_SOURCE \
++              -DQUICKJS_NG_BUILD -funsigned-char \
++              -DMBEDTLS_CONFIG_FILE='"r91_crypto_mbedtls_config.h"' \
++              -I tests/lib -I firmware/components/quickjs-ng \
++              -I "$LUME_MBEDTLS_ROOT/include" \
++              tests/crypto_host.c \
++              firmware/components/lume-crypto/lume_crypto.c \
++              "$LUME_MBEDTLS_ROOT/library/sha256.c" \
++              "$LUME_MBEDTLS_ROOT/library/md.c" \
++              "$LUME_MBEDTLS_ROOT/library/aes.c" \
++              "$LUME_MBEDTLS_ROOT/library/platform_util.c" \
++              "$LUME_MBEDTLS_ROOT/library/constant_time.c" \
++              firmware/components/quickjs-ng/quickjs.c \
++              firmware/components/quickjs-ng/dtoa.c \
++              firmware/components/quickjs-ng/libregexp.c \
++              firmware/components/quickjs-ng/libunicode.c \
++              -o /tmp/lume_crypto_host -lm -lpthread -ldl && \
++              /tmp/lume_crypto_host tests/lib/crypto_cases.js
++            echo "crypto_host EXIT=0"
++
++            echo "===== [24/24] compress_host.c (derived; compress.js) ====="
++            gcc -O2 -std=gnu11 -D_GNU_SOURCE \
++              -DQUICKJS_NG_BUILD -funsigned-char \
++              -I tests/lib -I firmware/components/quickjs-ng \
++              tests/compress_host.c \
++              firmware/components/lume-compress/lume_compress.c \
++              firmware/components/quickjs-ng/quickjs.c \
++              firmware/components/quickjs-ng/dtoa.c \
++              firmware/components/quickjs-ng/libregexp.c \
++              firmware/components/quickjs-ng/libunicode.c \
++              -o /tmp/lume_compress_host -lm -lpthread -ldl
++            node -e '
++            const zlib = require("zlib");
++            function detRandom(n, s) {
++              const o = Buffer.allocUnsafe(n); let x = s >>> 0;
++              for (let i = 0; i < n; i++) {
++                x = (Math.imul(x, 1664525) + 1013904223) >>> 0;
++                o[i] = (x >>> 24) & 255;
++              }
++              return o;
++            }
++            const P = {
++              empty: Buffer.alloc(0),
++              text: Buffer.from("Lume compress roundtrip. ".repeat(400)),
++              rle: Buffer.alloc(120000, 65),
++              random: detRandom(70000, 0xC0FFEE),
++              big: Buffer.from(Array.from({ length: 2048 },
++                (_, i) => "line " + i +
++                  ": the quick brown fox jumps over the lazy dog\n").join("")),
++            };
++            const f = { payloads: {}, lengths: {}, damaged: {}, perf: {} };
++            for (const [k, p] of Object.entries(P)) {
++              f.payloads[k] = {
++                payload: p.toString("hex"),
++                raw: zlib.deflateRawSync(p).toString("hex"),
++                zlib: zlib.deflateSync(p).toString("hex"),
++              };
++              f.lengths[k] = p.length;
++            }
++            const tr = Buffer.from(f.payloads.text.raw, "hex");
++            const tz = Buffer.from(f.payloads.text.zlib, "hex");
++            const cut = Buffer.from(tr.subarray(0, Math.floor(tr.length / 2)));
++            const bh = Buffer.from(tz); bh[0] = 0; bh[1] = 0;
++            const ba = Buffer.from(tz); ba[ba.length - 1] ^= 255;
++            f.damaged = {
++              truncated: cut.toString("hex"),
++              badHeader: bh.toString("hex"),
++              badBlock: Buffer.from([7, 0, 0, 0]).toString("hex"),
++              badAdler: ba.toString("hex"),
++            };
++            const pp = P.big;
++            f.perf = {
++              src: zlib.deflateSync(pp).toString("hex"),
++              outLen: pp.length, rounds: 200,
++            };
++            process.stdout.write(
++              "var __FIXTURES = " + JSON.stringify(f) + ";\n");
++            ' > /tmp/lume_compress_fixtures.js
++            cat /tmp/lume_compress_fixtures.js tests/lib/compress_cases.js \
++              > /tmp/lume_compress_all.js
++            /tmp/lume_compress_host /tmp/lume_compress_all.js
++            echo "compress_host EXIT=0"
++
+             echo "ALL_C_HARNESSES_DONE"
+           } 2>&1 | tee artifacts/ci/c-harnesses.log
+ 
+@@ -196,7 +478,9 @@ jobs:
+       # must not be labelled as one. The full check (with layout) needs the
+       # esp32sim images and lives in `lume check <app>` / emu.yml.
+       - name: Quick bundle regression (lume check --no-emu)
+-        if: ${{ hashFiles('examples/counter/app.js', 'tools/lume/bundle.js') != '' }}
++        if: >-
++          ${{ hashFiles('examples/counter/app.js',
++          'tools/lume/bundle.js') != '' }}
+         run: |
+           set -euo pipefail
+           node tools/lume/lume.js check examples/counter --no-emu 2>&1 \
+PASS lume_board_get returns a non-NULL singleton
+PASS lume_board_get is a stable process-wide singleton
+PASS board_id == "generic"
+PASS all four op pointers are populated
+PASS all four ops return -1 (not supported) before registration
+PASS invalid registrations rejected; generic stub still current
+PASS registered board queryable: four non-NULL ops + board_id
+PASS registry copies the struct and stays stable
+PASS registered ops dispatch to the host fake with correct args
+PASS board_abi: 4-op layout + stub + registration/query semantics
+PASS board_abi.c compiled and ran with exit 0
+board_abi: FAIL
