@@ -10,7 +10,7 @@
 //
 // There is NO board, HAL registration or firmware build on the host: this is
 // compile/ host evidence only. On-device acceptance stays deferred; see
-// docs/r177-report.md and docs/KNOWN-SIMPLIFICATIONS.md.
+// docs/archive/r177-report.md and docs/KNOWN-SIMPLIFICATIONS.md.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');

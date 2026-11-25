@@ -219,7 +219,7 @@ layout; review those visually. A warning does not prevent rendering.
 
 Pass the size in **logical coordinates**. In the r88 playground the 480 logical
 canvas is scaled to a 466 round preview, so pass 480 there. On a native 466
-logical screen, pass 466. See `docs/r104-safearea-report.md` for a counter
+logical screen, pass 466. See `docs/archive/r104-safearea-report.md` for a counter
 migration example.
 
 ### Optional shell ClickWheel

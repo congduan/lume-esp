@@ -83,7 +83,7 @@
 - **安全边界**：默认关闭，`lume.net.web.start({token})` 显式开启；token 必填且 URL-safe，作为 `?key=<token>` 出现在 url()/屏幕大字中；`key` 查询参数用常数时间比较，无 / 错 token 直接 403 且在 JS dispatch 之前完成（handler 不会被调用）。无 WiFi IPv4 不监听（照抄 OTA 的 `lume_net_has_ip()` 门禁）。app 切换 / 关闭 / eval 失败一律在新建运行时之前 `lume_webserv_stop()`，杜绝僵尸端口。
 - **内存纪律**：唯一共享请求缓冲 `LUME_WEB_HEAD_MAX(1024) + LUME_WEB_BODY_MAX(8192) ≈ 9 KiB` 一次性 PSRAM 分配（`MALLOC_CAP_SPIRAM`），2 个并发连接共用，不按连接翻倍；响应体不额外拷贝，从 JS 自有内存按 512 B 分块 `send()`。C 层中间面 ~9 KiB，低于 r33 叠加账 16 KiB 线；请求体转成 JS 字符串时 QuickJS 会另有分配，合并峰值须真机测量，不能把 C 缓冲值冒充整机峰值。请求体 8192 B 硬上限，超出 413。
 - **并发/超时**：`listen` backlog 与已接受 socket 均封顶 2；第 3 个连接直接关闭。每个连接 5 s I/O 截止（含「连上但从不发字节」），超时 408；头超 1 KiB 431；畸形请求 400。handler 运行时间无法被 C 强制抢占（QuickJS 同步调用），与 `lume.ai.chat()`/`httpGet()` 的阻塞取舍同类，靠回调纪律而非硬超时约束。
-- **验证口径（host + 编译，非真机）**：`tests/webserver.js` 8 例全绿（精确路由 / 404 / query 解析 / token 403 / 8 KiB body / start-stop 生命周期 / 全链 + handler 异常 500）；`tests/webserv_parse.c` gcc `-Wall -Wextra -Werror` 51 checks PASS（请求行 / header / body 截取 / 畸形输入 / 边界 / token 常数比较）；固件 `idf.py build` + `idf.py size` 与 IRAM 16384 硬线见 `docs/r71-webserv-report.md` 原始输出。esp32sim 无 host 网络回环时，以「C 解析单测 + JS 路由 host 测试」双证据替代，不做假的网络回环断言。
+- **验证口径（host + 编译，非真机）**：`tests/webserver.js` 8 例全绿（精确路由 / 404 / query 解析 / token 403 / 8 KiB body / start-stop 生命周期 / 全链 + handler 异常 500）；`tests/webserv_parse.c` gcc `-Wall -Wextra -Werror` 51 checks PASS（请求行 / header / body 截取 / 畸形输入 / 边界 / token 常数比较）；固件 `idf.py build` + `idf.py size` 与 IRAM 16384 硬线见 `docs/archive/r71-webserv-report.md` 原始输出。esp32sim 无 host 网络回环时，以「C 解析单测 + JS 路由 host 测试」双证据替代，不做假的网络回环断言。
 - **仍 open（真机验收）**：手机/浏览器经真实 WiFi 打开 `http://<ip>:8080/?key=...`、屏幕大字可读性、握手/DHCP 后自动监听与掉线停服、表单 POST 写 KV 后 abc123 侧轮询消费、并发 2 连接与 8 KiB body 的真机内存峰值、与 OTA(8765) 同时监听的射频共存，一律未验。`examples/web_config/` 只做服务端通路 + 演示页，不改 abc123 本体（主控后续排线）。
 ## r73 / abc123 SVG 字形（host + esp32sim，真机待验）
 
@@ -93,7 +93,7 @@
 
 ## r70 / abc123 幼儿字母数字卡（host + browser + esp32sim 证据，无真机验收）
 
-- **范围**：新增 `examples/abc123/app.js` + `tests/abc123.js`；playground 四处同步（build.mjs apps、page.js picker、index.html script、verify.mjs 24→25）并重新生成 `website/playground/{apps,sources}` 产物；README Apps 表加格、roadmap 新开「幼儿教育」叙事行、本条与 `docs/r70-abc-report.md`。固件 C、prelude C 字符串、bridge ABI、帧协议、`runtime/types/lume.d.ts`、vendored 组件全部未改。未推送。
+- **范围**：新增 `examples/abc123/app.js` + `tests/abc123.js`；playground 四处同步（build.mjs apps、page.js picker、index.html script、verify.mjs 24→25）并重新生成 `website/playground/{apps,sources}` 产物；README Apps 表加格、roadmap 新开「幼儿教育」叙事行、本条与 `docs/archive/r70-abc-report.md`。固件 C、prelude C 字符串、bridge ABI、帧协议、`runtime/types/lume.d.ts`、vendored 组件全部未改。未推送。
 - **字号上限实证（本刀最大技术决策）**：`runtime/types/lume.d.ts:54-57` 与 `firmware/components/lume-ui-bridge/lume_ui_bridge.c:660-667` 实证 Text `fontSize` 经 `theme.fontScale` 相乘后仍被 **snap 到 14/20/32 三档**，渲染上限 32 px，远达不到 480 屏 ≥60%（~290 px）的单字巨幕。故大字形一律 Canvas 手绘：数字用七段 fillRect（与 calculator 同一抽象，也是数字写法启蒙的正确视觉），字母用粗笔画 polyline，全部为手授权点路径，`ctx.polyline` 上限 240 点 / 8-16 px 宽；**不引字体轮廓解析库**，简报「需字体解析即停」条款未触发。HUD/底部文案用 20 px Text（=20 档），符合「无小字 ≥20」。
 - **ctx.circle 实为描边环**：r47 把 `LUME_DRAW_CIRCLE` 从八个实心 stamp 改成 `lume_raster_ring`（`lume_ui_bridge.c:962-966`），`ctx.circle(x,y,r,c)` 现在是 **1px 空心环**，不是实心圆。数字卡要「实心圆点」故改用 `ctx.arc(x,y,r,0,360,r+2,c)`——整圆扫 + 宽度 > 2r 触发 r48 登记的空腔闭合退化，得到实心圆点；浏览器 renderer 的 op5 同参也能画出实心。A-E 图标中的苹果有意保留空心环 + 绿柄，作为简笔涂鸦风。
 - **交互取舍**：全屏单手势——屏幕下部（y≥74）任意点击 = 下一张；顶部 74px HUD 条点击 = 切模式（seq→rand→case→seq，切换即重置为首卡）。**无 exit / 无 back / 无家长锁**：单 app 锁屏归 launcher/boot 策略，本 app 不提供任何退出路径，幼儿乱点不会误退。只用一个 `lume.gesture.on(root,'tap')` + 坐标分区，没有第二个可点击节点，避免 LVGL 事件冒泡导致「切模式顺带翻页」双触发。
@@ -134,8 +134,8 @@
 
 ## r43b JS 运行时优化（GC 测量 / 字节码装载）；真机验收待接板
 
-- **不做 size-class 分流分配器**：esp32sim 上 `counter` / `games_snake` 各 30 s 实测 GC 仅 3 次 / 约 4.8 ms，全在启动阶段，稳态 0 次；三个分母下 GC 耗时占比均 <5 %。按本轮 B2 判定「暂不需要」，未改 `JS_NewRuntime2` 分配器，也就未动已满线的 IRAM（16384/16384）。数据与口径见 `docs/r43b-gc-report.md`。
-- **字节码装载只在 esp32sim 验证**：`qjsc -b -C` 产出的字节码能被真机固件的 `JS_ReadObject` + `JS_EvalFunction` 装载；版本不匹配会返回负错误码、`ESP_LOGE` 并回退，不崩溃。实际启动时间、真机装载耗时、`--bytecode` 经 USB/WiFi-OTA 推送（VER 预检、STORE/LAUNCH 二进制落盘、ACK 时序）和长跑 GC 行为留接板轮。见 `docs/r43b-bytecode-report.md`。
+- **不做 size-class 分流分配器**：esp32sim 上 `counter` / `games_snake` 各 30 s 实测 GC 仅 3 次 / 约 4.8 ms，全在启动阶段，稳态 0 次；三个分母下 GC 耗时占比均 <5 %。按本轮 B2 判定「暂不需要」，未改 `JS_NewRuntime2` 分配器，也就未动已满线的 IRAM（16384/16384）。数据与口径见 `docs/archive/r43b-gc-report.md`。
+- **字节码装载只在 esp32sim 验证**：`qjsc -b -C` 产出的字节码能被真机固件的 `JS_ReadObject` + `JS_EvalFunction` 装载；版本不匹配会返回负错误码、`ESP_LOGE` 并回退，不崩溃。实际启动时间、真机装载耗时、`--bytecode` 经 USB/WiFi-OTA 推送（VER 预检、STORE/LAUNCH 二进制落盘、ACK 时序）和长跑 GC 行为留接板轮。见 `docs/archive/r43b-bytecode-report.md`。
 - **字节码体积大于源码**：qjsc 默认保留源码/调试信息（counter 4694 B vs 源码 2160 B；snake 12173 B vs 3718 B）；收益在装载耗时（counter 15.7→10.4 ms，snake 35.8→19.5 ms，均为 esp32sim 观测值）。剥离（`-s`/`-s -s`）与压缩留后续评估，本轮不改默认。
 - **字节码与 QuickJS-NG 版本强绑定**：`QJS_VERSION_*` 与 `BC_VERSION` 不匹配时 CLI 本地拒包、固件 `RELOAD ERR bc-version`。升级 vendored quickjs-ng 后必须重跑 `tools/lume/fetch-qjsc.sh` 并重新烧固件。
 - **协议能力不向后兼容**：`LUMB` 帧与 `VER` 命令是新增能力；旧固件把 `LUMB` 当 bad-magic 重同步、把 `VER` 回 `CMD ERR verb`。源码模式不查 VER，因此旧固件仍可正常推源码。
@@ -230,7 +230,7 @@ Owner：主控接板后跑，M1 不据此验收。
 - **帧协议极简**：固定 12 字节头（`LUME` + `u32le total_len` + `u32le crc32`），
   `total_len` 是 payload 字节数（不含头），上限 256KB；`crc32` = `esp_crc32_le(0, payload, len)`
   （即标准 CRC-32 / `zlib.crc32`），只校验 payload。无版本号、flags、帧序号、压缩/分片。
-- **r43b 起源码与字节码路径共存**：`LUME` payload 仍直接当 JS 源码 `JS_Eval(...GLOBAL)`；`LUMB` payload 走 `JS_ReadObject` + `JS_EvalFunction` 的 qjsc 字节码（详见 `docs/r43b-bytecode-report.md`）。源码仍是默认路径，字节码为 `--bytecode` 显式选项；引擎按 `LQBC` 头自动分流，两条路径共用一个 staging 槽。
+- **r43b 起源码与字节码路径共存**：`LUME` payload 仍直接当 JS 源码 `JS_Eval(...GLOBAL)`；`LUMB` payload 走 `JS_ReadObject` + `JS_EvalFunction` 的 qjsc 字节码（详见 `docs/archive/r43b-bytecode-report.md`）。源码仍是默认路径，字节码为 `--bytecode` 显式选项；引擎按 `LQBC` 头自动分流，两条路径共用一个 staging 槽。
 - **OK 在 eval 成功后才发**：每帧恰好一条 `RELOAD ...` 应答；校验通过只触发引擎重载，
   最终 `RELOAD OK <len>` / `RELOAD ERR eval-failed` 由引擎在 eval 结果确定后经回调发出
   （校验期失败由 RX 任务直接发 `RELOAD ERR <reason>`），避免发过早的 OK。eval 失败时
@@ -1064,7 +1064,7 @@ NVS 在主 flash 上、不需要外部外设，故与 lume.pmic/lume.imu 不同�
 
 ## r39b / esp32sim screenshot acceptance
 
-A patched esp32sim board model can boot the unmodified Lume firmware, inject JS bundles, and export 480×480 CO5300 screenshots in CI. The emulator's SPI/I2C models attach by host/bus/address and do not validate every physical GPIO route. The AXP2101 and audio codecs are register stubs; TF media, PMIC electrical behavior, audio output, touch timing and actual display timing remain unmodeled. The first CI version uploads artifacts for manual review, without a pixel baseline or a frame-rate gate. This is automated simulator evidence, not real-board acceptance. `image_gallery` currently evaluates and creates an Image node but its emulator screenshot shows background only. The no-IMU `gravity_ball` variant (then called `imu_ball`) does not crash; it uses the app's downward-gravity fallback and logs repeated QMI8658 warnings. See `docs/r39b-emu-report.md`.
+A patched esp32sim board model can boot the unmodified Lume firmware, inject JS bundles, and export 480×480 CO5300 screenshots in CI. The emulator's SPI/I2C models attach by host/bus/address and do not validate every physical GPIO route. The AXP2101 and audio codecs are register stubs; TF media, PMIC electrical behavior, audio output, touch timing and actual display timing remain unmodeled. The first CI version uploads artifacts for manual review, without a pixel baseline or a frame-rate gate. This is automated simulator evidence, not real-board acceptance. `image_gallery` currently evaluates and creates an Image node but its emulator screenshot shows background only. The no-IMU `gravity_ball` variant (then called `imu_ball`) does not crash; it uses the app's downward-gravity fallback and logs repeated QMI8658 warnings. See `docs/archive/r39b-emu-report.md`.
 
 ## r40b / small-screen example UI (simulator acceptance)
 
@@ -1072,7 +1072,7 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 
 ## r41b / screenshot geometry checks
 
-`tools/emu/check_layout.py` checks configured visible block bounds and spacing in the ten refreshed 480×480 emulator captures. The page geometry now uses a 24 px outer gutter. This verifies only the captured app state; transient dialog states, the optional shell in a separately bundled app, and physical AMOLED clipping or touch feel still need device review. No firmware or bridge ABI was changed. See `docs/r41b-alignment-report.md`.
+`tools/emu/check_layout.py` checks configured visible block bounds and spacing in the ten refreshed 480×480 emulator captures. The page geometry now uses a 24 px outer gutter. This verifies only the captured app state; transient dialog states, the optional shell in a separately bundled app, and physical AMOLED clipping or touch feel still need device review. No firmware or bridge ABI was changed. See `docs/archive/r41b-alignment-report.md`.
 
 ## r46 / App 切换丝滑化（prelude 字节码缓存 + 屏幕过渡，sim 验证）
 
@@ -1341,7 +1341,7 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   are provisional pending first board power-on. Display placement, touch
   mapping and feel, audio, sleep current, radio, persistence and bundle push
   remain unverified on hardware. Build and host checks establish only compile
-  and host behavior; details are in `docs/r86-amoled-175c-report.md`.
+  and host behavior; details are in `docs/archive/r86-amoled-175c-report.md`.
 
 ## r91 / lume.crypto 原生原语
 
@@ -1355,7 +1355,7 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   固件与 host harness（编译同一份 `lume_crypto.c`）。
 - **接板验收 deferred**：真机 mbedTLS/AES 硬件加速路径、吞吐与时延、WS 鉴权/
   OTA 校验/配网 token 等消费方接入未验证；host 向量、build 与 size 不代表
-  板上验收。详见 `docs/r91-crypto-report.md`。
+  板上验收。详见 `docs/archive/r91-crypto-report.md`。
 
 ## r92 / lume.compress 原生原语
 
@@ -1383,13 +1383,13 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **接板验收 deferred**：真机热更新大包解压、日志/历史数据压缩存储消费方接入、
   256KiB bundle 上限内实际压缩比、AMOLED 观感未验证；host、build 与 size 只
   证明编译与宿主行为。本轮无 UI 改动，emu 未跑。详见
-  `docs/r92-compress-report.md`。
+  `docs/archive/r92-compress-report.md`。
 
 ## r93 / lvgl_task 事件驱动化
 
 - **简报前提翻案**：r35b/roadmap 候选 #1 所述「33 ms timer + 10 ms 固定轮询」
   是过期快照。r92 基线 `lume_board.c:125-133` 已是 `wait_ms = lv_timer_handler()`
-  驱动 + 10 ms 封顶（r36b commit `62bb0ff`，见 `docs/r36b-perf-report.md:9`）。
+  驱动 + 10 ms 封顶（r36b commit `62bb0ff`，见 `docs/archive/r36b-perf-report.md:9`）。
   r93 删封顶并接入通知唤醒，不是把固定轮询改成 wait_ms（那步 r36b 已做）。
 - **删封顶不改变空载唤醒频率**：`lume_ui_bridge.c:40,1811` 的 5 ms drain timer
   常驻且从不暂停，`lv_timer_handler()`（`lv_timer.c:119-147`）总返回 ≤5 ms，
@@ -1408,7 +1408,7 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   （`lv_timer.h:73`），未动 `lv_conf.h`/LVGL/QuickJS 源码，故无 VENDOR.md 变更。
   esp32sim 加载同一份 `lume.bin`，与真机共用 `lvgl_task`（`tools/emu/run.sh:37-43`），
   两条路径本轮均过；模拟器 CST820 触摸模型与 CST9220 驱动不匹配，触摸手感
-  不能由 emu 验收。详见 `docs/r93-lvglev-report.md`。
+  不能由 emu 验收。详见 `docs/archive/r93-lvglev-report.md`。
 
 ## r94 / 流体粒子沙盒 examples/particles（纯 app 层）
 
@@ -1434,7 +1434,7 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   emu 20 fps 已达标**；真机帧率/功耗/观感 deferred 到接板验收。
 - **KV 偏好**：`pt.mode`（7 字符）只存 `auto`/`demo` 字符串偏好；
   `get()` 用严格 `===` 匹配，不把负数当错误码（r10 歧义口径），
-  NVS 不可用时退化为内存偏好。详见 `docs/r94-particles-report.md`。
+  NVS 不可用时退化为内存偏好。详见 `docs/archive/r94-particles-report.md`。
 
 ## r95 / voice_assistant 对讲机 demo examples/voice_assistant（纯 app 层，legacy 同步）
 
@@ -1462,7 +1462,7 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   AMOLED 观感、barge-in 实际延迟、功耗全部 deferred to board bring-up；
   emu/simulator 不能验证硬件行为（esp32sim 触摸模型与 CST9220 不匹配）。
   emu 12 s 仅证 eval_ok=2 / RELOAD ERR=0 / ui queue full=0 的 DEMO 主屏不白屏。
-  详见 `docs/r95-voice-report.md`。
+  详见 `docs/archive/r95-voice-report.md`。
 
 ## r96 / WiFi OTA app-push channel（HMAC-SHA256 challenge-response）
 
@@ -1501,7 +1501,7 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
   的 CST820/CST816S（0x15）/ 8-bit / 6 字节帧路径。BSP `swap_xy=0,mirror_x=1,mirror_y=1`
   → `px=465-tx, py=465-ty`。来源：r86 review fix 对
   `bsp/esp32_s3_touch_amoled_1_75c/esp32_s3_touch_amoled_1_75c.c:bsp_display_start`
-  的对齐（详见 `docs/r86-amoled-175c-report.md`）。`lume_touch.c` 的项目 ID 读取仅诊断、
+  的对齐（详见 `docs/archive/r86-amoled-175c-report.md`）。`lume_touch.c` 的项目 ID 读取仅诊断、
   无硬芯片 ID 校验，故未新增驱动分叉。**未真机核对**：触摸方向/手感/INT 行为一律
   deferred to board bring-up。
 - **② LCD 初始化**：CO5300 466×466，6 列 CASET 偏移（`00 06 01 D7`）/ RASET `01 D1`，

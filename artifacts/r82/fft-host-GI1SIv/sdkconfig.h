@@ -1,0 +1,1 @@
+#define CONFIG_LUME_PERF_PROFILE 0

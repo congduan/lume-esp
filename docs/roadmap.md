@@ -41,13 +41,13 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 Local web service (r71): the `lume.net.web` server code is complete with
 JS-defined routes and pages, token-gated LAN access, bounded HTTP parsing, and
 host tests. Browser access over real WiFi remains a board acceptance item; see
-`docs/r71-webserv-report.md`.
+`docs/archive/r71-webserv-report.md`.
 
 Firmware distribution (r74): the unmodified Lume firmware boots in the browser
 through the esp32sim WASM emulator — `run.html?wasm&fw=lume` on the Pages
 origin, trio + manifest synced from `firmware.yml` artifacts by `fw-sync.yml`,
 surfaced as the Playground Firmware tab. Verified booting to the launcher home
-screen (CO5300 panel); see `docs/r74-realfw-report.md`.
+screen (CO5300 panel); see `docs/archive/r74-realfw-report.md`.
 
 ## M5 — ecosystem
 - [ ] Component library
@@ -565,7 +565,7 @@ flip, four-edge clipping, stride padding untouched); two tail-appended ops
 `LUME_OP_CANVAS_SPRITE_DEFINE` (=18) / `_DRAW` (=19); 8 slots per canvas +
 460,800 B PSRAM budget; write into the canvas work buffer then normal
 invalidate publish. Full trade-offs in `docs/KNOWN-SIMPLIFICATIONS.md` (r81),
-implementation report in `docs/r81-sprite-report.md`.
+implementation report in `docs/archive/r81-sprite-report.md`.
 
 - **Host**: `tests/canvas_blit.c` (freestanding, new) 6/6 cases green — opaque
   landing, 0x0000 colour key, four-edge clip + padding columns intact, flip,
@@ -615,7 +615,7 @@ r81 的 blit 钥匙落成第一个 app 层实战：`examples/scroller/app.js`。
   **结论：host/emu 口径下滚动类 @20fps 可行且有余量；真机帧率/触摸/PSRAM
   仍未验，不得声称硬件验收**。P1 flappy 立项的 spike 数据由此得到「模拟侧可行」
   这一半，接板 60s `lume-perf` p95/p99 仍是硬门槛。详见
-  `docs/r83-scroller-report.md` 与 `artifacts/r83/`（原始日志/截图）。
+  `docs/archive/r83-scroller-report.md` 与 `artifacts/r83/`（原始日志/截图）。
 - **纯 app/工具层**：未改固件 C，不重跑 `idf.py build/size`；emu 镜像复用同
   基线 `ac23133` 的 r81 构建（lume.bin sha256 一致），Flash Code / IRAM 零增量。
   浏览器配套补了 sprite natives 并修正 r81 renderer 在非零 (dx,dy) 的
@@ -647,7 +647,7 @@ r81 的 blit 钥匙落成第一个 app 层实战：`examples/scroller/app.js`。
   无 IRAM 段。
 - **取舍**：写调用方 Uint16Array（结果直喂 `retainImage`），非路线清单原文建议的
   r79 直写 Canvas work buffer；bilinear 不处理 0x0000 透明/颜色 key，透明语义留
-  渲染层。分数维度拒绝而非截断。详见 `docs/r84-imgscale-report.md`、
+  渲染层。分数维度拒绝而非截断。详见 `docs/archive/r84-imgscale-report.md`、
   `docs/KNOWN-SIMPLIFICATIONS.md` 与 `artifacts/r84/`（原始日志）。
 - **未做/待验**：可选消费方 demo（image_gallery 缩略）未加；缩放耗时、缩略视觉、
   与 retainImage 串联吞吐、PSRAM 余量与 bundle 推送均待接板，不声称硬件验收。
@@ -675,7 +675,7 @@ PSRAM 缓冲拷入 JS 堆后立即释放。可选的 maxW/maxH 复用 r84 抽出
   `lume_image_decode.c.obj` 自身约 938 B 代码+常量，`.data/.bss` 为 0。
 - **取舍/未做**：PNG alpha 平面丢弃、缩略 nearest 质量、错误码 -3 透传、
   内存峰值与点按看大图均已写入 `KNOWN-SIMPLIFICATIONS.md`。全部结果为主机/
-  构建证据，不代表板上验收。详见 `docs/r85-imgpix-report.md` 与 `artifacts/r85/`。
+  构建证据，不代表板上验收。详见 `docs/archive/r85-imgpix-report.md` 与 `artifacts/r85/`。
 
 
 ## 引擎调试基建与分发加固路线（2026-11-16，结论固化防重复评估）
@@ -785,7 +785,7 @@ LLM 首 token ~500ms（网关按句切分，首句完成即送 TTS）｜TTS 首�
 3. **全屏 draw buffer 双缓冲**——即上文 backlog 第 4 条（blocked：内部 RAM 21.5KB 余量
    vs 48 行需 46KB），不重复立项；等内存释放路径出现再动。
 4. **QuickJS GC size-class 分流：数据否决，不做**——r43b 实测 30s 仅 3 次 GC 且全在
-   启动 eval 段、稳态为 0，占比 4.5%/3.2% < 5% 门槛（docs/r43b-gc-report.md）。
+   启动 eval 段、稳态为 0，占比 4.5%/3.2% < 5% 门槛（docs/archive/r43b-gc-report.md）。
    除非未来负载画像变化（如语音助手长跑产生稳态 GC 压力），否则不重开。
 5. **JIT / QuickJS 升级 / LVGL 9.4：不做**——quickjs-ng 无 JIT 可移植且 IRAM 16384
    满线；vendored 版本升级 rebase 成本 > 收益，等上游有硬需求特性再评估。
@@ -914,34 +914,34 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 | 候选 | 价值与复刻要点 | 可行性口径 |
 |---|---|---|
-| **俄罗斯方块**（已落地 `3bfa796`，见 `docs/r62-tetris-report.md`） | 经典品类在 ESP32 生态已被反复验证（LED 矩阵/小屏实现众多），但圆屏高分辨率彩色版缺位 = 差异化空间。10×20 格缩放进 canvas，pan 手势横移 + tap 旋转 + swipe 软降，hiscore 走 `lume.storage.kv`（key ≤15 字符） | 网格类 = canvas 最舒适区（games_2048/breakout 先例）；方块预览+next 提示用双 canvas 或分区重绘；纯 app 层，无缺口 |
-| **闭环目标环表盘**（已落地 r63，见 `docs/r63-ringface-report.md`；智能手表原生风格：三同心环 complications） | r48 原生 AA `ctx.arc`：三条进度弧及三条低亮度轨道；步数估算接 IMU 或 demo 数据、电量接 PMIC、站立计数接 timer | watchface 第 4 面已接入 swipe 循环；每帧六条原生弧、46,656 px 脏区；纯 app 层 |
-| **模块化信息格表盘**（已落地 r64，见 `docs/r64-modular-report.md`；智能手表 modular 风格：多 complication 网格） | 一次演示主题+Card+signals+轮询全家桶：天气/电池/温度/日历小格，数据源接 `lume.net.httpRequest` 与本地传感器 | watchface 第 5 面已接入 swipe 循环；零 canvas——卡片走原生 View/Text（canvas 全 app 预算 228,544/230,400 px 已满）；纯 app 层 |
-| **桌面宠物**（已落地 r65，见 `docs/r65-pet-report.md`；像素电子宠物：喂食/抚摸/作息） | 触摸=抚摸、长按=喂食、翻腕（IMU）=惊醒——单点触摸+IMU 全用上；像素动画走 fillRect 预计算 spans（gravity_ball 模式）；**热更新 = 皮肤商店独有卖点**（换宠物/换装免刷机） | `examples/pet/app.js`：16×16 像素表 → spans 预计算，每拍只重画脏区（闲置 72–96×12 px，睡时不重绘）；状态机纯 JS；两套皮肤 + `lume.storage.kv` 记忆，热更新换肤；host + esp32sim 验证，纯 app 层 |
+| **俄罗斯方块**（已落地 `3bfa796`，见 `docs/archive/r62-tetris-report.md`） | 经典品类在 ESP32 生态已被反复验证（LED 矩阵/小屏实现众多），但圆屏高分辨率彩色版缺位 = 差异化空间。10×20 格缩放进 canvas，pan 手势横移 + tap 旋转 + swipe 软降，hiscore 走 `lume.storage.kv`（key ≤15 字符） | 网格类 = canvas 最舒适区（games_2048/breakout 先例）；方块预览+next 提示用双 canvas 或分区重绘；纯 app 层，无缺口 |
+| **闭环目标环表盘**（已落地 r63，见 `docs/archive/r63-ringface-report.md`；智能手表原生风格：三同心环 complications） | r48 原生 AA `ctx.arc`：三条进度弧及三条低亮度轨道；步数估算接 IMU 或 demo 数据、电量接 PMIC、站立计数接 timer | watchface 第 4 面已接入 swipe 循环；每帧六条原生弧、46,656 px 脏区；纯 app 层 |
+| **模块化信息格表盘**（已落地 r64，见 `docs/archive/r64-modular-report.md`；智能手表 modular 风格：多 complication 网格） | 一次演示主题+Card+signals+轮询全家桶：天气/电池/温度/日历小格，数据源接 `lume.net.httpRequest` 与本地传感器 | watchface 第 5 面已接入 swipe 循环；零 canvas——卡片走原生 View/Text（canvas 全 app 预算 228,544/230,400 px 已满）；纯 app 层 |
+| **桌面宠物**（已落地 r65，见 `docs/archive/r65-pet-report.md`；像素电子宠物：喂食/抚摸/作息） | 触摸=抚摸、长按=喂食、翻腕（IMU）=惊醒——单点触摸+IMU 全用上；像素动画走 fillRect 预计算 spans（gravity_ball 模式）；**热更新 = 皮肤商店独有卖点**（换宠物/换装免刷机） | `examples/pet/app.js`：16×16 像素表 → spans 预计算，每拍只重画脏区（闲置 72–96×12 px，睡时不重绘）；状态机纯 JS；两套皮肤 + `lume.storage.kv` 记忆，热更新换肤；host + esp32sim 验证，纯 app 层 |
 
 ### P1 — 第二批（有差异化亮点或需性能 spike）
 
 | 候选 | 价值与复刻要点 | 可行性口径 |
 |---|---|---|
-| **一键飞行（Flappy 类）**（已落地 r105，见 `docs/r105-flapdot-report.md`；`examples/flapdot/`：单点触摸拍翅 + hash 确定性柱对 + 难度渐窄缺口 + KV hiscore） | 单点触摸玩法与硬件形态天作之合；障碍柱水平推进 = 镜头动场景，脏区只救局部动 | 🟢 纯 app 层落地：单 480x400 canvas（192,000 px < 230,400 预算），柱体为原生 fillRect 分带（未走 drawImage，spike 的 blit 路线留作后续优化）；脏区实测稳态增量最大 20,680 px/帧；KV `hisc.flapdot`（12 字符）；host harness 13 组 + 60s smoke 全绿。**接板 60s p95/p99 实测仍是硬门槛**，真机未验（r83 spike 结论继续有效） |
-| **康威生命游戏**（已落地 r66，见 `docs/r66-conway-report.md`） | 触摸播种种细胞 + 观察演化，「圆屏上的涌现」演示价值高、实现极小；演示 retained paths（静态网格线）+ canvas（活细胞）分层 | `examples/game_of_life/app.js`：33×33 环面网格 / 9px 格落在 300×300 单 canvas 内（60×60×9px=540px 超出屏幕与 300px 预算，故按预算收敛为 33×33）；静态 72 段 retainSegments 上传一次，活细胞按代脏区重画；实测每代脏区 648–729px = 全帧 0.72–0.81%；代际 200/350/500ms 三档，纯 app 层 |
-| **记忆翻牌**（已落地 r75，见 `docs/r75-memory-report.md`；**扫雷已落地 r76**，见 `docs/r76-minesweeper-report.md`） | 单点触摸网格游戏最低成本品类；与 games_* 不重复（都是新玩法）；hiscore 走 KV | `examples/memory/app.js`：4x4 = 8 对原创像素面（berry/sun/cloud/leaf/heart/star/bolt/ring）spans 预计算，tap 翻牌 / 两张比对 / miss 两帧回扣；KV `hisc.memory`（11 字符）最少步纪录；单 canvas 480x480 = 230,400 px 恰满预算；12 例 harness 含负向（重复翻同一张、三张连翻保护）；纯 app 层。**`examples/minesweeper/app.js`（r76）**：10x10 + 15 雷，首击 3x3 必安全（首击后布雷），tap 翻开（显式栈 flood fill）/ 长按插旗（旗格不可翻、不被 flood 掀开、不计入胜利），踩雷全揭晓；数字 5x7 / 旗雷 7x7 像素字形 spans 预计算（spanBuilds=10）；KV `hisc.mine`（9 字符）最快时间纪录；网格 398x398 harness 锁边；15 例 harness 含 20 板可解性；纯 app 层 |
+| **一键飞行（Flappy 类）**（已落地 r105，见 `docs/archive/r105-flapdot-report.md`；`examples/flapdot/`：单点触摸拍翅 + hash 确定性柱对 + 难度渐窄缺口 + KV hiscore） | 单点触摸玩法与硬件形态天作之合；障碍柱水平推进 = 镜头动场景，脏区只救局部动 | 🟢 纯 app 层落地：单 480x400 canvas（192,000 px < 230,400 预算），柱体为原生 fillRect 分带（未走 drawImage，spike 的 blit 路线留作后续优化）；脏区实测稳态增量最大 20,680 px/帧；KV `hisc.flapdot`（12 字符）；host harness 13 组 + 60s smoke 全绿。**接板 60s p95/p99 实测仍是硬门槛**，真机未验（r83 spike 结论继续有效） |
+| **康威生命游戏**（已落地 r66，见 `docs/archive/r66-conway-report.md`） | 触摸播种种细胞 + 观察演化，「圆屏上的涌现」演示价值高、实现极小；演示 retained paths（静态网格线）+ canvas（活细胞）分层 | `examples/game_of_life/app.js`：33×33 环面网格 / 9px 格落在 300×300 单 canvas 内（60×60×9px=540px 超出屏幕与 300px 预算，故按预算收敛为 33×33）；静态 72 段 retainSegments 上传一次，活细胞按代脏区重画；实测每代脏区 648–729px = 全帧 0.72–0.81%；代际 200/350/500ms 三档，纯 app 层 |
+| **记忆翻牌**（已落地 r75，见 `docs/archive/r75-memory-report.md`；**扫雷已落地 r76**，见 `docs/archive/r76-minesweeper-report.md`） | 单点触摸网格游戏最低成本品类；与 games_* 不重复（都是新玩法）；hiscore 走 KV | `examples/memory/app.js`：4x4 = 8 对原创像素面（berry/sun/cloud/leaf/heart/star/bolt/ring）spans 预计算，tap 翻牌 / 两张比对 / miss 两帧回扣；KV `hisc.memory`（11 字符）最少步纪录；单 canvas 480x480 = 230,400 px 恰满预算；12 例 harness 含负向（重复翻同一张、三张连翻保护）；纯 app 层。**`examples/minesweeper/app.js`（r76）**：10x10 + 15 雷，首击 3x3 必安全（首击后布雷），tap 翻开（显式栈 flood fill）/ 长按插旗（旗格不可翻、不被 flood 掀开、不计入胜利），踩雷全揭晓；数字 5x7 / 旗雷 7x7 像素字形 spans 预计算（spanBuilds=10）；KV `hisc.mine`（9 字符）最快时间纪录；网格 398x398 harness 锁边；15 例 harness 含 20 板可解性；纯 app 层 |
 | **流体粒子沙盒**（IMU 晃动 + 触摸扰动） | 宣传效果天花板：圆屏 AMOLED 上粒子随重力流转 | ⚠️ 参考社区同款实证需降级到 200-300 粒子（JS 单线程无 SIMD）；粒子间作用用简化近似（网格邻域）；IMU 单位是 m/s² 非 g |
-| **双八度触屏钢琴**（已落地 r67，见 `docs/r67-piano-compass-report.md`） | 经典乐器品类，单点触摸 + pan 滑奏天然适配；演示 play/playStream 混合音频合成与 in-place 键位高亮 | `examples/piano/app.js`：14×34 px 白键一行 + 10 黑键压缝，24 音两八度 + 三档八度移调；基频+2 泛音+指数包络的立体声 PCM，attack ≤48 ms 走 play、release 5×1152 帧走 playStream，包络函数连续避免切换爆音；Demo 曲内置小星星；纯 app 层 |
+| **双八度触屏钢琴**（已落地 r67，见 `docs/archive/r67-piano-compass-report.md`） | 经典乐器品类，单点触摸 + pan 滑奏天然适配；演示 play/playStream 混合音频合成与 in-place 键位高亮 | `examples/piano/app.js`：14×34 px 白键一行 + 10 黑键压缝，24 音两八度 + 三档八度移调；基频+2 泛音+指数包络的立体声 PCM，attack ≤48 ms 走 play、release 5×1152 帧走 playStream，包络函数连续避免切换爆音；Demo 曲内置小星星；纯 app 层 |
 | **惯性方位角仪表**（已落地 r67，同上战报） | 手表/仪表品类；retained paths 静态刻度环 + 每帧指针脏区 + 常正数字；演示 demo / IMU 双模式 | `examples/compass/app.js`：36 段 retainSegments + 2 条 retainPath 一次上传；demo 18°/s 平滑旋转并可拖动，IMU 模式积分陀螺 Z 得**相对**航向并加 DRIFT 徽章；**无磁力计，不承诺地理北**；浏览器无 IMU 自动降级 demo；纯 app 层 |
 | **体感挥杆迷你高尔夫**（已落地 r123，见本节 r123 result；`examples/minigolf/`） | IMU 挥杆速度触发击球——手表形态差异化王牌（手机做不了）；关卡程序化生成无素材依赖 | `examples/minigolf/app.js`：demo 拖拽瞄准+HIT / IMU 峰值挥杆双模式（无 IMU 自动降级，compass 先例）；6 关确定性生成、par=1 由 harness 72×14 网格搜索证明一杆可解；Coulomb 摩擦+坡度+环障回弹；单 480x480 canvas=230,400 px，静态层每关一条 retainSegments（6 条）、球/瞄准线脏区重画；KV `hisc.golf`（9 字符）存全场最少总杆；12-case harness + emu 触摸注入实证一杆进洞；纯 app 层，真机手感 deferred |
-| **街机风格射击**（已落地 r68，见 `docs/r68-retro-report.md`；5×11 三档编队 + pan 炮台/tap 射击） | 复古合集首刀；编队整体脏区 ≈26% 全帧、两帧腿部动画同盒重画、UFO 加分 + 波次提速；像素造型为原创近似 | `examples/invaders/app.js`：mario 式 spans 预计算精灵；Game Boy 三档绿；KV key 由 `hiscore.invaders`（16 字符）因 NVS 15 字符上限收敛为 `hisc.invaders`（13 字符）；20ms emu tick 无掉帧日志；纯 app 层 |
+| **街机风格射击**（已落地 r68，见 `docs/archive/r68-retro-report.md`；5×11 三档编队 + pan 炮台/tap 射击） | 复古合集首刀；编队整体脏区 ≈26% 全帧、两帧腿部动画同盒重画、UFO 加分 + 波次提速；像素造型为原创近似 | `examples/invaders/app.js`：mario 式 spans 预计算精灵；Game Boy 三档绿；KV key 由 `hiscore.invaders`（16 字符）因 NVS 15 字符上限收敛为 `hisc.invaders`（13 字符）；20ms emu tick 无掉帧日志；纯 app 层 |
 | **公路河道穿越**（已落地 r68，同上战报；13 行网格：5 车 + 4 河 + 2 安全 + 中线 + 窝） | 复古合集同批；tap 相对青蛙中心判四向、车辆撞死/浮木承载/落水死/5 窝过关提速；行带独立脏区 | `examples/frogger/app.js`：车/木/蛙全 spans 预计算；NES 灰底低饱和彩块；跳跃简化为瞬移+高亮（登记取舍）；KV `hisc.frogger`；纯 app 层 |
-| **推箱子**（已落地 r69，见 `docs/r69-retro2-report.md`） | 益智品类补齐复古合集；标准推箱规则 + 10 关内嵌 + par 最少步 + 过关解锁；swipe 四向推箱为主、tap 相邻格为辅；角位死锁 QoL | `examples/sokoban/app.js`：10 关 11×7 ASCII 表（≤13×10），BFS 解算器在 harness 证明每关可解且 par = 最优步数；墙/地板/目标/双态箱/玩家全 spans 硬边；瞬移+高亮（r68 同款简化）；KV `hisc.soko_pg`（`hisc.soko_progress` 18 字符超 NVS 15 字符上限，已收敛）；纯 app 层 |
+| **推箱子**（已落地 r69，见 `docs/archive/r69-retro2-report.md`） | 益智品类补齐复古合集；标准推箱规则 + 10 关内嵌 + par 最少步 + 过关解锁；swipe 四向推箱为主、tap 相邻格为辅；角位死锁 QoL | `examples/sokoban/app.js`：10 关 11×7 ASCII 表（≤13×10），BFS 解算器在 harness 证明每关可解且 par = 最优步数；墙/地板/目标/双态箱/玩家全 spans 硬边；瞬移+高亮（r68 同款简化）；KV `hisc.soko_pg`（`hisc.soko_progress` 18 字符超 NVS 15 字符上限，已收敛）；纯 app 层 |
 | **Game & Watch 风格双游戏 LCD**（已落地 r69，同上战报） | 「segment LCD style」原创形态：所有可能段位以极低对比度常显、激活段高亮，仿非背光透传 LCD 物理特性；MODE 切两小游戏，辨识度高 | `examples/lcd_dual/app.js`：幽灵段 `ctx.retainSegments` 一次上传 2 条（124/99 段）、逐帧 `drawPath` 回放、零 JS 几何；GAME A 接面包（3 段式掉落、3 漏结束）/ GAME B 三车道闪避（一撞结束）；MODE 走单一手势目标避免按钮/画布双触发；KV `hisc.lcd`；**不复刻任何原机造型**；纯 app 层 |
 
 ### Retro classics（r68 起的新分组）
 
-本刀起，roadmap 在「经典 app 复刻生态」下新开**Retro classics**叙事行，收编自研、原创近似的街机/益智/段码 LCD 风格像素游戏（不点名原商标、不逐像素复制原始精灵位图）。已落地四款：`examples/invaders/`、`examples/frogger/`（r68）、`examples/sokoban/`、`examples/lcd_dual/`（r69），均在 playground 26-app 列表内；像素字体统一沿用 14px Montserrat，真机手感/帧率/音效待接板验收。详见 `docs/r68-retro-report.md`、`docs/r69-retro2-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`（r68/r69）。
+本刀起，roadmap 在「经典 app 复刻生态」下新开**Retro classics**叙事行，收编自研、原创近似的街机/益智/段码 LCD 风格像素游戏（不点名原商标、不逐像素复制原始精灵位图）。已落地四款：`examples/invaders/`、`examples/frogger/`（r68）、`examples/sokoban/`、`examples/lcd_dual/`（r69），均在 playground 26-app 列表内；像素字体统一沿用 14px Montserrat，真机手感/帧率/音效待接板验收。详见 `docs/archive/r68-retro-report.md`、`docs/archive/r69-retro2-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`（r68/r69）。
 
 ### 幼儿教育（r70 起的新分组，非复刻线）
 
-与上面的社区复刻候选**无关**：教育品类自开叙事行，不放在 Retro classics / 复刻表里。已落地 `examples/abc123/`（`docs/r70-abc-report.md`、`docs/r73-abc-svg-report.md`）：36 张卡（A-Z + 0-9），顺序 / 随机 / 小写 / 竖排 Aa 对照四模式，全屏单手势点屏翻页 + 顶部 HUD 切模式，点击弹跳反馈；早期版本用 Canvas 画数字圆点和 A-E 图标，当前已移除该底部图形并改为静态黑底。Text 字号仍被 bridge 钉死在 14/20/32 三档；r73 将大字形改为 DejaVu Sans Bold 轮廓生成的 mini-SVG，由 Image 节点渲染。esp32sim 首卡解码明显较慢，真机翻页延迟、点屏/色彩/触感待接板验收。
+与上面的社区复刻候选**无关**：教育品类自开叙事行，不放在 Retro classics / 复刻表里。已落地 `examples/abc123/`（`docs/archive/r70-abc-report.md`、`docs/archive/r73-abc-svg-report.md`）：36 张卡（A-Z + 0-9），顺序 / 随机 / 小写 / 竖排 Aa 对照四模式，全屏单手势点屏翻页 + 顶部 HUD 切模式，点击弹跳反馈；早期版本用 Canvas 画数字圆点和 A-E 图标，当前已移除该底部图形并改为静态黑底。Text 字号仍被 bridge 钉死在 14/20/32 三档；r73 将大字形改为 DejaVu Sans Bold 轮廓生成的 mini-SVG，由 Image 节点渲染。esp32sim 首卡解码明显较慢，真机翻页延迟、点屏/色彩/触感待接板验收。
 
 ### P2 — 有依赖缺口或需固件刀，如实标注后缓做
 
@@ -960,7 +960,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 
 ### r90 result — fishtank 鱼形升级：r89 ellipse 图元回补鱼缸（appended, milestone checkboxes untouched）
 
-纯 app 层刀（无固件改动）：`examples/fishtank/app.js` 鱼身从 r87 的 5 条变宽线段改为 4 站点 `fillEllipse` 椭圆链（沿鱼体轴采样，轴对齐图元贴合任意朝向），腹部叠浅色椭圆（深背浅腹）、条纹鱼叠深色横斑、背鳍/鳃线用小椭圆、眼睛用 `fillCircle`；绘制顺序按体型降序（近大远小）。每帧 137 次绘制调用（<200 断言，简报预算 250 未用满）。验证全绿：`tests/fishtank.js`（60s smoke + 觅食/进食/摆尾 + prelude 集成）、`lume check --no-emu` PASS、全量 `tests/*.js` 0 FAIL、`npm test` 43 pass/0 fail、playground 重生成（35 apps）、simulator verify.js 10 PASS、浏览器截图 3 张 vision 验收确认鱼形已圆润化（橙白条纹鱼可辨为小丑鱼风格）。取舍：最小体型鱼 4 站点仍偏蝌蚪感（加站点超预算）；真机 30fps/色彩/手感 pending board。详见 `docs/r90-fishtank-ellipse-report.md`。本轮引擎额度尽中断（engine_exit=1），主控接管收口。
+纯 app 层刀（无固件改动）：`examples/fishtank/app.js` 鱼身从 r87 的 5 条变宽线段改为 4 站点 `fillEllipse` 椭圆链（沿鱼体轴采样，轴对齐图元贴合任意朝向），腹部叠浅色椭圆（深背浅腹）、条纹鱼叠深色横斑、背鳍/鳃线用小椭圆、眼睛用 `fillCircle`；绘制顺序按体型降序（近大远小）。每帧 137 次绘制调用（<200 断言，简报预算 250 未用满）。验证全绿：`tests/fishtank.js`（60s smoke + 觅食/进食/摆尾 + prelude 集成）、`lume check --no-emu` PASS、全量 `tests/*.js` 0 FAIL、`npm test` 43 pass/0 fail、playground 重生成（35 apps）、simulator verify.js 10 PASS、浏览器截图 3 张 vision 验收确认鱼形已圆润化（橙白条纹鱼可辨为小丑鱼风格）。取舍：最小体型鱼 4 站点仍偏蝌蚪感（加站点超预算）；真机 30fps/色彩/手感 pending board。详见 `docs/archive/r90-fishtank-ellipse-report.md`。本轮引擎额度尽中断（engine_exit=1），主控接管收口。
 
 ### r91 result — `lume.crypto` 原生原语落地（appended, milestone checkboxes untouched）
 
@@ -990,7 +990,7 @@ IRAM 16384(Remain 0) / Total 3019707；r91 后 2031220 / 850164 / 247267 /
 新代码全在 flash `.text/.rodata`。基线 quickjs.c 汇编遇 host swap 卡死，按 r78/r82
 先例仅对该 build 目标加 `-g0` 单独重编（不改源码/-O2），构建无新增警告。
 接板验收（真机 mbedTLS/AES 硬件路径、WS/OTA/配网消费方接入、时延与功耗）未做，
-仍 deferred；详见 `docs/r91-crypto-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。
+仍 deferred；详见 `docs/archive/r91-crypto-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。
 
 ### r92 result — `lume.compress` 原生原语（appended, milestone checkboxes untouched）
 
@@ -1023,7 +1023,7 @@ native 23ms vs Node zlib 40ms（后者是 native C 基准，均不代表 ESP32-S
 2,030,276 / 850,196 / 247,267 / 16384(Remain 0) / 3,022,243，逐项 +640 / +32 /
 0 / 0 / +672。IRAM 硬线未破，新代码全在 flash `.text/.rodata`。接板验收（真机
 DEFLATE 吞吐/时延、热更新大包与日志消费方接入、256KiB bundle 上限内实际压缩比）
-未做，仍 deferred；详见 `docs/r92-compress-report.md` 与
+未做，仍 deferred；详见 `docs/archive/r92-compress-report.md` 与
 `docs/KNOWN-SIMPLIFICATIONS.md`。
 
 ### r93 result — lvgl_task 事件驱动化（appended, milestone checkboxes untouched）
@@ -1031,7 +1031,7 @@ DEFLATE 吞吐/时延、热更新大包与日志消费方接入、256KiB bundle 
 Vendored 魔改候选 #1（标「优先」）落地。**开工实证翻案**：简报/r35b 所述
 「33 ms timer + 10 ms 固定轮询」已是过期快照；r92 基线 `lume_board.c:125-133`
 早就是 `wait_ms = lv_timer_handler()` 驱动，只是封顶 10 ms（r36b commit
-`62bb0ff` 引入，见 `docs/r36b-perf-report.md:9`）。r93 删掉封顶，改为
+`62bb0ff` 引入，见 `docs/archive/r36b-perf-report.md:9`）。r93 删掉封顶，改为
 **到期睡眠 + 通知唤醒**：`ulTaskNotifyTake()` 按 `wait_ms` 睡到 LVGL 下一到期，
 `LV_NO_TIMER_READY` → `portMAX_DELAY`；用 LVGL 自带的
 `lv_timer_handler_set_resume_cb()`（vendored `lv_timer.c:375-382`；参考上游
@@ -1044,7 +1044,7 @@ Vendored 魔改候选 #1（标「优先」）落地。**开工实证翻案**：�
 
 未改 vendored lv_conf / LVGL / QuickJS 源码，**无 VENDOR.md 变更**。
 
-验证原始输出（全文见 `docs/r93-lvglev-report.md`）：固件 build+size 绿——
+验证原始输出（全文见 `docs/archive/r93-lvglev-report.md`）：固件 build+size 绿——
 Flash Code 2,030,276 → **2,030,508（+232）** / Flash Data 850,196 不变 /
 DIRAM 247,267 不变 / **IRAM 16384 Remain 0 硬线未破** / Total 3,022,243 →
 3,022,475；QuickJS 汇编本轮未卡死，无需 `-g0`。全量 `tests/*.js` 51 pass /
@@ -1061,7 +1061,7 @@ drain timer（`lume_ui_bridge.c:40,1811`）常驻使 `lv_timer_handler()` 总返
 周期本身，本轮不改该配置、不宣称解锁帧率。可证的变化是事件响应延迟
 （Queue A post 后立即 drain、timer 新建立即唤醒、`LV_NO_TIMER_READY` 时真睡
 眠）。未做 drain timer 暂停优化（跨任务 LVGL API + 满队列回归风险），
-若要真正压低空载唤醒频率另行评估。详见 `docs/r93-lvglev-report.md` 与
+若要真正压低空载唤醒频率另行评估。详见 `docs/archive/r93-lvglev-report.md` 与
 `docs/KNOWN-SIMPLIFICATIONS.md`。
 
 ### r94 result — 流体粒子沙盒 `examples/particles`（appended, milestone checkboxes untouched）
@@ -1076,7 +1076,7 @@ dirty-union clear + 220 次 fillRect 小方块（恒 221 draw calls，harness �
 `pt.mode` KV 存偏好（7 字符）。
 
 零固件改动、零 `runtime/types/lume.d.ts` 改动。验证原始输出全见
-`docs/r94-particles-report.md`：新 `tests/particles.js` 绿（粒子上限、221
+`docs/archive/r94-particles-report.md`：新 `tests/particles.js` 绿（粒子上限、221
 draw calls/帧、30 s demo 无 NaN/无出界、触摸速度场、手势真 prelude 路径）；
 全量 `tests/*.js` 52 文件 0 FAIL；`npm test --prefix tools/lume` 43 pass /
 0 fail / 1 skipped；`lume check examples/particles --no-emu` PASS；playground
@@ -1087,7 +1087,7 @@ r93 worktree 拷三件套，主仓 firmware/build 本轮为空）eval_ok=2 /
 RELOAD ERR=0 / ui queue full=0，无崩溃；3 张 sim 截图 vision 自查粒子形态
 可辨。诚实口径：emu 无 JIT 下 JS 57–257 ms（host 仅 1.5–2.5 ms，先例
 invaders 93 ms），**不宣称 emu 20 fps 达标**；真机帧率/IMU 方向/触摸观感/
-功耗仍 deferred。详见 `docs/r94-particles-report.md` 与
+功耗仍 deferred。详见 `docs/archive/r94-particles-report.md` 与
 `docs/KNOWN-SIMPLIFICATIONS.md`。
 
 ### r95 result — voice_assistant 对讲机 demo `examples/voice_assistant`（appended, milestone checkboxes untouched）
@@ -1103,7 +1103,7 @@ SPEAK 中 tap 立即 barge-in 回 IDLE、LISTEN 4 s 看门狗超时回 IDLE，�
 每帧 18 draw calls。无 key/无网络/无 mic → canned 问答轮换 DEMO 模式，`MODE DEMO/LIVE`
 徽章如实标注；UI 文案纯 ASCII（r64 纪律）。**零固件改动、零 `lume.d.ts` 改动**。
 
-验证原始输出全见 `docs/r95-voice-report.md`：新 `tests/voice_assistant.js` 13 组绿
+验证原始输出全见 `docs/archive/r95-voice-report.md`：新 `tests/voice_assistant.js` 13 组绿
 （合法性/帧错拍/barge-in/超时/轮换/逐字节拍/canvas 预算/ASCII/transport 注入/
 LIVE 委托/音频降级）；全量 `tests/*.js` 53 文件 0 FAIL；
 `npm test --prefix tools/lume` 43 pass / 0 fail / 1 skipped；
@@ -1116,7 +1116,7 @@ TFT 截图 vision 自查为完整 `MODE DEMO / IDLE` 主屏、非白屏。
 未跑 `idf.py build/size`（零固件改动）。诚实口径：legacy 阻塞窗口真实存在、
 无 ASR/TTS（canned prompt + beep 播报）、`MODE LIVE` 仅 harness 注入覆盖，
 真机音频/时延/触摸 barge-in 手感/功耗 deferred to board bring-up。详见
-`docs/r95-voice-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。
+`docs/archive/r95-voice-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md`。
 
 ### r101 result — 极光蒙版时钟 `examples/aurora_clock`（appended, milestone checkboxes untouched）
 
@@ -1140,7 +1140,7 @@ per-frame draw calls max=30 断言与 60s 空闲漂移）；全量 `tests/*.js` 
 诚实口径：模拟器未实现 `Text.fontSize`，大数字由 retained 精灵绘制；20 fps 全屏
 9.216 MB/s 像素写入为推算非实测；真机 CO5300 渐层台阶感、IMU 轴向/阈值、触摸
 唤醒延迟、PMIC 电流均 deferred to board bring-up。详见
-`docs/r101-aurora-report.md`。
+`docs/archive/r101-aurora-report.md`。
 
 ### r105 result — 拍拍鸟 `examples/flapdot`（appended, milestone checkboxes untouched）
 
@@ -1155,7 +1155,7 @@ host/device 逐位一致，整条赛道可从滚动距离单独重放）；难�
 错位（缺口上半段被误判致死）与 harness 碰撞用例滚动量用错（整组断言空转）
 两处实锤修正，另加固 `pipeBand` 画布裁剪与三处用例口径。
 
-验证原始输出全见 `docs/r105-flapdot-report.md`：新 `tests/flapdot.js` 13 组绿
+验证原始输出全见 `docs/archive/r105-flapdot-report.md`：新 `tests/flapdot.js` 13 组绿
 （含 60s smoke：draws=114918 / paints=5648 / 稳态增量最大 20,680 px）；
 全量 `tests/*.js` **59 文件 0 FAIL**；`npm test --prefix tools/lume`
 43 pass / 0 fail / 1 skipped；`lume check examples/flapdot --no-emu` 与
@@ -1164,7 +1164,7 @@ counter 哨兵双 PASS；playground 41→42 apps 重生成 +
 `artifacts/simulator/flapdot_ready.png` / `flapdot_run.png`（vision 自查
 HUD/鸟/地面渲染干净）。未跑 `idf.py build/size`（零固件改动）。
 诚实口径：真机触摸手感、帧率、NVS 持久化、功耗均 deferred to board
-bring-up，未声称硬件验证。详见 `docs/r105-flapdot-report.md`。
+bring-up，未声称硬件验证。详见 `docs/archive/r105-flapdot-report.md`。
 
 ### r106 result — deploy manifest 绑定固件 API tag（app 兼容性安全网，appended, milestone checkboxes untouched）
 
@@ -1181,7 +1181,7 @@ mismatch 打印两个 tag 值并拒绝 / 无 fw 旧 app WARN 兼容；`lume_engi
 deploy/dev 打标 meta.fw，`lume apps list` 标注 fw 与 MISMATCH。`lume.d.ts` API 面无
 变化未改，`gen_api_docs.py --check` fresh。
 
-验证原始输出全见 `docs/r106-fwhash-report.md`：全量 `tests/*.js` **59 文件 0 FAIL**；
+验证原始输出全见 `docs/archive/r106-fwhash-report.md`：全量 `tests/*.js` **59 文件 0 FAIL**；
 `npm test --prefix tools/lume` 44 pass / 0 fail / 1 skipped；C harness
 `apps_protocol` 41 checks / `fwtag_protocol` 14 checks 均 0 failure（覆盖 match /
 mismatch / 旧 meta WARN 三路径）；`gen_api_docs.py --check` 绿；
@@ -1251,7 +1251,7 @@ token 首次设置走既有 LUMC 命令帧的串口 `TOKEN <hex>`（最小侵入
 +3,252）/ Flash Data 850,388 / DIRAM 247,291 / IRAM 16384 Remain 0 硬线不破 /
 Total 3,025,919。`gen_api_docs.py --check` 与 `check_website.py` 绿（137 行）。
 真 WiFi、实测时延、真板 token 流程 deferred to board bring-up，不声称硬件验收。
-详见 `docs/r96-ota-report.md` 与 KNOWN-SIMPLIFICATIONS。
+详见 `docs/archive/r96-ota-report.md` 与 KNOWN-SIMPLIFICATIONS。
 
 ### r108 result — voice_assistant WS transport 对接 lume.net.ws（E 刀收口；appended, milestone checkboxes untouched）
 
@@ -1262,7 +1262,7 @@ text-delta 逐字上屏 → 下行音频 playStream → state/idle + close 全�
 网关 URL 走 KV `voice_gateway_url`（顶部常量 `VA_GATEWAY_URL` 默认
 `ws://192.168.1.50:18770/`，CLI 默认 8765 需对齐）；`examples/voice_assistant/README.md`
 写用法/协议指针/取舍；`tests/va_ws.js` 用 r107 零依赖 mock 网关 + prelude_runner 桥接
-`_connect/_send/_close` 跑全轮，6 用例含 3 条负向；本小节 + `docs/r108-va-ws-report.md`
+`_connect/_send/_close` 跑全轮，6 用例含 3 条负向；本小节 + `docs/archive/r108-va-ws-report.md`
 （原始输出全录）+ KNOWN-SIMPLIFICATIONS r107/r108 登记。固件零改动、未跑 `idf.py build/size`。
 
 先实证后写：读 `lume.d.ts:714-731`（`onClose()` 无关闭码、`onMessage(string|ArrayBuffer)`）+
@@ -1271,7 +1271,7 @@ text-delta 逐字上屏 → 下行音频 playStream → state/idle + close 全�
 实施中实测 barge-in 竞态：先 close 再标记 finished 会被同步 `onClose` 抢先改 SPEAK→IDLE，
 改为先标记再 close（`vaWSAbort()`），harness 负向用例覆盖。
 
-验证原始输出摘录（本轮真实执行，全录见 `docs/r108-va-ws-report.md`）：
+验证原始输出摘录（本轮真实执行，全录见 `docs/archive/r108-va-ws-report.md`）：
 - `node tests/gateway.js` → `PASS` ×10 + `ALL GATEWAY HARNESS CASES PASSED (10 cases)`，r107 不回归。
 - `node tests/va_ws.js` → `PASS` ×6 + `ALL VA WS HARNESS CASES PASSED (6 cases)`：
   happy（hello → 3×3840 B → end → 9 delta → 3 audio → idle/close → IDLE）、
@@ -1308,7 +1308,7 @@ StatusBar 纯 JS 修复：移除硬编码 `width:432/x,y:24`，按 `__lumeScreen
 模式宽 329、位于 (68,68)，与 r104 SafeArea View 等宽且不越过安全方块右边界 397；
 显式 x/y 仍优先，非法 shape 抛 TypeError；`runtime/types/lume.d.ts` 同步。
 
-验证原始输出全录见 `docs/r109-round16-report.md`，摘要：模型守卫 green；双板
+验证原始输出全录见 `docs/archive/r109-round16-report.md`，摘要：模型守卫 green；双板
 `idf.py build && idf.py size` 绿——默认 2.16 Flash Code **2,032,588**（简报 r106 基线
 2,032,860，−272 B，增量≈0）/ Flash Data 850,836 / DIRAM 247,291 / IRAM 16,384/16,384
 Remain 0 / Total 3,025,195；1.75C Flash Code 1,988,068 / Flash Data 839,916 / DIRAM
@@ -2992,7 +2992,7 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 
 **实证纠偏（任务书「上游限制 or Lume 配置」二分被进一步收敛）**：同一 IDF v5.5.5 / esp-emu v1.2.0 / 同一 `--wifi-auth wpa2-psk` 参数下，上游 stock `examples/wifi/getting_started/station` **关联成功并拿到 IP**（`got ip:192.168.4.2`，exit 0）→ 根因**不在模拟器/宿主侧**。随后 6 个 stock 差量变体（config-after-start、raw netif、IRAM off、SoftAP on、全套 SPIRAM、240 MHz）全部关联成功；Lume 侧 6 个变体（transition AP、显式 PSRAM、`WIFI_PS_NONE`、延迟 connect、显式 scan、UART0 console）全部失败。`RUST_LOG=debug` 的 AP 侧日志给出决定性证据：Lume 打印 `wifi:m f assoc req l=221` 但**总线从未触发该帧的 TX**，AP 无 `assoc request received`，1 s 后 `assoc -> init (0x400)` = ASSOC_EXPIRE；stock 同窗口有完整 `subtype=11 auth → subtype=0 assoc → 4-way handshake`。即关联请求帧在固件内部构造却未进入 esp-emu WiFi TX 通路，**不是密码/认证/扫描/省电/配置值问题**。
 
-**取舍（诚实负结果）**：不硬造修复、不放宽 runner 退出断言、不改固件（E10 的 `WIFI_PS_NONE` 实验无改善已回退，未触发 BASE 重钉）；M4 WiFi OTA 行保持不勾。runner 仅加失败诊断快照 `failure-diag.txt`（esp-emu 版本、非敏感参数摘要、密码仅记长度、镜像 sha256、串口关键行），零固件改动。完整实验矩阵、命令、串口原始行、上游文档/issues 线索与复验条件见 `docs/r144-emu-wifi-report.md`。
+**取舍（诚实负结果）**：不硬造修复、不放宽 runner 退出断言、不改固件（E10 的 `WIFI_PS_NONE` 实验无改善已回退，未触发 BASE 重钉）；M4 WiFi OTA 行保持不勾。runner 仅加失败诊断快照 `failure-diag.txt`（esp-emu 版本、非敏感参数摘要、密码仅记长度、镜像 sha256、串口关键行），零固件改动。完整实验矩阵、命令、串口原始行、上游文档/issues 线索与复验条件见 `docs/archive/r144-emu-wifi-report.md`。
 
 **验证（原始输出；真机 deferred，不声称真机验证）**：`for t in tests/*.js` → `done`，0 FAIL；`npm test --prefix tools/lume` → `pass 50 / fail 0 / skipped 0`（软链 gitignore 的 `bin/qjsc` 与 `node_modules` 后对齐基线）；`check_website.py` → missing/invented/duplicates 均 none；`lume check examples/net_check --no-emu` 与 `counter --no-emu` 均 `RESULT: PASS`。全链 `tools/emu-net/run.sh examples/net_check` **exit 1**，`[NETCHECK] init PASS` / `connect PASS` / `ip FAIL timeout`，无 `ALL PASS`（负结果）。`git diff 254c096 HEAD -- firmware/` 为空，未跑 `idf.py build/size`。
 

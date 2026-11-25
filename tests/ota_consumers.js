@@ -75,10 +75,10 @@ const playgroundSrc = read('website/playground/sources/dashboard.js');
 
 function gitChanged(paths) {
   const head = execFileSync('git',
-    ['diff', '--name-only', BASE, 'HEAD', '--', ...paths],
+    ['diff', '--name-only', '-M', BASE, 'HEAD', '--', ...paths],
     { cwd: root, encoding: 'utf8' }).trim();
   const work = execFileSync('git',
-    ['diff', '--name-only', BASE, '--', ...paths],
+    ['diff', '--name-only', '-M', BASE, '--', ...paths],
     { cwd: root, encoding: 'utf8' }).trim();
   return [...new Set((head + '\n' + work).split('\n').filter(Boolean))];
 }
@@ -120,12 +120,12 @@ const ALLOWED = [
   'firmware/components/lume-engine/include/lume_svg_cache.h',
   'tests/svg_cache.js',
   'tests/svg_cache_test.c',
-  'docs/r183-report.md',
+  'docs/archive/r183-report.md',
   // r182: Luna app, offline texture generator, harness, playground, and evidence.
   'examples/luna/app.js', 'examples/luna/moon_tex.js',
   'tools/luna-mktex/generate.js', 'tests/luna.js',
   'website/playground/apps/luna.js', 'website/playground/sources/luna.js',
-  'docs/r182-luna-report.md',
+  'docs/archive/r182-luna-report.md',
   // r171: manifest guard and optional browser visual check.
   'tools/lume/check.js',
   'tools/lume/lume.js',
@@ -133,12 +133,12 @@ const ALLOWED = [
   'tests/lib/manifest.js',
   'tests/playground_manifest.js',
   'docs/build.md',
-  'docs/r171-agent-infra-report.md',
+  'docs/archive/r171-agent-infra-report.md',
   // r166: ColorPicker runtime/types, consumer, generated docs and shell bundles.
   'examples/color_demo/app.js',
   'tests/colorpicker.js',
   'tests/color_demo.js',
-  'docs/r166-colorpicker-report.md',
+  'docs/archive/r166-colorpicker-report.md',
   'website/playground/apps/controls_demo.js',
   'artifacts/r166/api-check.log',
   'artifacts/r166/cli-tests.log',
@@ -214,7 +214,7 @@ const ALLOWED = [
   'tests/sd_gallery.js',
   // r150: docs-refresh pages + the SNTP lume.system binding surface
   // (lume_scripts.c / lume_system_binding.h) and its regenerated prelude.js.
-  'docs/r150-docs-refresh-report.md',
+  'docs/archive/r150-docs-refresh-report.md',
   'website/faq.html',
   'website/guide.html',
   'website/index.html',
@@ -278,9 +278,9 @@ const ALLOWED = [
   'tools/emu-net/run.sh',
   'examples/net_check/app.js',
   'examples/nettest_open/app.js',
-  'docs/r142-emu-net-report.md',
+  'docs/archive/r142-emu-net-report.md',
   // r144: emu-net WiFi isolation report (docs only; run.sh already allowlisted).
-  'docs/r144-emu-wifi-report.md',
+  'docs/archive/r144-emu-wifi-report.md',
   'README.md',
   'README.zh-CN.md',
   // r142 evidence artifacts (serial logs, NETCHECK output, SD probe) under
@@ -350,7 +350,7 @@ const ALLOWED = [
   'artifacts/r150/tests_exit_code.txt',
   // r150 docs/pages themselves + the r143-era firmware surface (SNTP
   // lume.system binding in lume_scripts.c) that predates this round's BASE.
-  'docs/r150-docs-refresh-report.md',
+  'docs/archive/r150-docs-refresh-report.md',
   'website/faq.html',
   'website/guide.html',
   'website/index.html',
@@ -448,14 +448,14 @@ const ALLOWED = [
   'tests/lcd_dual.js',
   'website/playground/apps/lcd_dual.js',
   'website/playground/sources/lcd_dual.js',
-  'docs/r180-perf-report.md',
+  'docs/archive/r180-perf-report.md',
   'tests/ota_consumers.js',
   // r181: CI flake guards, emu injection pacing, nettest_open API fix, report.
   'tests/gateway_upstream.js',
   'tools/emu/run.sh',
   'tools/lume/scan.js',
   'examples/nettest_open/app.js',
-  'docs/r181-report.md',
+  'docs/archive/r181-report.md',
   'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   'artifacts/r156/far.png',
   'artifacts/r156/near.png',
@@ -464,9 +464,9 @@ const ALLOWED = [
   'artifacts/r156/host-tests.txt',
   'artifacts/r156/cli-tests.txt',
   'artifacts/r156/playground-build.txt',
-  'docs/r156-skycombat-report.md',
+  'docs/archive/r156-skycombat-report.md',
   'artifacts/r152/playwright-production-page.txt',
-  'docs/r152-flapdot-ghost-report.md',
+  'docs/archive/r152-flapdot-ghost-report.md',
   // r151 (shell form primitives round) landed its controls_demo harness on
   // main after 0d1111c was pinned; it is a test-only addition.
   'tests/controls_demo.js',
@@ -515,7 +515,7 @@ const ALLOWED = [
   'website/playground/sources/spectrum.js',
   'website/playground/sources/svg_icon.js',
   'website/playground/sources/gestures.js',
-  'docs/r168-report.md',
+  'docs/archive/r168-report.md',
   'artifacts/r168/far.png',
   'artifacts/r168/near.png',
   'artifacts/r168/burst.png',
@@ -523,7 +523,7 @@ const ALLOWED = [
   'examples/storybook/app.js',
   'tests/storybook.js',
   'tests/ota_consumers.js',
-  'docs/r172-storybook-report.md',
+  'docs/archive/r172-storybook-report.md',
   'website/playground/apps/storybook.js',
   'website/playground/sources/storybook.js',
   'artifacts/r172/storybook-test.txt',
@@ -542,7 +542,7 @@ const ALLOWED = [
   // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI + evidence.
   // Evidence artifacts are admitted by the artifacts/r173/ prefix in the check
   // below; the source files are listed explicitly.
-  'docs/r173-companion-p1-report.md',
+  'docs/archive/r173-companion-p1-report.md',
   'firmware/components/lume-hotreload/CMakeLists.txt',
   'tests/file_cli_mock.py',
   'tests/file_emu.py',
@@ -555,7 +555,7 @@ const ALLOWED = [
   'website/playground/sources/mochi.js',
   'website/playground/apps/shell_demo.js',
   'website/playground/sources/shell_demo.js',
-  'docs/r169-report.md',
+  'docs/archive/r169-report.md',
   'artifacts/r169/baseline-verify.txt',
   'artifacts/r169/verify.txt',
   'artifacts/r169/build.txt',
@@ -567,7 +567,7 @@ const ALLOWED = [
   // harnesses, the report and the enumerated evidence files are new.
   'tests/watchface.js',
   'tests/gravity_ball.js',
-  'docs/r174-report.md',
+  'docs/archive/r174-report.md',
   'artifacts/r174/instrument.js',
   'artifacts/r174/instrument.txt',
   'artifacts/r174/aa-raster.log',
@@ -578,7 +578,7 @@ const ALLOWED = [
   'artifacts/r174/git-diff-stat.log',
   // r176: HAL registration slice -- report + regenerable evidence only.
   // Evidence artifacts are admitted by the r176 prefix in the check below.
-  'docs/r176-report.md',
+  'docs/archive/r176-report.md',
   // artifact cleanup: unreferenced historical files removed from artifacts/.
   'artifacts/emu/lcd_dual/game_b.png',
   'artifacts/emu/oom-inject/counter.frame',
@@ -613,7 +613,7 @@ const ALLOWED = [
   'tests/keyboard_demo.js', 'tests/keyboard_states.js', 'tests/launcher_grid.js',
   'tests/reboot_consumers.js', 'tests/settings_dialog.js', 'tests/sntp_consumers2.js',
   'tests/timer_kit.js', 'tests/vec_demo.js', 'tests/weather_sntp.js',
-  'tests/ota_consumers.js', 'docs/r177-perf-report.md',
+  'tests/ota_consumers.js', 'docs/archive/r177-perf-report.md',
   'website/playground/apps/gravity_ball.js', 'website/playground/apps/pet.js',
   'website/playground/apps/skycombat.js', 'website/playground/sources.js',
   'website/playground/sources/gravity_ball.js', 'website/playground/sources/pet.js',
@@ -621,11 +621,36 @@ const ALLOWED = [
   // r177: board-id slice -- one new host harness + report; regenerable
   // evidence is admitted by the r177 prefix in the check below.
   'tests/board_id.js',
-  'docs/r177-report.md',
+  'docs/archive/r177-report.md',
   // r177 board-id feat files (the perf-sweep BASE 3514c76 predates them).
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_scripts.c',
+  // r183 archive migration (docs/r*.md -> docs/archive/) + rename detection base.
+  'docs/r183-report.md',
+  'firmware/components/lume-engine/CMakeLists.txt',
+  'firmware/components/lume-engine/lume_engine.c',
+  'tests/adc_meter.js',
+  'tests/archive_view.js',
+  'tests/board_abi.js',
+  'tests/confirm_sweep.js',
+  'tests/control_center.js',
+  'tests/controls_demo.js',
+  'tests/hr_monitor.js',
+  'tests/keyboard_demo.js',
+  'tests/keyboard_states.js',
+  'tests/launcher_grid.js',
+  'tests/reboot_consumers.js',
+  'tests/sd_gallery.js',
+  'tests/settings_dialog.js',
+  'tests/sntp_consumers.js',
+  'tests/timer_kit.js',
+  'tests/vec_demo.js',
+  'tests/wordle.js',
+  'website/wasm/fw/bootloader.bin',
+  'website/wasm/fw/lume.bin',
+  'website/wasm/fw/lume.json',
+  'website/wasm/fw/partition-table.bin',
 ];
 
 // --- checks -----------------------------------------------------------------
