@@ -670,6 +670,16 @@ const ALLOWED = [
   'docs/r185-report.md',
   // r185 base 670020e is a chore/fw-sync commit; allow its regenerated image.
   'website/wasm/fw/partition-table.bin',
+  // r189: examples gallery made data-driven from the 70-app playground catalog.
+  // Pure website + host-check surface: examples.html cards are generated from
+  // build.mjs / page.js; the generator has a --check mode wired into
+  // check_website.py, and examples_gallery.js proves the 70-card invariant with
+  // mutation proofs. No firmware / runtime / tools/lume / tools/gateway change.
+  'website/examples.html',
+  'scripts/gen_examples_gallery.py',
+  'scripts/check_website.py',
+  'tests/examples_gallery.js',
+  'docs/r189-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -746,7 +756,7 @@ const checks = [
       f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
       f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r179/') ||
       f.startsWith('artifacts/r184/') || f.startsWith('artifacts/r185/') ||
-      f.startsWith('artifacts/r188/') ||
+      f.startsWith('artifacts/r188/') || f.startsWith('artifacts/r189/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 

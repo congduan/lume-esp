@@ -1,0 +1,10 @@
+CMD: (mutate one card title) python3 scripts/check_website.py
+ERROR: website/examples.html is stale; run: python3 scripts/gen_examples_gallery.py
+HTML pages: 7; internal href/src and anchors checked
+API: 161 catalog entries, 161 type declarations, 34 function namespaces
+API missing: none
+API invented: none
+API duplicates: none
+API signatures not found in lume.d.ts: none
+ERROR: examples.html gallery is stale: run python3 scripts/gen_examples_gallery.py
+EXIT=1

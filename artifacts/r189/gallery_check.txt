@@ -1,0 +1,3 @@
+CMD: python3 scripts/gen_examples_gallery.py --check
+examples.html gallery up to date (70 cards)
+EXIT=0

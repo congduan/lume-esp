@@ -1,0 +1,9 @@
+CMD: python3 scripts/check_website.py
+examples.html gallery up to date (70 cards)
+HTML pages: 7; internal href/src and anchors checked
+API: 161 catalog entries, 161 type declarations, 34 function namespaces
+API missing: none
+API invented: none
+API duplicates: none
+API signatures not found in lume.d.ts: none
+EXIT=0
