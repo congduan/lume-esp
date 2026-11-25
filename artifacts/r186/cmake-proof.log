@@ -1,0 +1,16 @@
+-- The C compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Found Python3: /home/ubuntu/.local/bin/python3.11 (found version "3.11.15") found components: Interpreter 
+-- Configuring done (0.9s)
+-- Generating done (0.0s)
+-- Build files have been written to: /tmp/lume-r186-cmake-proof/build
+[ 50%] Generating lume_scripts.inc
+[100%] Building C object engine/CMakeFiles/lume_scripts_proof.dir/lume_scripts.c.o
+[100%] Built target lume_scripts_proof
+configure exit=0
+build exit=0
+d8706f46ffa4ec2476ba6e959d0fce376dc42089eb4f3732bd8cf1f085731fd1  /tmp/lume-r186-cmake-proof/build/engine/lume_scripts.inc
