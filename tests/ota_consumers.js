@@ -768,6 +768,11 @@ const ALLOWED = [
   'website/playground/sources/app_manager.js',
   'website/playground/sources/imu_poll.js',
   'docs/r194-report.md',
+  // r198: Sparkline migration close-out. The three consumer apps were already
+  // migrated in r194, so no examples path is new here; only this round's report
+  // and regenerable evidence directory need admitting. BASE and all assertion
+  // predicates are untouched (no re-pin, no widening).
+  'docs/r198-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -858,6 +863,9 @@ const checks = [
       // r197: dual-token split verification evidence (harness, mutations,
       // gateway E2E 10-run, full sweep, playground rebuild, zero-diff).
       f.startsWith('artifacts/r197/') ||
+      // r198: Sparkline close-out evidence (host regression, CLI tests,
+      // lume check, playground rebuild, website check, zero-diff, ASCII).
+      f.startsWith('artifacts/r198/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 
