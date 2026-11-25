@@ -419,6 +419,17 @@ function vaGatewayToken() {
   return (typeof t === 'string' && t) ? t : VA_GATEWAY_TOKEN;
 }
 
+/* r195: strip query and fragment before a URL reaches the log, so only
+ * scheme+host+port+path is printed. A token pasted into the gateway URL as
+ * ?token=... must never be printed; the real connect uses the full URL. */
+function vaWSLogUrl(url) {
+  var cut = url.length;
+  var q = url.indexOf('?'), h = url.indexOf('#');
+  if (q >= 0 && q < cut) cut = q;
+  if (h >= 0 && h < cut) cut = h;
+  return url.slice(0, cut);
+}
+
 /* r121: optional gateway keep-alive. KV wins over the constant; accepts the
  * same truthy spellings as the gateway CLI/env so one KV toggles both sides. */
 function vaGatewayMultiturn() {
@@ -640,8 +651,12 @@ function vaTransportWS(prompt, done) {
     return;
   }
   var url = vaGatewayUrl();
-  lume.log('VA WS CONNECT ' + url + (multi ? ' MT' : ''));
-  lume.net.ws.connect(url, {
+  /* r195: the same KV token is used for the upgrade header and hello.auth
+   * (one shared config, rotated in sync). Read only on the fresh-connect
+   * path: the reuse branch above returns before this point. */
+  var handshakeToken = vaGatewayToken();
+  lume.log('VA WS CONNECT ' + vaWSLogUrl(url) + (multi ? ' MT' : ''));
+  var wsOpts = {
     onOpen: function (conn) {
       vaStreamConn = conn;
       var hello = { v: 1, type: 'hello',
@@ -703,7 +718,11 @@ function vaTransportWS(prompt, done) {
       lume.log('VA WS ERR ' + code);
       vaSet('IDLE'); vaWSFinish(-3);
     }
-  }, function (err) {
+  };
+  /* r195: no headers field at all in open LAN mode, so the upgrade request
+   * and the hello frame stay byte-identical to r119. */
+  if (handshakeToken) wsOpts.headers = { Authorization: 'Bearer ' + handshakeToken };
+  lume.net.ws.connect(url, wsOpts, function (err) {
     if (err) { lume.log('VA WS CONNECT ERR ' + err); vaSet('IDLE'); vaWSFinish(err); }
   });
 }
