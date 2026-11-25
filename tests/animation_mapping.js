@@ -1,8 +1,10 @@
 // Host protocol harness: execute the firmware's exact embedded prelude.
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
+const source = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/prelude.js'), 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 let calls = [], id = 0, token = 0;
 const ctx = vm.createContext({lume: {

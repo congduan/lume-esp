@@ -1,8 +1,10 @@
 // Host harness: execute the exact C-embedded prelude with a deferred LVGL remove queue.
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
+const source = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/prelude.js'), 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 let next = 0, creates = [], attrs = [], removed = [], parents = {}, live = new Set(), presses = new Set();
 const ctx = vm.createContext({lume: {

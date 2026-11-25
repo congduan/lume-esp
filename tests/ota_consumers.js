@@ -691,6 +691,11 @@ const ALLOWED = [
   'tests/examples_gallery.js',
   'docs/r189-report.md',
 
+  // r190: host-only review P2 follow-ups. No firmware behaviour or OTA
+  // consumer contract changes; the report and its raw verification logs are
+  // the only new paths outside the already-allowed harness/docs sets.
+  'docs/r190-report.md',
+
   // r187: security defaults -- TLS cert verify on by default (per-request
   // httpsInsecure opt-in), gateway WebSocket handshake token. Host-verifiable
   // surface: gateway handshake auth harness + regression suite, HTTP consumer
@@ -780,6 +785,8 @@ const checks = [
       f.startsWith('artifacts/r184/') || f.startsWith('artifacts/r185/') ||
       f.startsWith('artifacts/r186/') || f.startsWith('artifacts/r187/') ||
       f.startsWith('artifacts/r188/') || f.startsWith('artifacts/r189/') ||
+      // r190: host verification logs (regression, generator, check, website).
+      f.startsWith('artifacts/r190/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 

@@ -1,8 +1,10 @@
 // Host harness for the exact C-embedded prelude and Queue A ATTR messages.
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
+const source = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/prelude.js'), 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 let messages = [], nextId = 0;
 const ctx = vm.createContext({lume: {
@@ -46,7 +48,8 @@ assert.deepStrictEqual(rows(), []);
 pass('disposed node stops receiving theme updates');
 assert.throws(() => run("View({style:{background:'missing'}})"), /expected #RRGGBB/);
 pass('unknown token falls through to literal parser');
-const demo = fs.readFileSync('firmware/components/lume-engine/prelude/demo.js', 'utf8');
+const demo = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/demo.js'), 'utf8');
 let demoMessages = [], demoId = 0;
 const demoCtx = vm.createContext({lume: {
   createNode: () => ++demoId,

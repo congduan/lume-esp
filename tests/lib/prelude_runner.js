@@ -7,16 +7,25 @@ const { createHash } = require('node:crypto');
 
 const root = path.resolve(__dirname, '../..');
 const scriptDir = path.join(root, 'firmware/components/lume-engine/prelude');
-const filenames = {
-  lume_prelude_js: 'prelude.js',
-  lume_demo_js: 'demo.js',
-  lume_home_js: 'home.js',
-};
+// The generator's SCRIPTS tuple is the single source of truth for the three
+// prelude files. Node cannot import Python, so parse the literal tuple; a
+// malformed or empty block fails loudly at load time instead of silently
+// reading a stale list.
+const generator = fs.readFileSync(
+  path.join(root, 'firmware/components/lume-engine/gen_lume_scripts.py'), 'utf8');
+const block = generator.match(/SCRIPTS\s*=\s*\(\n([\s\S]*?)^\)$/m);
+if (!block) throw new Error('cannot parse SCRIPTS from gen_lume_scripts.py');
+const filenames = {};
+for (const m of block[1].matchAll(/["']([^"']+)["']\s*,\s*["']([^"']+)["']/g)) {
+  filenames[m[1]] = m[2];
+}
+if (Object.keys(filenames).length === 0)
+  throw new Error('SCRIPTS is empty in gen_lume_scripts.py');
 function extract(name) {
   if (!Object.hasOwn(filenames, name)) throw new Error(`missing ${name}`);
   return fs.readFileSync(path.join(scriptDir, filenames[name]), 'utf8');
 }
-const prelude = extract('lume_prelude_js', 'lume_demo_js');
+const prelude = extract('lume_prelude_js');
 const demo = extract('lume_demo_js');
 // Historical app guard harnesses compare the prelude with 3514c76. The C
 // container changed in r186, so compare the extracted JS bytes instead.

@@ -1,8 +1,10 @@
 // Exercise the exact embedded prelude and the shipped idle-sleep example.
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
+const source = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/prelude.js'), 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 let now = 0, sleeps = 0, sleepResult = 0, deinit = 0, nextNode = 1;
 const lume = {

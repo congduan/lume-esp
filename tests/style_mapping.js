@@ -1,8 +1,10 @@
 // Host harness: evaluate the exact C-embedded prelude and inspect Queue A calls.
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
+const source = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/prelude.js'), 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 let messages = [], nextId = 0;
 const ctx = vm.createContext({ lume: {
@@ -87,7 +89,8 @@ for (const style of [{width:'101%'}, {padding:'8'}, {background:'#bad'}, {opacit
 console.log('PASS invalid percentage/metric/color/opacity rejected in prelude');
 console.log('PASS all style mapping cases');
 
-const embeddedDemo = fs.readFileSync('firmware/components/lume-engine/prelude/demo.js', 'utf8');
+const embeddedDemo = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/demo.js'), 'utf8');
 function runDemo(script) {
   let calls = [], id = 0;
   const sandbox = vm.createContext({lume: {

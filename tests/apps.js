@@ -14,6 +14,7 @@
  */
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
 const vm = require('node:vm');
 const { runApp } = require('./lib/prelude_runner');
 
@@ -133,7 +134,8 @@ check('Launcher rejects a non-array app list', () => {
 });
 
 /* ---- the firmware's built-in home screen (lume_scripts.c:lume_home_js) ---- */
-const homeJs = fs.readFileSync('firmware/components/lume-engine/prelude/home.js', 'utf8');
+const homeJs = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/home.js'), 'utf8');
 
 check('embedded home renders a clock and one tile per installed app', () => {
   const s = runApp(homeJs, {

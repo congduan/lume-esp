@@ -1,5 +1,6 @@
-const fs = require('fs'), vm = require('vm'), zlib = require('zlib'), assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
+const fs = require('fs'), path = require('path'), vm = require('vm'), zlib = require('zlib'), assert = require('assert');
+const source = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/prelude.js'), 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 function run(script, size = {width: 1, height: 1}, rc = 0) {
   const calls = []; let id = 0;

@@ -4,9 +4,11 @@
 // bridge produces into __lume_dispatchGesture (and call the pure __gestureStep
 // directly). This is the "pure logic synthesizer" test scope from the brief.
 const fs = require('fs');
+const path = require('path');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
+const source = fs.readFileSync(
+  path.join(__dirname, '..', 'firmware/components/lume-engine/prelude/prelude.js'), 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 
 let nextNode = 1;
