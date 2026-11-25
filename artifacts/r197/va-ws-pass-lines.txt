@@ -1,0 +1,18 @@
+PASS happy: hello -> 3x3840B uplink -> end -> 9 deltas -> 3 audio -> idle/close -> IDLE
+PASS negative 1: gateway refuse -> IDLE, no uplink, not hung
+PASS negative 2: mid-stream upstream disconnect -> partial text, IDLE, no hang
+PASS negative 3: gateway fatal upstream_error -> IDLE, no hang
+PASS barge-in: SPEAK -> IDLE, end frame delivered, mic stopped, upstream released
+PASS fallback: no gateway -> legacy canned; vaSetTransport(non-fn) restores legacy
+PASS r117: transcript consumed into signal, answer intact, final before chat delta
+PASS r119: device KV token -> hello.auth -> locked gateway full round
+PASS r119: app token mismatch -> fatal error -> IDLE, no upstream, not hung
+PASS r121: 2 turns / 1 connection / 1 hello, history carries, no close
+PASS r122: close retires history, reconnect resumes it + re-sends token, no log leak
+PASS r121: wrong token blocked on initial + reconnect, upstream never created
+PASS r122: barge-in close -> reconnect with resume -> history of prior turns still continues
+PASS r195: URL query redacted in log, full URL connected, header still sent
+PASS r197: split keys -> Bearer=handshake, hello.auth=device-token, full round
+PASS r197: single-KV fallback -> r195 header+hello bytes, SPLIT=0
+PASS r197: both keys empty -> open LAN: no headers, no auth, SPLIT=0
+ALL VA WS HARNESS CASES PASSED (17 cases)

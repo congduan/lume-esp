@@ -2533,8 +2533,15 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 
 ## r195 / voice_assistant WS 升级握手鉴权（纯 app 层）
 
-- **单 KV 双用，设备侧无法拆分两个 token**：协议 §1 说握手 token 与 §8.2 `hello.auth.token` 是两个独立配置，但设备只有 `voice_gateway_token` 一个键。本轮刻意不扩配置面：同一值同时作为 `Authorization: Bearer <token>` 和 hello 的 `auth.token`。代价是无法表达「握手 token ≠ hello auth device-token」的网关部署；那种形态需后续另立任务加第二键，本轮不处理。好处是单键低摩擦、运营商同步轮换；「只配一键」的半开态也不会出现。
+- **单 KV 双用，设备侧无法拆分两个 token**：协议 §1 说握手 token 与 §8.2 `hello.auth.token` 是两个独立配置，但设备只有 `voice_gateway_token` 一个键。本轮刻意不扩配置面：同一值同时作为 `Authorization: Bearer <token>` 和 hello 的 `auth.token`。代价是无法表达「握手 token ≠ hello auth device-token」的网关部署；那种形态需后续另立任务加第二键，本轮不处理。好处是单键低摩擦、运营商同步轮换；「只配一键」的半开态也不会出现。**r197 更新：该限制已解除** —— 新增 `voice_gateway_handshake_token`，非空时只用于升级头、hello 仍用原键，空/未写仍走单键逐字节回落，详见下方 r197 节。
 - **宿主 harness 不覆盖真实 401 握手门**：`tools/gateway/server.js` 只校验 hello.auth（phase `await-hello`），没有实现 r187 的升级阶段 401。宿主 live 断言只能证明 header 由真 prelude 构造、并原样送到 `_connect` 边界（`Authorization: Bearer <token>\r\n`）；真网关在升级阶段接受/拒绝、明文 `ws://` 上的令牌暴露面、TLS 终止方式**全部未实测**，deferred 到 board bring-up / 部署验收。不声称真机验证。
 - **日志裁剪是字符串级，不做 URL 规范化**：`vaWSLogUrl()` 只在第一个 `?` 或 `#` 处截断，不解析/规范化 URL。正常 `ws://host:port/path` 的日志与 r119 逐字节一致；刻意手滑写进 KV 的 query/fragment token 不会进日志，但编码变形（如 `%3F`）不在本刀防御范围。真实连接始终用未改动的完整 URL。
 - **HUD 无新增鉴权态指示**：沿用 r119 先例，只保留 `VA WS HELLO AUTH` 日志事实（从不打 token 值），未在 UI 上新增「已鉴权」徽标或文案——避免把「KV 里有 token」误表达成「网关已接受 token」（后者只有收到 `hello-ack` 才能确认）。
 - **范围与证据**：`firmware/` 零 diff（`artifacts/r195/firmware-zero-diff.txt` 为 0 字节），未跑 `idf.py build`；`runtime/`、`tools/gateway/`、vendored、`.github/`、其他 examples 未动；`.d.ts` 未改且 `gen_api_docs.py --check` fresh。全量 `tests/*.js` 0 FAIL（wordle 存量 flake 本轮未触发，未修）；`va_ws.js` 14 cases 全绿，3 组 mutation 转红后复原；`lume check voice_assistant/counter --no-emu` 均 PASS；playground 73 apps 重建二次幂等；`check_website.py` 四类 none；`npm test` 52/0/0。新增字面量全 ASCII；commits 拆 feat / test / docs，未推送；未跑 codex review（主控轮负责）。
+
+## r197 / voice_assistant 双 token 拆分（握手 token ≠ hello device-token）
+
+- **配置面**：app 层新增 KV `voice_gateway_handshake_token`（常量 `VA_GATEWAY_HANDSHAKE_TOKEN_KEY` / `VA_GATEWAY_HANDSHAKE_TOKEN` 默认 `''`）。**非空** → 只作 WS 升级头 `Authorization: Bearer <该键值>`，hello `auth.token` 仍取 `voice_gateway_token`；**空/未写** → 升级头与 hello 都用 `voice_gateway_token`，r119/r195 单键设备逐字节不回归。只读语义变更，未新增 KV 写入面（settings UI / fput / repl 写键不在本刀范围）。两键同时非空但同值时 SPLIT=0、行为等同回落。
+- **日志纪律**：新增 `VA WS AUTH SPLIT=0/1` 只记「两键是否持有不同的非空值」的布尔事实，绝不记键值；`VA WS HELLO AUTH` 语义不变。两键都空时 SPLIT=0，开放模式「无 headers + hello 无 auth」行为不变；无 HUD 徽标（沿用 r195 口径，避免把「KV 有值」误报成「网关已接受」）。
+- **两门串联仍未实测真机**：升级门 401（`--token` / `GATEWAY_TOKEN`）与 hello 门 1008（`--device-token` / `GATEWAY_DEVICE_TOKEN`）早已在网关实现，本轮未改 `tools/gateway/`。E2E 用真 server + 真 ws-client 证明 T1≠T2 部署形态全通、两枚 token 互换后各自被另一门拒绝；这是**宿主语义桥**，不声称真机验证。明文 `ws://` 令牌暴露面与 TLS 终止方式仍 deferred，沿用 r195 节口径。
+- **验证与证据**：`tests/va_ws.js` 17 cases 全绿（新增双键拆分 / 单键回落 / 两键全空 3 组；M1 删回落、M2 头误用 hello 键均转红后复原）；`tests/gateway_e2e_auth.js` 8 cases + 10 连跑 0 失败；全量 `tests/*.js` 0 FAIL；`npm test` 52/0/0；`firmware/` 零 diff（`artifacts/r197/firmware-zero-diff.txt`），未跑 `idf.py build`；playground 73 apps 重建二次幂等、`check_website.py` 四类 none；新增非 ASCII 字面量 0（存量 `—` / `§` 不变）。未 push；commits 拆 feat / test / docs，其中 `tests/ota_consumers.js` 仅机械追加 r197 新路径到 ALLOWED（不重钉 BASE、不改任何断言），偏离说明见 `docs/r197-report.md`。

@@ -1,0 +1,9 @@
+=== non-ASCII discipline ===
+command: grep -Pn '[^\x00-\x7F]' examples/voice_assistant/app.js
+1:/* r95 — VOICE ASSISTANT / walkie-talkie card (legacy sync mode, pure app layer).
+685:      if (token) hello.auth = { token: token };   /* r119 §8.2: appended field */
+687:       * Old gateways ignore the unknown field (§3) and start a fresh session. */
+--- unique non-ASCII chars, origin/main vs worktree ---
+origin/main: §—
+worktree:    §—
+r197-added non-ASCII literals: 0 (only legacy -- and section-sign in comments)

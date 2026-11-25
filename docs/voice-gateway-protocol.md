@@ -26,6 +26,10 @@ token；其握手鉴权接入已于 r195 用 header 方式接入（URL 保持无
 但 CLI 会打印醒目的警告。
 此握手 token 与 §8.2 的 `--device-token` / `hello.auth.token` 是两个独立配置；
 前者在升级前拒绝未授权连接，后者在会话 `hello` 帧校验。
+r197 起设备侧（voice_assistant）也能表达这种独立配置：KV
+`voice_gateway_handshake_token` 非空时只用于升级头 Bearer，KV
+`voice_gateway_token` 仍用于 hello `auth.token`；前者空/未写则回落到单键行为
+（两处同值），旧设备逐字节不变。
 网关目前仅支持 `ws://`，明文链路会暴露令牌，部署时应限制监听地址或在可信代理上终止 TLS。
 
 - 传输：单个 WebSocket 连接（设备为客户端，网关为服务端）。`ws://` 明文本轮即可；
@@ -560,6 +564,12 @@ r120 的 `--multiturn` 只改变网关侧关闭时机；r121 让设备 app 复�
 不带 `auth` 字段，非空则追加 `auth: {token}`。token 值不进任何日志（网关 `ready`
 只记 `deviceAuth=on|off`，app 只记 `VA WS HELLO AUTH`）、不进错误 message、
 不进 git；用 `node:crypto.timingSafeEqual` 做等长常数时间比较。
+
+r197 设备侧补充：若网关把 §1 的升级握手 token 与本节 device-token 配成**不同值**，
+设备除写 `voice_gateway_token` 外还需另写 `voice_gateway_handshake_token`；
+该键非空时只影响升级头，不影响 hello 的 `auth.token`，空/未写则沿用上面的
+单键回落。设备日志只记 `VA WS AUTH SPLIT=0/1` 布尔事实，不记键值；两键的
+写入面（settings UI / fput / repl）不在本轮范围。
 
 ### 8.2.2 校验位置与失败语义
 

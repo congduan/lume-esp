@@ -1,0 +1,7 @@
+=== firmware zero-diff proof ===
+command: git diff origin/main -- firmware/
+--- begin diff ---
+--- end diff ---
+diff line count: 0
+worktree status for firmware/:
+(empty status above = clean)
