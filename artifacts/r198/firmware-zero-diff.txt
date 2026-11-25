@@ -1,0 +1,2 @@
+=== git diff origin/main -- firmware/ (raw) ===
+=== byte count: 0 ===

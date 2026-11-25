@@ -1,0 +1,5 @@
+=== grep -Pn non-ASCII in three migrated app.js ===
+examples/dashboard/app.js:1:/** LUME HUB — canvas-first demo, pure JS on the existing API (no firmware
+NON-ASCII FOUND
+=== new non-ASCII bytes vs origin/main (expected 0: no app changes) ===
+NONE
