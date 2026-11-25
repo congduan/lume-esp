@@ -69,6 +69,14 @@
    不带 `auth` 字段；非空 = hello 追加 `auth.token`（协议 §4.1/§8.2 的追加字段）。
    也可用 deploy 前 meta 预置该 KV。token 值不会写进任何日志行。
 
+   若网关把升级握手 token（CLI `--token` / env `GATEWAY_TOKEN`）与 hello 的
+   device-token（CLI `--device-token` / env `GATEWAY_DEVICE_TOKEN`）配成**不同值**
+   （r197，协议 §1/§8.2.1），再写第二个键：
+   `lume.storage.kv.set('voice_gateway_handshake_token', 'MY_HANDSHAKE_TOKEN')`。
+   该键非空时只用于升级头 `Authorization: Bearer <值>`，hello 的 `auth.token`
+   仍取 `voice_gateway_token`；留空/不写则回落到单键行为（升级头与 hello 同值），
+   存量设备逐字节不回归。日志只记 `VA WS AUTH SPLIT=0/1` 事实，不记键值。
+
 4. 重启 app：boot 时 `vaDetectMode()` 看到 URL + `GOT_IP` → `MODE GATEWAY`，
    自动把 `vaTransportWS` 注入 `vaSetTransport()`。无需改状态机。
 

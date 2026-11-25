@@ -366,6 +366,11 @@ var VA_GATEWAY_KEY = 'voice_gateway_url';
 var VA_GATEWAY_URL = 'ws://192.168.1.50:18770/';   /* edit here or set the KV key */
 var VA_GATEWAY_TOKEN_KEY = 'voice_gateway_token';  /* r119: shared device token */
 var VA_GATEWAY_TOKEN = '';                         /* empty = open LAN mode */
+/* r197: optional second key for the WS-upgrade Bearer only. Non-empty ->
+ * handshake token differs from the r119 hello device-token; empty -> the
+ * single-key r119 behaviour is used for both (no regression). */
+var VA_GATEWAY_HANDSHAKE_TOKEN_KEY = 'voice_gateway_handshake_token';
+var VA_GATEWAY_HANDSHAKE_TOKEN = '';
 /* r121: opt-in gateway keep-alive. Off (default) = per-turn close, r119 bytes. */
 var VA_GATEWAY_MULTITURN_KEY = 'voice_gateway_multiturn';
 var VA_GATEWAY_MULTITURN = false;
@@ -417,6 +422,14 @@ function vaGatewayToken() {
   var t = null;
   try { t = lume.storage.kv.get(VA_GATEWAY_TOKEN_KEY); } catch (e) { t = null; }
   return (typeof t === 'string' && t) ? t : VA_GATEWAY_TOKEN;
+}
+
+/* r197: optional WS-upgrade Bearer token. '' means "not configured", which
+ * selects the r119 fallback (reuse the hello device-token for the header). */
+function vaGatewayHandshakeToken() {
+  var t = null;
+  try { t = lume.storage.kv.get(VA_GATEWAY_HANDSHAKE_TOKEN_KEY); } catch (e) { t = null; }
+  return (typeof t === 'string' && t) ? t : VA_GATEWAY_HANDSHAKE_TOKEN;
 }
 
 /* r195: strip query and fragment before a URL reaches the log, so only
@@ -651,11 +664,17 @@ function vaTransportWS(prompt, done) {
     return;
   }
   var url = vaGatewayUrl();
-  /* r195: the same KV token is used for the upgrade header and hello.auth
-   * (one shared config, rotated in sync). Read only on the fresh-connect
-   * path: the reuse branch above returns before this point. */
-  var handshakeToken = vaGatewayToken();
+  /* r197: hello.auth keeps the r119 device-token key; the WS-upgrade Bearer
+   * prefers the new handshake key and falls back to that same r119 value when
+   * it is unset/empty. Read only on the fresh-connect path: the reuse branch
+   * above returns before this point (no token read there). */
+  var helloToken = vaGatewayToken();
+  var hsKey = vaGatewayHandshakeToken();
+  var handshakeToken = hsKey || helloToken;
   lume.log('VA WS CONNECT ' + vaWSLogUrl(url) + (multi ? ' MT' : ''));
+  /* r197: boolean fact only -- never a token value. 1 = the two keys hold
+   * different non-empty values (split deployment), 0 = fallback/same value. */
+  lume.log('VA WS AUTH SPLIT=' + (hsKey && hsKey !== helloToken ? 1 : 0));
   var wsOpts = {
     onOpen: function (conn) {
       vaStreamConn = conn;
