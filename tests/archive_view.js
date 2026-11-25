@@ -222,7 +222,7 @@ check('static tree <= 20 nodes', () => {
   assert.ok(ui.messages.filter(m => m[0] === 'create').length <= 20,
     String(ui.messages.filter(m => m[0] === 'create').length));
 });
-check('playground manifest has 57 apps including archive_view', () => {
+check('playground manifest includes archive_view', () => {
   const apps = manifestApps(manifest);
   assert.ok(apps.length > 0 && apps.includes('archive_view'));
   assert.ok(apps.includes('archive_view'));

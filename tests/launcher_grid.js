@@ -9,7 +9,7 @@
  * onLaunch / onBack host callbacks exist, indicator is off so the only Canvases
  * are the 9 48x48 icons (20736 px <= 230400 px full frame), the theme is
  * customised, ASCII-only copy (app AND this harness), 14/20/32 fonts, the
- * 61-app manifest, byte-identical playground source, and firmware/runtime/
+ * playground manifest, byte-identical playground source, and firmware/runtime/
  * tools/lume zero-diff vs the r162 feat commit. r162 adds static contracts for
  * the shell setEditing notification (both change points), the .d.ts prop and
  * the app's EDIT status consumption. Every static predicate has a mutation
@@ -182,8 +182,8 @@ const checks = [
   ['playground sources/launcher_grid.js byte-identical to the example', [playgroundSrc, x =>
     x === source]],
 
-  ['launcher_grid is in the 61-app playground manifest', [apps,
-    list => list.length > 0 && list.includes('launcher_grid')]],
+  [`launcher_grid is in the ${apps.length}-app playground manifest`, [apps,
+    list => list.length === apps.length && list.includes('launcher_grid')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
@@ -220,7 +220,7 @@ const HARNESS_ASCII = 'entire harness file is ASCII-only (r64)';
 const LIT = 'UI string literals ASCII-only (r64)';
 const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
 const SRC = 'playground sources/launcher_grid.js byte-identical to the example';
-const MANIFEST = 'launcher_grid is in the 61-app playground manifest';
+const MANIFEST = `launcher_grid is in the ${apps.length}-app playground manifest`;
 const GUARD = 'firmware/ runtime/ tools/lume/ identical to 3514c76';
 
 must('drop the shell import',

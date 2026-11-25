@@ -1,0 +1,313 @@
+PASS launcher_grid static: shell.js imported by the documented relative path
+PASS launcher_grid static: shell.Launcher is consumed
+PASS launcher_grid static: explicit 9-app literal list passed to Launcher
+PASS launcher_grid static: every app carries id / label / color / ASCII glyph
+PASS launcher_grid static: Launcher title / columns / indicator fixed (canvas lock)
+PASS launcher_grid static: canvas budget constants are explicit and correct
+PASS launcher_grid static: onLaunch host callback records id and updates status
+PASS launcher_grid static: onBack host handler returns true (editing-state fallback)
+PASS launcher_grid static: status Text is signal-driven with r162 EDIT feedback
+PASS launcher_grid static: shell.Launcher setEditing notifies onEditingChange at both change points
+PASS launcher_grid static: LauncherProps declares the onEditingChange callback
+PASS launcher_grid static: app consumes onEditingChange and shows EDIT in the status line
+PASS launcher_grid static: custom theme sets primary / surface / accent / text
+PASS launcher_grid static: entire app file is ASCII-only (r64)
+PASS launcher_grid static: entire harness file is ASCII-only (r64)
+PASS launcher_grid static: UI string literals ASCII-only (r64)
+PASS launcher_grid static: Text fontSize limited to bundled 14/20/32 faces
+PASS launcher_grid static: playground sources/launcher_grid.js byte-identical to the example
+PASS launcher_grid static: launcher_grid is in the 70-app playground manifest
+PASS launcher_grid static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS launcher_grid mutation: drop the shell import -> FAIL as expected
+PASS launcher_grid mutation: app stops consuming shell.Launcher -> FAIL as expected
+PASS launcher_grid mutation: drop the explicit apps argument (falls back to app store) -> FAIL as expected
+PASS launcher_grid mutation: use the app store instead of a literal -> FAIL as expected
+PASS launcher_grid mutation: drop one curated app -> FAIL as expected
+PASS launcher_grid mutation: non-ASCII glyph slips into the app -> FAIL as expected
+PASS launcher_grid mutation: indicator re-enabled (two extra edge canvases) -> FAIL as expected
+PASS launcher_grid mutation: columns drift off 3x3 -> FAIL as expected
+PASS launcher_grid mutation: icon size drifts off 48 -> FAIL as expected
+PASS launcher_grid mutation: drop the onLaunch host callback -> FAIL as expected
+PASS launcher_grid mutation: onLaunch falls back to a real app switch -> FAIL as expected
+PASS launcher_grid mutation: drop the onBack host handler -> FAIL as expected
+PASS launcher_grid mutation: status stops following the launch/editing signals -> FAIL as expected
+PASS launcher_grid mutation: shell drops the onEditingChange notification call -> FAIL as expected
+PASS launcher_grid mutation: edit toggle bypasses setEditing -> FAIL as expected
+PASS launcher_grid mutation: back-out bypasses setEditing -> FAIL as expected
+PASS launcher_grid mutation: LauncherProps drops the onEditingChange declaration -> FAIL as expected
+PASS launcher_grid mutation: app drops the onEditingChange consumer -> FAIL as expected
+PASS launcher_grid mutation: app drops the EDIT status feedback -> FAIL as expected
+PASS launcher_grid mutation: a non-ASCII byte slips into the harness -> FAIL as expected
+PASS launcher_grid mutation: custom theme is dropped -> FAIL as expected
+PASS launcher_grid mutation: a non-ASCII byte slips into the file -> FAIL as expected
+PASS launcher_grid mutation: a CJK UI literal slips in -> FAIL as expected
+PASS launcher_grid mutation: font size escapes the bundled faces -> FAIL as expected
+PASS launcher_grid mutation: playground generated source drifts -> FAIL as expected
+PASS launcher_grid mutation: playground manifest drops launcher_grid -> FAIL as expected
+PASS launcher_grid mutation: a firmware/runtime/CLI file changes after 3514c76 -> FAIL as expected
+PASS launcher_grid live: root node exists with an exact 9-icon canvas budget
+PASS launcher_grid live: tile onPress drives the onLaunch host callback (no app-store launch)
+PASS launcher_grid live: onEditingChange mirrors edit state true then false into the app signal
+PASS launcher_grid live: app without onEditingChange boots and keeps baseline status semantics
+PASS launcher_grid live: edit-mode back and onBack fallback update status
+PASS launcher_grid live: shutdown clears all effects and timers
+PASS launcher_grid live mutation: live: explicit apps dropped -> zero canvases -> FAIL as expected
+PASS launcher_grid live mutation: live: indicator re-enabled -> two extra canvases -> FAIL as expected
+PASS launcher_grid live mutation: live: onLaunch host callback dropped -> status stays READY -> FAIL as expected
+PASS launcher_grid live mutation: live: onLaunch falls back to a real app switch -> FAIL as expected
+PASS launcher_grid live mutation: live: app drops onEditingChange consumer -> no EDIT feedback -> FAIL as expected
+PASS launcher_grid live mutation: live: app drops EDIT status expression -> no EDIT feedback -> FAIL as expected
+PASS launcher_grid live mutation: live: shell notification removed -> app editing stays false -> FAIL as expected
+PASS launcher_grid live mutation: live: edit toggle bypasses setEditing -> no true callback -> FAIL as expected
+PASS launcher_grid live mutation: live: back-out bypasses setEditing -> no false callback -> FAIL as expected
+ALL LAUNCHER GRID HARNESS CASES PASSED
+PASS control_center static: shell.js imported by the documented relative path
+PASS control_center static: SafeArea consumed as the round-screen safe container
+PASS control_center static: Card consumed by four setting cards
+PASS control_center static: IconButton consumed by WiFi, Bluetooth and RESET
+PASS control_center static: all four values live in signals
+PASS control_center static: KV key block uses the four documented <=15-char keys
+PASS control_center static: flag KV get wrapped in try/catch, accepts only 0 or 1
+PASS control_center static: step KV get wrapped in try/catch, accepts only legal integer steps
+PASS control_center static: KV set wrapped in try/catch (NVS failure is volatile)
+PASS control_center static: startup reads every key back into its signal
+PASS control_center static: volume wraps 10 -> 0 and brightness wraps 5 -> 1
+PASS control_center static: RESET restores all four defaults through kvSave
+PASS control_center static: no Slider consumption (timer_kit owns that r157 point)
+PASS control_center static: zero Canvas nodes
+PASS control_center static: entire app file is ASCII-only (r64)
+PASS control_center static: UI string literals ASCII-only (r64)
+PASS control_center static: Text fontSize limited to bundled 14/20/32 faces
+PASS control_center static: static tree within the node budget
+PASS control_center static: playground sources/control_center.js byte-identical to the example
+PASS control_center static: control_center is in the 70-app playground manifest
+PASS control_center static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS control_center mutation: drop the shell import -> FAIL as expected
+PASS control_center mutation: app stops consuming SafeArea -> FAIL as expected
+PASS control_center mutation: app stops consuming Card -> FAIL as expected
+PASS control_center mutation: app stops consuming IconButton -> FAIL as expected
+PASS control_center mutation: a value escapes the signal graph -> FAIL as expected
+PASS control_center mutation: KV key exceeds the NVS cap -> FAIL as expected
+PASS control_center mutation: flag KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: step KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: KV set loses try/catch -> FAIL as expected
+PASS control_center mutation: startup forgets to read a key back -> FAIL as expected
+PASS control_center mutation: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center mutation: RESET forgets brightness -> FAIL as expected
+PASS control_center mutation: Slider slips into the app -> FAIL as expected
+PASS control_center mutation: a Canvas slips into the app -> FAIL as expected
+PASS control_center mutation: a non-ASCII byte slips into the file -> FAIL as expected
+PASS control_center mutation: a CJK UI literal slips in -> FAIL as expected
+PASS control_center mutation: font size escapes the bundled faces -> FAIL as expected
+PASS control_center mutation: static tree overflows the node budget -> FAIL as expected
+PASS control_center mutation: playground generated source drifts -> FAIL as expected
+PASS control_center mutation: playground manifest drops control_center -> FAIL as expected
+PASS control_center mutation: a firmware/runtime/CLI file changes after 76d2c0c -> FAIL as expected
+PASS control_center live: handles, safe square and zero canvas
+PASS control_center live: IconButton tap toggles WiFi and writes KV
+PASS control_center live: IconButton tap toggles Bluetooth and writes KV
+PASS control_center live: volume card cycles 0..10 and persists
+PASS control_center live: brightness card cycles 1..5 and persists
+PASS control_center live: RESET restores every default and rewrites all four keys
+PASS control_center live: KV load rejects illegal values and a throwing NVS degrades
+PASS control_center live: dispose and shutdown clear effects and timers
+PASS control_center live mutation: live: WiFi IconButton stops toggling -> FAIL as expected
+PASS control_center live mutation: live: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center live mutation: live: RESET forgets brightness -> FAIL as expected
+ALL CONTROL CENTER HARNESS CASES PASSED
+PASS settings_dialog: shell.js imported once by the documented relative path
+PASS settings_dialog: rotate opens shell.Dialog with title + message
+PASS settings_dialog: Rotate is a danger button; setToken lives in its onPress only
+PASS settings_dialog: Cancel is plain with no onPress, ordered before the danger button
+PASS settings_dialog: reboot opens a Dialog with a danger Reboot button
+PASS settings_dialog: reboot() sits inside the danger onPress, after the typeof guard
+PASS settings_dialog: all three Dialog guards degrade to ASCII notes (no silent dangerous fallback)
+PASS settings_dialog: no two-stage confirm signals or arm timers survive
+PASS settings_dialog: OTA row stays View+Text+Button with a static New token title
+PASS settings_dialog: reboot row stays View+Text+Button with a static Reboot title
+PASS settings_dialog: playground sources/settings.js byte-identical to example
+PASS settings_dialog: settings is in the 70-app playground manifest
+PASS settings_dialog: all UI string literals ASCII-only (r64)
+PASS settings_dialog: firmware/ runtime/ identical to 3514c76 (pure app layer)
+PASS settings_dialog mutation: delete the rotate Dialog call -> FAIL as expected
+PASS settings_dialog mutation: downgrade Rotate from danger to plain -> FAIL as expected
+PASS settings_dialog mutation: give Cancel an onPress (Cancel would execute) -> FAIL as expected
+PASS settings_dialog mutation: delete the reboot Dialog danger Reboot button -> FAIL as expected
+PASS settings_dialog mutation: move reboot() before the typeof guard -> FAIL as expected
+PASS settings_dialog mutation: harden the Dialog guard (drop all three fallbacks) -> FAIL as expected
+PASS settings_dialog mutation: resurrect the two-stage confirm signal -> FAIL as expected
+PASS settings_dialog mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS settings_dialog mutation: a firmware file changes vs 3514c76 -> FAIL as expected
+PASS settings_dialog live: rotate Cancel -> no setToken
+PASS settings_dialog live: rotate Rotate -> setToken(32hex)
+PASS settings_dialog live: setToken failure -> ASCII err note
+PASS settings_dialog live: reboot Cancel -> no reboot
+PASS settings_dialog live: reboot Reboot -> one reboot
+PASS settings_dialog live: reboot binding stub -> reboot n/a
+PASS settings_dialog live: Dialog stub -> ASCII notes, no auto action
+PASS settings_dialog live mutation: Cancel with onPress -> FAIL as expected
+ALL SETTINGS DIALOG HARNESS CASES PASSED
+PASS payload 1 zlib: real inflate text, byte counts, ratio and ZLIB label
+PASS payload 2 raw: real inflate text, byte counts, ratio and RAW label
+PASS payload 3 truncated zlib is a REAL -2 (not -1), rendered as ERR -2
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS NEXT cycles three payloads and wraps; format labels follow the cycle
+PASS default host stub (no options.compress) renders ERR -3, no fake success
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real inflate call present
+PASS text truncation to 120 chars + "..." is declared and implemented
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest includes archive_view
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76
+PASS MUTATION delete <0 error branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake inflate result -> real-inflate predicate and live FAIL
+PASS MUTATION drop text truncation -> truncation predicate FAILS
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS archive_view harness: all live, static and mutation checks green
+PASS default: 2x nearest, HUD/dims/OK, sprite pixels = independent nearest
+PASS NEXT cycles 2x -> 4x -> 8x -> 2x; every grid matches independent nearest
+PASS MODE toggles nearest <-> bilinear at every zoom; bilinear differs from nearest
+PASS both Buttons are wired: press NEXT changes zoom, press MODE flips sampling
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS scale() spy: app passes SRC, correct dims and the exact mode string
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real scale() call present
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 12 nodes
+PASS playground manifest includes img_view
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76
+PASS MUTATION delete <0 error branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake scale result -> real-scale predicate and pixel compare FAIL
+PASS MUTATION fake reference -> pixel comparison FAILS (comparator load-bearing)
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS img_view harness: all live, static and mutation checks green
+PASS default stub renders raw=2048, mv=1650, CFG OK and draws the bar
+PASS pin/atten buttons reconfigure and wrap 1..10 / 0..3
+PASS no free() call: no app close hook, slot state is engine-persistent
+PASS negative readMv/readRaw/config render as err <code> numerically
+PASS 0 sample is NOT treated as an error (numeric, not truthy, branch)
+PASS out-of-range raw 4096 is rejected, so the normal-render proof FAILS
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 error discrimination present, no truthy if(r)/if(m)
+PASS config/readRaw/readMv calls bound to pin, no token-class strings
+PASS header declares the LUME_MAX_NODES budget
+PASS playground manifest includes adc_meter
+PASS generated playground source is byte-identical to the example
+PASS firmware/ and runtime/ byte-identical to baseline 3514c76
+PASS MUTATION delete numeric error branch -> predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION touch a tracked firmware file -> diff predicate FAILS
+PASS MUTATION raw=4096 -> normal render predicate FAILS (already shown live)
+PASS adc_meter harness: all live, static and mutation checks green
+PASS CRC-32 table cross-checks against zlib.crc32 (independent reference)
+PASS default payload Lume: SHA/HMAC hex matches node:crypto, AES loopback OK
+PASS rendered text stream carries the computed digest, not just ctx state
+PASS NEXT button cycles 3 payloads and wraps; empty payload does not crash
+PASS negative codes render numerically: ERR -2 / ERR -1, never ERR 0
+PASS -3 from any primitive renders UNSUPPORTED (host/playground stub reality)
+PASS default no-crypto host stub shows UNSUPPORTED for all four rows
+PASS CRC-32 u32: 4294967295 is VALID, not ERR -1; seed chaining used once
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / !== 0 error discrimination, no truthy branch
+PASS digest truncation to 16 bytes + "..." in both SHA and HMAC rows
+PASS CRC unsigned String(c2 >>> 0) with negative-only guard
+PASS header declares LUME_MAX_NODES budget and app is plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest includes crypto_check
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76
+PASS MUTATION delete -3/UNSUPPORTED branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake/full digest (drop truncation) -> predicate FAILS
+PASS MUTATION signed CRC render -> unsigned predicate FAILS
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS crypto_check harness: all live, static and mutation checks green
+PASS default: N24/G40, HUD+OK, 9 nodes, no math error at boot
+PASS all four math APIs are actually called per step (spy forwards to real stub)
+PASS 30 steps match the independent reference integrator strictly (vx/vy/px/py/energy)
+PASS bounce constraint: 200 hard steps keep every particle inside the canvas
+PASS NEXT cycles gravity levels 0->1->2->0 and publishes the HUD
+PASS injected throwing vecAdd presents MATH ERR and freezes physics (defensive branch)
+PASS NEXT still switches level while frozen (button remains wired)
+PASS stub semantics: vecAdd returns a, mutates in place, honours byteOffset
+PASS stub semantics: vecScale returns a and mutates with double->f32 rounding
+PASS stub semantics: dot is a double accumulation equal to an independent sum
+PASS stub semantics: integrate uses interleaved acc and returns undefined
+PASS stub contract: non-Float32Array -> TypeError, length mismatch -> RangeError
+PASS all UI string literals ASCII-only (r64)
+PASS try/catch error branch and four real math calls present
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 12 nodes
+PASS playground manifest includes vec_demo
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76
+PASS MUTATION delete try/catch error branch -> predicate and live MATH ERR FAIL
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake app physics -> independent reference comparison FAILS
+PASS MUTATION fake reference -> comparison FAILS (comparator load-bearing)
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS vec_demo harness: all live, known-answer, static and mutation checks green
+PASS wordle UI strings ASCII-only (r64)
+PASS wordle dictionary 300 unique five-letter ASCII words, all self-green
+PASS wordle 26 five-by-seven glyphs decoded to valid spans
+PASS wordle verdict green/yellow/grey, inputs immutable
+PASS wordle repeated letters: two-pass count, no over-awarding
+PASS wordle new game defaults + KV load + event
+PASS wordle letter input: lowercase, full/space/ignore guards, backspace
+PASS wordle submit guards: short / non-dictionary / duplicate
+PASS wordle win: verdict all green, streak + best persisted
+PASS wordle loss: 6 tries, streak reset, board fully locked
+PASS wordle streak transitions: best is the longest run
+PASS wordle letter marks: highest feedback priority G > Y > X
+PASS wordle KV keys <= 15 chars, storage failures non-fatal
+PASS wordle canvas budget 109440/230400 px, grid in bounds
+PASS wordle r165 wdDayIndex + deterministic daily pick (no random path)
+PASS wordle r165 streak gap: 2+ days since last win breaks the run
+EVIDENCE wordle idle 0 paints/tick; first paint 302 calls on 480x228 canvas
+PASS wordle prelude boot: paint + HUD + 4 keyboard rows / 29 keys
+PASS wordle keyboard injection: onKey -> state, BKSP, SPACE ignored, ENTER submit
+PASS wordle feedback colors reach draw stream after a submitted guess
+PASS wordle NEW button resets board after win
+PASS wordle shell.dispose removes 33 nodes once
+PASS wordle ~60 s smoke (keys=120, submits=39, restarts=14, draws=24239, paints=133)
+PASS wordle ~60 s smoke: bounded state, draws and invalidates in canvas
+PASS wordle r165 live: same clock same word, +1 day new word, DAY #N in HUD
+PASS wordle static: Keyboard registered on lume.ui.shell
+PASS wordle static: app wires onKey/onBackspace/onSubmit into game logic
+PASS wordle static: Keyboard geometry: 40 px key, gap 0, y 300
+PASS wordle static: keyStates consume wdLetterMarks (r153 tint replaces the letter bar)
+PASS wordle static: native nodes carry QWERTY + SPACE/BKSP/ENTER
+PASS wordle static: all UI string literals ASCII-only (r64)
+PASS wordle static: playground sources/wordle.js byte-identical to example
+PASS wordle static: wordle is in the playground manifest
+PASS wordle static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS wordle static: prelude lume_scripts.c unchanged since 3514c76
+PASS wordle static: r165 wdDayIndex derives the ordinal from lume.system.time()
+PASS wordle static: r165 wdPick is deterministic day % WORDS.length, no random path
+PASS wordle static: r165 KV_DAY key fits the 15-char NVS cap
+PASS wordle static: r165 HUD renders DAY #N
+PASS wordle mutation: drop shell.Keyboard registration -> FAIL as expected
+PASS wordle mutation: app stops forwarding onKey -> FAIL as expected
+PASS wordle mutation: shrink the keyboard touch target -> FAIL as expected
+PASS wordle mutation: keyStates drop feedback marks -> FAIL as expected
+PASS wordle mutation: a key label drifts from QWERTY -> FAIL as expected
+PASS wordle mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS wordle mutation: playground generated source drifts from the example -> FAIL as expected
+PASS wordle mutation: playground manifest drops wordle -> FAIL as expected
+PASS wordle mutation: a firmware/runtime/CLI file changes after the feat commit -> FAIL as expected
+PASS wordle mutation: the prelude changes vs 3514c76 -> FAIL as expected
+PASS wordle mutation: wdPick falls back to random pick -> FAIL as expected
+PASS wordle mutation: wdDayIndex ignores the wall clock -> FAIL as expected
+PASS wordle mutation: KV_DAY grows past the NVS cap -> FAIL as expected
+PASS wordle mutation: HUD drops the DAY #N label -> FAIL as expected
+ALL WORDLE HARNESS CASES PASSED
+PASS playground manifest 70 apps match generated sources and examples; removal/addition mutation caught

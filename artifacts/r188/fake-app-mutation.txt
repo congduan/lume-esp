@@ -1,0 +1,153 @@
+--- launcher_grid: exit=0 ---
+PASS launcher_grid static: shell.js imported by the documented relative path
+PASS launcher_grid static: shell.Launcher is consumed
+PASS launcher_grid static: explicit 9-app literal list passed to Launcher
+PASS launcher_grid static: every app carries id / label / color / ASCII glyph
+PASS launcher_grid static: Launcher title / columns / indicator fixed (canvas lock)
+PASS launcher_grid static: canvas budget constants are explicit and correct
+PASS launcher_grid static: onLaunch host callback records id and updates status
+PASS launcher_grid static: onBack host handler returns true (editing-state fallback)
+PASS launcher_grid static: status Text is signal-driven with r162 EDIT feedback
+PASS launcher_grid static: shell.Launcher setEditing notifies onEditingChange at both change points
+PASS launcher_grid static: LauncherProps declares the onEditingChange callback
+PASS launcher_grid static: app consumes onEditingChange and shows EDIT in the status line
+PASS launcher_grid static: custom theme sets primary / surface / accent / text
+PASS launcher_grid static: entire app file is ASCII-only (r64)
+PASS launcher_grid static: entire harness file is ASCII-only (r64)
+PASS launcher_grid static: UI string literals ASCII-only (r64)
+PASS launcher_grid static: Text fontSize limited to bundled 14/20/32 faces
+PASS launcher_grid static: playground sources/launcher_grid.js byte-identical to the example
+PASS launcher_grid static: launcher_grid is in the 71-app playground manifest
+PASS launcher_grid static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS launcher_grid mutation: drop the shell import -> FAIL as expected
+PASS launcher_grid mutation: app stops consuming shell.Launcher -> FAIL as expected
+PASS launcher_grid mutation: drop the explicit apps argument (falls back to app store) -> FAIL as expected
+PASS launcher_grid mutation: use the app store instead of a literal -> FAIL as expected
+PASS launcher_grid mutation: drop one curated app -> FAIL as expected
+PASS launcher_grid mutation: non-ASCII glyph slips into the app -> FAIL as expected
+PASS launcher_grid mutation: indicator re-enabled (two extra edge canvases) -> FAIL as expected
+PASS launcher_grid mutation: columns drift off 3x3 -> FAIL as expected
+PASS launcher_grid mutation: icon size drifts off 48 -> FAIL as expected
+PASS launcher_grid mutation: drop the onLaunch host callback -> FAIL as expected
+PASS launcher_grid mutation: onLaunch falls back to a real app switch -> FAIL as expected
+PASS launcher_grid mutation: drop the onBack host handler -> FAIL as expected
+PASS launcher_grid mutation: status stops following the launch/editing signals -> FAIL as expected
+PASS launcher_grid mutation: shell drops the onEditingChange notification call -> FAIL as expected
+PASS launcher_grid mutation: edit toggle bypasses setEditing -> FAIL as expected
+PASS launcher_grid mutation: back-out bypasses setEditing -> FAIL as expected
+PASS launcher_grid mutation: LauncherProps drops the onEditingChange declaration -> FAIL as expected
+PASS launcher_grid mutation: app drops the onEditingChange consumer -> FAIL as expected
+PASS launcher_grid mutation: app drops the EDIT status feedback -> FAIL as expected
+PASS launcher_grid mutation: a non-ASCII byte slips into the harness -> FAIL as expected
+PASS launcher_grid mutation: custom theme is dropped -> FAIL as expected
+PASS launcher_grid mutation: a non-ASCII byte slips into the file -> FAIL as expected
+PASS launcher_grid mutation: a CJK UI literal slips in -> FAIL as expected
+PASS launcher_grid mutation: font size escapes the bundled faces -> FAIL as expected
+PASS launcher_grid mutation: playground generated source drifts -> FAIL as expected
+PASS launcher_grid mutation: playground manifest drops launcher_grid -> FAIL as expected
+PASS launcher_grid mutation: a firmware/runtime/CLI file changes after 3514c76 -> FAIL as expected
+PASS launcher_grid live: root node exists with an exact 9-icon canvas budget
+PASS launcher_grid live: tile onPress drives the onLaunch host callback (no app-store launch)
+PASS launcher_grid live: onEditingChange mirrors edit state true then false into the app signal
+PASS launcher_grid live: app without onEditingChange boots and keeps baseline status semantics
+PASS launcher_grid live: edit-mode back and onBack fallback update status
+PASS launcher_grid live: shutdown clears all effects and timers
+PASS launcher_grid live mutation: live: explicit apps dropped -> zero canvases -> FAIL as expected
+PASS launcher_grid live mutation: live: indicator re-enabled -> two extra canvases -> FAIL as expected
+PASS launcher_grid live mutation: live: onLaunch host callback dropped -> status stays READY -> FAIL as expected
+PASS launcher_grid live mutation: live: onLaunch falls back to a real app switch -> FAIL as expected
+PASS launcher_grid live mutation: live: app drops onEditingChange consumer -> no EDIT feedback -> FAIL as expected
+PASS launcher_grid live mutation: live: app drops EDIT status expression -> no EDIT feedback -> FAIL as expected
+PASS launcher_grid live mutation: live: shell notification removed -> app editing stays false -> FAIL as expected
+PASS launcher_grid live mutation: live: edit toggle bypasses setEditing -> no true callback -> FAIL as expected
+PASS launcher_grid live mutation: live: back-out bypasses setEditing -> no false callback -> FAIL as expected
+ALL LAUNCHER GRID HARNESS CASES PASSED
+--- control_center: exit=0 ---
+PASS control_center static: shell.js imported by the documented relative path
+PASS control_center static: SafeArea consumed as the round-screen safe container
+PASS control_center static: Card consumed by four setting cards
+PASS control_center static: IconButton consumed by WiFi, Bluetooth and RESET
+PASS control_center static: all four values live in signals
+PASS control_center static: KV key block uses the four documented <=15-char keys
+PASS control_center static: flag KV get wrapped in try/catch, accepts only 0 or 1
+PASS control_center static: step KV get wrapped in try/catch, accepts only legal integer steps
+PASS control_center static: KV set wrapped in try/catch (NVS failure is volatile)
+PASS control_center static: startup reads every key back into its signal
+PASS control_center static: volume wraps 10 -> 0 and brightness wraps 5 -> 1
+PASS control_center static: RESET restores all four defaults through kvSave
+PASS control_center static: no Slider consumption (timer_kit owns that r157 point)
+PASS control_center static: zero Canvas nodes
+PASS control_center static: entire app file is ASCII-only (r64)
+PASS control_center static: UI string literals ASCII-only (r64)
+PASS control_center static: Text fontSize limited to bundled 14/20/32 faces
+PASS control_center static: static tree within the node budget
+PASS control_center static: playground sources/control_center.js byte-identical to the example
+PASS control_center static: control_center is in the 71-app playground manifest
+PASS control_center static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS control_center mutation: drop the shell import -> FAIL as expected
+PASS control_center mutation: app stops consuming SafeArea -> FAIL as expected
+PASS control_center mutation: app stops consuming Card -> FAIL as expected
+PASS control_center mutation: app stops consuming IconButton -> FAIL as expected
+PASS control_center mutation: a value escapes the signal graph -> FAIL as expected
+PASS control_center mutation: KV key exceeds the NVS cap -> FAIL as expected
+PASS control_center mutation: flag KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: step KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: KV set loses try/catch -> FAIL as expected
+PASS control_center mutation: startup forgets to read a key back -> FAIL as expected
+PASS control_center mutation: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center mutation: RESET forgets brightness -> FAIL as expected
+PASS control_center mutation: Slider slips into the app -> FAIL as expected
+PASS control_center mutation: a Canvas slips into the app -> FAIL as expected
+PASS control_center mutation: a non-ASCII byte slips into the file -> FAIL as expected
+PASS control_center mutation: a CJK UI literal slips in -> FAIL as expected
+PASS control_center mutation: font size escapes the bundled faces -> FAIL as expected
+PASS control_center mutation: static tree overflows the node budget -> FAIL as expected
+PASS control_center mutation: playground generated source drifts -> FAIL as expected
+PASS control_center mutation: playground manifest drops control_center -> FAIL as expected
+PASS control_center mutation: a firmware/runtime/CLI file changes after 76d2c0c -> FAIL as expected
+PASS control_center live: handles, safe square and zero canvas
+PASS control_center live: IconButton tap toggles WiFi and writes KV
+PASS control_center live: IconButton tap toggles Bluetooth and writes KV
+PASS control_center live: volume card cycles 0..10 and persists
+PASS control_center live: brightness card cycles 1..5 and persists
+PASS control_center live: RESET restores every default and rewrites all four keys
+PASS control_center live: KV load rejects illegal values and a throwing NVS degrades
+PASS control_center live: dispose and shutdown clear effects and timers
+PASS control_center live mutation: live: WiFi IconButton stops toggling -> FAIL as expected
+PASS control_center live mutation: live: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center live mutation: live: RESET forgets brightness -> FAIL as expected
+ALL CONTROL CENTER HARNESS CASES PASSED
+--- settings_dialog: exit=0 ---
+PASS settings_dialog: shell.js imported once by the documented relative path
+PASS settings_dialog: rotate opens shell.Dialog with title + message
+PASS settings_dialog: Rotate is a danger button; setToken lives in its onPress only
+PASS settings_dialog: Cancel is plain with no onPress, ordered before the danger button
+PASS settings_dialog: reboot opens a Dialog with a danger Reboot button
+PASS settings_dialog: reboot() sits inside the danger onPress, after the typeof guard
+PASS settings_dialog: all three Dialog guards degrade to ASCII notes (no silent dangerous fallback)
+PASS settings_dialog: no two-stage confirm signals or arm timers survive
+PASS settings_dialog: OTA row stays View+Text+Button with a static New token title
+PASS settings_dialog: reboot row stays View+Text+Button with a static Reboot title
+PASS settings_dialog: playground sources/settings.js byte-identical to example
+PASS settings_dialog: settings is in the 71-app playground manifest
+PASS settings_dialog: all UI string literals ASCII-only (r64)
+PASS settings_dialog: firmware/ runtime/ identical to 3514c76 (pure app layer)
+PASS settings_dialog mutation: delete the rotate Dialog call -> FAIL as expected
+PASS settings_dialog mutation: downgrade Rotate from danger to plain -> FAIL as expected
+PASS settings_dialog mutation: give Cancel an onPress (Cancel would execute) -> FAIL as expected
+PASS settings_dialog mutation: delete the reboot Dialog danger Reboot button -> FAIL as expected
+PASS settings_dialog mutation: move reboot() before the typeof guard -> FAIL as expected
+PASS settings_dialog mutation: harden the Dialog guard (drop all three fallbacks) -> FAIL as expected
+PASS settings_dialog mutation: resurrect the two-stage confirm signal -> FAIL as expected
+PASS settings_dialog mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS settings_dialog mutation: a firmware file changes vs 3514c76 -> FAIL as expected
+PASS settings_dialog live: rotate Cancel -> no setToken
+PASS settings_dialog live: rotate Rotate -> setToken(32hex)
+PASS settings_dialog live: setToken failure -> ASCII err note
+PASS settings_dialog live: reboot Cancel -> no reboot
+PASS settings_dialog live: reboot Reboot -> one reboot
+PASS settings_dialog live: reboot binding stub -> reboot n/a
+PASS settings_dialog live: Dialog stub -> ASCII notes, no auto action
+PASS settings_dialog live mutation: Cancel with onPress -> FAIL as expected
+ALL SETTINGS DIALOG HARNESS CASES PASSED
+manifest restored: true

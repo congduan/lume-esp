@@ -117,6 +117,8 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   'firmware/sdkconfig.defaults'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
+// r188 removes only the tracked, reproducible files enumerated in this audit.
+const R188_REMOVED = new Set(read('artifacts/r188/removed-files.txt').trim().split('\n'));
 const ALLOWED = [
   // r183: SVG raster-result cache, host harness, report and evidence.
   'firmware/components/lume-engine/lume_svg_cache.c',
@@ -743,7 +745,9 @@ const checks = [
       f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
       f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
       f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r179/') ||
-      f.startsWith('artifacts/r184/') || f.startsWith('artifacts/r185/'))]],
+      f.startsWith('artifacts/r184/') || f.startsWith('artifacts/r185/') ||
+      f.startsWith('artifacts/r188/') ||
+      (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 
 for (const [name, [src, test]] of checks) {

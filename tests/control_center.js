@@ -7,7 +7,7 @@
  * (SafeArea / Card / IconButton) are really consumed, KV keys stay inside the
  * 15-char NVS cap, all reads/writes are try/catch guarded, the step cycles
  * wrap, RESET restores every default, zero Canvas, ASCII-only copy, 14/20/32
- * fonts, the 58-app manifest, byte-identical playground source, and
+ * fonts, the playground manifest, byte-identical playground source, and
  * firmware/runtime/tools/lume zero-diff vs 76d2c0c.
  * Every static predicate has a mutation proof; every live predicate too.
  *
@@ -171,8 +171,8 @@ const checks = [
   ['playground sources/control_center.js byte-identical to the example', [playgroundSrc, x =>
     x === source]],
 
-  ['control_center is in the 58-app playground manifest', [apps,
-    list => list.length > 0 && list.includes('control_center')]],
+  [`control_center is in the ${apps.length}-app playground manifest`, [apps,
+    list => list.length === apps.length && list.includes('control_center')]],
 
   ['firmware/ runtime/ tools/lume/ identical to 3514c76', [fwChanged, c => c.every(f => R166_ALLOWED.includes(f))]],
 ];
@@ -211,7 +211,7 @@ const LIT = 'UI string literals ASCII-only (r64)';
 const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
 const BUDGET = 'static tree within the node budget';
 const SRC = 'playground sources/control_center.js byte-identical to the example';
-const MANIFEST = 'control_center is in the 58-app playground manifest';
+const MANIFEST = `control_center is in the ${apps.length}-app playground manifest`;
 const GUARD = 'firmware/ runtime/ tools/lume/ identical to 3514c76';
 
 must('drop the shell import',

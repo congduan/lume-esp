@@ -9,6 +9,7 @@ const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 
 function verifySet(apps, sources) {
+  assert.equal(Object.keys(sources).length, apps.length, 'manifest / sources.js app count');
   assert.deepEqual(Object.keys(sources).sort(), [...apps].sort(), 'manifest / sources.js app set');
 }
 
@@ -29,8 +30,8 @@ function verify(apps, sources) {
   vm.runInNewContext(read('website/playground/sources.js'), sandbox);
   const sources = JSON.parse(JSON.stringify(sandbox.window.LUME_SOURCES));
   verify(apps, sources);
-  assert.throws(() => verify(apps.filter(x => x !== 'counter'), sources), /app set/);
-  assert.throws(() => verify([...apps, 'new_app'], sources), /app set/);
+  assert.throws(() => verify(apps.filter(x => x !== 'counter'), sources), /app count/);
+  assert.throws(() => verify([...apps, 'new_app'], sources), /app count/);
   // A registered app passes once the generated source map contains it.
   const added = { ...sources, new_app: 'new source' };
   assert.doesNotThrow(() => verifySet([...apps, 'new_app'], added));
