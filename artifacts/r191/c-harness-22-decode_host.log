@@ -1,0 +1,7 @@
+===== [22/24] decode_host.c (derived; decode.js -lz) =====
+PASS 1x1 PNG -> {1,1,Uint16Array(1)}, red 0xf800, LE bytes 00 f8
+PASS 2x2 PNG exact RGB565 0xf800 0x07e0 0x001f 0xffff; A8 plane discarded
+PASS decode 2x2 -> 4x4 nearest + -> 1x1 centre tap
+PASS decode pixels fed into lume.imgscale.scale, bits preserved
+PASS error codes -1/-2 (type, dimensions, 480 cap, corrupt input)
+decode_host EXIT=0

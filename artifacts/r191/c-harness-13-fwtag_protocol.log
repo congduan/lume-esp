@@ -1,0 +1,21 @@
+===== [13/24] fwtag_protocol.c (file-header comment) =====
+r106 fwtag host harness
+  ok  : path1: fw matches current -> allow
+  ok  : path1: fw matches current -> allow
+        fw='1' current=1
+  ok  : path1: fw with surrounding whitespace -> allow
+  ok  : path1: fw with surrounding whitespace -> allow
+        fw='7' current=7
+  ok  : path2: fw differs from current -> refuse
+  ok  : path2: fw differs from current -> refuse
+        fw='1' current=2
+  ok  : path3: no fw field -> unknown (WARN + allow)
+  ok  : path3: no fw field -> unknown (WARN + allow)
+  ok  : path3: non-integer fw -> unknown (WARN + allow)
+  ok  : path3: non-integer fw -> unknown (WARN + allow)
+  ok  : NULL meta rejected
+  ok  : NULL out rejected
+  ok  : lookalike keys do not match fw
+  ok  : lookalike keys do not match fw
+14 checks, 0 failures
+fwtag_protocol EXIT=0

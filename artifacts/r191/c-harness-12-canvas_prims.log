@@ -1,0 +1,8 @@
+===== [12/24] canvas_prims.c (derived; canvas_blit) =====
+PASS filled circle center, exterior and AA edge
+PASS non-square filled ellipse
+PASS ellipse stroke and hollow center
+PASS width 1 is centred on the ellipse radius
+PASS clipped primitives preserve stride padding
+canvas_prims: all cases PASS
+canvas_prims EXIT=0

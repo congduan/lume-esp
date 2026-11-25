@@ -1,0 +1,4 @@
+.github/workflows/tests.yml
+  1:1       warning  missing document start "---"  (document-start)
+  9:1       warning  truthy value should be one of [false, true]  (truthy)
+

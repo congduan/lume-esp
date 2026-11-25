@@ -1,0 +1,9 @@
+===== [11/24] canvas_blit.c (file-header comment) =====
+PASS opaque 4x4 blit lands exactly at (2,3)
+PASS 0x0000 colour key is transparent
+PASS blit clips at all four surface edges
+PASS flip mirrors the sprite horizontally
+PASS NULL/zero-size blit is a no-op
+PASS fully off-surface blit is a no-op
+canvas_blit: all cases PASS
+canvas_blit EXIT=0

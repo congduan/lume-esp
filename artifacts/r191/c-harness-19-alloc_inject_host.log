@@ -1,0 +1,13 @@
+===== [19/24] alloc_inject_host.c (derived) =====
+tests/alloc_inject_host.c:29: warning: "_GNU_SOURCE" redefined
+   29 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+setup: calls=69 net=167632 live=54
+inject: armed-at=83 window=1
+engine: exception=InternalError: out of memory
+inject: denied=1 calls=83
+resume: malloc-after-window ok net=167720 live=55
+teardown: net=0 live=0
+RESULT: PASS
+alloc_inject_host EXIT=0

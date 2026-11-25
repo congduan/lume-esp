@@ -1,0 +1,9 @@
+===== [9/24] board_175c_profile.c (file-header comment) =====
+PASS 1.75C pin map (QSPI/I2C/touch/I2S)
+PASS 1.75C no TF slot - SD pins undefined
+PASS 1.75C 466x466 + column offset 6 (CASET 0x01D7 / RASET 0x01D1)
+PASS 1.75C I2C addresses (AXP2101/CST/IMU/codecs)
+PASS 1.75C CST9217 -> CST92xx path + mirror_x/mirror_y mapping
+PASS 1.75C direct GPIO resets (no TCA9554 expander)
+PASS Waveshare ESP32-S3-Touch-AMOLED-1.75C
+board_175c_profile EXIT=0

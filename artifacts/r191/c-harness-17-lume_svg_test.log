@@ -1,0 +1,19 @@
+===== [17/24] lume_svg_test.c (derived; lume_svg.c -lm) =====
+PASS rect and hex fill
+PASS circle and color name
+PASS ellipse and rgb
+PASS polygon even odd
+PASS path cubic quadratic arc
+PASS smooth curves and relative arc
+PASS relative path and stroke
+PASS opacity and AA
+PASS fill scanline keeps exact fractional-edge alpha
+PASS fill scanline keeps even-odd holes
+PASS viewBox intrinsic size
+PASS unsupported units fall back to viewBox
+PASS oversized intrinsic and explicit target
+PASS viewBox meet centered letterbox
+PASS raster bound
+PASS missing intrinsic rejected
+PASS BOM whitespace px
+lume_svg_test EXIT=0

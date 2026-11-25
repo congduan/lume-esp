@@ -1,0 +1,371 @@
+===== [1/8] ota_protocol.c (docs/build.md) =====
+[1] CRC-32 + encoder field-by-field vs CLI
+  ok  : crc32("123456789") == 0xcbf43926
+  ok  : encode length == 12 + 9
+  ok  : C encoder emits byte-for-byte the CLI/USB frame (LUME|len|crc|payload)
+  ok  : offset 0..3 magic LUME
+  ok  : offset 4..7 total_len u32 LE == payload bytes (9)
+  ok  : offset 8..11 crc32 u32 LE == crc(payload)
+  ok  : offset 12.. payload verbatim
+[2] frame protocol reuse (OTA decoder == USB/CLI wire format)
+  ok  : CLI frame -> exactly one DATA event, no ERR
+  ok  : DATA len == 9
+  ok  : DATA payload matches source
+  ok  : single-byte streaming parse OK
+  ok  : encode->decode round trip OK
+[3] aligned 4-byte control frames
+  ok  : BACK event
+  ok  : PAUS event
+  ok  : RESM event
+  ok  : controls emit no DATA/ERR
+[4] reject reasons, lengths and LUME resync
+  ok  : bad magic -> ERR bad-magic
+  ok  : resync: valid frame after noise still parses
+  ok  : total_len 0 -> ERR empty
+  ok  : total_len > 256KiB -> ERR too-large (drop+resync)
+  ok  : corrupted payload -> ERR bad-crc (len=9)
+  ok  : encoder accepts a 1 KiB payload
+  ok  : 1 KiB frame decode OK
+[4b] r43b bytecode frame kind
+  ok  : encode_bytecode length == 12 + payload
+  ok  : bytecode frame magic == "LUMB"
+  ok  : LUMB decodes as EV_BYTECODE (not DATA/CMD) and round-trips
+  ok  : LUME/LUMC/LUMB interleave in one parser with no resync
+[5] token auth (correct / wrong token)
+  ok  : auth_parse("AUTH <token>\n") extracts token
+  ok  : RIGHT token: token_equal == true (auth OK path)
+  ok  : WRONG token (1 char off): token_equal == false (auth ERR path)
+  ok  : empty token rejected
+  ok  : 31-char token rejected (length)
+  ok  : wrong prefix -> auth_parse false
+  ok  : empty token line -> auth_parse false
+  ok  : space in token -> auth_parse false
+[5b] r96 HMAC-SHA256 challenge-response auth
+  ok  : mbedTLS SHA-256 HMAC primitive available
+  ok  : RFC 4231 case 1 HMAC vector matches
+  ok  : hex_valid: 32 hex OK
+  ok  : hex_valid: non-hex rejected
+  ok  : hex_decode: odd nhex rejected
+  ok  : hex_decode: first/last byte correct
+  ok  : hex_valid: 64 hex MAC OK
+  ok  : hex_equal: identical MAC matches
+  ok  : hex_equal: 1-char-off MAC rejected
+  ok  : challenge line format == "CHALLENGE <32hex>\n"
+  ok  : RIGHT MAC: mac_verify == 0 (auth OK path)
+  ok  : WRONG MAC: mac_verify == -4 (auth ERR path)
+  ok  : replay with a different challenge -> mac_verify -4
+  ok  : malformed challenge hex -> mac_verify -2
+  ok  : auth_parse extracts a 64-hex MAC
+[6] RELOAD reply lines
+  ok  : OK line == "RELOAD OK 9\n"
+  ok  : ERR line == "RELOAD ERR bad-crc\n"
+[7] listener gate (WiFi not connected -> no OTA server)
+  ok  : WiFi DOWN + token ready -> can_serve FALSE (refuse to start)
+  ok  : WiFi DOWN + no token -> FALSE
+  ok  : WiFi UP + no token -> FALSE
+  ok  : WiFi UP (GOT_IP) + token ready -> TRUE (auto-start)
+
+56 checks, 0 failures -> PASS
+ota_protocol EXIT=0
+===== [2/8] apps_protocol.c (docs/build.md) =====
+mode: default (CONFIG_LUME_PERF_PROFILE off)
+[frames]
+  ok  : LUMC frame length is header + payload
+  ok  : command frame magic is LUMC
+  ok  : command frame carries u32le length
+  ok  : LUMC emits EV_CMD only
+  ok  : command payload is passed through verbatim
+  ok  : interleaved LUME/LUMC stream is split by magic
+  ok  : corrupt LUMC frame is rejected
+  ok  : reject reason is bad-crc
+[cmd parse]
+  ok  : STORE splits meta/src
+  ok  : STORE accepts an empty meta line
+  ok  : LAUNCH without trailing newline
+  ok  : LAUNCH with trailing newline
+  ok  : REMOVE
+  ok  : META
+  ok  : LIST
+  ok  : HOME
+  ok  : SHOT
+  ok  : SHOT with trailing newline
+  ok  : r43b VER engine-version query
+  ok  : VER with trailing newline
+  ok  : r106 FWTAG firmware-tag query
+  ok  : FWTAG with trailing newline
+  ok  : TOKEN with valid 32-hex token parses
+  ok  : TOKEN with non-hex chars rejected
+  ok  : TOKEN with short token rejected
+  ok  : TOKEN without a token rejected
+  ok  : empty payload rejected
+  ok  : unknown verb rejected
+  ok  : LAUNCH without id rejected
+  ok  : reserved .current id rejected
+  ok  : path separator in id rejected
+  ok  : overlong id rejected
+  ok  : STORE without a source line rejected
+  ok  : STORE with empty source rejected
+  ok  : STORE without meta separator rejected
+  ok  : id charset/length accept 'clock'
+  ok  : id accepts dots/underscores/dashes
+  ok  : id rejects a leading dot
+  ok  : id rejects '/'
+  ok  : id rejects empty
+  ok  : reason token for a bad id
+  ok  : reason token for an empty source
+[oom verb]
+  ok  : default: OOM absent from verb table -> CMD ERR verb
+  ok  : default: unknown-verb reason token is 'verb'
+[lume.system.reboot binding]
+  ok  : default: lume.system namespace token
+  ok  : default: reboot method token
+  ok  : default: _systemReboot native token
+  ok  : default: pre-restart ASCII log token
+  ok  : default: reboot log token is ASCII-only
+[round trip]
+  ok  : STORE frame payload survives the round trip
+  ok  : round trip yields the stored app id
+  ok  : round trip yields the exact app source
+
+52 checks, 0 failure(s)
+apps_protocol EXIT=0
+===== [3/8] bridge_protocol.c (docs/build.md) =====
+bridge_protocol EXIT=0
+===== [4/8] image_header.c (docs/build.md; board path) =====
+PASS PNG IHDR 1x1
+PASS JPEG SOF 3x2
+PASS oversize rejected before decode
+PASS bad bytes rejected
+PASS SVG intrinsic over 480 accepted
+PASS invalid argument error code
+PASS 1x1 opaque red RGBA to exact RGB565A8 bytes
+image_header EXIT=0
+===== [5/8] canvas_aa.c (file-header comment; -lm) =====
+PASS isqrt 8.8 fixed-point contract
+PASS width=1 horizontal line: 1px core, no stray ink, stride padding intact
+PASS width=1 diagonal line: feather band present (was the staircase)
+PASS coverage rises monotonically toward the centreline
+PASS zero-length stroke paints a bounded point
+PASS width=4 envelope: hw=1 core, feather to +2, nothing at +3
+PASS ring: continuous annulus, centre clean, 45-degree sites smooth
+PASS wide ring degenerates to anti-aliased disc
+PASS 50% blend of white over grey is the channel-exact midpoint
+PASS shared joint: opaque core continuous, envelope not doubled
+PASS set_color channel decomposition exact
+PASS arc: wedge band, round end cap, empty gap, AA feather, padding intact
+PASS arc: full 360deg sweep across 0deg is bit-identical to ring
+PASS arc: 0deg wrap normalisation, equivalent geometry, correct gap
+PASS arc: end seam is continuous (no hard step / gap)
+PASS arc: from==to degenerates to a bounded round dot
+PASS arc: width>=2r-1 degenerates to a filled AA sector (no hole)
+PASS arc: bbox clipped to surface, stride padding intact
+PASS arc: r<=0 early return
+ALL CANVAS AA HOST TESTS PASSED
+canvas_aa EXIT=0
+===== [6/8] id3v2.c (r38b report:66; cc) =====
+ID3v2.3 encoding: title=Hi artist=Béat album=Album PASS
+ID3v2.4 encoding: title=BE artist=Béat album=Album PASS
+ID3v2.4 encoding: title=Café artist=Béat album=Album PASS
+ID3v2.3 unsync: title=Fÿx artist=Béat album=Album PASS
+id3v2 EXIT=0
+===== [7/8] mp3_decoder.c (derived; minimp3) =====
+MP3 decoder: frames=11 sampleRate=44100 channels=2 samples=12672 PASS
+mp3_decoder EXIT=0
+===== [8/8] record_buffer.c (derived; QuickJS host) =====
+Record backing: 640000 bytes intact, finalizer and detach release once PASS
+record_buffer EXIT=0
+===== [9/24] board_175c_profile.c (file-header comment) =====
+PASS 1.75C pin map (QSPI/I2C/touch/I2S)
+PASS 1.75C no TF slot - SD pins undefined
+PASS 1.75C 466x466 + column offset 6 (CASET 0x01D7 / RASET 0x01D1)
+PASS 1.75C I2C addresses (AXP2101/CST/IMU/codecs)
+PASS 1.75C CST9217 -> CST92xx path + mirror_x/mirror_y mapping
+PASS 1.75C direct GPIO resets (no TCA9554 expander)
+PASS Waveshare ESP32-S3-Touch-AMOLED-1.75C
+board_175c_profile EXIT=0
+===== [10/24] board_abi.c (derived; board_abi.js) =====
+PASS lume_board_get returns a non-NULL singleton
+PASS lume_board_get is a stable process-wide singleton
+PASS board_id == "generic"
+PASS all four op pointers are populated
+PASS all four ops return -1 (not supported) before registration
+PASS invalid registrations rejected; generic stub still current
+PASS registered board queryable: four non-NULL ops + board_id
+PASS registry copies the struct and stays stable
+PASS registered ops dispatch to the host fake with correct args
+PASS board_abi: 4-op layout + stub + registration/query semantics
+board_abi EXIT=0
+===== [11/24] canvas_blit.c (file-header comment) =====
+PASS opaque 4x4 blit lands exactly at (2,3)
+PASS 0x0000 colour key is transparent
+PASS blit clips at all four surface edges
+PASS flip mirrors the sprite horizontally
+PASS NULL/zero-size blit is a no-op
+PASS fully off-surface blit is a no-op
+canvas_blit: all cases PASS
+canvas_blit EXIT=0
+===== [12/24] canvas_prims.c (derived; canvas_blit) =====
+PASS filled circle center, exterior and AA edge
+PASS non-square filled ellipse
+PASS ellipse stroke and hollow center
+PASS width 1 is centred on the ellipse radius
+PASS clipped primitives preserve stride padding
+canvas_prims: all cases PASS
+canvas_prims EXIT=0
+===== [13/24] fwtag_protocol.c (file-header comment) =====
+r106 fwtag host harness
+  ok  : path1: fw matches current -> allow
+  ok  : path1: fw matches current -> allow
+        fw='1' current=1
+  ok  : path1: fw with surrounding whitespace -> allow
+  ok  : path1: fw with surrounding whitespace -> allow
+        fw='7' current=7
+  ok  : path2: fw differs from current -> refuse
+  ok  : path2: fw differs from current -> refuse
+        fw='1' current=2
+  ok  : path3: no fw field -> unknown (WARN + allow)
+  ok  : path3: no fw field -> unknown (WARN + allow)
+  ok  : path3: non-integer fw -> unknown (WARN + allow)
+  ok  : path3: non-integer fw -> unknown (WARN + allow)
+  ok  : NULL meta rejected
+  ok  : NULL out rejected
+  ok  : lookalike keys do not match fw
+  ok  : lookalike keys do not match fw
+14 checks, 0 failures
+fwtag_protocol EXIT=0
+===== [14/24] webserv_parse.c (file-header gcc command) =====
+webserv_parse: 51 checks PASS
+webserv_parse EXIT=0
+===== [15/24] ws_frame.c (derived; lume_ws_frame.c) =====
+WebSocket owned-copy frame C test: PASS
+ws_frame EXIT=0
+===== [16/24] file_protocol.c (derived; lume_cmd.c) =====
+file protocol parser: 13 PASS
+file_protocol EXIT=0
+===== [17/24] lume_svg_test.c (derived; lume_svg.c -lm) =====
+PASS rect and hex fill
+PASS circle and color name
+PASS ellipse and rgb
+PASS polygon even odd
+PASS path cubic quadratic arc
+PASS smooth curves and relative arc
+PASS relative path and stroke
+PASS opacity and AA
+PASS fill scanline keeps exact fractional-edge alpha
+PASS fill scanline keeps even-odd holes
+PASS viewBox intrinsic size
+PASS unsupported units fall back to viewBox
+PASS oversized intrinsic and explicit target
+PASS viewBox meet centered letterbox
+PASS raster bound
+PASS missing intrinsic rejected
+PASS BOM whitespace px
+lume_svg_test EXIT=0
+===== [18/24] svg_cache_test.c (derived; svg_cache.js) =====
+PASS: cold entry is a miss
+PASS: put A 320x320 ok
+PASS: one entry after put
+PASS: byte budget tracks RGB565A8 raster
+PASS: hit returns the exact raster bytes
+PASS: hit returns correct dimensions/alpha
+PASS: hit returns the exact raster bytes
+PASS: second hit after freeing first copy (copy-on-hit, no shared buffer)
+PASS: put A 64x64
+PASS: different source bytes = miss
+PASS: put B 64x64
+PASS: hit returns the exact raster bytes
+PASS: B hits after put
+PASS: hit returns the exact raster bytes
+PASS: A still hits (distinct key)
+PASS: put A at 320x320
+PASS: same source, different tw/th = miss
+PASS: put A at 160x160
+PASS: two size variants coexist
+PASS: put small A
+PASS: put small B
+PASS: put small C
+PASS: put small D
+PASS: hit returns the exact raster bytes
+PASS: touch A (now most recent)
+PASS: put small E
+PASS: entry cap holds at 4
+PASS: LRU (B) evicted
+PASS: hit returns the exact raster bytes
+PASS: touched A survives
+PASS: hit returns the exact raster bytes
+PASS: newest E present
+PASS: full A
+PASS: full B
+PASS: full C
+PASS: full D triggers eviction
+PASS: byte budget caps at 3 full-size rasters
+PASS: resident bytes <= 1 MiB
+PASS: oldest full raster evicted
+PASS: hit returns the exact raster bytes
+PASS: newest full raster present
+PASS: reset empties the cache
+PASS: post-reset lookup is a miss
+PASS: no SPIRAM bytes leaked after reset (allocs=36 frees=36)
+PASS: zero-length source is a miss
+PASS: zero-size raster is rejected
+svg_cache_test: ALL CHECKS PASSED (allocs=36 frees=36 live=0)
+svg_cache_test EXIT=0
+===== [19/24] alloc_inject_host.c (derived) =====
+tests/alloc_inject_host.c:29: warning: "_GNU_SOURCE" redefined
+   29 | #define _GNU_SOURCE
+      | 
+<command-line>: note: this is the location of the previous definition
+setup: calls=69 net=167632 live=54
+inject: armed-at=83 window=1
+engine: exception=InternalError: out of memory
+inject: denied=1 calls=83
+resume: malloc-after-window ok net=167720 live=55
+teardown: net=0 live=0
+RESULT: PASS
+alloc_inject_host EXIT=0
+===== [20/24] fft_host.c (derived; fft.js + stub) =====
+PASS 8/16-point known DFT, Float32 bit patterns, packed magnitude
+PASS 1kHz peak bin 64/1024 and Parseval
+PASS 4096-point inclusive upper bound
+PASS offset views, guards, split magnitude
+PASS error codes for type, length, non-power-of-two, limit, overlap
+PERF 1024-point mean over 1000 calls: JS butterflies=2.0140 ms native=0.0260 ms (host single sample; not ESP32-S3)
+fft_host EXIT=0
+===== [21/24] imgscale_host.c (derived; imgscale.js) =====
+PASS nearest 2x upsample, exact RGB565 bits: 0xf800 0xf800 0x07e0 0x07e0 ...
+PASS nearest 2x downsample, centre taps = 0x0006 0x0008 0x000e 0x0010
+PASS bilinear hand case 3x1->2x1 = 0xb800 0x05e0
+PASS bilinear 2x2->3x3, centre=0x8410 (channel separation)
+PASS bilinear 5x4->9x7 reference + omitted-mode defaults to nearest
+PASS subarray offset views, guards intact
+PASS error codes -1/-2 and identical-view in-place allowance
+PERF 64x64->128x128 bilinear mean over 200 calls: JS=18.1950 ms native=0.3900 ms (host single sample; not ESP32-S3)
+imgscale_host EXIT=0
+===== [22/24] decode_host.c (derived; decode.js -lz) =====
+PASS 1x1 PNG -> {1,1,Uint16Array(1)}, red 0xf800, LE bytes 00 f8
+PASS 2x2 PNG exact RGB565 0xf800 0x07e0 0x001f 0xffff; A8 plane discarded
+PASS decode 2x2 -> 4x4 nearest + -> 1x1 centre tap
+PASS decode pixels fed into lume.imgscale.scale, bits preserved
+PASS error codes -1/-2 (type, dimensions, 480 cap, corrupt input)
+decode_host EXIT=0
+===== [23/24] crypto_host.c (derived; mbedTLS) =====
+PASS SHA-256 NIST vectors: empty / abc / 56-byte two-block
+PASS HMAC-SHA256 RFC 4231 cases 1/2/3
+PASS CRC-32 0xCBF43926 + JS reference cross-check (seed/no-seed)
+PASS AES-128/256-CTR SP 800-38A F.5 vectors + CTR symmetry + in-place
+PASS subarray/byteOffset views for all four primitives
+PASS error contract: -1 type / -2 length, no exceptions
+PERF host single sample (20000x 60B): native=16ms js=826ms ratio=51.6x (sink=1966913649, NOT ESP32-S3)
+ALL OK
+crypto_host EXIT=0
+===== [24/24] compress_host.c (derived; compress.js) =====
+PASS correctness: empty / repetitive text / RLE / random stored / >64KiB dynamic (raw+zlib, byte-exact)
+PASS default format (omitted/null) is raw
+PASS damaged streams rejected (truncated / bad header / reserved BTYPE / Adler mismatch)
+PASS out-too-small -> -3 with no out-of-bounds write
+PASS subarray/byteOffset views on src and out with guards intact
+PASS error contract: -1 type / -2 data / -3 length, no exceptions
+PERF native inflate 200x 111530B: 23ms (sink=22306000, NOT ESP32-S3)
+ALL OK
+compress_host EXIT=0
+ALL_C_HARNESSES_DONE

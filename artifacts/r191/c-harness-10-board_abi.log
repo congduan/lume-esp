@@ -1,0 +1,12 @@
+===== [10/24] board_abi.c (derived; board_abi.js) =====
+PASS lume_board_get returns a non-NULL singleton
+PASS lume_board_get is a stable process-wide singleton
+PASS board_id == "generic"
+PASS all four op pointers are populated
+PASS all four ops return -1 (not supported) before registration
+PASS invalid registrations rejected; generic stub still current
+PASS registered board queryable: four non-NULL ops + board_id
+PASS registry copies the struct and stays stable
+PASS registered ops dispatch to the host fake with correct args
+PASS board_abi: 4-op layout + stub + registration/query semantics
+board_abi EXIT=0

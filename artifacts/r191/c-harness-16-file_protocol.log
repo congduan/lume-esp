@@ -1,0 +1,3 @@
+===== [16/24] file_protocol.c (derived; lume_cmd.c) =====
+file protocol parser: 13 PASS
+file_protocol EXIT=0
