@@ -1,6 +1,6 @@
 // r189: the static examples gallery must mirror the playground catalog.
 // Standalone CommonJS: node tests/examples_gallery.js
-// The manifest (71 apps) is the source of truth; every rendered card must
+// The manifest (73 apps) is the source of truth; every rendered card must
 // correspond one-to-one to a registered app, and its title/description must
 // come from the page.js `examples` metadata rather than invented copy.
 const assert = require('node:assert/strict');

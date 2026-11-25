@@ -735,6 +735,19 @@ const ALLOWED = [
   // `git diff` cannot see untracked files; otherwise the allChanged guard
   // turns red once the test commit lands. No firmware/runtime change.
   'docs/r192-report.md',
+  // r194: playground baseline reader + three Sparkline consumer migrations.
+  // Pre-added BEFORE commit so the untracked report/evidence do not turn the
+  // allChanged guard red once the commits land. No firmware/runtime change.
+  'examples/heart_curve/app.js',
+  'website/playground/apps/heart_curve.js',
+  'website/playground/sources/heart_curve.js',
+  // Two browser-stub examples join the catalog (71 -> 73); pre-add their
+  // generated artifacts before the files are tracked.
+  'website/playground/apps/app_manager.js',
+  'website/playground/apps/imu_poll.js',
+  'website/playground/sources/app_manager.js',
+  'website/playground/sources/imu_poll.js',
+  'docs/r194-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -817,7 +830,7 @@ const checks = [
       f.startsWith('artifacts/r190/') ||
       // r191: retained C-harness / zero-diff CI logs; r192: knife evidence.
       f.startsWith('artifacts/r191/') || f.startsWith('artifacts/r192/') ||
-      f.startsWith('artifacts/r193/') ||
+      f.startsWith('artifacts/r193/') || f.startsWith('artifacts/r194/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 
