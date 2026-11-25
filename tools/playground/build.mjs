@@ -12,16 +12,27 @@ const apps = ['counter', 'clock', 'clock_round', 'dashboard_round', 'games_snake
   'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo', 'luna',
   'watchface', 'async_demo', 'piano', 'compass', 'invaders', 'frogger', 'abc123', 'sokoban', 'lcd_dual', 'memory', 'minesweeper', 'golf', 'scroller', 'raycast', 'fishtank', 'particles', 'voice_assistant', 'spectrum_music', 'plasma', 'skyfire', 'skycombat', 'aurora_clock', 'flapdot', 'wordring',
   'image_gallery', 'files', 'adc_meter', 'crypto_check', 'archive_view', 'img_view', 'vec_demo', 'settings', 'hr_monitor', 'keyboard_demo', 'wordle', 'controls_demo', 'timer_kit', 'control_center', 'launcher_grid', 'minigolf', 'ipod_music', 'color_demo', 'ble_uart', 'spectrum', 'svg_icon', 'gestures',
-  'storybook', 'mochi', 'shell_demo', 'sparkline_demo'];
+  'storybook', 'mochi', 'shell_demo', 'sparkline_demo',
+  'app_manager', 'imu_poll'];
 export function manifestApps() { return [...apps]; }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-const source = await readFile(join(root, 'firmware/components/lume-engine/lume_scripts.c'), 'utf8');
-const start = 'const char lume_prelude_js[] =\n';
-const part = source.split(start)[1];
-if (!part) throw new Error('missing lume_prelude_js');
-const block = part.split('\n\nconst char lume_demo_js')[0];
-const prelude = [...block.matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(m => JSON.parse(m[0])).join('');
+// r194: lume_scripts.c became a #include placeholder in 920ee22 -- the C
+// arrays are generated at firmware build time. Read the same prelude source JS
+// that gen_lume_scripts.py embeds, using its SCRIPTS tuple as the single source
+// of truth for the filename (same approach as tests/lib/prelude_runner.js).
+// gen_lume_scripts.py's c_string() is a lossless round-trip for these files:
+// direct reads are byte-identical to the generated C array's parsed payload.
+const generator = await readFile(join(root, 'firmware/components/lume-engine/gen_lume_scripts.py'), 'utf8');
+const scriptsBlock = generator.match(/SCRIPTS\s*=\s*\(\n([\s\S]*?)^\)$/m);
+if (!scriptsBlock) throw new Error('cannot parse SCRIPTS from gen_lume_scripts.py');
+const scripts = {};
+for (const m of scriptsBlock[1].matchAll(/["']([^"']+)["']\s*,\s*["']([^"']+)["']/g)) {
+  scripts[m[1]] = m[2];
+}
+const preludeFile = scripts.lume_prelude_js;
+if (!preludeFile) throw new Error('missing lume_prelude_js in gen_lume_scripts.py');
+const prelude = await readFile(join(root, 'firmware/components/lume-engine/prelude', preludeFile), 'utf8');
 if (!prelude.includes('function __lume_dispatchPress(')) throw new Error('incomplete prelude');
 await mkdir(join(out, 'apps'), { recursive: true });
 await mkdir(join(out, 'sources'), { recursive: true });

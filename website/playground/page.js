@@ -71,7 +71,9 @@
     ['color_demo','CL','Color Studio','调色台','ColorPicker tint saved to KV','ColorPicker 调色并存入 KV'],
     ['mochi','MC','Mochi','吉祥物','Programmatic Canvas mascot expressions','Canvas 绘制的吉祥物表情演示'],
     ['shell_demo','SB','Shell Demo','外壳组件','StatusBar and EdgeNavigation demo','状态栏与边缘导航演示'],
-    ['sparkline_demo','SP','Sparkline','迷你折线图','Canvas mini line charts with shell.Sparkline','shell.Sparkline 迷你折线图']
+    ['sparkline_demo','SP','Sparkline','迷你折线图','Canvas mini line charts with shell.Sparkline','shell.Sparkline 迷你折线图'],
+    ['app_manager','AM','App Manager','应用管理','Two-tap uninstall from the installed app list via browser stub','浏览器桩应用列表：双击确认卸载'],
+    ['imu_poll','IM','IMU Poll','惯性采样','Poll raw X/Y/Z axes at 1 Hz; browser stub reports unavailable','1 Hz 轮询 X/Y/Z 原始轴；浏览器桩显示不可用']
   ];
   // r169: LUME_SOURCES is the authoritative catalog; `examples` holds display
   // metadata only. Both the picker and the editor dropdown derive from the

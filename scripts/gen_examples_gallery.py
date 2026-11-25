@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the examples gallery cards in website/examples.html.
 
-Three catalogs are read-only inputs and must describe the same 71 apps:
+Three catalogs are read-only inputs and must describe the same 73 apps:
 
   tools/playground/build.mjs   authoritative app id list (the `apps` array)
   website/playground/page.js   per-app display metadata (6-tuple in `examples`)

@@ -1,6 +1,7 @@
 /** LUME HUB — canvas-first demo, pure JS on the existing API (no firmware
- * change). One 400x360 Canvas renders three pages; three buttons and a swipe
- * gesture switch between them.
+ * change). One 400x360 Canvas renders three pages; the TRACE page overlays a
+ * signal-backed shell.Sparkline for the 3-axis strip. Three buttons and a
+ * swipe gesture switch between them.
  *
  *   page 0  GAUGE   battery ring + power/temperature readouts
  *   page 1  TRACE   live 3-axis accelerometer strip chart (5 Hz)
@@ -14,6 +15,7 @@
  * the canvas redraws on every publish(), so every page is kept under ~100
  * primitives. polyline() expands to one line per point pair, hence the strict
  * point counts below. */
+import '../../runtime/shell.js';
 var hubTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
 lume.theme.set(hubTheme);
 
@@ -206,33 +208,14 @@ function drawGauge(ctx, v) {
 }
 
 function drawTrace(ctx, v) {
-  var x0 = 44, y0 = 44, width = 340, height = 200;
-  var mid = y0 + height / 2;
+  var data = v.trace;
   ctx.text(16, 8, 'ACCEL TRACE', C_DIM, 14);
   ctx.text(300, 8, '5 Hz / +-10', hubTheme.colors.surfaceAlt, 14);
 
-  /* The 5+5 hairline grid is a retained path now (r49 #6); only the live
-   * trace polylines and the legend below are dynamic. */
-  var data = v.trace;
-  if (data.length > 1) {
-    var series = [
-      { key: 0, color: C_RED },
-      { key: 1, color: C_GREEN },
-      { key: 2, color: C_BLUE }
-    ];
-    for (var s = 0; s < series.length; s++) {
-      var pts = [];
-      for (var i = 0; i < data.length; i++) {
-        pts.push([
-          Math.round(x0 + width * i / (TRACE_POINTS - 1)),
-          Math.round(mid - clamp(data[i][series[s].key] * 9, -100, 100))
-        ]);
-      }
-      if (pts.length > 1) ctx.polyline(pts, series[s].color, 2);
-      var last = pts[pts.length - 1];
-      ctx.circle(last[0], last[1], 3, series[s].color);
-    }
-  }
+  /* r194: the 5+5 hairline grid stays a retained path on this canvas; the
+   * live polylines moved to a shell.Sparkline overlay whose series getters
+   * read view().trace inside its own onDraw. Only the legend and the sample
+   * count remain dynamic on this canvas. */
 
   /* legend with live values */
   ctx.text(16, 268, 'X ' + v.ax.toFixed(2), C_RED, 14);
@@ -363,6 +346,7 @@ function go(page) {
    * erased by a canvas repaint: hide it explicitly off page 0. */
   if (typeof battArc === 'number') lume.setAttr(battArc, 5, 0);
   for(var c=0;c<gaugeCards.length;c++)lume.setAttr(gaugeCards[c],5,page===0?1:0);
+  lume.setAttr(traceSpark, 5, page===1?1:0);
   if (page === 1) {
     buf = [];
     for (var i = 0; i < 6; i++) buf.push([0, 0, 0]);
@@ -408,6 +392,21 @@ function tab(x, index, label) {
 tab(24, 0, 'GAUGE');
 tab(172, 1, 'TRACE');
 tab(320, 2, 'SYSTEM');
+
+/* r194: the TRACE strip is now a shell.Sparkline overlay. The signal stays
+ * with the caller -- each series getter reads view().trace inside the
+ * component's onDraw, so publish() repaints it. The old canvas mapping was
+ * mid - clamp(sample * 9, -100, 100) inside a 340x200 box at (44,44); the
+ * explicit domain and showLast keep that scale and the per-axis end markers.
+ * Created last so it layers above the canvas grid; go() hides it off page 1. */
+var traceSpark = lume.ui.shell.Sparkline({ x: 44, y: 44, width: 340, height: 200,
+  min: -100, max: 100, strokeWidth: 2, showLast: true,
+  series: [
+    { data: function () { return view().trace.map(function (t) { return t[0] * 9; }); }, color: C_RED },
+    { data: function () { return view().trace.map(function (t) { return t[1] * 9; }); }, color: C_GREEN },
+    { data: function () { return view().trace.map(function (t) { return t[2] * 9; }); }, color: C_BLUE }
+  ] });
+lume.setAttr(traceSpark, 5, 0);
 
 /* Bottom indicator pill: a quiet hint that an upward swipe leaves the app. */
 View({ style: { width: 64, height: 3, background: hubTheme.colors.surfaceAlt, borderRadius: 2 },

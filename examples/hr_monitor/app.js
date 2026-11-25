@@ -142,17 +142,12 @@ var hrTheme = {
 lume.theme.set(hrTheme);
 var history = signal([72, 74, 71, 76, 73, 75, 72, 77]);
 
-var spark = Canvas({ width: 400, height: 96, onDraw: function (ctx) {
-  var d = history();
-  ctx.clear();
-  ctx.fillColor(lume.theme.get().colors.surface);
-  ctx.fillRect(0, 0, 400, 96);
-  var lo = 55, hi = 105, step = 384 / (d.length - 1), pts = [];
-  for (var i = 0; i < d.length; i++) {
-    pts.push([Math.round(8 + i * step), Math.round(88 - (d[i] - lo) / (hi - lo) * 76)]);
-  }
-  ctx.polyline(pts, lume.theme.get().colors.accent, 3);
-} });
+/* r194: the hand-rolled Canvas polyline is now shell.Sparkline. `history`
+ * stays the caller-owned signal; the component reads it inside onDraw, so a
+ * publish from sendHr() repaints. The old fixed 55..105 BPM domain is kept
+ * via min/max; the opaque surface fill was a visual-only detail. */
+var spark = lume.ui.shell.Sparkline({ width: 400, height: 96, data: history,
+  min: 55, max: 105, strokeWidth: 3 });
 
 function card(label, value) {
   return View({ style: {

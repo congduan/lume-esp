@@ -1,9 +1,14 @@
 /** Simulated pulse history. */
+import '../../runtime/shell.js';
 var heartTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
 lume.theme.set(heartTheme);
 var samples=signal([28,31,26,38,45,39,54,61,58,72,64,77]);
 var tick=signal(0);
-var chart=Canvas({width:400,height:152,onDraw:function(ctx){var data=samples();ctx.clear();ctx.fillColor(lume.theme.get().colors.surface);ctx.fillRect(0,0,400,152);ctx.line(0,132,400,132,lume.theme.get().colors.surfaceAlt,1);var step=384/(data.length-1);var points=[];for(var i=0;i<data.length;i++)points.push([Math.round(8+i*step),128-data[i]]);ctx.polyline(points,lume.theme.get().colors.accent,3);for(var j=0;j<points.length;j++)ctx.circle(points[j][0],points[j][1],3,lume.theme.get().colors.text);}});
+/* r194: hand-rolled Canvas polyline replaced by shell.Sparkline. `samples`
+ * remains the caller-owned signal, read by the component inside onDraw. The
+ * old surface fill and baseline hairline were visual-only; auto min/max keeps
+ * the same relative pulse shape and showDots keeps a marker per sample. */
+var chart=lume.ui.shell.Sparkline({width:400,height:152,data:samples,strokeWidth:3,showDots:true});
 View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:24,gap:12}},[
   View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[Text({text:'Heart curve',style:{fontSize:24,color:'text'}}),Text({text:'Simulated pulse',style:{fontSize:13,color:'textDim'}})]),
   View({style:{width:'100%',height:264,background:'surface',borderRadius:20,padding:16,display:'flex',flexDirection:'column',gap:8}},[
