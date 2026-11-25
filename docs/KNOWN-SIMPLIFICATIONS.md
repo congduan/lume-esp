@@ -2521,3 +2521,12 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 
 - 固件构建和宿主测试只能证明配置、编译与本机握手行为。实际板上 HTTPS 有效证书、无效证书、自定义 CA、`httpsInsecure: true` 及 SNTP 时钟条件尚未验收。
 - 网关握手 token 是可选的共享令牌；未配置时 CLI 会警告，但仍允许连接。设备与网关之间的 `ws://` 令牌仍是明文，部署时需限制网络访问或由可信代理终止 TLS。当前 `voice_assistant` 示例会记录连接 URL，不能安全地把 token 放入该 URL；示例尚未接入握手请求头，真实设备连接及令牌配置尚未板上验收。
+
+## r193 / shell.Sparkline 迷你折线图（runtime/ + 纯 app 层；M5 Component library）
+
+- **无真机验收（不声称真机验证）**：宿主 harness 跑真组件 + 真 prelude；`lume check --no-emu` 只做 esbuild bundle（不跑 eval/layout/perf）；playground 是浏览器 stub。折线的 AMOLED 实际配色对比度、面积带观感、点标尺寸、Canvas 刷新时序与像素预算全部 deferred 到 board bring-up。
+- **fillArea 无 alpha 的取舍**：RGB565 Canvas 的 `__canvasColor` 只接受 `#RRGGBB` / 24-bit number（无 alpha），且无多边形填充原语。按整数列用现有 `line()` 从曲线画到底边、取主题 `surfaceAlt` 作低对比面积带，不引入新绘制原语；这是视觉折中而非半透明实现，真机观感待验收。
+- **退化行为口径**：min/max 缺省自动取有限样本范围；全平序列固定落在 `y = height/2`（不除零）；空数据只 clear；单点不连线仅画点；非有限样本跳过；>240 点等距降采样保首尾；显式 `min >= max` 抛 `RangeError`。`series` 与 `data` 同时给出时以 `series` 为准（已在源码与 `.d.ts` 注释写明）。
+- **计数实证纠偏**：简报称「69 → 70」，实证 `manifestApps()` 与 `page.js` 元数据均为 70，故本轮为 **70 → 71**。当前 harness 数值断言已动态化，只同步两处文案注释（gallery 头注释 / 生成器 docstring），未改断言语义；`tests/sd_files.js` 的 needle 不涉及新增 app，无需追加。`tests/ota_consumers.js` ALLOWED 预加 4 个新路径 + `artifacts/r193/` 前缀，未重钉 BASE、未放宽零 diff 守卫（未自比较、未删守卫）。
+- **build.mjs 陈旧读取的处理**：基线 `lume_scripts.c` 自 `920ee22` 起是 `#include "lume_scripts.inc"` 占位，而 build.mjs 仍直接读它，裸跑报 `missing lume_prelude_js`。本轮用 `gen_lume_scripts.py` 临时物化 C 数组完成重建后原样还原；`git diff origin/main -- firmware/` 为空，生成的 `prelude.js` 与基线逐字节一致，未跑 `idf.py build`，IRAM 16384 硬线未触碰。未改 build.mjs 读取逻辑（超本轮授权面），留给主控后续收口。
+- **验证与收尾**：全量 `tests/*.js` 0 FAIL；`tests/shell_sparkline.js` 14 组静态 + mutation + live 全绿；`lume check sparkline_demo --no-emu` PASS（28971 B）；playground 重建 71 apps，`check_website.py` 71 cards + API 162 entries 全 none；playwright 全 PASS（`sparkline_demo: 12 nodes`）；`npm test` 52/0/0；`gen_api_docs.py --check` 162 entries fresh。ASCII 纪律全满足（demo 非 ASCII 字节 0，中文只在 cn 元数据）。未改 vendored（QuickJS/LVGL）、`.github/`、`tools/lume/`、`tests/board_abi.js` 排除；既有 dashboard / hr_monitor / heart_curve 的 app.js 未动，存量替换留后续刀。commits 拆 feat / test / docs，未推送；未跑 codex review（主控轮负责）。
