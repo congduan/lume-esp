@@ -354,6 +354,46 @@ declare namespace lume.ui.shell {
   /** Two-View determinate bar. Value changes only update the fill View's
    * ATTR_WIDTH via a bound numeric style (no Canvas, no pixel budget). */
   function Progress(props?: ProgressProps): lume.ui.Node;
+  interface SparklineSeries {
+    /** Sample values; an array or a signal getter read on every repaint. */
+    data: number[] | (() => number[]);
+    /** #RRGGBB string or signal getter; defaults to a palette entry. */
+    color?: string | (() => string);
+    /** Stroke width in px (1..16); falls back to the component's strokeWidth. */
+    strokeWidth?: number;
+  }
+  interface SparklineProps {
+    parent?: lume.ui.Node;
+    /** Single series. Ignored when `series` is also supplied. */
+    data?: number[] | (() => number[]);
+    /** Multiple series; takes precedence over `data`. */
+    series?: SparklineSeries[] | (() => SparklineSeries[]);
+    /** Default line colour for a single series (or the first series). */
+    color?: string | (() => string);
+    /** Per-series default colours; an explicit series.color still wins. */
+    colors?: Array<string | (() => string)>;
+    /** Default stroke width in px (1..16, default 2). */
+    strokeWidth?: number;
+    /** Fill the band under each curve to the bottom edge with theme surfaceAlt
+     * (the RGB565 Canvas has no alpha); default false. */
+    fillArea?: boolean;
+    /** Explicit value domain. Both omitted auto-fit the data; both supplied
+     * require min < max. A flat auto range draws at the vertical centre. */
+    min?: number; max?: number;
+    /** Draw a dot at every sample (default false). */
+    showDots?: boolean;
+    /** Draw a larger dot at each series' last sample (default false). */
+    showLast?: boolean;
+    /** Canvas size in px (width default screen - 48, height default 96). */
+    width?: number; height?: number;
+    x?: number; y?: number;
+  }
+  /** Canvas mini line chart. `data` / `series` may be signal getters: the
+   * prelude's owned onDraw effect repaints when they publish. Non-finite
+   * samples are skipped and >240-point series are downsampled to the Canvas
+   * polyline cap. Returns a node for shell.dispose(node). Touch/pixel feel is
+   * deferred to board bring-up. */
+  function Sparkline(props?: SparklineProps): lume.ui.Node;
   interface LauncherApp { id: string; label: string; color?: string; icon?: string; glyph?: string }
   interface LauncherProps {
     parent?: lume.ui.Node;

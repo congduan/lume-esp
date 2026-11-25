@@ -141,6 +141,14 @@ const ALLOWED = [
   'tools/luna-mktex/generate.js', 'tests/luna.js',
   'website/playground/apps/luna.js', 'website/playground/sources/luna.js',
   'docs/archive/r182-luna-report.md',
+  // r193: shell.Sparkline component, consumer demo, generated playground
+  // artifacts and host harness. Pre-added before commit so the untracked files
+  // do not turn the allChanged allowlist red once the test commit lands.
+  'examples/sparkline_demo/app.js',
+  'tests/shell_sparkline.js',
+  'website/playground/apps/sparkline_demo.js',
+  'website/playground/sources/sparkline_demo.js',
+  'docs/archive/r193-shell-sparkline-report.md',
   // r171: manifest guard and optional browser visual check.
   'tools/lume/check.js',
   'tools/lume/lume.js',
@@ -809,6 +817,7 @@ const checks = [
       f.startsWith('artifacts/r190/') ||
       // r191: retained C-harness / zero-diff CI logs; r192: knife evidence.
       f.startsWith('artifacts/r191/') || f.startsWith('artifacts/r192/') ||
+      f.startsWith('artifacts/r193/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 

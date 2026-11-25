@@ -12,7 +12,7 @@ const apps = ['counter', 'clock', 'clock_round', 'dashboard_round', 'games_snake
   'dashboard', 'gravity_ball', 'typewriter', 'heart_curve', 'speedometer', 'power_demo', 'luna',
   'watchface', 'async_demo', 'piano', 'compass', 'invaders', 'frogger', 'abc123', 'sokoban', 'lcd_dual', 'memory', 'minesweeper', 'golf', 'scroller', 'raycast', 'fishtank', 'particles', 'voice_assistant', 'spectrum_music', 'plasma', 'skyfire', 'skycombat', 'aurora_clock', 'flapdot', 'wordring',
   'image_gallery', 'files', 'adc_meter', 'crypto_check', 'archive_view', 'img_view', 'vec_demo', 'settings', 'hr_monitor', 'keyboard_demo', 'wordle', 'controls_demo', 'timer_kit', 'control_center', 'launcher_grid', 'minigolf', 'ipod_music', 'color_demo', 'ble_uart', 'spectrum', 'svg_icon', 'gestures',
-  'storybook', 'mochi', 'shell_demo'];
+  'storybook', 'mochi', 'shell_demo', 'sparkline_demo'];
 export function manifestApps() { return [...apps]; }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

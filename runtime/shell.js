@@ -701,6 +701,152 @@
     cleanups[root] = function () { nodes.forEach(function (id) { lume.removeChild(id); }); };
     return root;
   }
+  /* r193: compact mint sparkline. Like the r151 form primitives, the data
+   * lives in the caller's signal: pass a getter as `data` / `series` and read
+   * it inside Canvas.onDraw, so the prelude's owned effect repaints on every
+   * publish. The component only normalises sequence(s) into canvas pixels and
+   * registers the canvas with the shell dispose chain -- no new subscription
+   * mechanism and no internal data copy.
+   *
+   * RGB565 Canvas colours carry no alpha (__canvasColor accepts only #RRGGBB
+   * or a 24-bit number), so fillArea paints the band under the curve in the
+   * theme's surfaceAlt token instead of a translucent tint: a muted area
+   * band using the existing line primitive, no new drawing primitive.
+   *
+   * `series` wins when both `data` and `series` are supplied. `data` is a
+   * number[] (single line); `series` is [{data, color?, strokeWidth?}]. */
+  var SPARK_POINTS = 240; /* prelude polyline() cap */
+  var SPARK_PALETTE = ['#40D8B0', '#5AA9E6', '#FFC857', '#FF6B79'];
+  function sparkColor(value, fallback) {
+    if (value === undefined) return fallback;
+    if (typeof value === 'function' || typeof value === 'string' || typeof value === 'number') {
+      return function () { return typeof value === 'function' ? value() : value; };
+    }
+    throw new TypeError('lume: Sparkline color must be a #RRGGBB string or a signal function');
+  }
+  function sparkData(name, value) {
+    var list = typeof value === 'function' ? value() : value;
+    if (list === undefined) return [];
+    if (!Array.isArray(list))
+      throw new TypeError('lume: Sparkline ' + name + ' must be an array or a signal function');
+    return list;
+  }
+  /* Skip non-finite samples and downsample long series to the polyline cap;
+   * the first and last sample always survive. */
+  function sparkClean(list) {
+    var clean = [], i;
+    for (i = 0; i < list.length; i++) {
+      if (typeof list[i] === 'number' && isFinite(list[i])) clean.push(list[i]);
+    }
+    if (clean.length <= SPARK_POINTS) return clean;
+    var out = [];
+    for (i = 0; i < SPARK_POINTS; i++)
+      out.push(clean[Math.floor(i * (clean.length - 1) / (SPARK_POINTS - 1))]);
+    return out;
+  }
+  function Sparkline(p) {
+    p = p || {};
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    var width = positive('Sparkline width', p.width, Math.max(40, screen.w - 48), screen.w);
+    var height = positive('Sparkline height', p.height, 96, screen.h);
+    var strokeWidth = p.strokeWidth === undefined ? 2 : p.strokeWidth;
+    if (!isFinite(strokeWidth) || Math.floor(strokeWidth) !== strokeWidth || strokeWidth < 1 || strokeWidth > 16)
+      throw new RangeError('lume: Sparkline strokeWidth must be 1..16 pixels');
+    var loProp = p.min, hiProp = p.max;
+    if (loProp !== undefined && (typeof loProp !== 'number' || !isFinite(loProp)))
+      throw new TypeError('lume: Sparkline min must be a finite number');
+    if (hiProp !== undefined && (typeof hiProp !== 'number' || !isFinite(hiProp)))
+      throw new TypeError('lume: Sparkline max must be a finite number');
+    if (loProp !== undefined && hiProp !== undefined && hiProp <= loProp)
+      throw new RangeError('lume: Sparkline requires min < max');
+    if (p.colors !== undefined && !Array.isArray(p.colors))
+      throw new TypeError('lume: Sparkline colors must be an array');
+    var fillArea = p.fillArea === true, showDots = p.showDots === true, showLast = p.showLast === true;
+    /* series wins when both are present (documented above). */
+    var useSeries = p.series !== undefined;
+    if (!useSeries && p.data !== undefined && typeof p.data !== 'function' && !Array.isArray(p.data))
+      throw new TypeError('lume: Sparkline data must be an array or a signal function');
+    if (useSeries && typeof p.series !== 'function' && !Array.isArray(p.series))
+      throw new TypeError('lume: Sparkline series must be an array or a signal function');
+    var dotR = showDots || showLast ? 3 : 0;
+    var insetX = Math.max(1, Math.ceil(strokeWidth / 2));
+    var insetY = Math.max(insetX, dotR);
+    var spanX = Math.max(0, width - 2 * insetX);
+    var spanY = Math.max(0, height - 2 * insetY);
+    function resolve() {
+      if (!useSeries) {
+        return [{ data: sparkClean(sparkData('data', p.data)),
+          color: sparkColor(p.color, color('accent', '#40D8B0')), strokeWidth: strokeWidth }];
+      }
+      var entries = sparkData('series', p.series);
+      return entries.map(function (entry, i) {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry))
+          throw new TypeError('lume: Sparkline series entries must be objects');
+        var fallback = i === 0 ? color('accent', '#40D8B0') :
+          function () { return SPARK_PALETTE[i % SPARK_PALETTE.length]; };
+        if (p.colors && p.colors[i] !== undefined) fallback = sparkColor(p.colors[i], fallback);
+        var sw = entry.strokeWidth === undefined ? strokeWidth : entry.strokeWidth;
+        if (!isFinite(sw) || Math.floor(sw) !== sw || sw < 1 || sw > 16)
+          throw new RangeError('lume: Sparkline series strokeWidth must be 1..16 pixels');
+        return { data: sparkClean(sparkData('series data', entry.data)),
+          color: sparkColor(entry.color, fallback), strokeWidth: sw };
+      });
+    }
+    var canvas = Canvas({ parent: p.parent, width: width, height: height,
+      style: { x: p.x === undefined ? Math.floor((screen.w - width) / 2) : p.x,
+        y: p.y === undefined ? 24 : p.y, scroll: 'none' },
+      onDraw: function (c) {
+        c.clear();
+        var all = resolve(), lo = loProp, hi = hiProp, i, j;
+        if (lo === undefined || hi === undefined) {
+          var seen = false;
+          all.forEach(function (s) { s.data.forEach(function (v) {
+            if (!seen) { lo = v; hi = v; seen = true; }
+            else { if (v < lo) lo = v; if (v > hi) hi = v; }
+          }); });
+          if (!seen) { lo = 0; hi = 1; } /* empty: clear only, degenerate below */
+        }
+        /* Flat sequence (lo == hi) degenerates to the vertical centre: no
+         * division by zero, the line is a harmless horizontal segment. */
+        var flat = !(hi > lo), range = hi - lo;
+        var bottom = height - 1;
+        var area = function () { return lume.theme.get().colors.surfaceAlt || '#1C3449'; };
+        all.forEach(function (s) {
+          var n = s.data.length;
+          if (!n) return; /* empty / all non-finite: nothing to draw */
+          var pts = [];
+          for (i = 0; i < n; i++) {
+            var x = n === 1 ? Math.round(width / 2) : insetX + Math.round(spanX * i / (n - 1));
+            var y = flat ? Math.round(height / 2) :
+              insetY + Math.round(spanY * (1 - (s.data[i] - lo) / range));
+            if (y < insetY) y = insetY;
+            else if (y > bottom - insetY) y = bottom - insetY;
+            pts.push([x, y]);
+          }
+          var ink = s.color();
+          if (fillArea && n > 1) {
+            /* One vertical stroke per integer column from the curve to the
+             * bottom edge; line() batches them, no polygon primitive needed. */
+            for (j = 0; j < pts.length - 1; j++) {
+              var x1 = pts[j][0], y1 = pts[j][1], x2 = pts[j + 1][0], y2 = pts[j + 1][1];
+              for (var sx = x1; sx <= x2; sx++) {
+                var f = x2 === x1 ? 0 : (sx - x1) / (x2 - x1);
+                var sy = Math.round(y1 + (y2 - y1) * f);
+                c.line(sx, sy, sx, bottom, area(), 1);
+              }
+            }
+          }
+          if (n > 1) c.polyline(pts, ink, s.strokeWidth);
+          if (showDots) pts.forEach(function (pt) { c.fillCircle(pt[0], pt[1], 2, ink); });
+          if (showLast) {
+            var last = pts[n - 1];
+            c.fillCircle(last[0], last[1], dotR, ink);
+          }
+        });
+      } });
+    cleanups[canvas] = function () { lume.removeChild(canvas); };
+    return canvas;
+  }
   function Launcher(p) {
     p = p || {};
     /* Default source: the installed app set (lume.apps.entries()). Passing
@@ -773,6 +919,7 @@
   shell.hexToHsv = hexToHsv;
   shell.Slider = Slider;
   shell.Progress = Progress;
+  shell.Sparkline = Sparkline;
   shell.SafeArea = SafeArea;
   shell.safeInsets = safeInsets;
   shell.Card = Card;

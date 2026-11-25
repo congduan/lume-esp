@@ -1,0 +1,15 @@
+PASS shell_sparkline single series mounts one canvas and draws a full-width polyline; mutation FAIL as expected
+PASS shell_sparkline auto min/max maps extremes to inset rows; mutation FAIL as expected
+PASS shell_sparkline explicit min/max overrides auto and validates the domain; mutation FAIL as expected
+PASS shell_sparkline series takes precedence over data and palette colours cycle; mutation FAIL as expected
+PASS shell_sparkline per-series color / strokeWidth and colors[] fallback are respected; mutation FAIL as expected
+PASS shell_sparkline flat sequence degenerates to centre with no divide-by-zero; mutation FAIL as expected
+PASS shell_sparkline empty data and a single point do not crash; mutation FAIL as expected
+PASS shell_sparkline fillArea paints vertical columns in surfaceAlt and toggles off; mutation FAIL as expected
+PASS shell_sparkline showDots and showLast place the expected circles; mutation FAIL as expected
+PASS shell_sparkline showDots is independently switchable; mutation FAIL as expected
+PASS shell_sparkline non-finite samples are skipped and long series are downsampled; mutation FAIL as expected
+PASS shell_sparkline live signal data repaints through the owned onDraw effect; mutation FAIL as expected
+PASS shell_sparkline dispose removes the canvas and is idempotent; mutation FAIL as expected
+PASS shell_sparkline invalid props throw before mounting; mutation FAIL as expected
+ALL SHELL SPARKLINE CASES PASSED (14 cases)

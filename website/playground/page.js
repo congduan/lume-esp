@@ -70,7 +70,8 @@
     ['minigolf','GF','Mini Golf','迷你高尔夫','Drag or IMU swing putting demo','拖拽或体感挥杆推杆演示'],
     ['color_demo','CL','Color Studio','调色台','ColorPicker tint saved to KV','ColorPicker 调色并存入 KV'],
     ['mochi','MC','Mochi','吉祥物','Programmatic Canvas mascot expressions','Canvas 绘制的吉祥物表情演示'],
-    ['shell_demo','SB','Shell Demo','外壳组件','StatusBar and EdgeNavigation demo','状态栏与边缘导航演示']
+    ['shell_demo','SB','Shell Demo','外壳组件','StatusBar and EdgeNavigation demo','状态栏与边缘导航演示'],
+    ['sparkline_demo','SP','Sparkline','迷你折线图','Canvas mini line charts with shell.Sparkline','shell.Sparkline 迷你折线图']
   ];
   // r169: LUME_SOURCES is the authoritative catalog; `examples` holds display
   // metadata only. Both the picker and the editor dropdown derive from the
