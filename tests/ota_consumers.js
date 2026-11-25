@@ -26,7 +26,7 @@ const { execFileSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '674684a'; // r183: re-pinned to the baseline HEAD (r182 fw-sync moved wasm/fw/partition-table.bin after 3514c76)
+const BASE = '94f5d4e'; // r185: re-pinned to the docs-archive merge (round reports moved to docs/archive/) // r183: re-pinned to the baseline HEAD (r182 fw-sync moved wasm/fw/partition-table.bin after 3514c76)
 
 const settings = read('examples/settings/app.js');
 const dashboard = read('examples/dashboard/app.js');
