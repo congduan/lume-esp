@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { createHash } = require('node:crypto');
 
 const root = path.resolve(__dirname, '../..');
 const scriptDir = path.join(root, 'firmware/components/lume-engine/prelude');
@@ -17,6 +18,13 @@ function extract(name) {
 }
 const prelude = extract('lume_prelude_js', 'lume_demo_js');
 const demo = extract('lume_demo_js');
+// Historical app guard harnesses compare the prelude with 3514c76. The C
+// container changed in r186, so compare the extracted JS bytes instead.
+function preludeChangesSince3514c76() {
+  const hash = createHash('sha256').update(fs.readFileSync(path.join(scriptDir, 'prelude.js'))).digest('hex');
+  return hash === '8880e9c205c017430db4c2e0d215330c37f16669020259c9c65a426c3743486c'
+    ? [] : ['firmware/components/lume-engine/prelude/prelude.js'];
+}
 
   function fftStub() {
     const isFloat32 = value => Object.prototype.toString.call(value) === '[object Float32Array]';
@@ -398,4 +406,4 @@ function runApp(script, options = {}) {
     removed: id => vm.runInContext(`__lume_dispatchRemove(${Number(id)})`, ctx),
   };
 }
-module.exports = { extract, prelude, demo, runApp };
+module.exports = { extract, prelude, demo, runApp, preludeChangesSince3514c76 };

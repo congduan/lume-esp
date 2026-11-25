@@ -38,7 +38,7 @@ function asciiStrings(s) {
 
 // r129 is app-only: no firmware/runtime file may differ from the r128
 // baseline. Same allowlist pattern as r128, but the exception set is empty.
-const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts', // r166 ColorPicker
+const R129_ALLOWLIST = ['firmware/components/lume-engine/lume_scripts.c', 'firmware/components/lume-engine/gen_lume_scripts.py', 'firmware/components/lume-engine/prelude/demo.js', 'firmware/components/lume-engine/prelude/home.js', 'firmware/components/lume-engine/prelude/prelude.js', 'runtime/shell.js', 'runtime/types/lume.d.ts', // r166 ColorPicker
   // r183: SVG raster-result cache (engine component only).
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',

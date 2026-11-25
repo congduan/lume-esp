@@ -113,6 +113,11 @@ const checks = [
 // intentionally adds lume.system.time()/setTimeNtp(). Keep the round-scope
 // guard: only those known r128 files may differ from the r127 baseline.
 const R128_FIRMWARE_FILES = [
+  // r186: generated C container and its JS sources.
+  'firmware/components/lume-engine/gen_lume_scripts.py',
+  'firmware/components/lume-engine/prelude/demo.js',
+  'firmware/components/lume-engine/prelude/home.js',
+  'firmware/components/lume-engine/prelude/prelude.js',
   // r183 SVG raster-result cache (engine component).
   'firmware/components/lume-engine/lume_svg_cache.c',
   'firmware/components/lume-engine/include/lume_svg_cache.h',

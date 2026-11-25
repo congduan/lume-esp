@@ -113,6 +113,7 @@ const guardOut = execFileSync('git', [
   // they need their own exclusion; everything else outside the listed surfaces
   // still fails the guard.
   ':!README.md', ':!README.zh-CN.md',
+  ':!AGENTS.md', // r186: source-of-truth guidance follows the JS extraction
   ':!.gitignore', // already changed on origin/main after the historical guard base
   // r148 controller follow-up: stale r82/r84/r92 host-run evidence logs were
   // deliberately removed (disk hygiene, e4f2d47); artifacts/ is regenerable

@@ -89,7 +89,7 @@ function gitChanged(paths) {
  * firmware/runtime/CLI-tooling surface is still pinned. Scope the diff to
  * tools/lume/ so manifest registration is not misreported as a tooling
  * behaviour change. */
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmware/components/lume-engine/gen_lume_scripts.py', 'firmware/components/lume-engine/prelude/demo.js', 'firmware/components/lume-engine/prelude/home.js', 'firmware/components/lume-engine/prelude/prelude.js', 'runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
   // r183: SVG raster-result cache (engine component only).
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
@@ -118,6 +118,16 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 const ALLOWED = [
+  // r186: JS source extraction, host readers, and source-of-truth guidance.
+  'AGENTS.md',
+  'firmware/components/lume-engine/gen_lume_scripts.py',
+  'firmware/components/lume-engine/prelude/demo.js',
+  'firmware/components/lume-engine/prelude/home.js',
+  'firmware/components/lume-engine/prelude/prelude.js',
+  'tests/animation_mapping.js', 'tests/apps.js', 'tests/gestures.js',
+  'tests/image_mapping.js', 'tests/lifecycle.js', 'tests/list_virtualization.js',
+  'tests/power.js', 'tests/sdcard.js', 'tests/sntp.js',
+  'tests/style_mapping.js', 'tests/theme_mapping.js',
   // r183: SVG raster-result cache, host harness, report and evidence.
   'firmware/components/lume-engine/lume_svg_cache.c',
   'firmware/components/lume-engine/include/lume_svg_cache.h',
@@ -736,7 +746,7 @@ const checks = [
       f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
       f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
       f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r179/') ||
-      f.startsWith('artifacts/r184/'))]],
+      f.startsWith('artifacts/r184/') || f.startsWith('artifacts/r186/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {

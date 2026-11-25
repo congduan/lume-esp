@@ -75,7 +75,7 @@ function propsBlock(s, name) {
 }
 
 /* ------------------------ part 1: static guards ------------------------ */
-const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
+const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmware/components/lume-engine/gen_lume_scripts.py', 'firmware/components/lume-engine/prelude/demo.js', 'firmware/components/lume-engine/prelude/home.js', 'firmware/components/lume-engine/prelude/prelude.js', 'runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
   // r183: SVG raster-result cache (engine component only).
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
@@ -276,7 +276,7 @@ must('playground generated source drifts',
 must('playground manifest drops launcher_grid',
   list => list.filter(x => x !== 'launcher_grid'), MANIFEST, apps);
 must('a firmware/runtime/CLI file changes after 3514c76',
-  () => ['firmware/components/lume-engine/lume_scripts.c'], GUARD, fwChanged);
+  () => ['firmware/components/lume-engine/lume_math.c'], GUARD, fwChanged);
 
 /* ------------------------ part 2: live prelude ------------------------- */
 function bootWith(shellSrc, appSrc) {
