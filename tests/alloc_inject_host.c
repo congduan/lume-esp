@@ -15,6 +15,16 @@
  *  3. once the window closes the runtime is fully usable again;
  *  4. the counter never counts a denied block and returns to zero when the
  *     runtime is freed, i.e. counter state matches injection state.
+ *
+ * r191 provenance (derived from tests/alloc_inject.js; host QuickJS build):
+ *   gcc -O2 -std=gnu11 -D_GNU_SOURCE -DQUICKJS_NG_BUILD -funsigned-char \
+ *     -I firmware/components/quickjs-ng \
+ *     tests/alloc_inject_host.c firmware/components/quickjs-ng/quickjs.c \
+ *     firmware/components/quickjs-ng/dtoa.c \
+ *     firmware/components/quickjs-ng/libregexp.c \
+ *     firmware/components/quickjs-ng/libunicode.c \
+ *     -o /tmp/lume_alloc_inject_host -lm -lpthread -ldl
+ *   /tmp/lume_alloc_inject_host   # no argv; prints RESULT: PASS
  */
 #define _GNU_SOURCE
 #include <stdio.h>

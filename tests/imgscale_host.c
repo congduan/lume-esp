@@ -1,4 +1,9 @@
-/* QuickJS-NG host runner for tests/imgscale.js; links the firmware source. */
+/* QuickJS-NG host runner for tests/imgscale.js; links the firmware source.
+ *
+ * r191 provenance (derived from tests/imgscale.js): record_buffer vendored
+ * QuickJS closure plus lume_imgscale.c and lume-engine/include; argv[1] is
+ * tests/lib/imgscale_cases.js.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include "quickjs.h"

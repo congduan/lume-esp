@@ -1,3 +1,13 @@
+/* r191 provenance (derived): no build comment in the original header. The
+ * include "lume_cmd.h" resolves to lume-hotreload/include, and the parser
+ * implementation is lume-hotreload/lume_cmd.c -- same closure as the CI
+ * apps_protocol.c entry. Verified compile-green locally:
+ *   gcc -std=c11 -Wall -Wextra -Werror \
+ *     -I firmware/components/lume-hotreload/include \
+ *     -I firmware/components/lume-engine/include \
+ *     tests/file_protocol.c firmware/components/lume-hotreload/lume_cmd.c \
+ *     -o /tmp/lume_file_protocol && /tmp/lume_file_protocol
+ */
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

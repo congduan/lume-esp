@@ -4,13 +4,20 @@
  * Build + run (from repo root):
  *   gcc -std=c11 -Wall -Wextra -Werror \
  *     -I firmware/components/lume-board-hal/include \
- *     tests/board_abi.c -o /tmp/lume_board_abi && /tmp/lume_board_abi
+ *     tests/board_abi.c firmware/components/lume-board-hal/lume_board_hal.c \
+ *     -o /tmp/lume_board_abi && /tmp/lume_board_abi
+ *
+ * r191 provenance: the original header-only command above drifted when r176
+ * added the registration/query assertions -- those call lume_board_get() and
+ * lume_board_hal_register(), which live in lume_board_hal.c. The command is
+ * corrected here to the recipe used by tests/board_abi.js (derived from local
+ * compile-green evidence); assertion logic is unchanged.
  *
  * The header is freestanding (only <stdint.h>), so no ESP-IDF headers are
  * needed. These are compile-time layout assertions plus runtime checks of the
  * default singleton's "generic / all ops unsupported" contract, then the r176
- * registration/query semantics with a host-only fake vtable (this file never
- * links firmware). Host evidence only -- no hardware, no on-device behaviour.
+ * registration/query semantics with a host-only fake vtable. Host evidence
+ * only -- no hardware, no on-device behaviour.
  */
 #include <stddef.h>
 #include <stdio.h>

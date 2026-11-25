@@ -5,6 +5,10 @@
  * decoder (zlib inflate + PNG unfilter) feeds the real RGB565A8 converter,
  * because lodepng/tjpgd/LVGL are not available on the host. The shim honours
  * the same decode_ex signature and error codes as firmware/lume_image.c.
+ *
+ * r191 provenance (derived from tests/decode.js): vendored QuickJS closure
+ * (record_buffer recipe) plus lume_image_decode.c / lume_imgscale.c /
+ * lume_image_pixels.c and -lz; argv[1] is tests/lib/decode_cases.js.
  */
 #include <stdio.h>
 #include <stdlib.h>

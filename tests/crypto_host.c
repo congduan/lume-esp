@@ -1,5 +1,12 @@
 /* QuickJS-NG host runner for tests/crypto.js; links the exact firmware
- * lume_crypto.c source against IDF mbedTLS (sha256/md/aes minimal closure). */
+ * lume_crypto.c source against mbedTLS (sha256/md/aes minimal closure).
+ *
+ * r191 provenance (derived from tests/crypto.js): CI supplies the pinned
+ * mbedTLS v3.6.2 tarball via LUME_MBEDTLS_ROOT (see tests.yml Provision step)
+ * plus tests/lib/r91_crypto_mbedtls_config.h. Build uses the same vendored
+ * QuickJS closure as record_buffer plus the five mbedTLS library sources;
+ * argv[1] is tests/lib/crypto_cases.js.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

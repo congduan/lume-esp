@@ -1,3 +1,12 @@
+/* r191 provenance (derived): no build comment in the original header. The
+ * include "lume_svg.h" resolves to lume-svg/include; the rasteriser behind
+ * lume_svg_size()/lume_svg_render() is lume-svg/lume_svg.c and it uses libm
+ * (lround/fmin/atan2/etc). Verified compile-green locally:
+ *   gcc -std=c11 -Wall -Wextra -Werror \
+ *     -I firmware/components/lume-svg/include \
+ *     tests/lume_svg_test.c firmware/components/lume-svg/lume_svg.c \
+ *     -o /tmp/lume_svg_test -lm && /tmp/lume_svg_test
+ */
 #include "lume_svg.h"
 #include <assert.h>
 #include <stdio.h>

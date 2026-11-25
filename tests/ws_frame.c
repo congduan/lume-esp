@@ -1,3 +1,11 @@
+/* r191 provenance (derived): no build comment in the original header. The
+ * include "lume_ws_frame.h" resolves to lume-net/include, and the frame
+ * assembler is lume-net/lume_ws_frame.c. Verified compile-green locally:
+ *   gcc -std=c11 -Wall -Wextra -Werror \
+ *     -I firmware/components/lume-net/include \
+ *     tests/ws_frame.c firmware/components/lume-net/lume_ws_frame.c \
+ *     -o /tmp/lume_ws_frame && /tmp/lume_ws_frame
+ */
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>

@@ -3,6 +3,12 @@
  * Compiles the REAL firmware component (firmware/components/lume-engine/
  * lume_svg_cache.c) with heap_caps stubs, so hit/miss/eviction/key behaviour is
  * verified against the same implementation the device runs. No board needed.
+ *
+ * r191 provenance (derived from tests/svg_cache.js):
+ *   gcc -std=c11 -O2 -Wall -Wextra -Werror \
+ *     -I firmware/components/lume-engine/include \
+ *     tests/svg_cache_test.c firmware/components/lume-engine/lume_svg_cache.c \
+ *     -o /tmp/lume_svg_cache_test && /tmp/lume_svg_cache_test
  */
 #include <stdio.h>
 #include <stdlib.h>

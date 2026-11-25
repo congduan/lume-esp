@@ -1,3 +1,10 @@
+/* r191 provenance (derived): this file has no build comment of its own; the
+ * command is the same as tests/canvas_blit.c (lume_raster.h from
+ * lume-ui-bridge/include, freestanding header-only):
+ *   gcc -std=c11 -Wall -Wextra -Werror \
+ *     -I firmware/components/lume-ui-bridge/include \
+ *     tests/canvas_prims.c -o /tmp/lume_canvas_prims && /tmp/lume_canvas_prims
+ */
 #include "lume_raster.h"
 #include <assert.h>
 #include <stdio.h>

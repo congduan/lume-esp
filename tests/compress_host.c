@@ -1,5 +1,17 @@
 /* QuickJS-NG host runner for tests/compress.js; links the exact firmware
- * lume_compress.c source (which includes the vendored miniz tinfl coroutine). */
+ * lume_compress.c source (which includes the vendored miniz tinfl coroutine).
+ *
+ * r191 provenance (derived from tests/compress.js): same vendored QuickJS
+ * closure as the record_buffer CI entry; argv[1] is a classic script. The
+ * cases file needs a `var __FIXTURES = ...` preamble generated from Node zlib
+ * by tests/compress.js, so the CI entry emits that preamble inline before
+ * concatenating tests/lib/compress_cases.js. Build:
+ *   gcc -O2 -std=gnu11 -D_GNU_SOURCE -DQUICKJS_NG_BUILD -funsigned-char \
+ *     -I tests/lib -I firmware/components/quickjs-ng \
+ *     tests/compress_host.c firmware/components/lume-compress/lume_compress.c \
+ *     <vendored quickjs.c dtoa.c libregexp.c libunicode.c> \
+ *     -o /tmp/lume_compress_host -lm -lpthread -ldl
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

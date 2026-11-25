@@ -1,4 +1,10 @@
-/* QuickJS-NG host runner for tests/fft.js; links the firmware FFT source. */
+/* QuickJS-NG host runner for tests/fft.js; links the firmware FFT source.
+ *
+ * r191 provenance (derived from tests/fft.js): record_buffer vendored QuickJS
+ * closure plus lume_fft.c; quickjs.c pulls lume_perf.h -> sdkconfig.h, so a
+ * host stub defining CONFIG_LUME_PERF_PROFILE 0 is on the include path.
+ * argv[1] is tests/lib/fft_cases.js.
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
