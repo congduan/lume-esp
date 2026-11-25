@@ -387,7 +387,7 @@ function assertNoTokenLeak(logs, token) {
 
   let openAdapter;
   await runCase('r119: open mode + hello without auth -> full round unchanged',
-    () => { openAdapter = new MockUpstream({ answer: 'OPEN', audioFrames: 2, delayMs: 10 }); return openAdapter; },
+    () => { openAdapter = new MockUpstream({ answer: 'OPEN', audioFrames: 2, delayMs: 100 }); return openAdapter; },
     async ({ gw, url }) => {
       const st = device(url);
       await untilOpen(st);
@@ -450,7 +450,7 @@ function assertNoTokenLeak(logs, token) {
 
   let okAdapter;
   await runCase('r119: locked + correct token -> full round, upstream engaged',
-    () => { okAdapter = new MockUpstream({ answer: 'AUTH OK', audioFrames: 2, delayMs: 10 }); return okAdapter; },
+    () => { okAdapter = new MockUpstream({ answer: 'AUTH OK', audioFrames: 2, delayMs: 100 }); return okAdapter; },
     async ({ gw, url, logs }) => {
       const st = device(url);
       await untilOpen(st);

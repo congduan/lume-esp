@@ -15,6 +15,19 @@
 
 ## 1. 传输与帧类型
 
+网关握手鉴权（r187）：启动时传 `--token TOKEN`（或 `GATEWAY_TOKEN`）；非空时，
+客户端必须在 WebSocket 升级请求中带 `Authorization: Bearer TOKEN`、
+`X-Gateway-Token: TOKEN` 或 URL 的 `?token=TOKEN`，否则网关在建会话前返回
+HTTP 401 并断开。`tools/gateway/device-sim.js --token TOKEN` 使用 Bearer 头；
+设备端 `lume.net.ws.connect(url, {headers: {Authorization: 'Bearer ' + token}})`
+可发送请求头；也可在 URL 中用 query token，但 URL 不应进入日志。当前
+`examples/voice_assistant/app.js` 会记录连接 URL，故该示例不能安全地用 query
+token；其握手鉴权接入留待解除示例改动限制后完成。没有配置握手 token 时保持旧行为，
+但 CLI 会打印醒目的警告。
+此握手 token 与 §8.2 的 `--device-token` / `hello.auth.token` 是两个独立配置；
+前者在升级前拒绝未授权连接，后者在会话 `hello` 帧校验。
+网关目前仅支持 `ws://`，明文链路会暴露令牌，部署时应限制监听地址或在可信代理上终止 TLS。
+
 - 传输：单个 WebSocket 连接（设备为客户端，网关为服务端）。`ws://` 明文本轮即可；
   `wss://` 留待部署轮。
 - 文本帧（WS opcode 0x1）：UTF-8 JSON 控制消息，必须含 `v` 与 `type`。

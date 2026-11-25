@@ -1,7 +1,7 @@
 'use strict';
 /* Simulated device client for the end-to-end smoke run. Follows the
  * lume.net.ws callback shape (onOpen/onMessage/onClose/onError). Usage:
- *   node tools/gateway/device-sim.js [ws://127.0.0.1:8765/] [--legacy] [--device-token TOKEN]
+ *   node tools/gateway/device-sim.js [ws://127.0.0.1:8765/] [--legacy] [--token TOKEN] [--device-token TOKEN]
  *                                   [--turns N] [--drop-after N]
  * `--legacy` omits the v1.1 streamTranscript cap and ignores transcript-delta,
  * exercising the backward-compat "old device ignores unknown downlink" path.
@@ -23,9 +23,11 @@ function arg(name, fallback) {
   return v;
 }
 
-const url = process.argv[2] || 'ws://127.0.0.1:8765/';
+const url = process.argv[2] && !process.argv[2].startsWith('--')
+  ? process.argv[2] : 'ws://127.0.0.1:8765/';
 const legacy = process.argv.indexOf('--legacy') >= 0;
 const deviceToken = arg('device-token', process.env.GATEWAY_DEVICE_TOKEN || '');
+const handshakeToken = arg('token', process.env.GATEWAY_TOKEN || '');
 const turns = Math.max(1, Number(arg('turns', '1')) || 1);
 const dropAfter = Number(arg('drop-after', '0')) || 0;   /* 0 = never force-drop */
 let turn = 0;
@@ -68,7 +70,7 @@ function sendTurn(withText) {
 function openConnection(resume) {
   client = connect(url, {
     onOpen() {
-      log('open', { url, resume: resume ? 'on' : 'off' });
+      log('open', { endpoint: new URL(url).origin, resume: resume ? 'on' : 'off' });
       const hello = {
         v: 1, type: 'hello',
         device: { model: 'lume', fw: 'r117' },
@@ -146,7 +148,7 @@ function openConnection(resume) {
       log('close', { ack, uplink, deltas, audioFrames, text: JSON.stringify(text),
         txDeltas, txText: JSON.stringify(txText), legacy, auth: deviceToken ? 'on' : 'off' });
       /* r122: a forced drop is followed by a fresh hello carrying resume. */
-      if (dropAfter === turn && turn < turns && resumeId) {
+      if (dropAfter > 0 && dropAfter === turn && turn < turns && resumeId) {
         setTimeout(() => {
           log('reconnect', { resume: resumeId });
           openConnection(resumeId);
@@ -154,7 +156,7 @@ function openConnection(resume) {
       }
     },
     onError(code) { log('error', { code }); }
-  });
+  }, handshakeToken ? { Authorization: 'Bearer ' + handshakeToken } : {});
 }
 
 openConnection('');

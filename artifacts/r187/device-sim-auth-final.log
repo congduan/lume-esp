@@ -1,0 +1,42 @@
+[device  20:56:50.279] open endpoint=ws://127.0.0.1:18771 resume=off
+[device  20:56:50.285] send.hello auth=on resume=off
+[device  20:56:50.297] recv.hello-ack sessionId=s1 audioFormat=pcm_s16le_16000_2ch
+[device  20:56:50.301] send.uplink frames=5 bytesEach=3840 totalBytes=19200
+[device  20:56:50.301] send.end
+[device  20:56:50.301] recv.state state=thinking
+[device  20:56:50.349] recv.text-delta seq=0 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=1 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=2 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=3 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=4 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=5 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=6 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=7 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=8 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=9 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=10 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=11 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=12 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=13 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=14 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=15 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=16 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=17 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=18 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=19 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=20 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=21 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=22 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=23 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=24 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=25 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=26 chars=1 final=false
+[device  20:56:50.349] recv.text-delta seq=27 chars=1 final=false
+[device  20:56:50.349] recv.state state=speaking
+[device  20:56:50.362] recv.audio seq=0 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:56:50.362] recv.audio seq=1 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:56:50.368] recv.audio seq=2 bytes=3848 version=1 type=1 format=1 rate=16000 channels=2 bits=16
+[device  20:56:50.368] recv.text-delta seq=28 chars=0 final=true
+[device  20:56:50.368] recv.state state=idle
+[device  20:56:50.369] close ack=true uplink=5 deltas=29 audioFrames=3 text="HELLO FROM THE MOCK GATEWAY." txDeltas=0 txText="" legacy=false auth=on
+device-sim exit 0

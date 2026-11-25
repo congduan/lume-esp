@@ -1,0 +1,12 @@
+[gateway 20:56:49.222] gateway.listen host=127.0.0.1 port=18771
+[gateway 20:56:49.223] ready url=ws://127.0.0.1:18771/ handshakeAuth=on deviceAuth=on systemPrompt=default historyLimit=12 multiturn=off
+[gateway 20:56:50.292] hello sessionId=s1 device={"model":"lume","fw":"r117"} streamTranscript=true
+[gateway 20:56:50.305] uplink.pcm sessionId=s1 bytes=3840 frames=1
+[gateway 20:56:50.306] uplink.pcm sessionId=s1 bytes=3840 frames=2
+[gateway 20:56:50.306] uplink.pcm sessionId=s1 bytes=3840 frames=3
+[gateway 20:56:50.306] uplink.pcm sessionId=s1 bytes=3840 frames=4
+[gateway 20:56:50.306] uplink.pcm sessionId=s1 bytes=3840 frames=5
+[gateway 20:56:50.306] turn.end sessionId=s1
+[gateway 20:56:50.373] history.retire sessionId=s1 count=2
+[gateway 20:56:50.374] session.close sessionId=s1 code=1000
+[gateway 20:56:50.415] gateway.closed

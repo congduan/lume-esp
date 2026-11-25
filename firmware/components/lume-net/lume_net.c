@@ -40,6 +40,7 @@
 #include "esp_netif_ip_addr.h"
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
+#include "mbedtls/ssl.h"
 #include "esp_heap_caps.h"
 #include "nvs_flash.h"
 #include "lume_net.h"
@@ -448,6 +449,16 @@ int lume_net_http_get(const char *url, int timeout_ms,
                                  NULL, false, out);
 }
 
+/* IDF rejects TLS requests without a verification option when the global
+ * insecure Kconfig switch is off. Supply a request-local callback only for
+ * the explicit JS httpsInsecure opt-in; all other requests use the CA or
+ * certificate bundle. The callback runs on this request's TLS config. */
+static esp_err_t attach_insecure_tls(void *conf)
+{
+    mbedtls_ssl_conf_authmode((mbedtls_ssl_config *)conf, MBEDTLS_SSL_VERIFY_NONE);
+    return ESP_OK;
+}
+
 int lume_net_http_request(const char *url, const char *method,
                           const lume_net_http_header_t *headers, size_t header_count,
                           const uint8_t *request_body, size_t request_len,
@@ -509,7 +520,8 @@ int lume_net_http_request(const char *url, const char *method,
         .user_data = &sink,
         .buffer_size = 2048,
         .cert_pem = ca_pem,
-        .crt_bundle_attach = ca_pem || https_insecure ? NULL : esp_crt_bundle_attach,
+        .crt_bundle_attach = https_insecure ? attach_insecure_tls :
+                             (ca_pem ? NULL : esp_crt_bundle_attach),
     };
     esp_http_client_handle_t client = esp_http_client_init(&cfg);
     if (client == NULL) {

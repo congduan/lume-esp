@@ -13,6 +13,20 @@ function computeAccept(key) {
   return crypto.createHash('sha1').update(key + GUID, 'binary').digest('base64');
 }
 
+function authorized(req, token) {
+  if (!token) return true;
+  let queryToken = '';
+  try { queryToken = new URL(req.url, 'http://gateway.invalid').searchParams.get('token') || ''; }
+  catch (_) { return false; }
+  const authorization = req.headers.authorization || '';
+  const bearer = /^Bearer (.+)$/i.exec(authorization);
+  const supplied = bearer ? bearer[1] : (req.headers['x-gateway-token'] || queryToken);
+  if (typeof supplied !== 'string') return false;
+  const expectedHash = crypto.createHash('sha256').update(token).digest();
+  const suppliedHash = crypto.createHash('sha256').update(supplied).digest();
+  return crypto.timingSafeEqual(expectedHash, suppliedHash);
+}
+
 function closePayload(code, reason) {
   const text = Buffer.from(String(reason || ''), 'ascii').subarray(0, 123);
   const out = Buffer.allocUnsafe(2 + text.length);
@@ -183,6 +197,10 @@ function attachWsServer(httpServer, opts = {}) {
   const clients = new Set();
   const log = opts.log || (() => {});
   httpServer.on('upgrade', (req, socket, head) => {
+    if (!authorized(req, opts.token)) {
+      socket.end('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');
+      return;
+    }
     const key = req.headers['sec-websocket-key'];
     if ((req.headers.upgrade || '').toLowerCase() !== 'websocket' ||
         req.headers['sec-websocket-version'] !== '13' || !key) {

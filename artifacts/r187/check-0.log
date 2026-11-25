@@ -1,0 +1,5 @@
+no token: HTTP 401
+wrong token: HTTP 401
+correct query token: HTTP 101
+correct Bearer token: HTTP 101
+exit 0
