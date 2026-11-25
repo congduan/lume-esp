@@ -1,0 +1,16 @@
+PASS weather WMO codes map to descriptions and icon kinds
+PASS weather formatters degrade to -- instead of NaN
+PASS weather weekDay parses the ISO date in UTC
+PASS weather parseForecast keeps current values and caps the forecast at three days
+PASS weather parseForecast rejects bodies it cannot use
+PASS weather parseForecast survives a missing daily block and short arrays
+PASS weather buildUrl asks for current + daily with auto timezone
+PASS weather parseCity validates the Kv JSON
+PASS weather dayAt falls back for out-of-range indexes
+PASS weather icons issue the expected raster commands and repaint the whole canvas
+PASS 10 weather logic cases
+PASS weather refresh replaces the demo data
+PASS weather request failure keeps the app usable
+PASS weather non-200 response is reported
+PASS 13 weather cases (10 logic + 3 UI)
+exit 0
