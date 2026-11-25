@@ -116,6 +116,10 @@ const guardOut = execFileSync('git', [
   // r188: artifacts-retention policy documented in AGENTS.md (docs-only edit,
   // same class as the r150 README refresh).
   ':!AGENTS.md',
+  // r189: examples gallery is generated from the playground catalog by
+  // scripts/gen_examples_gallery.py and gated by a --check hook in
+  // scripts/check_website.py (same generated-surface class as website/).
+  ':!scripts/gen_examples_gallery.py', ':!scripts/check_website.py',
   ':!.gitignore', // already changed on origin/main after the historical guard base
   // r148 controller follow-up: stale r82/r84/r92 host-run evidence logs were
   // deliberately removed (disk hygiene, e4f2d47); artifacts/ is regenerable
