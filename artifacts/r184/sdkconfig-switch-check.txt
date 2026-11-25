@@ -1,0 +1,30 @@
+sdkconfig semantic switch check: before (origin/main 09dd892) vs after (r184 HEAD)
+
+Method: values extracted with grep from firmware/sdkconfig and
+firmware/sdkconfig.defaults at each commit; sha 750f3be diff is the authority
+for the intended switch set. Note: the brief's CONFIG_ESP_WIFI_PS_DISABLE /
+CONFIG_ESP_COEXIST_DISABLE names do not exist in r179; per the brief, the
+actual 750f3be mechanism is used for the check (esp_wifi_set_ps(WIFI_PS_NONE)
+in lume_net.c plus the COEX / SW_COEXIST switches below).
+
+Symbol                                              before @ 09dd892                          after @ r184 HEAD                       expected
+CONFIG_ESP_COEX_SW_COEXIST_ENABLE (sdkconfig)        CONFIG_ESP_COEX_SW_COEXIST_ENABLE=y        # ... is not set                        disabled  OK
+CONFIG_ESP_COEX_SW_COEXIST_ENABLE (defaults)          absent                                    CONFIG_ESP_COEX_SW_COEXIST_ENABLE=n      disabled  OK
+CONFIG_SW_COEXIST_ENABLE (sdkconfig)                  CONFIG_SW_COEXIST_ENABLE=y                # ... is not set                        disabled  OK
+CONFIG_ESP32_WIFI_SW_COEXIST_ENABLE (sdkconfig)       CONFIG_ESP32_WIFI_SW_COEXIST_ENABLE=y      # ... is not set                        disabled  OK
+CONFIG_ESP_WIFI_SW_COEXIST_ENABLE (sdkconfig)         CONFIG_ESP_WIFI_SW_COEXIST_ENABLE=y        # ... is not set                        disabled  OK
+CONFIG_ESP_COEX_ENABLED (sdkconfig)                   CONFIG_ESP_COEX_ENABLED=y                 CONFIG_ESP_COEX_ENABLED=y               unchanged OK
+CONFIG_ESP_COEX_POWER_MANAGEMENT (sdkconfig)          # ... is not set                          absent (regenerated away)               disabled  OK
+CONFIG_BT_CTRL_COEX_PHY_CODED_TX_RX_TLIM_DIS          CONFIG_BT_CTRL_COEX_PHY_CODED_TX_RX_TLIM_DIS=y  absent (regenerated away)        r179 diff OK
+CONFIG_BT_NIMBLE_COEX_PHY_CODED_TX_RX_TLIM_DIS        CONFIG_BT_NIMBLE_COEX_PHY_CODED_TX_RX_TLIM_DIS=y absent (regenerated away)       r179 diff OK
+CONFIG_ESP_WIFI_IRAM_OPT (defaults)                   CONFIG_ESP_WIFI_IRAM_OPT=n                CONFIG_ESP_WIFI_IRAM_OPT=n              unchanged OK
+CONFIG_ESP_WIFI_RX_IRAM_OPT (defaults)                CONFIG_ESP_WIFI_RX_IRAM_OPT=n             CONFIG_ESP_WIFI_RX_IRAM_OPT=n           unchanged OK
+
+Firmware code:
+  lume_net.c before: no esp_wifi_set_ps call
+  lume_net.c after:  err = esp_wifi_set_ps(WIFI_PS_NONE); (single occurrence, comment deduped by b18540f)
+
+Diff of firmware/sdkconfig + firmware/sdkconfig.defaults from 09dd892 to r184 HEAD is
+byte-identical to the original 750f3be diff: origin/main had no sdkconfig changes
+between b749837 and 09dd892 (git log b749837..09dd892 -- firmware/sdkconfig
+firmware/sdkconfig.defaults is empty), so no main-side switch value was lost.

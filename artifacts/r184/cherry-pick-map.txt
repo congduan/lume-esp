@@ -1,0 +1,20 @@
+r184 cherry-pick mapping (base origin/main 09dd892, 2026-11-25)
+old sha -> new sha / subject
+
+750f3beffdf07fe7bfa4d3214c6a90a95e77eae1 -> 6519436
+  feat(net): disable WiFi PS and BT/WiFi SW coexistence (r179)
+e3fba6443b8eafe2fbbe50411d8f7965d85bb2a2 -> d360f8f
+  test(r179): re-pin 22 guards for lume-net PS/coexist slice
+74fe2530ebd5aef9c6529fb780caeb4fb32603e1 -> 9e2dd75
+  test(r179): admit r179 firmware paths in board_abi zero-diff guard
+b18540f8963782c1bf59d4b04748c5c1d4171c91 -> 105ba20
+  fix(net): deduplicate r179 PS placement comment
+de58191fd11fb31bf1f1d1f38f8b310dcf09cf41 -> abf28d3
+  docs(r179): record PS+coexist knife, emu failure evidence and host verification
+
+Conflict resolutions (union of allowlist entries, no predicate structure change):
+  e3fba64 -> tests/controls_demo.js, tests/ota_consumers.js (2 sites), tests/sntp_consumers.js
+  74fe253 -> tests/board_abi.js
+
+Extra fix commit (baseline fw-sync guard re-pin, not r179 code):
+  tests/ota_consumers.js: admit website/wasm/fw/partition-table.bin plus r184 report/artifacts paths
