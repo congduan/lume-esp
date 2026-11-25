@@ -9,7 +9,7 @@
  * Part 2 boots the REAL app against the firmware prelude with runtime/shell.js
  * prepended (the CLI bundles it; Node cannot eval the import) and drives the
  * QWERTY keyboard through native Button presses.
- * Part 3 covers ASCII copy, byte-identical playground source, the 57-app
+ * Part 3 covers ASCII copy, byte-identical playground source, the app
  * manifest, and the firmware/runtime zero-diff guard. Every source predicate
  * has a mutation proof. No hardware touch calibration: deferred to board
  * bring-up (docs/KNOWN-SIMPLIFICATIONS.md r149).

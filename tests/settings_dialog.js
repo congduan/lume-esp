@@ -146,8 +146,8 @@ const checks = [
 
   ['playground sources/settings.js byte-identical to example', [playgroundSrc, s => s === app]],
 
-  ['settings is in the 61-app playground manifest', [apps,
-    list => list.length > 0 && list.includes('settings')]],
+  [`settings is in the ${apps.length}-app playground manifest`, [apps,
+    list => list.length === apps.length && list.includes('settings')]],
 
   ['all UI string literals ASCII-only (r64)', [lits,
     arr => arr.length > 0 && arr.every(x => /^[\x00-\x7F]*$/.test(x))]],

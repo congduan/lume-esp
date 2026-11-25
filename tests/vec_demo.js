@@ -280,7 +280,7 @@ check('static tree <= 12 nodes', () => {
   assert.ok(ui.messages.filter(m => m[0] === 'create').length <= 12,
     String(ui.messages.filter(m => m[0] === 'create').length));
 });
-check('playground manifest has 57 apps including vec_demo', () => {
+check('playground manifest includes vec_demo', () => {
   const apps = manifestApps(manifest);
   assert.ok(apps.length > 0 && apps.includes('vec_demo'));
   assert.ok(apps.includes('vec_demo'));

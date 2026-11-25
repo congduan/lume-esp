@@ -257,7 +257,7 @@ check('static tree <= 20 nodes', () => {
   assert.ok(ui.messages.filter(m => m[0] === 'create').length <= 20,
     String(ui.messages.filter(m => m[0] === 'create').length));
 });
-check('playground manifest has 57 apps including crypto_check', () => {
+check('playground manifest includes crypto_check', () => {
   const apps = manifestApps(manifest);
   assert.ok(apps.length > 0 && apps.includes('crypto_check'));
   assert.ok(apps.includes('crypto_check'));

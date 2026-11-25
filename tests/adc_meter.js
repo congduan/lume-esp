@@ -148,7 +148,7 @@ check('config/readRaw/readMv calls bound to pin, no token-class strings', () => 
 });
 check('header declares the LUME_MAX_NODES budget', () =>
   assert.ok(/LUME_MAX_NODES = 128/.test(source) && /NODE BUDGET/.test(source)));
-check('playground manifest has 57 apps including adc_meter', () => {
+check('playground manifest includes adc_meter', () => {
   const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
   assert.ok(listBlock, 'playground app list not found');
   const apps = listBlock.split(',')
