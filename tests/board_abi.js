@@ -127,7 +127,13 @@ const guardOut = execFileSync('git', [
   // r148 controller follow-up: stale r82/r84/r92 host-run evidence logs were
   // deliberately removed (disk hygiene, e4f2d47); artifacts/ is regenerable
   // evidence, not source, so the guard no longer pins its contents.
-  ':!artifacts/'
+  ':!artifacts/',
+  // r192 controller follow-up: r191 expanded the CI Host regression matrix to
+  // compile component C sources directly, so .github/workflows/tests.yml grew
+  // trigger paths. CI config is the same generated-infrastructure class as
+  // artifacts/ (regenerable, not board surface), and board_abi itself runs
+  // inside that workflow.
+  ':!.github/workflows/tests.yml'
 ], { cwd: root, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 }).trim();
 check('zero-diff guard: no changes outside board components and r148 surfaces',
   guardOut === '');
