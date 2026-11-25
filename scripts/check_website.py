@@ -4,6 +4,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit, unquote
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -130,6 +131,16 @@ elif f'Sitemap: {BASE}/sitemap.xml' not in (SITE/'robots.txt').read_text():
     errors.append('robots.txt: missing sitemap declaration')
 if not (SITE/'assets/og-cover.png').exists():
     errors.append('website: missing assets/og-cover.png')
+# r189: the example gallery is generated from the playground catalog; a stale
+# examples.html would silently show the wrong app set, so reuse the generator's
+# --check mode (same contract as gen_api_docs.py --check).
+gallery = subprocess.run([sys.executable, str(ROOT/'scripts/gen_examples_gallery.py'), '--check'],
+                         cwd=ROOT, capture_output=True, text=True)
+print(gallery.stdout.strip())
+if gallery.returncode != 0:
+    errors.append('examples.html gallery is stale: run python3 scripts/gen_examples_gallery.py')
+    if gallery.stderr.strip():
+        print(gallery.stderr.strip())
 print(f'HTML pages: {len(pages)}; internal href/src and anchors checked')
 print(f'API: {len(actual)} catalog entries, {len(expected)} type declarations, {len(set(n.rsplit(".",1)[0] for n in expected))} function namespaces')
 print('API missing:',missing or 'none')
