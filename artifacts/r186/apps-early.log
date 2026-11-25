@@ -1,0 +1,16 @@
+PASS apps entries merges meta.json and falls back per field
+PASS apps entries tolerates a store without native metadata
+PASS apps entries ignores malformed meta instead of throwing
+PASS apps current() reports the running app id
+PASS apps launch/home/remove return the native status codes
+PASS apps setBoot pins independently of launch and home, then clears
+PASS apps setBoot reports invalid ids and storage errors
+PASS apps launcher pins itself and its edit exit clears the pin before home
+PASS apps Launcher defaults to the installed app set
+PASS apps Launcher tap launches the app by default (no host callback)
+PASS apps explicit apps + onLaunch still override the store
+PASS apps Launcher rejects a non-array app list
+PASS apps embedded home renders a clock and one tile per installed app
+PASS apps embedded home launches a tile and keeps BACK at the root
+PASS apps embedded home shows an empty state with no apps
+PASS 15 multi-app cases

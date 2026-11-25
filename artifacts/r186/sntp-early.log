@@ -1,0 +1,34 @@
+PASS sntp: d.ts declares time() with unix-ms unit
+PASS sntp: d.ts declares setTimeNtp(server?, timeoutMs?)
+PASS sntp: d.ts documents the unsynced 1970 value honestly
+PASS sntp: d.ts locks error codes -1 / -2 / -3
+PASS sntp: d.ts states setTimeNtp BLOCKING semantics
+PASS sntp: d.ts pins the default SNTP server and timeout bounds
+PASS sntp: d.ts documents idempotent re-sync
+PASS sntp: engine includes esp_netif_sntp.h and sys/time.h
+PASS sntp: C registers _systemTime native
+PASS sntp: C registers _systemSetTimeNtp native
+PASS sntp: time() reads gettimeofday and returns unix ms (JS_NewInt64)
+PASS sntp: setTimeNtp uses esp_netif_sntp bounded wait + teardown
+PASS sntp: setTimeNtp gates on WiFi having an IP (-3)
+PASS sntp: setTimeNtp maps arg / transport failures to -1 / -2
+PASS sntp: C comment states engine task blocking (httpGet precedent)
+PASS sntp: C comment pins default server and bounds
+PASS sntp: no IRAM attribute added (code stays in flash)
+PASS sntp: engine links esp_netif
+PASS sntp: sdkconfig.defaults enables one SNTP server slot
+PASS sntp: firmware prelude wraps both natives into lume.system
+PASS sntp: host prelude runner stubs both natives
+PASS sntp: playground runtime stubs both natives with browser semantics
+PASS sntp: generated playground prelude carries the wrappers
+PASS sntp: generated API docs carry both entries
+PASS sntp mutation: drop d.ts time() declaration -> FAIL as expected
+PASS sntp mutation: drop d.ts setTimeNtp() declaration -> FAIL as expected
+PASS sntp mutation: flip error code -3 to -4 in d.ts -> FAIL as expected
+PASS sntp mutation: drop _systemTime native registration -> FAIL as expected
+PASS sntp mutation: drop the SNTP sync wait call -> FAIL as expected
+PASS sntp mutation: change the default server away from pool.ntp.org -> FAIL as expected
+PASS sntp mutation: drop SNTP server slot from sdkconfig.defaults -> FAIL as expected
+PASS sntp mutation: drop the prelude setTimeNtp wrapper -> FAIL as expected
+PASS sntp mutation: drop the host _systemTime stub -> FAIL as expected
+ALL SNTP HARNESS CASES PASSED

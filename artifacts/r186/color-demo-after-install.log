@@ -1,0 +1,3 @@
+PASS color_demo live selection tints circle rectangle and text and HEX; mutation FAIL as expected
+PASS color_demo SAVE writes KV; next launch restores selection; mutation FAIL as expected
+ALL COLOR_DEMO CASES PASSED

@@ -1,0 +1,59 @@
+PASS controls_demo: all three components registered on lume.ui.shell
+PASS controls_demo: controlled mode: value read at event time, onChange is the only output
+PASS controls_demo: 40 px touch floor enforced on Switch and Slider heights
+PASS controls_demo: every node registered for cleanup, dispose idempotent
+PASS controls_demo: gesture unsubscribers run on Slider dispose
+PASS controls_demo: Progress updates only fill width ATTR_WIDTH via a bound numeric style
+PASS controls_demo: app wires all three values through signals (controlled consumers)
+PASS controls_demo: all UI string literals ASCII-only (r64)
+PASS controls_demo: playground sources/controls_demo.js byte-identical to example
+PASS controls_demo: controls_demo is in the playground manifest
+PASS controls_demo: firmware/ and runtime/ identical to the r176 feat commit
+PASS controls_demo: firmware/ identical to the r176 feat commit except r173 companion P1
+PASS controls_demo: prelude lume_scripts.c unchanged since 3514c76
+PASS controls_demo live: three components return nodes and are callable from the app
+PASS controls_demo live: Switch press routes onChange(!value) through the signal
+PASS controls_demo live: Slider pan maps dx back into range and quantises to step
+PASS controls_demo live: Slider clamps to [min,max] on an over-range drag
+PASS controls_demo live: Slider onChange fires once per changed step, not per pan frame
+PASS controls_demo live: Progress clamps value and updates fill ATTR_WIDTH only
+PASS controls_demo live: signals drive native re-render (Switch bg attr, Slider canvas draw)
+PASS controls_demo live: dispose removes every node once; second call is a no-op
+PASS controls_demo live: dispose unsubscribes gestures: no onChange after teardown
+PASS controls_demo live: uncontrolled use proves the component holds no state
+PASS controls_demo mutation: drop the Progress registration -> FAIL as expected
+PASS controls_demo mutation: drop the Switch onChange dispatch -> FAIL as expected
+PASS controls_demo mutation: lower the touch floor on one component -> FAIL as expected
+PASS controls_demo mutation: drop the Canvas cleanup registration -> FAIL as expected
+PASS controls_demo mutation: drop the gesture unsubscriber call -> FAIL as expected
+PASS controls_demo mutation: make Progress re-create its fill on every value change -> FAIL as expected
+PASS controls_demo mutation: app stops forwarding slider changes -> FAIL as expected
+PASS controls_demo mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS controls_demo mutation: playground generated source drifts from the example -> FAIL as expected
+PASS controls_demo mutation: playground manifest drops controls_demo -> FAIL as expected
+node:assert:150
+  throw new AssertionError(obj);
+  ^
+
+AssertionError [ERR_ASSERTION]: assertion is decorative; mutation did not FAIL: a runtime file changes after the feat commit
+
+true !== false
+
+    at must (/tmp/lume-r186-wt/tests/controls_demo.js:287:10)
+    at Object.<anonymous> (/tmp/lume-r186-wt/tests/controls_demo.js:327:1)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49 {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: true,
+  expected: false,
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.1

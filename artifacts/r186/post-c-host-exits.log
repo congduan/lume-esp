@@ -1,0 +1,7 @@
+tests/apps.js exit=0
+tests/board_id.js exit=0
+tests/sntp.js exit=0
+tests/ota_consumers.js exit=0
+tests/sd_files.js exit=0
+tests/sd_gallery.js exit=0
+tests/controls_demo.js exit=0

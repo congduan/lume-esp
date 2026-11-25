@@ -1,0 +1,7 @@
+PASS sd_gallery: Sd-first read path wired before Fs fallback
+PASS sd_gallery: per-image try/catch degrades one image only
+PASS sd_gallery: Fs fallback + embedded red PNG intact
+PASS sd_gallery: statvfs error-code discrimination + integer MB HUD
+PASS sd_gallery: all app string literals ASCII-only (r64)
+PASS sd_gallery: firmware/ runtime/ differ only in known files vs 0d1111c
+ALL SD GALLERY HARNESS CASES PASSED

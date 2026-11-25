@@ -1,0 +1,105 @@
+
+===== tests/adc_meter.js =====
+PASS default stub renders raw=2048, mv=1650, CFG OK and draws the bar
+PASS pin/atten buttons reconfigure and wrap 1..10 / 0..3
+PASS no free() call: no app close hook, slot state is engine-persistent
+PASS negative readMv/readRaw/config render as err <code> numerically
+PASS 0 sample is NOT treated as an error (numeric, not truthy, branch)
+PASS out-of-range raw 4096 is rejected, so the normal-render proof FAILS
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 error discrimination present, no truthy if(r)/if(m)
+PASS config/readRaw/readMv calls bound to pin, no token-class strings
+PASS header declares the LUME_MAX_NODES budget
+PASS playground manifest has 57 apps including adc_meter
+PASS generated playground source is byte-identical to the example
+PASS firmware/ and runtime/ byte-identical to baseline 3514c76
+PASS MUTATION delete numeric error branch -> predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION touch a tracked firmware file -> diff predicate FAILS
+PASS MUTATION raw=4096 -> normal render predicate FAILS (already shown live)
+PASS adc_meter harness: all live, static and mutation checks green
+
+===== tests/board_abi.js =====
+PASS header defines four op typedefs
+PASS struct has four ops then board_id
+PASS header declares lume_board_get singleton
+PASS header states profile-is-source-of-truth division of labour
+PASS impl defines a single not_supported stub
+PASS impl default singleton uses generic board id
+PASS impl points all four ops at not_supported faces
+PASS header declares registration API and invalid-arg code
+PASS impl copies the board and keeps a stable current pointer
+PASS lume-board registers real drivers with the profile board name
+PASS touch_read drift documented: no standalone driver point-read API
+PASS dependency points lume-board -> lume-board-hal, never the reverse
+PASS zero-diff guard: no changes outside board components and r148 surfaces
+PASS lume_board_get returns a non-NULL singleton
+PASS lume_board_get is a stable process-wide singleton
+PASS board_id == "generic"
+PASS all four op pointers are populated
+PASS all four ops return -1 (not supported) before registration
+PASS invalid registrations rejected; generic stub still current
+PASS registered board queryable: four non-NULL ops + board_id
+PASS registry copies the struct and stays stable
+PASS registered ops dispatch to the host fake with correct args
+PASS board_abi: 4-op layout + stub + registration/query semantics
+PASS board_abi.c compiled and ran with exit 0
+board_abi: ALL CHECKS PASSED
+
+===== tests/color_demo.js =====
+PASS color_demo live selection tints circle rectangle and text and HEX; mutation FAIL as expected
+PASS color_demo SAVE writes KV; next launch restores selection; mutation FAIL as expected
+ALL COLOR_DEMO CASES PASSED
+
+===== tests/sd_files.js =====
+PASS sd_files: Sd defensively resolved from lume.storage
+PASS sd_files: browse gated on Sd.mounted() === true
+PASS sd_files: SD/ virtual root entry appended only in Fs root when ready
+PASS sd_files: SD/ entry flagged and handled as SD mode entry
+PASS sd_files: Sd.list dispatch with Fs fallback
+PASS sd_files: Sd.read dispatch for text preview
+PASS sd_files: Sd remove/mkdir/exists dispatch (delete semantics reuse Fs recursion)
+PASS sd_files: sdOrFs falls back to Fs same path on negative code or throw
+PASS sd_files: isDirPath degrades on native throw
+PASS sd_files: loadDir degrades per operation (list failure -> empty dir)
+PASS sd_files: loadDir failure branch clears selected + preview
+PASS sd_files: removeTree degrades per operation (JS recursion, try/catch)
+PASS sd_files: previewSelected degrades on read failure
+PASS sd_files: makeDir degrades on exists/mkdir throw
+PASS sd_files: SD/ virtual entry cannot be deleted
+PASS sd_files: single shared delete Dialog (no duplicate flow)
+PASS sd_files: HUD queries Sd.statvfs()
+PASS sd_files: statvfs number error code discriminated via typeof === object
+PASS sd_files: statvfs error code renders NO CARD
+PASS sd_files: card free bytes floored to integer MB
+PASS sd_files: status label switches to card info only in SD mode
+PASS sd_files: SD root BACK exits SD mode instead of launcher
+PASS sd_files: all app string literals (UI copy) ASCII-only (r64)
+PASS sd_files: firmware/ runtime/ differ from 4a2bd29 only in known files
+PASS sd_files: playground manifest lists image_gallery and files
+PASS sd_files mutation: drop Sd resolution -> FAIL as expected
+PASS sd_files mutation: drop mounted gate -> FAIL as expected
+PASS sd_files mutation: drop SD/ root entry -> FAIL as expected
+PASS sd_files mutation: force Sd.list dispatch back to Fs -> FAIL as expected
+PASS sd_files mutation: force Sd.read dispatch back to Fs -> FAIL as expected
+PASS sd_files mutation: drop sdOrFs fallback on negative code -> FAIL as expected
+PASS sd_files mutation: drop sdOrFs fallback on native throw -> FAIL as expected
+PASS sd_files mutation: drop loadDir failure preview clear -> FAIL as expected
+PASS sd_files mutation: drop loadDir try/catch -> FAIL as expected
+PASS sd_files mutation: drop removeTree try/catch -> FAIL as expected
+PASS sd_files mutation: drop statvfs call -> FAIL as expected
+PASS sd_files mutation: drop typeof discrimination -> FAIL as expected
+PASS sd_files mutation: drop NO CARD -> FAIL as expected
+PASS sd_files mutation: drop integer MB floor -> FAIL as expected
+PASS sd_files mutation: inject CJK UI copy -> FAIL as expected
+PASS sd_files mutation: drop image_gallery from playground manifest -> FAIL as expected
+ALL SD FILES HARNESS CASES PASSED
+
+===== tests/sd_gallery.js =====
+PASS sd_gallery: Sd-first read path wired before Fs fallback
+PASS sd_gallery: per-image try/catch degrades one image only
+PASS sd_gallery: Fs fallback + embedded red PNG intact
+PASS sd_gallery: statvfs error-code discrimination + integer MB HUD
+PASS sd_gallery: all app string literals ASCII-only (r64)
+PASS sd_gallery: firmware/ runtime/ differ only in known files vs 0d1111c
+ALL SD GALLERY HARNESS CASES PASSED
