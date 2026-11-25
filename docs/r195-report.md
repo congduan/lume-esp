@@ -40,12 +40,13 @@ TLS/部署形态均未实测，deferred 到 board bring-up。
 
 ### 1.3 代码改动
 
-- `examples/voice_assistant/app.js:422-431` 新增 `vaWSLogUrl(url)`：在第一个
-  `?` 或 `#` 处截断，日志只打 scheme+host+port+path；真实连接仍用原 URL。
-- `examples/voice_assistant/app.js:649-657`：`handshakeToken = vaGatewayToken()`
+- `examples/voice_assistant/app.js:422-433` 新增 `vaWSLogUrl(url)`（函数体
+  :425-431）：在第一个 `?` 或 `#` 处截断，日志只打 scheme+host+port+path；
+  真实连接仍用原 URL。
+- `examples/voice_assistant/app.js:655-659`：`handshakeToken = vaGatewayToken()`
   放在 reuse 提前返回**之后**；日志改打 `vaWSLogUrl(url)`；options 由内联字面量
   改为 `wsOpts` 变量，但回调顺序与内容不变。
-- `examples/voice_assistant/app.js:715-722`：仅当 `handshakeToken` 非空时
+- `examples/voice_assistant/app.js:722-725`：仅当 `handshakeToken` 非空时
   `wsOpts.headers = { Authorization: 'Bearer ' + handshakeToken }`；为空时
   **没有 headers 字段**，`lume.net.ws.connect(url, wsOpts, cb)` 的调用形态与
   r119 一致。
@@ -101,5 +102,6 @@ Mutation 负例（均转红后原样复原，复原后 harness 再绿）：
   `runtime/types/lume.d.ts` 未改。
 - `examples/voice_assistant/app.js` 新增字面量全 ASCII（r64）；存量非 ASCII
   只在既有注释的 `—` / `§` 中，本轮未新增。
-- 未 push；commits 按 feat / test / docs 拆分；git 身份 `congduan`。
+- 未 push；commits 按 feat `485aa11` / test `d0d1fd7` / docs `2a92a6c`（+ 本条
+  锚点订正）拆分；git 身份 `congduan`。
 - 未改 `docs/roadmap.md` 里程碑定义。
