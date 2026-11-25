@@ -629,7 +629,6 @@ const ALLOWED = [
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_scripts.c',
-  // r183 archive migration (docs/r*.md -> docs/archive/) + rename detection base.
   'docs/r183-report.md',
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
@@ -660,6 +659,14 @@ const ALLOWED = [
   'docs/r179-report.md',
   // r184: revival report + evidence; both r179 and r184 paths are legal here.
   'docs/r184-report.md',
+  // r185: flapdot visual draw-budget close-out -- app/harness, regenerated playground
+  // bundles, report and evidence. No firmware/runtime/CLI predicate change.
+  'examples/flapdot/app.js',
+  'tests/flapdot.js',
+  'website/playground/apps/flapdot.js',
+  'website/playground/sources/flapdot.js',
+  'docs/r185-report.md',
+  // r185 base 670020e is a chore/fw-sync commit; allow its regenerated image.
   'website/wasm/fw/partition-table.bin',
 ];
 
@@ -736,7 +743,7 @@ const checks = [
       f.startsWith('artifacts/r177/') || f.startsWith('artifacts/r180/') ||
       f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
       f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r179/') ||
-      f.startsWith('artifacts/r184/'))]],
+      f.startsWith('artifacts/r184/') || f.startsWith('artifacts/r185/'))]],
 ];
 
 for (const [name, [src, test]] of checks) {

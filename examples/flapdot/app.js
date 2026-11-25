@@ -180,7 +180,15 @@ function disc(ctx, cx, cy, r, color, spans, a) {
 }
 function drawBird(ctx, st, a) {
   var blink = st.phase === 'dead' && Math.floor(st.t * 8) % 2 === 0;
-  disc(ctx, BIRD_X, st.y, BIRD_R, blink ? PAL.dead : PAL.bird, BIRD_SPANS, a);
+  var body = blink ? PAL.dead : PAL.bird;
+  if (st.phase === 'run') {
+    disc(ctx, BIRD_X, st.y, BIRD_R, body, BIRD_SPANS, a);
+  } else {
+    /* Idle/dead bob: one native circle opcode instead of 19 clipped span
+     * fillRects. Same disc, same color; this is the idle-only cheap path
+     * that keeps the gated ready screen inside the draw budget (r185). */
+    ctx.fillCircle(BIRD_X, Math.round(st.y), BIRD_R, body);
+  }
   if (blink) return;
   var wingY = Math.round(st.y) + (st.phase === 'run' && st.vy < 0 ? -4 : 2);
   ctx.fillColor(PAL.wing);
@@ -271,13 +279,18 @@ var scene = Canvas({ parent: root, width: FW, height: FH,
       prevDrawnY = state.y;
       return [a];
     }
-    /* incremental: pipes band (old scroll + new scroll), ground strip, bird */
-    var band = pipeBand(state.s, 10);
-    var oldBand = pipeBand(prevDrawnS, 10);
-    if (band && oldBand) band = unionBox(band, oldBand);
-    else if (oldBand) band = oldBand;
-    if (band) rects.push(band);
-    rects.push(box(0, FH - GROUND_H, FW, GROUND_H));
+    /* incremental: pipes band (old scroll + new scroll), ground strip, bird.
+     * r185: when the world has not scrolled (ready/dead) the pipes and the
+     * ground strip are unchanged -- only the bird box is dirty. Publishing
+     * them anyway would burn ~27 draw messages per gated paint for nothing. */
+    if (state.s !== prevDrawnS) {
+      var band = pipeBand(state.s, 10);
+      var oldBand = pipeBand(prevDrawnS, 10);
+      if (band && oldBand) band = unionBox(band, oldBand);
+      else if (oldBand) band = oldBand;
+      if (band) rects.push(band);
+      rects.push(box(0, FH - GROUND_H, FW, GROUND_H));
+    }
     var yLo = Math.min(prevDrawnY, state.y) - BIRD_R - 8;
     var yHi = Math.max(prevDrawnY, state.y) + BIRD_R + 8;
     var birdPath = unionBox(box(BIRD_X - BIRD_R - 5, yLo, 2 * BIRD_R + 10, yHi - yLo), birdBox(state));
@@ -317,6 +330,21 @@ function tap() {
 lume.gesture.on(root, 'tap', tap);
 
 /* ---- tick --------------------------------------------------------------- */
+/* Frame gating (r185): the browser visual budget counts every canvas draw
+ * message cumulatively (tools/lume/check.js:203), so the app must not paint
+ * every logic tick. Policy:
+ *  - 'run': full 30 fps paint; physics, pipes, dashes and bird rendering are
+ *    unchanged, so gameplay feel is untouched.
+ *  - 'ready'/'dead': 5 fps bob (one paint per 6 ticks on device). The world is
+ *    frozen there, so onDraw publishes only the bird box (see below) and the
+ *    idle bird is one native circle opcode instead of 19 span fillRects. */
+var DRAW_SKIP = 6;                         /* publish every 6th idle tick */
+var paintGate = 0;
+function shouldPaint(st) {
+  if (st.phase === 'run') return true;
+  paintGate = (paintGate + 1) % DRAW_SKIP;
+  return paintGate === 1;                  /* first idle tick of each cycle paints */
+}
 var lastScore = 0;
 function tick() {
   var before = state.phase;
@@ -330,7 +358,7 @@ function tick() {
     }
   }
   if (state.score !== lastScore) lastScore = state.score;
-  sync();
+  if (shouldPaint(state)) sync();
 }
 lume.app.onPause(function () {});
 lume.app.onResume(function () { painted = false; sync(); });

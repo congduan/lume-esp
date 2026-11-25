@@ -1,0 +1,123 @@
+{
+  "app": "examples/flapdot",
+  "frames": [
+    {
+      "file": "frame-01.png",
+      "url": "http://localhost:34375/",
+      "timestamp": "2026-11-25T11:11:15.417Z",
+      "elapsedMs": 1370,
+      "canvasDrawCalls": 56,
+      "renderCalls": 97,
+      "nonEmptyRatio": 1,
+      "top5": [
+        {
+          "color": "#7FC4DE",
+          "pixels": 180204
+        },
+        {
+          "color": "#C9A66B",
+          "pixels": 10560
+        },
+        {
+          "color": "#8A6F3D",
+          "pixels": 960
+        },
+        {
+          "color": "#F2C14E",
+          "pixels": 165
+        },
+        {
+          "color": "#D99025",
+          "pixels": 32
+        }
+      ],
+      "themeColor": null,
+      "assertions": {
+        "nonEmpty": true,
+        "drawCalls": true,
+        "drawBudget": true,
+        "simulator": true
+      },
+      "error": null
+    },
+    {
+      "file": "frame-02.png",
+      "url": "http://localhost:34375/",
+      "timestamp": "2026-11-25T11:11:17.350Z",
+      "elapsedMs": 3302,
+      "canvasDrawCalls": 91,
+      "renderCalls": 132,
+      "nonEmptyRatio": 1,
+      "top5": [
+        {
+          "color": "#7FC4DE",
+          "pixels": 180204
+        },
+        {
+          "color": "#C9A66B",
+          "pixels": 10560
+        },
+        {
+          "color": "#8A6F3D",
+          "pixels": 960
+        },
+        {
+          "color": "#F2C14E",
+          "pixels": 165
+        },
+        {
+          "color": "#D99025",
+          "pixels": 32
+        }
+      ],
+      "themeColor": null,
+      "assertions": {
+        "nonEmpty": true,
+        "drawCalls": true,
+        "drawBudget": true,
+        "simulator": true
+      },
+      "error": null
+    },
+    {
+      "file": "frame-03.png",
+      "url": "http://localhost:34375/",
+      "timestamp": "2026-11-25T11:11:20.293Z",
+      "elapsedMs": 6245,
+      "canvasDrawCalls": 141,
+      "renderCalls": 182,
+      "nonEmptyRatio": 1,
+      "top5": [
+        {
+          "color": "#7FC4DE",
+          "pixels": 180204
+        },
+        {
+          "color": "#C9A66B",
+          "pixels": 10560
+        },
+        {
+          "color": "#8A6F3D",
+          "pixels": 960
+        },
+        {
+          "color": "#F2C14E",
+          "pixels": 165
+        },
+        {
+          "color": "#D99025",
+          "pixels": 32
+        }
+      ],
+      "themeColor": null,
+      "assertions": {
+        "nonEmpty": true,
+        "drawCalls": true,
+        "drawBudget": true,
+        "simulator": true
+      },
+      "error": null
+    }
+  ],
+  "ok": true
+}

@@ -1,0 +1,9 @@
+lume check examples/flapdot
+
+[PASS] bundle   5752 bytes (171 ms)
+[PASS] eval     2x "app eval ok; entering event loop"
+[SKIP] layout   no layout expectations for flapdot
+[SKIP] perf     profile disabled
+
+screenshot: artifacts/check/flapdot/tft.png
+RESULT: PASS (4 steps, 0 failed; exit 0)

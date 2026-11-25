@@ -360,4 +360,41 @@ const ROOT_ID = 1;
   console.log('PASS flapdot 60 s smoke (draws=' + draws.length + ', paints=' + invs.length + ', phase=' + c.state.phase + ', score=' + c.state.score + ')');
 }
 
+/* ---- 13. r185 idle frame gating: 6 ticks per paint, bird-only dirty rect,
+ * tap forces an immediate full repaint (fresh instance, ready phase) ------- */
+{
+  const idleLogs = [];
+  const idle = runApp(source, {
+    filename: 'examples/flapdot/app.js',
+    kv: { set: () => 0, get: () => null, remove: () => 0, keys: () => [], clear: () => 0 },
+    onLog: s => idleLogs.push(s),
+  });
+  const ic = idle.ctx;
+  assert.equal(ic.state.phase, 'ready', 'fresh app boots to ready');
+  /* paintGate fires on tick 1 and tick 7 -> exactly 2 paints in 12 ticks. */
+  const mark = idle.messages.length;
+  for (let i = 0; i < 12; i++) ic.tick();
+  const invs = idle.messages.slice(mark).filter(m => m[0] === 'invalidate');
+  assert.equal(invs.length, 2, '12 idle ticks publish exactly 2 paints: ' + invs.length);
+  const draws = idle.messages.slice(mark).filter(m => m[0] === 'draw');
+  assert.ok(draws.length <= 16, 'two idle paints stay cheap: ' + draws.length);
+  for (const m of invs) {
+    const [, , x, y, w, h] = m;
+    assert.ok(w < g.FW, 'idle paint is not full width: ' + w);
+    assert.ok(y + h < g.FH - g.GROUND_H, 'idle paint excludes the ground strip: ' + (y + h));
+  }
+  /* Tapping out of ready repaints the whole scene immediately, without
+   * waiting for the next gate tick. */
+  const mark2 = idle.messages.length;
+  idle.gesture(1, 0, 240, 240, 10);
+  idle.gesture(1, 2, 240, 240, 30);
+  assert.equal(ic.state.phase, 'run', 'tap starts the run');
+  const invs2 = idle.messages.slice(mark2).filter(m => m[0] === 'invalidate');
+  assert.ok(invs2.length >= 1, 'tap repaints immediately');
+  assert.deepEqual([invs2[0][2], invs2[0][3], invs2[0][4], invs2[0][5]], [0, 0, g.FW, g.FH],
+    'tap repaint is a full canvas');
+  console.log('PASS flapdot r185 idle gate: 12 ticks -> 2 bird-only paints (draws=' +
+    draws.length + '), tap repaints full canvas immediately');
+}
+
 console.log('ALL flapdot harness checks passed');

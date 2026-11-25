@@ -1,0 +1,9 @@
+lume check examples/counter
+
+[PASS] bundle   2160 bytes (21 ms)
+[SKIP] eval     --visual uses browser simulator
+[SKIP] layout   requires emulator screenshot (--visual)
+[SKIP] perf     profile disabled
+[PASS] visual   3 frames: artifacts/check/counter/visual/visual.json
+
+RESULT: PASS (5 steps, 0 failed; exit 0)
