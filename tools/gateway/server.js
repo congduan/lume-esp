@@ -348,6 +348,7 @@ function createGateway(opts = {}) {
   const manager = attachWsServer(httpServer, {
     maxPayload: MAX_PAYLOAD,
     log,
+    token: opts.token || '',
     onConnection: (conn) => {
       new DeviceSession({
         counter, sessions, log, upstreamFactory, deviceToken,

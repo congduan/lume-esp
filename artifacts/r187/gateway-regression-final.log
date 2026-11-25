@@ -1,0 +1,19 @@
+PASS happy path: hello -> 60ms PCM -> text delta -> audio -> close
+PASS negative: uplink before hello -> not_hello + 1008
+PASS negative: non-hello text first -> not_hello + 1008
+PASS negative: broken JSON -> bad_json + 1002
+PASS negative: 1920-byte mono frame -> bad_audio_frame + 1009
+PASS negative: unmasked WS frame rejected at WS layer + 1002
+PASS negative: upstream disconnect -> upstream_closed + 1011
+PASS negative: hello v=2 -> unsupported_version + 1008
+PASS device close: gateway releases upstream and echoes 1000
+PASS control: unknown_type is non-fatal, ping gets pong
+PASS r117: transcript seq independent of text/audio, single final
+FAIL AssertionError [ERR_ASSERTION]: upstream engaged in open mode
+
+0 !== 3
+
+    at /tmp/lume-r187-wt/tests/gateway.js:403:14
+    at async runCase (/tmp/lume-r187-wt/tests/gateway.js:34:5)
+    at async /tmp/lume-r187-wt/tests/gateway.js:389:3
+exit 1

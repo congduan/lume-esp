@@ -1,0 +1,5 @@
+[gateway 20:52:22.251] gateway.listen host=127.0.0.1 port=46083
+[gateway] WARNING: WebSocket handshake authentication is OFF; use --token or GATEWAY_TOKEN.
+[gateway 20:52:22.252] ready url=ws://127.0.0.1:0/ handshakeAuth=off deviceAuth=off systemPrompt=default historyLimit=12 multiturn=off
+[gateway 20:52:24.050] gateway.closed
+exit 124

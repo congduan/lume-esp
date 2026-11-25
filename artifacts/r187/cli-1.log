@@ -1,0 +1,4 @@
+[gateway 20:52:22.224] gateway.listen host=127.0.0.1 port=38329
+[gateway 20:52:22.227] ready url=ws://127.0.0.1:0/ handshakeAuth=on deviceAuth=off systemPrompt=default historyLimit=12 multiturn=off
+[gateway 20:52:24.127] gateway.closed
+exit 124

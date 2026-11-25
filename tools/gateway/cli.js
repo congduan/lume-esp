@@ -2,7 +2,7 @@
 /* Start the voice gateway. Usage:
  *   node tools/gateway/cli.js [--port 8765] [--host 127.0.0.1]
  *                             [--answer "TEXT"] [--upstream mock|openai]
- *                             [--device-token TOKEN] [--history-limit N]
+ *                             [--token TOKEN] [--device-token TOKEN] [--history-limit N]
  *                             [--system-prompt TEXT] [--multiturn]
  * `--upstream openai` needs OPENAI_API_KEY (plus optional OPENAI_* env);
  * no key -> clear error and exit 2. xiaozhi/direct remain TODO stubs.
@@ -32,12 +32,17 @@ function stamp() {
 }
 
 function main() {
+  if (process.argv.includes('--token') && !arg('token', '')) {
+    process.stderr.write('[gateway] --token requires a non-empty value.\n');
+    process.exit(2);
+  }
   const port = Number(arg('port', 8765));
   const host = arg('host', '127.0.0.1');
   const answer = arg('answer', 'HELLO FROM THE MOCK GATEWAY.');
   const upstreamName = arg('upstream', 'mock');
   /* r119: CLI flag wins over env; neither is ever printed verbatim. */
   const deviceToken = arg('device-token', process.env.GATEWAY_DEVICE_TOKEN || '');
+  const token = arg('token', process.env.GATEWAY_TOKEN || '');
   /* r120: CLI wins over env for all three. The prompt value is passed to the
    * adapter but never written to any log or error message. */
   const systemPrompt = arg('system-prompt', process.env.GATEWAY_SYSTEM_PROMPT || '');
@@ -79,6 +84,7 @@ function main() {
   };
   const gw = createGateway({
     port, host,
+    token,
     deviceToken,
     log,
     historyLimit,
@@ -86,7 +92,9 @@ function main() {
     upstreamFactory: () => createUpstream(upstreamName, upstreamOpts)
   });
   gw.start().then(() => {
+    if (!token) process.stderr.write('[gateway] WARNING: WebSocket handshake authentication is OFF; use --token or GATEWAY_TOKEN.\n');
     log('ready', { url: 'ws://' + host + ':' + port + '/',
+      handshakeAuth: token ? 'on' : 'off',
       deviceAuth: deviceToken ? 'on' : 'off',
       /* r120: never echo the prompt text - only which source is active. */
       systemPrompt: systemPrompt ? 'custom' : 'default',
