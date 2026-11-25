@@ -157,6 +157,12 @@ const ALLOWED = [
   'website/playground/apps/voice_assistant.js',
   'website/playground/sources/voice_assistant.js',
   'docs/r195-report.md',
+  // r196: wordle smoke determinism + gateway handshake-auth E2E bridge.
+  // Pre-added before commit so the new test/report are allowlisted once the
+  // test/docs commits land. tests/wordle.js and tests/ota_consumers.js are
+  // already listed above; BASE pin and the guard itself are untouched.
+  'tests/gateway_e2e_auth.js',
+  'docs/r196-report.md',
   // r171: manifest guard and optional browser visual check.
   'tools/lume/check.js',
   'tools/lume/lume.js',
@@ -841,6 +847,8 @@ const checks = [
       f.startsWith('artifacts/r193/') || f.startsWith('artifacts/r194/') ||
       // r195: handshake-auth verification evidence (harness, mutations, checks).
       f.startsWith('artifacts/r195/') ||
+      // r196: wordle flake reproduction/determinism + gateway E2E evidence.
+      f.startsWith('artifacts/r196/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 

@@ -1,0 +1,15 @@
+=== wordle draws distribution, 100 runs ===
+UTC 2026-11-25T21:04:11Z
+FAILURES=0/100
+--- draws min/max/count ---
+draws=23094
+draws=23365
+draws=23404
+draws=23582
+draws=23657
+...
+draws=24866
+draws=24872
+draws=24902
+draws=24933
+draws=25094

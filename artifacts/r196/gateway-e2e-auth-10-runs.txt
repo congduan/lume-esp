@@ -1,0 +1,13 @@
+=== gateway E2E auth: 10 consecutive runs ===
+UTC 2026-11-25T21:13:31Z
+OK run 1
+OK run 2
+OK run 3
+OK run 4
+OK run 5
+OK run 6
+OK run 7
+OK run 8
+OK run 9
+OK run 10
+FAILURES=0/10

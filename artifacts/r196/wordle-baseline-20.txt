@@ -1,0 +1,26 @@
+=== r196 wordle baseline: 20 consecutive runs ===
+node v22.23.1 | UTC 2026-11-25T21:03:56Z | HEAD 9bea3f2
+command: for i in $(seq 1 20); do node tests/wordle.js >/dev/null 2>&1 || echo "FAIL run $i"; done
+---
+OK run 1
+OK run 2
+OK run 3
+OK run 4
+OK run 5
+OK run 6
+OK run 7
+OK run 8
+OK run 9
+OK run 10
+OK run 11
+OK run 12
+OK run 13
+OK run 14
+OK run 15
+OK run 16
+OK run 17
+OK run 18
+OK run 19
+OK run 20
+---
+FAILURES=0/20

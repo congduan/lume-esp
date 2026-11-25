@@ -482,12 +482,20 @@ check('~60 s smoke: bounded state, draws and invalidates in canvas', () => {
   const p = probe();
   const before = p.s.messages.length;
   let keys = 0, submits = 0, restarts = 0;
+  // r196: seeded LCG replaces Math.random(). Same 8% BKSP / 4% SPACE /
+  // 88% letter mix and the same submit/restart cadence, but the key stream is
+  // fixed so draw traffic can no longer starve by chance.
+  let seed = 0x19600001;
+  const nextRandom = () => {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
   for (let t = 0; t < 1800; t++) {
     if (t % 15 === 0) {
-      const r = Math.random();
+      const r = nextRandom();
       if (r < 0.08) press(p, 'BKSP');
       else if (r < 0.12) press(p, 'SPACE');
-      else press(p, QWERTY.charAt(Math.floor(Math.random() * 26)));
+      else press(p, QWERTY.charAt(Math.floor(nextRandom() * 26)));
       keys++;
     }
     if (t % 45 === 0 && t > 0) { press(p, 'ENTER'); submits++; }

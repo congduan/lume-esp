@@ -1,0 +1,13 @@
+=== wordle after determinism: 10 runs (draws sampling) ===
+UTC 2026-11-25T21:05:20Z
+run 1: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 2: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 3: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 4: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 5: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 6: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 7: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 8: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 9: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+run 10: smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+FAILURES=0/10

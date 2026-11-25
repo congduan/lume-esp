@@ -1,0 +1,11 @@
+=== ota_consumers guard after allowlist update ===
+UTC 2026-11-25T21:13:47Z
+PASS ota_consumers mutation: dashboard separators revert to 8 -> FAIL as expected
+PASS ota_consumers mutation: dashboard renders the full token on canvas -> FAIL as expected
+PASS ota_consumers mutation: playground generated source drifts from the example -> FAIL as expected
+PASS ota_consumers mutation: playground manifest drops dashboard -> FAIL as expected
+PASS ota_consumers mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS ota_consumers mutation: a firmware file changes vs d85e69a -> FAIL as expected
+PASS ota_consumers mutation: an out-of-scope file changes vs d85e69a -> FAIL as expected
+ALL OTA CONSUMERS HARNESS CASES PASSED
+guard exit=0

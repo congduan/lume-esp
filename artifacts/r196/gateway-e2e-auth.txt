@@ -1,0 +1,13 @@
+=== r196 gateway E2E auth harness ===
+UTC 2026-11-25T21:13:28Z
+command: node tests/gateway_e2e_auth.js
+---
+PASS gateway e2e auth: no headers: HTTP 401, ws-client onError(1), no upgrade
+PASS gateway e2e auth: wrong Bearer: HTTP 401, ws-client onError(1), no session
+PASS gateway e2e auth: correct Bearer: HTTP 101 + hello-ack with correct device token
+PASS gateway e2e auth: correct Bearer + wrong device token: hello gate rejects (unauthorized)
+PASS gateway e2e auth: x-gateway-token compatibility form: HTTP 101 + hello-ack
+PASS gateway e2e auth: ?token= compatibility form: HTTP 101 + hello-ack
+ALL GATEWAY E2E AUTH CASES PASSED
+---
+exit=0

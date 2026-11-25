@@ -1,0 +1,5 @@
+=== r196 deterministic key coverage (mirror of smoke LCG) ===
+UTC 2026-11-25T21:17:44Z
+key presses: {"BKSP":8,"SPACE":6,"letter":106}
+ENTER submits: 39 (t%45, t>0); NEW restarts: 14 (t%120, t>0)
+unique letters used: 25 of 26 -> JUTXPMBKVSNCOLQHGEAWIZDYF
