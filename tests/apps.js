@@ -133,11 +133,7 @@ check('Launcher rejects a non-array app list', () => {
 });
 
 /* ---- the firmware's built-in home screen (lume_scripts.c:lume_home_js) ---- */
-const scripts = fs.readFileSync('firmware/components/lume-engine/lume_scripts.c', 'utf8');
-const homeBlock = scripts.match(/const char lume_home_js\[\] =\n([\s\S]*?);\n/);
-assert.ok(homeBlock, 'embedded home found');
-const homeJs = [...homeBlock[1].matchAll(/^"(?:\\.|[^"\\])*"$/gm)]
-  .map(m => JSON.parse(m[0])).join('');
+const homeJs = fs.readFileSync('firmware/components/lume-engine/prelude/home.js', 'utf8');
 
 check('embedded home renders a clock and one tile per installed app', () => {
   const s = runApp(homeJs, {

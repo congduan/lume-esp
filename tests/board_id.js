@@ -22,7 +22,7 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 const dts = read('runtime/types/lume.d.ts');
 const engine = read('firmware/components/lume-engine/lume_engine.c');
 const cmake = read('firmware/components/lume-engine/CMakeLists.txt');
-const preludeC = read('firmware/components/lume-engine/lume_scripts.c');
+const preludeC = read('firmware/components/lume-engine/prelude/prelude.js');
 const hostStub = read('tests/lib/prelude_runner.js');
 const browserStub = read('website/playground/runtime.js');
 const pgPrelude = read('website/playground/prelude.js');

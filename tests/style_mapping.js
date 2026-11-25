@@ -2,7 +2,7 @@
 const fs = require('fs');
 const vm = require('vm');
 const assert = require('assert');
-const source = fs.readFileSync('firmware/components/lume-engine/lume_scripts.c', 'utf8');
+const source = fs.readFileSync('firmware/components/lume-engine/prelude/prelude.js', 'utf8');
 const { prelude } = require('./lib/prelude_runner');
 let messages = [], nextId = 0;
 const ctx = vm.createContext({ lume: {
@@ -87,10 +87,7 @@ for (const style of [{width:'101%'}, {padding:'8'}, {background:'#bad'}, {opacit
 console.log('PASS invalid percentage/metric/color/opacity rejected in prelude');
 console.log('PASS all style mapping cases');
 
-const demoBlock = source.match(/const char lume_demo_js\[\] =\n([\s\S]*?);\n/);
-assert(demoBlock, 'embedded demo found');
-const embeddedDemo = [...demoBlock[1].matchAll(/^"(?:\\.|[^"\\])*"/gm)]
-  .map(m => JSON.parse(m[0])).join('');
+const embeddedDemo = fs.readFileSync('firmware/components/lume-engine/prelude/demo.js', 'utf8');
 function runDemo(script) {
   let calls = [], id = 0;
   const sandbox = vm.createContext({lume: {

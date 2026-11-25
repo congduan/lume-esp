@@ -1,17 +1,19 @@
-// Shared host entry point: extract the firmware's exact prelude, run an app,
+// Shared host entry point: load the firmware's exact JS source, run an app,
 // and retain the native message stream for harnesses and the browser simulator.
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
 const root = path.resolve(__dirname, '../..');
-const source = fs.readFileSync(path.join(root, 'firmware/components/lume-engine/lume_scripts.c'), 'utf8');
-function extract(name, next) {
-  const start = `const char ${name}[] =\n`;
-  const part = source.split(start)[1];
-  if (!part) throw new Error(`missing ${name}`);
-  const block = next ? part.split(`\n\nconst char ${next}`)[0] : part.split(';\n')[0];
-  return [...block.matchAll(/^"(?:\\.|[^"\\])*"/gm)].map(m => JSON.parse(m[0])).join('');
+const scriptDir = path.join(root, 'firmware/components/lume-engine/prelude');
+const filenames = {
+  lume_prelude_js: 'prelude.js',
+  lume_demo_js: 'demo.js',
+  lume_home_js: 'home.js',
+};
+function extract(name) {
+  if (!Object.hasOwn(filenames, name)) throw new Error(`missing ${name}`);
+  return fs.readFileSync(path.join(scriptDir, filenames[name]), 'utf8');
 }
 const prelude = extract('lume_prelude_js', 'lume_demo_js');
 const demo = extract('lume_demo_js');
