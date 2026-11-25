@@ -35,7 +35,7 @@ Goal: prove the full stack on real hardware with the smallest possible surface.
 
 ## M4 — tooling
 - [ ] `lume` CLI: create / dev / deploy (esbuild → qjs bytecode → push)
-- [ ] WiFi OTA channel (TCP push, port + auth token)
+- [ ] WiFi OTA channel (TCP push, port + auth token)（r26/r96 代码完成：r26 落地 lwIP TCP 监听与帧解析，r96 把明文 token 比对升级为 HMAC-SHA256 每连接挑战应答，补 `lume.ota.status()/setToken()`、`lume.net.otaStatus()`（含 hmac 字段）与 CLI `--host` / `--ota`（legacy alias）/ `--token` / `--ota-port`，端口 8765 由 WiFi GOT_IP 自动托管监听、无 start/stop；详见 r96 战报与 `runtime/types/lume.d.ts`。真机推包与 HMAC 握手端到端验收待接板，故整行保持未勾选）
 - [ ] Host simulator (LVGL SDL backend + QuickJS on desktop)
 
 Local web service (r71): the `lume.net.web` server code is complete with

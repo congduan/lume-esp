@@ -1,0 +1,13 @@
+=== runner parses SCRIPTS from generator (baseline load) ===
+prelude sha256=8880e9c205c017430db4c2e0d215330c37f16669020259c9c65a426c3743486c
+demo bytes=1867
+home bytes=5127
+exit=0
+=== mutation: SCRIPTS prelude.js -> MISSING.js -> runner follows (expect ENOENT) ===
+Error: ENOENT: no such file or directory, open '/tmp/lume-r190-wt/firmware/components/lume-engine/prelude/MISSING.js'
+=== restored SCRIPTS ===
+SCRIPTS = (
+    ("lume_prelude_js", "prelude.js"),
+    ("lume_demo_js", "demo.js"),
+    ("lume_home_js", "home.js"),
+)

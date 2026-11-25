@@ -1,0 +1,10 @@
+=== NEW generator under gcc -Wall -Wextra -Werror ===
+gcc -c exit=0
+=== runtime byte round-trip ===
+ROUNDTRIP_OK len=94 control_bytes=31 pairs=31
+roundtrip exit=0
+=== emitted escape lines (first 4) ===
+const char lume_prelude_js[] =
+"\x01""a\x02""a\x03""a\x04""a\x05""a\x06""a\x07""a\ba\ta\n"
+"a\x0b"""
+"a\f"

@@ -1,0 +1,30 @@
+=== OLD generator (json.dumps) under gcc -Wall -Wextra -Werror ===
+/tmp/r190-neg/old-style.c:11:1: error: \u0001 is not a valid universal character
+   11 | ;
+      | ^
+/tmp/r190-neg/old-style.c:11:1: error: \u0002 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0003 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0004 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0005 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0006 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0007 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u000b is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u000e is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u000f is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0010 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0011 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0012 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0013 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0014 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0015 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0016 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0017 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0018 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u0019 is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u001a is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u001b is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u001c is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u001d is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u001e is not a valid universal character
+/tmp/r190-neg/old-style.c:11:1: error: \u001f is not a valid universal character
+gcc exit=1

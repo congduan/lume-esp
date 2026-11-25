@@ -1,0 +1,20 @@
+=== lume_net.c:505 mutual-exclusion check ===
+    if (method == NULL || (strcmp(method, "GET") != 0 && strcmp(method, "POST") != 0) ||
+        header_count > LUME_HTTP_HEADER_MAX || request_len > LUME_HTTP_REQUEST_MAX ||
+        (request_len && request_body == NULL) || (https_insecure && ca_pem != NULL))
+        return LUME_NET_ERR_ARG;
+=== lume_net.h:92 ===
+#define LUME_NET_ERR_ARG     (-1)
+=== shared helper used by httpGet (:448) and httpRequest (:462) ===
+    return lume_net_http_request(url, "GET", NULL, 0, NULL, 0, timeout_ms,
+int lume_net_http_request(const char *url, const char *method,
+=== gateway.js comments ===
+390-    // r187: 100 ms (was 10) damps CI jitter; content/count assertions still bounded by LIMIT_MS=3000.
+391:    () => { openAdapter = new MockUpstream({ answer: 'OPEN', audioFrames: 2, delayMs: 100 }); return openAdapter; },
+--
+454-    // r187: 100 ms (was 10) damps CI jitter; content/count assertions still bounded by LIMIT_MS=3000.
+455:    () => { okAdapter = new MockUpstream({ answer: 'AUTH OK', audioFrames: 2, delayMs: 100 }); return okAdapter; },
+=== docs/hardware-api.md note ===
+311:returns `{status, body, contentLength, truncated}` or a negative error code. `body` is a string or ArrayBuffer (at most 16 KiB); response text is capped at 32 KiB and backed by PSRAM while in C. Headers are string values, at most 12 entries. Set `Content-Type` to `application/json` or `application/x-www-form-urlencoded` as appropriate. GET remains available through `httpGet`. Request timeout defaults to 30 seconds and is capped at 120 seconds. HTTPS verifies with IDF's enabled certificate bundle by default; `caPem` supplies a custom CA. Only an explicit `httpsInsecure: true` disables certificate verification for that request, and should be used only for a controlled test endpoint. `httpsInsecure` and `caPem` are mutually exclusive: passing both returns `-1` (invalid input) before any HTTP client is created. `httpGet` shares the same native request helper, so the same `-1` applies there; supply neither (certificate bundle) or exactly one. TLS needs a valid system clock for certificate date validation; the app or board should synchronize time with SNTP before a verified HTTPS request. HTTP status codes are returned in the response; `-1` means invalid input, `-2` transport failure, `-3` WiFi unavailable, and `-5` detected timeout.
+=== roadmap M4 row (unchecked) ===
+38:- [ ] WiFi OTA channel (TCP push, port + auth token)（r26/r96 代码完成：r26 落地 lwIP TCP 监听与帧解析，r96 把明文 token 比对升级为 HMAC-SHA256 每连接挑战应答，补 `lume.ota.status()/setToken()`、`lume.net.otaStatus()`（含 hmac 字段）与 CLI `--host` / `--ota`（legacy alias）/ `--token` / `--ota-port`，端口 8765 由 WiFi GOT_IP 自动托管监听、无 start/stop；详见 r96 战报与 `runtime/types/lume.d.ts`。真机推包与 HMAC 握手端到端验收待接板，故整行保持未勾选）

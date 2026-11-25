@@ -1,0 +1,9 @@
+=== baseline (HEAD generator) vs fixed generator, current 3 preludes ===
+cmp exit=0 IDENTICAL
+bytes baseline=80915 after=80915
+d8706f46ffa4ec2476ba6e959d0fce376dc42089eb4f3732bd8cf1f085731fd1  artifacts/r190/generator-baseline.c
+d8706f46ffa4ec2476ba6e959d0fce376dc42089eb4f3732bd8cf1f085731fd1  artifacts/r190/generator-after.c
+=== line counts ===
+  1558 artifacts/r190/generator-baseline.c
+  1558 artifacts/r190/generator-after.c
+  3116 total
