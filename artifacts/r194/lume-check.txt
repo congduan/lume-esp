@@ -1,0 +1,40 @@
+======== dashboard ========
+lume check examples/dashboard
+
+[PASS] bundle   33915 bytes (33 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+exit=0
+======== hr_monitor ========
+lume check examples/hr_monitor
+
+[PASS] bundle   30067 bytes (26 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+exit=0
+======== heart_curve ========
+lume check examples/heart_curve
+
+[PASS] bundle   28110 bytes (26 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+exit=0
+======== counter ========
+lume check examples/counter
+
+[PASS] bundle   2160 bytes (19 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+exit=0
