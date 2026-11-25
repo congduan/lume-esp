@@ -6,8 +6,10 @@
  * gateway 401 gate (tools/gateway/ws.js authorized()). The same header name
  * and value are sent here through the real tools/gateway/ws-client.js
  * connect(url, cb, headers) into the real tools/gateway/server.js on an
- * ephemeral port. No board, no firmware, no real-device verification is
- * claimed: this proves host-side chain semantics only.
+ * ephemeral port. r197 adds the split-deployment proof: the upgrade gate uses
+ * --token T1 while the hello gate uses --device-token T2 (T1 != T2), and each
+ * token is rejected by the other gate. No board, no firmware, no real-device
+ * verification is claimed: this proves host-side chain semantics only.
  *
  * Run: node tests/gateway_e2e_auth.js
  */
@@ -131,6 +133,27 @@ function deviceAttempt(url, headers, deviceToken) {
     assert.equal(r.opened, true);
     assert.equal(r.ack, true, '?token=: hello-ack received');
     pass('?token= compatibility form: HTTP 101 + hello-ack');
+
+    /* ---- r197: the two gateway keys are independent (T1 != T2) ---------- */
+    status = await rawUpgrade(port, '/', { Authorization: 'Bearer ' + DT });
+    assert.equal(status, 401, 'hello device-token must NOT open the upgrade gate');
+    r = await deviceAttempt(url, { Authorization: 'Bearer ' + DT }, DT);
+    assert.equal(r.opened, false, 'device-token-as-Bearer: ws-client must not open');
+    assert.equal(r.error, 1, 'device-token-as-Bearer: ws-client sees non-101 handshake');
+    assert.equal(r.ack, false, 'device-token-as-Bearer: no hello-ack');
+    pass('r197: Bearer=device-token (wrong handshake) -> HTTP 401, no upgrade');
+
+    r = await deviceAttempt(url, { Authorization: 'Bearer ' + HS }, HS);
+    assert.equal(r.opened, true, 'correct Bearer lets the frame reach the hello gate');
+    assert.equal(r.ack, false, 'handshake-token-as-hello: no hello-ack');
+    assert.ok(r.ctrlError && r.ctrlError.type === 'error' &&
+      r.ctrlError.code === 'unauthorized', 'handshake-token-as-hello: unauthorized frame');
+    /* The gateway sets closeReason from the error code before sending its
+     * close(CLOSE_FOR_ERROR.unauthorized = 1008); the client onClose callback
+     * carries no code, so assert the stable server-side fault marker here. */
+    assert.equal(gw.sessions[gw.sessions.length - 1].closeReason, 'unauthorized',
+      'r197: wrong hello closes the fatal unauthorized path');
+    pass('r197: Bearer=handshake + hello=handshake (wrong device token) -> unauthorized/1008');
 
     console.log('ALL GATEWAY E2E AUTH CASES PASSED');
   } finally {

@@ -163,6 +163,12 @@ const ALLOWED = [
   // already listed above; BASE pin and the guard itself are untouched.
   'tests/gateway_e2e_auth.js',
   'docs/r196-report.md',
+  // r197: dual-token split (handshake key != hello device-token). The app,
+  // live harness, generated playground cascade and gateway E2E bridge were
+  // already allowlisted in r195/r196; only the new README sentence, report
+  // and evidence directory need adding. No assertion/BASE pin is changed.
+  'examples/voice_assistant/README.md',
+  'docs/r197-report.md',
   // r171: manifest guard and optional browser visual check.
   'tools/lume/check.js',
   'tools/lume/lume.js',
@@ -849,6 +855,9 @@ const checks = [
       f.startsWith('artifacts/r195/') ||
       // r196: wordle flake reproduction/determinism + gateway E2E evidence.
       f.startsWith('artifacts/r196/') ||
+      // r197: dual-token split verification evidence (harness, mutations,
+      // gateway E2E 10-run, full sweep, playground rebuild, zero-diff).
+      f.startsWith('artifacts/r197/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 

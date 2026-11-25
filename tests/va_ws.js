@@ -93,7 +93,7 @@ function boot(url, opts = {}) {
   /* r195: counting token KV reads lets the live reuse assertion catch a
    * regression that starts reading/building the handshake token even without
    * opening a new connection. */
-  const kvGets = { voice_gateway_token: 0 };
+  const kvGets = { voice_gateway_token: 0, voice_gateway_handshake_token: 0 };
   const audio = Object.assign({
     _recordStream: () => 0,           /* prelude wraps this into recordStream */
     _stopStream: () => 0,
@@ -107,6 +107,7 @@ function boot(url, opts = {}) {
     onLog: (...a) => logs.push(a.join(' ')),
     kv: { get: k => {
       if (k === 'voice_gateway_token') kvGets.voice_gateway_token++;
+      if (k === 'voice_gateway_handshake_token') kvGets.voice_gateway_handshake_token++;
       return (k === 'voice_gateway_url' && url) ? url : ((opts.keys && opts.keys[k]) || null);
     } },
     net: netStub,
@@ -462,6 +463,8 @@ function smoke(b, gwLog, answer) {
     assert.equal(b.bridge.stats.headers.length, 1, 'r195: one header on the fresh connect');
     const tokenGetsAfterT1 = b.kvGets.voice_gateway_token;
     assert.ok(tokenGetsAfterT1 >= 2, 'r195: turn 1 read the token for header + hello');
+    assert.equal(b.kvGets.voice_gateway_handshake_token, 1,
+      'r197: handshake key read once on the fresh connect');
     /* The clean turn-1 close re-arms a fresh adapter on the SAME session
      * synchronously, so its start() snapshot already carries turn 1 history. */
     assert.equal(mtSeen10.length, 2, 'turn1 adapter + re-armed adapter');
@@ -479,6 +482,8 @@ function smoke(b, gwLog, answer) {
     assert.equal(b.bridge.stats.headers.length, 1, 'r195: reuse builds no handshake header');
     assert.equal(b.kvGets.voice_gateway_token, tokenGetsAfterT1,
       'r195: reuse path performs zero token reads');
+    assert.equal(b.kvGets.voice_gateway_handshake_token, 1,
+      'r197: reuse path performs zero handshake-key reads');
     assert.equal(b.bridge.stats.text.filter(m => m.type === 'hello').length, 1,
       'turn 2 sends no second hello');
     await waitFor(() => b.c.vaStreamSession && b.c.vaStreamSession.active, 'turn2 mic');
@@ -633,6 +638,86 @@ function smoke(b, gwLog, answer) {
     'r195: neither URL token nor header token appears in any device log line');
   assert.equal(b14.bridge.stats.dispatchErrors.length, 0);
   pass('r195: URL query redacted in log, full URL connected, header still sent');
+
+  /* ---- 15. r197: two keys -> split Bearer / hello device-token --------- */
+  const HS15 = 'HS-TOKEN-r197-NOT-REAL';
+  const DT15 = 'DT-TOKEN-r197-NOT-REAL';
+  const gwLog15 = [];
+  let adapter15;
+  assert.notEqual(HS15, DT15, 'r197: the two test tokens must differ');
+  await withGw(() => {
+    adapter15 = new MockUpstream({ answer: 'SPLIT OK', audioFrames: 1, delayMs: 20 });
+    return adapter15;
+  }, gwLog15, async (gw, url) => {
+    const b = boot(url, { keys: {
+      voice_gateway_token: DT15, voice_gateway_handshake_token: HS15
+    } });
+    drive(b.c);
+    await waitFor(() => b.bridge.stats.text.some(m => m.type === 'hello'), 'hello sent');
+    assert.equal(b.bridge.stats.headers[0], 'Authorization: Bearer ' + HS15 + '\r\n',
+      'r197: upgrade Bearer comes from the handshake key');
+    assert.equal(b.bridge.stats.text[0].auth && b.bridge.stats.text[0].auth.token, DT15,
+      'r197: hello.auth.token still comes from the device-token key');
+    assert.ok(b.logs.includes('VA WS AUTH SPLIT=1'), 'r197: split boolean fact logged');
+    assert.equal(b.logs.some(l => l.indexOf(HS15) >= 0 || l.indexOf(DT15) >= 0), false,
+      'r197: neither token value appears in any device log line');
+    await waitFor(() => b.c.vaStreamFinished, 'turn finished');
+    assert.equal(b.c.vaFullText, 'SPLIT OK', 'r197: gateway accepted the device-token hello');
+    assert.equal(gw.sessions[0].closeCode, 1000);
+    assert.equal(adapter15.started, true, 'r197: upstream engaged');
+    assert.equal(gwLog15.some(l => JSON.stringify(l).includes(HS15) ||
+      JSON.stringify(l).includes(DT15)), false, 'r197: neither token in gateway logs');
+    assert.equal(b.bridge.stats.dispatchErrors.length, 0);
+    pass('r197: split keys -> Bearer=handshake, hello.auth=device-token, full round');
+  }, { deviceToken: DT15 });
+
+  /* ---- 16. r197: only the r119 key -> byte-identical fallback ----------- */
+  const DT16 = 'SOLO-TOKEN-r197-NOT-REAL';
+  const gwLog16 = [];
+  let adapter16;
+  await withGw(() => {
+    adapter16 = new MockUpstream({ answer: 'FALLBACK OK', audioFrames: 1, delayMs: 20 });
+    return adapter16;
+  }, gwLog16, async (gw, url) => {
+    const b = boot(url, { keys: { voice_gateway_token: DT16 } });
+    drive(b.c);
+    await waitFor(() => b.bridge.stats.text.some(m => m.type === 'hello'), 'hello sent');
+    assert.equal(b.bridge.stats.headers[0], 'Authorization: Bearer ' + DT16 + '\r\n',
+      'r197 fallback: upgrade header unchanged from r195');
+    assert.equal(b.bridge.stats.textRaw[0],
+      JSON.stringify(Object.assign({}, OPEN_LAN_HELLO, { auth: { token: DT16 } })),
+      'r197 fallback: hello frame byte-identical to the r195 single-key frame');
+    assert.ok(b.logs.includes('VA WS AUTH SPLIT=0'), 'r197: fallback boolean fact logged');
+    assert.equal(b.logs.some(l => l.indexOf(DT16) >= 0), false, 'r197: token absent from device logs');
+    await waitFor(() => b.c.vaStreamFinished, 'turn finished');
+    assert.equal(b.c.vaFullText, 'FALLBACK OK');
+    assert.equal(gw.sessions[0].closeCode, 1000);
+    assert.equal(adapter16.started, true);
+    assert.equal(b.bridge.stats.dispatchErrors.length, 0);
+    pass('r197: single-KV fallback -> r195 header+hello bytes, SPLIT=0');
+  }, { deviceToken: DT16 });
+
+  /* ---- 17. r197: both keys empty -> r119 open LAN unchanged ------------- */
+  const gwLog17 = [];
+  let adapter17;
+  await withGw(() => {
+    adapter17 = new MockUpstream({ answer: 'OPEN OK', audioFrames: 1, delayMs: 20 });
+    return adapter17;
+  }, gwLog17, async (gw, url) => {
+    const b = boot(url);
+    drive(b.c);
+    await waitFor(() => b.bridge.stats.text.some(m => m.type === 'hello'), 'hello sent');
+    assert.equal(b.bridge.stats.headers[0], '', 'r197: no upgrade headers when both keys empty');
+    assert.equal(b.bridge.stats.textRaw[0], JSON.stringify(OPEN_LAN_HELLO),
+      'r197: open LAN hello byte-identical to r119');
+    assert.equal('auth' in b.bridge.stats.text[0], false, 'r197: no auth field');
+    assert.ok(b.logs.includes('VA WS AUTH SPLIT=0'), 'r197: open LAN logs SPLIT=0');
+    await waitFor(() => b.c.vaStreamFinished, 'turn finished');
+    assert.equal(b.c.vaFullText, 'OPEN OK');
+    assert.equal(adapter17.started, true);
+    assert.equal(b.bridge.stats.dispatchErrors.length, 0);
+    pass('r197: both keys empty -> open LAN: no headers, no auth, SPLIT=0');
+  });
 
   console.log(`ALL VA WS HARNESS CASES PASSED (${checks} cases)`);
 })().catch(e => { console.error('FAIL ' + (e && e.stack || e)); process.exitCode = 1; });
