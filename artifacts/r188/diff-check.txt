@@ -1,0 +1,2 @@
+worktree diff exit=0
+staged diff exit=0

@@ -42,6 +42,16 @@ left untouched. The emulator step needs the esp32s3 firmware images and
 `esp32sim` (see `tools/emu/README.md`); `run.sh` builds the firmware with
 `idf.py` unless they already exist. `--no-emu` needs only Node.js.
 
+### Artifacts retention
+
+Keep the raw command output and any screenshots or logs cited by a round report
+under `artifacts/rN/`. Those selected files are the review evidence. CI can
+recreate `artifacts/check/`, generic `artifacts/emu/<app>/tft.png` captures,
+`artifacts/simulator/`, and host harness scratch directories (`*-host-*`); do
+not commit them unless a report cites the exact file. Remove local copies after
+the result has been recorded. The `.gitignore` rules cover new generated files;
+previously tracked files need explicit removal when they are no longer cited.
+
 ### Browser visual check (`lume check --visual`)
 
 `node tools/lume/lume.js check examples/counter --visual` bundles the app and runs

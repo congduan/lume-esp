@@ -11,3 +11,12 @@ managed_components/
 dependencies.lock
 firmware/build
 firmware/build-local
+
+# Reproducible verification output; commit only selected evidence explicitly.
+/artifacts/check/
+/artifacts/simulator/
+/artifacts/emu/**/tft.png
+/artifacts/r[0-9]*/fft-host-*/
+/artifacts/r[0-9]*/imgscale-host-*/
+/artifacts/r[0-9]*/crypto-host-*/
+/artifacts/r[0-9]*/compress-host-*/
