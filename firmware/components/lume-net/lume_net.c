@@ -247,6 +247,15 @@ int lume_net_init(void)
         if (err != ESP_OK) {
             return map_err(err, "esp_wifi_set_mode");
         }
+        /* r179: keep the station awake. Placed after set_mode (driver up)
+         * and before start (no beacon-missed wake cycle yet), inside the
+         * !s_started guard so the one-shot semantics stay resumable. r144
+         * E10 tried this alone (coexist still on) and saw no change; here
+         * it is combined with SW coexistence disabled in sdkconfig. */
+        err = esp_wifi_set_ps(WIFI_PS_NONE);
+        if (err != ESP_OK) {
+            return map_err(err, "esp_wifi_set_ps");
+        }
         err = esp_wifi_start();
         if (err != ESP_OK) {
             return map_err(err, "esp_wifi_start");

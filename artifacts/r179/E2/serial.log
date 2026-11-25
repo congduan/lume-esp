@@ -1,0 +1,338 @@
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v1.2.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+[INFO  cli::run] Loaded firmware: 8716288 bytes
+[INFO  machine] WiFi SoftAP: WPA2-PSK enabled for SSID 'emu-test'
+[INFO  host::net_user] user-net: DNS forwarder upstream [127.0.0.53:53], restrict=false
+[INFO  host::net_user] user-net: backend ready (192.168.4.0/24 (gateway 192.168.4.1, firmware 192.168.4.2), 0 hostfwd rules)
+[INFO  cli::run] Network backend: user-mode (smoltcp NAT, 192.168.4.0/24 (gateway 192.168.4.1, firmware 192.168.4.2); the gateway is host loopback)
+[INFO  cli::run] Loaded ROM ELF: <embedded esp32s3> (949552 bytes)
+[INFO  cli::run] Booting from real ROM reset vector (use --skip-rom to bypass)
+[INFO  machine] ROM ELF: 5227 symbols loaded
+[INFO  machine] ROM ELF loaded, 9 functions patched for interception
+[INFO  machine] CPU reset at ROM entry: PC=0x40000400, SP=0x3FCEB710
+[INFO  cli::run] Starting emulation (chip=esp32s3, batch_size=50000)
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x1 (POWERON),boot:0x8 (SPI_FAST_FLASH_BOOT)
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x16a8
+load:0x403c8700,len:0xe88
+load:0x403cb700,len:0x3184
+entry 0x403c8948
+[INFO  periph::hub::console] Console: firmware selected USB-Serial/JTAG (EP1)
+I (3) boot: ESP-IDF v5.5.5 2nd stage bootloader
+I (3) boot: compile time Nov 24 2026 19:04:31
+I (3) boot: Multicore bootloader
+I (4) boot: chip revision: v0.0
+I (4) boot: efuse block revision: v1.0
+I (4) qio_mode: Enabling default flash chip QIO
+I (4) boot.esp32s3: Boot SPI Speed : 80MHz
+I (4) boot.esp32s3: SPI Mode       : SLOW READ
+I (4) boot.esp32s3: SPI Flash Size : 16MB
+I (4) boot: Enabling RNG early entropy source...
+I (4) boot: Partition Table:
+I (4) boot: ## Label            Usage          Type ST Offset   Length
+I (4) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (4) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (4) boot:  2 factory          factory app      00 00 00010000 00640000
+I (4) boot:  3 storage          Unknown data     01 83 00750000 00100000
+I (4) boot: End of partition table
+I (5) esp_image: segment 0: paddr=00010020 vaddr=3c200020 size=d00f4h (852212) map
+I (62) esp_image: segment 1: paddr=000e011c vaddr=3fca0d00 size=05ae4h ( 23268) load
+I (64) esp_image: segment 2: paddr=000e5c08 vaddr=40374000 size=0a410h ( 42000) load
+I (68) esp_image: segment 3: paddr=000f0020 vaddr=42000020 size=1f2b28h (2042664) map
+I (204) esp_image: segment 4: paddr=002e2b50 vaddr=4037e410 size=12884h ( 75908) load
+I (211) esp_image: segment 5: paddr=002f53dc vaddr=50000000 size=00020h (    32) load
+I (211) esp_image: segment 6: paddr=002f5404 vaddr=600fe000 size=00030h (    48) load
+I (216) boot: Loaded app from partition at offset 0x10000
+I (216) boot: Disabling RNG early entropy source...
+I (217) octal_psram: vendor id    : 0x0d (AP)
+I (217) octal_psram: dev id       : 0x01 (generation 2)
+I (217) octal_psram: density      : 0x03 (64 Mbit)
+I (217) octal_psram: good-die     : 0x01 (Pass)
+I (217) octal_psram: Latency      : 0x00 (Variable)
+I (217) octal_psram: VCC          : 0x01 (3V)
+I (217) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (217) octal_psram: BurstType    : 0x00 ( Wrap)
+I (218) octal_psram: BurstLen     : 0x00 (16 Byte)
+I (218) octal_psram: Readlatency  : 0x00 (6 cycles@Variable)
+I (218) octal_psram: DriveStrength: 0x00 (1/1)
+I (218) MSPI Timing: Enter psram timing tuning
+W MSPI Timing: tuning fail, best point is fallen back to index 5
+I (218) esp_psram: Found 8MB PSRAM device
+I (218) esp_psram: Speed: 80MHz
+I (226) mmu_psram: Read only data copied and mapped to SPIRAM
+I (242) mmu_psram: Instructions copied and mapped to SPIRAM
+I (242) cpu_start: Multicore app
+I (268) esp_psram: SPI SRAM memory test OK
+I (276) cpu_start: Pro cpu start user code
+I (276) cpu_start: cpu freq: 240000000 Hz
+I (276) app_init: Application information:
+I (276) app_init: Project name:     lume
+I (276) app_init: App version:      v0.3.2-139-gb749837-dirty
+I (276) app_init: Compile time:     Nov 24 2026 19:52:34
+I (276) app_init: ELF file SHA256:  69913873e...
+I (276) app_init: ESP-IDF:          v5.5.5
+I (276) efuse_init: Min chip rev:     v0.0
+I (276) efuse_init: Max chip rev:     v0.99 
+I (276) efuse_init: Chip rev:         v0.0
+I (276) heap_init: Initializing. RAM available for dynamic allocation:
+I (276) heap_init: At 3FCC4538 len 000251D8 (148 KiB): RAM
+I (276) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (276) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (276) heap_init: At 600FE030 len 00001FB8 (7 KiB): RTCRAM
+I (276) esp_psram: Adding pool of 5248K of PSRAM memory to heap allocator
+I (276) esp_psram: Adding pool of 63K of PSRAM memory gap generated due to end address alignment of drom to the heap allocator
+I (276) spi_flash: detected chip: gd
+I (276) spi_flash: flash io: qio
+I (277) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (277) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (277) main_task: Started on CPU0
+I (277) esp_psram: Reserving pool of 4K of internal memory for DMA/internal allocations
+I (277) main_task: Calling app_main()
+I (277) lume: Lume runtime booting...
+W (277) lume-pmic: AXP2101 not detected (id=0x00 err=ESP_ERR_INVALID_STATE); relying on OTP defaults
+W (277) lume-board: PMIC rail setup skipped/failed (ESP_ERR_NOT_FOUND); continuing
+I (1638) lume-display: CO5300 QSPI + LVGL display up (480x480 RGB565, 2x19200 B SRAM draw buf)
+W (1698) lume-touch: command-mode entry failed (continuing)
+I (1698) lume-touch: CST9220 -> LVGL indev ready (addr 0x5a, INT=11)
+I (1698) lume-ui-bridge: init: queue=384 msgs, drain timer=5ms
+I (1726) lume-board: board init done: CO5300 QSPI + CST9220 + LVGL pipeline up
+I (1726) lume-engine: engine_start: evt queue=16, stage mutex up, task lume-js up
+I (1726) lume-engine: engine task up (pinned core 1), PSRAM free=5434780 bytes
+I (1726) lume-hotreload: USB hot-reload up; frame LUME|len:u32le|crc32:u32le|payload, max=262144 bytes
+I (1726) lume-fs: LittleFS mounted at /lume_fs
+I (1729) lume-ota: WiFi OTA token: 74e5fb30de3c69f20f85d977e5995232  (use: lume deploy --host <ip> --token 74e5fb30de3c69f20f85d977e5995232)
+W (1730) lume-apps: app 'net_check' has no meta.json (pre-r106 install); compatibility with API tag 1 unverified
+I (1730) main_task: Returned from app_main()
+I (1732) lume-engine: boot app 'net_check' (2837 bytes)
+W (1736) lume-pmic-hw: read reg 0x03 failed: ESP_ERR_INVALID_STATE
+W (1737) lume-imu-hw: write reg 0x60 = 0xb0 failed: ESP_ERR_INVALID_STATE
+I (1737) lume-kv: NVS KV ready (partition 'nvs', namespace 'lume', key<=15 chars, value<4000 B)
+I (1738) pp: pp rom version: e7ae62f
+I (1739) net80211: net80211 rom version: e7ae62f
+I (1740) wifi:wifi driver task: 3fce87b8, prio:23, stack:6656, core=0
+I (1741) wifi:wifi firmware version: b9f67df
+I (1742) wifi:wifi certification version: v7.0
+I (1742) wifi:config NVS flash: enabled
+I (1742) wifi:config nano formatting: disabled
+I (1743) wifi:Init data frame dynamic rx buffer num: 32
+I (1743) wifi:Init static rx mgmt buffer num: 5
+I (1744) wifi:Init management short buffer num: 32
+I (1744) wifi:Init dynamic tx buffer num: 32
+I (1745) wifi:Init static tx FG buffer num: 2
+I (1745) wifi:Init static rx buffer size: 1600
+I (1746) wifi:Init static rx buffer num: 10
+I (1746) wifi:Init dynamic rx buffer num: 32
+I (1747) wifi_init: rx ba win: 6
+I (1747) wifi_init: accept mbox: 6
+I (1747) wifi_init: tcpip mbox: 32
+I (1748) wifi_init: udp mbox: 6
+I (1748) wifi_init: tcp mbox: 6
+I (1748) wifi_init: tcp tx win: 5760
+I (1748) wifi_init: tcp rx win: 5760
+I (1748) wifi_init: tcp mss: 1440
+I (1749) phy_init: phy_version 712,87e8c20e,Apr 13 2026,18:51:10
+W (1749) phy_init: failed to load RF calibration data (0x1102), falling back to full calibration
+I (1757) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(2)
+I (1760) wifi:mode : sta (24:0a:c4:00:00:01)
+I (1760) wifi:enable tsf
+I (1761) wifi:Set ps type: 0, coexist: 0
+
+I (1761) lume-net: WiFi station up (WPA2-PSK only; handlers on sys_evt/core0, engine task core1; WiFi IRAM opts disabled)
+I (1762) lume-engine: runtime up; eval app 'net_check' (2837 bytes)
+W (1863) lume-touch: touch bus down after 10 read errors, resetting
+I (1863) lume-engine: script cache '<lume-prelude>': compiled 116763 bytes total (116747 body), qjs 0.18.0, src hash 0xd6cf89a6
+I (1881) lume-engine: js: [NETCHECK] init PASS ret=0
+I (1885) lume-net: connect started (WPA2-PSK); poll status() for state/ip
+I (1885) lume-engine: js: [NETCHECK] connect PASS ret=0
+I (1886) lume-engine: app eval ok; entering event loop
+I (1904) wifi:state: init -> auth (0xb0)
+W (1905) wifi:m f auth
+
+I (1905) wifi:state: auth -> assoc (0x0)
+W (1905) wifi:m f assoc req l=221
+
+I (1923) lume-ui-bridge: global gesture registered on the screen (node 0)
+I (1923) lume-ui-bridge: gesture registered id=0
+I (1924) lume-ui-bridge: create id=1 kind=1 parent=0
+I (1925) lume-ui-bridge: create id=2 kind=0 parent=0
+W (2074) lume-touch: touch bus down after 10 read errors, resetting
+W (2270) lume-touch: touch bus down after 10 read errors, resetting
+W (2466) lume-touch: touch bus down after 10 read errors, resetting
+W (2662) lume-touch: touch bus down after 10 read errors, resetting
+W (2858) lume-touch: touch bus down after 10 read errors, resetting
+I (2906) wifi:state: assoc -> init (0x400)
+W (2907) lume-net: sta disconnected
+W (3054) lume-touch: touch bus down after 10 read errors, resetting
+W (3250) lume-touch: touch bus down after 10 read errors, resetting
+W (3446) lume-touch: touch bus down after 10 read errors, resetting
+W (3642) lume-touch: touch bus down after 10 read errors, resetting
+W (3838) lume-touch: touch bus down after 10 read errors, resetting
+W (4034) lume-touch: touch bus down after 10 read errors, resetting
+W (4230) lume-touch: touch bus down after 10 read errors, resetting
+W (4426) lume-touch: touch bus down after 10 read errors, resetting
+W (4622) lume-touch: touch bus down after 10 read errors, resetting
+W (4818) lume-touch: touch bus down after 10 read errors, resetting
+W (5014) lume-touch: touch bus down after 10 read errors, resetting
+W (5210) lume-touch: touch bus down after 10 read errors, resetting
+W (5406) lume-touch: touch bus down after 10 read errors, resetting
+W (5602) lume-touch: touch bus down after 10 read errors, resetting
+W (5798) lume-touch: touch bus down after 10 read errors, resetting
+W (5994) lume-touch: touch bus down after 10 read errors, resetting
+W (6190) lume-touch: touch bus down after 10 read errors, resetting
+W (6386) lume-touch: touch bus down after 10 read errors, resetting
+W (6582) lume-touch: touch bus down after 10 read errors, resetting
+W (6778) lume-touch: touch bus down after 10 read errors, resetting
+I (6887) lume-net: connect started (WPA2-PSK); poll status() for state/ip
+I (6888) wifi:state: init -> auth (0xb0)
+W (6974) lume-touch: touch bus down after 10 read errors, resetting
+W (7170) lume-touch: touch bus down after 10 read errors, resetting
+W (7366) lume-touch: touch bus down after 10 read errors, resetting
+W (7562) lume-touch: touch bus down after 10 read errors, resetting
+W (7758) lume-touch: touch bus down after 10 read errors, resetting
+I (7889) wifi:state: auth -> init (0x200)
+W (7890) lume-net: sta disconnected
+W (7954) lume-touch: touch bus down after 10 read errors, resetting
+W (8150) lume-touch: touch bus down after 10 read errors, resetting
+W (8346) lume-touch: touch bus down after 10 read errors, resetting
+W (8542) lume-touch: touch bus down after 10 read errors, resetting
+W (8738) lume-touch: touch bus down after 10 read errors, resetting
+W (8934) lume-touch: touch bus down after 10 read errors, resetting
+W (9130) lume-touch: touch bus down after 10 read errors, resetting
+W (9326) lume-touch: touch bus down after 10 read errors, resetting
+W (9522) lume-touch: touch bus down after 10 read errors, resetting
+W (9718) lume-touch: touch bus down after 10 read errors, resetting
+W (9914) lume-touch: touch bus down after 10 read errors, resetting
+W (10110) lume-touch: touch bus down after 10 read errors, resetting
+W (10306) lume-touch: touch bus down after 10 read errors, resetting
+W (10502) lume-touch: touch bus down after 10 read errors, resetting
+W (10698) lume-touch: touch bus down after 10 read errors, resetting
+W (10894) lume-touch: touch bus down after 10 read errors, resetting
+W (11090) lume-touch: touch bus down after 10 read errors, resetting
+W (11286) lume-touch: touch bus down after 10 read errors, resetting
+W (11482) lume-touch: touch bus down after 10 read errors, resetting
+W (11678) lume-touch: touch bus down after 10 read errors, resetting
+W (11874) lume-touch: touch bus down after 10 read errors, resetting
+I (11888) lume-net: connect started (WPA2-PSK); poll status() for state/ip
+I (11889) wifi:state: init -> auth (0xb0)
+I (11890) wifi:state: auth -> assoc (0x0)
+W (11890) wifi:m f assoc req l=221
+
+W (12070) lume-touch: touch bus down after 10 read errors, resetting
+W (12266) lume-touch: touch bus down after 10 read errors, resetting
+W (12462) lume-touch: touch bus down after 10 read errors, resetting
+W (12658) lume-touch: touch bus down after 10 read errors, resetting
+W (12854) lume-touch: touch bus down after 10 read errors, resetting
+I (12891) wifi:state: assoc -> init (0x400)
+W (12892) lume-net: sta disconnected
+W (13050) lume-touch: touch bus down after 10 read errors, resetting
+W (13246) lume-touch: touch bus down after 10 read errors, resetting
+W (13442) lume-touch: touch bus down after 10 read errors, resetting
+W (13638) lume-touch: touch bus down after 10 read errors, resetting
+W (13834) lume-touch: touch bus down after 10 read errors, resetting
+W (14030) lume-touch: touch bus down after 10 read errors, resetting
+W (14226) lume-touch: touch bus down after 10 read errors, resetting
+W (14422) lume-touch: touch bus down after 10 read errors, resetting
+W (14618) lume-touch: touch bus down after 10 read errors, resetting
+W (14814) lume-touch: touch bus down after 10 read errors, resetting
+W (15010) lume-touch: touch bus down after 10 read errors, resetting
+W (15206) lume-touch: touch bus down after 10 read errors, resetting
+W (15402) lume-touch: touch bus down after 10 read errors, resetting
+W (15598) lume-touch: touch bus down after 10 read errors, resetting
+W (15794) lume-touch: touch bus down after 10 read errors, resetting
+W (15990) lume-touch: touch bus down after 10 read errors, resetting
+W (16186) lume-touch: touch bus down after 10 read errors, resetting
+W (16382) lume-touch: touch bus down after 10 read errors, resetting
+W (16578) lume-touch: touch bus down after 10 read errors, resetting
+W (16774) lume-touch: touch bus down after 10 read errors, resetting
+I (16889) lume-net: connect started (WPA2-PSK); poll status() for state/ip
+I (16890) wifi:state: init -> auth (0xb0)
+W (16970) lume-touch: touch bus down after 10 read errors, resetting
+W (17166) lume-touch: touch bus down after 10 read errors, resetting
+W (17362) lume-touch: touch bus down after 10 read errors, resetting
+W (17558) lume-touch: touch bus down after 10 read errors, resetting
+W (17754) lume-touch: touch bus down after 10 read errors, resetting
+I (17891) wifi:state: auth -> init (0x200)
+W (17892) lume-net: sta disconnected
+W (17950) lume-touch: touch bus down after 10 read errors, resetting
+W (18146) lume-touch: touch bus down after 10 read errors, resetting
+W (18342) lume-touch: touch bus down after 10 read errors, resetting
+W (18538) lume-touch: touch bus down after 10 read errors, resetting
+W (18734) lume-touch: touch bus down after 10 read errors, resetting
+W (18930) lume-touch: touch bus down after 10 read errors, resetting
+W (19126) lume-touch: touch bus down after 10 read errors, resetting
+W (19322) lume-touch: touch bus down after 10 read errors, resetting
+W (19518) lume-touch: touch bus down after 10 read errors, resetting
+W (19714) lume-touch: touch bus down after 10 read errors, resetting
+W (19910) lume-touch: touch bus down after 10 read errors, resetting
+W (20106) lume-touch: touch bus down after 10 read errors, resetting
+W (20302) lume-touch: touch bus down after 10 read errors, resetting
+W (20498) lume-touch: touch bus down after 10 read errors, resetting
+W (20694) lume-touch: touch bus down after 10 read errors, resetting
+W (20890) lume-touch: touch bus down after 10 read errors, resetting
+W (21086) lume-touch: touch bus down after 10 read errors, resetting
+W (21282) lume-touch: touch bus down after 10 read errors, resetting
+W (21478) lume-touch: touch bus down after 10 read errors, resetting
+W (21674) lume-touch: touch bus down after 10 read errors, resetting
+W (21870) lume-touch: touch bus down after 10 read errors, resetting
+I (21890) lume-net: connect started (WPA2-PSK); poll status() for state/ip
+I (21891) wifi:state: init -> auth (0xb0)
+I (21892) wifi:state: auth -> assoc (0x0)
+W (21892) wifi:m f assoc req l=221
+
+W (22066) lume-touch: touch bus down after 10 read errors, resetting
+W (22262) lume-touch: touch bus down after 10 read errors, resetting
+W (22458) lume-touch: touch bus down after 10 read errors, resetting
+W (22654) lume-touch: touch bus down after 10 read errors, resetting
+W (22850) lume-touch: touch bus down after 10 read errors, resetting
+I (22893) wifi:state: assoc -> init (0x400)
+W (22894) lume-net: sta disconnected
+W (23046) lume-touch: touch bus down after 10 read errors, resetting
+W (23242) lume-touch: touch bus down after 10 read errors, resetting
+W (23438) lume-touch: touch bus down after 10 read errors, resetting
+W (23634) lume-touch: touch bus down after 10 read errors, resetting
+W (23830) lume-touch: touch bus down after 10 read errors, resetting
+W (24026) lume-touch: touch bus down after 10 read errors, resetting
+W (24222) lume-touch: touch bus down after 10 read errors, resetting
+W (24418) lume-touch: touch bus down after 10 read errors, resetting
+W (24614) lume-touch: touch bus down after 10 read errors, resetting
+W (24810) lume-touch: touch bus down after 10 read errors, resetting
+W (25006) lume-touch: touch bus down after 10 read errors, resetting
+W (25202) lume-touch: touch bus down after 10 read errors, resetting
+W (25398) lume-touch: touch bus down after 10 read errors, resetting
+W (25594) lume-touch: touch bus down after 10 read errors, resetting
+W (25790) lume-touch: touch bus down after 10 read errors, resetting
+W (25986) lume-touch: touch bus down after 10 read errors, resetting
+W (26182) lume-touch: touch bus down after 10 read errors, resetting
+W (26378) lume-touch: touch bus down after 10 read errors, resetting
+W (26574) lume-touch: touch bus down after 10 read errors, resetting
+W (26770) lume-touch: touch bus down after 10 read errors, resetting
+I (26891) lume-net: connect started (WPA2-PSK); poll status() for state/ip
+I (26892) wifi:state: init -> auth (0xb0)
+W (26966) lume-touch: touch bus down after 10 read errors, resetting
+W (27162) lume-touch: touch bus down after 10 read errors, resetting
+W (27358) lume-touch: touch bus down after 10 read errors, resetting
+W (27554) lume-touch: touch bus down after 10 read errors, resetting
+W (27750) lume-touch: touch bus down after 10 read errors, resetting
+I (27893) wifi:state: auth -> init (0x200)
+W (27894) lume-net: sta disconnected
+W (27946) lume-touch: touch bus down after 10 read errors, resetting
+W (28142) lume-touch: touch bus down after 10 read errors, resetting
+W (28338) lume-touch: touch bus down after 10 read errors, resetting
+W (28534) lume-touch: touch bus down after 10 read errors, resetting
+W (28730) lume-touch: touch bus down after 10 read errors, resetting
+W (28926) lume-touch: touch bus down after 10 read errors, resetting
+W (29122) lume-touch: touch bus down after 10 read errors, resetting
+W (29318) lume-touch: touch bus down after 10 read errors, resetting
+W (29514) lume-touch: touch bus down after 10 read errors, resetting
+W (29710) lume-touch: touch bus down after 10 read errors, resetting
+[INFO  cli::run] Timeout reached after 30.000528614s

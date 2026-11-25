@@ -1,0 +1,3 @@
+ 3101360 /tmp/lume-r179-wt/firmware/build/merged_flash.bin
+ 8716288 /tmp/lume-r179-wt/artifacts/r179/E1/flash.bin
+11817648 total

@@ -1,0 +1,20 @@
+Command (exactly as in brief):
+cd /opt/esp/esp-idf && env -u VIRTUAL_ENV IDF_PYTHON_ENV_PATH=/home/ubuntu/.espressif/python_env/idf5.5_py3.12_env bash -c '. ./export.sh >/dev/null 2>&1; cd /tmp/lume-r184-wt/firmware && idf.py build && idf.py size'
+
+Monitor result: BUILD_FINISHED exit=0
+Raw combined output: idf-build-size.log
+
+Key lines (ASCII transcription of the size table; raw log keeps the original box glyphs):
+[100%] Built target app
+lume.bin binary size 0x2e5a10 bytes. Smallest app partition is 0x640000 bytes. 0x35a5f0 bytes (54%) free.
+Project build complete. To flash, run: idf.py flash
+DIRAM               | 247159 | 72.32 | 94601 | 341760
+IRAM                |  16384 | 100.0 |     0 |  16384
+IRAM .text          |  15356 | 93.73 |       |        
+IRAM .vectors       |   1028 |  6.27 |       |        
+RTC FAST            |     72 |  0.88 |  8120 |    8192
+RTC SLOW            |     32 |  0.39 |  8160 |    8192
+Total image size: 3037587 bytes (.bin may be padded larger)
+Built target size
+
+IRAM hard line: 16384 / 16384 used, Remain = 0 (>= 0). Held.

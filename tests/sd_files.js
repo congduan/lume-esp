@@ -131,6 +131,9 @@ const R128_FIRMWARE_FILES = [
   'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
+  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
+  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
+  'firmware/sdkconfig.defaults',
 ];
 function gitDiffEmpty() {
   const out = execFileSync('git', ['diff', '--name-only', '4a2bd29',

@@ -1,0 +1,59 @@
+esp-emu: /home/ubuntu/.local/bin/esp-emu
+
+    ╻ ╻ ╻ ╻
+   ┏┻━┻━┻━┻┓    ┏━╸┏━┓┏━┓   ┏━╸┏┳┓╻ ╻
+  ━┫       ┣━   ┣╸ ┗━┓┣━┛╺━╸┣╸ ┃┃┃┃ ┃
+  ━┫ ESP32 ┣━   ┗━╸┗━┛╹     ┗━╸╹ ╹┗━┛
+  ━┫       ┣━
+   ┗┳━┳━┳━┳┛    ESP32 series emulator · v1.2.0
+    ╹ ╹ ╹ ╹     https://github.com/espressif/esp-emulator
+
+esp-emu 1.2.0
+params: chip=esp32s3 auth=wpa2-psk net=user,net=192.168.4.0/24
+ssid=emu-test password_len=10 (value redacted) timeout=60s
+exit_on=[NETCHECK] ALL PASS
+firmware: /tmp/lume-r179-wt/firmware/build/merged_flash.bin
+149294f56f746e6d46a5ff0f0bceaedbe35d8191b93567a705f76dff07fd1bbc  /tmp/lume-r179-wt/firmware/build/merged_flash.bin
+--- WiFi/NETCHECK serial lines ---
+[INFO  machine] WiFi SoftAP: WPA2-PSK enabled for SSID 'emu-test'
+I (4) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (1729) lume-ota: WiFi OTA token: 4380a928953642574becb6aa021f58ad  (use: lume deploy --host <ip> --token 4380a928953642574becb6aa021f58ad)
+I (1740) wifi:wifi driver task: 3fce87b8, prio:23, stack:6656, core=0
+I (1741) wifi:wifi firmware version: b9f67df
+I (1742) wifi:wifi certification version: v7.0
+I (1742) wifi:config NVS flash: enabled
+I (1742) wifi:config nano formatting: disabled
+I (1743) wifi:Init data frame dynamic rx buffer num: 32
+I (1743) wifi:Init static rx mgmt buffer num: 5
+I (1744) wifi:Init management short buffer num: 32
+I (1744) wifi:Init dynamic tx buffer num: 32
+I (1745) wifi:Init static tx FG buffer num: 2
+I (1745) wifi:Init static rx buffer size: 1600
+I (1746) wifi:Init static rx buffer num: 10
+I (1746) wifi:Init dynamic rx buffer num: 32
+I (1749) wifi:Set ps type: 0, coexist: 0
+I (1760) wifi:mode : sta (24:0a:c4:00:00:01)
+I (1761) wifi:enable tsf
+I (1761) lume-net: WiFi station up (WPA2-PSK only; handlers on sys_evt/core0, engine task core1; WiFi IRAM opts disabled)
+I (1881) lume-engine: js: [NETCHECK] init PASS ret=0
+I (1885) lume-engine: js: [NETCHECK] connect PASS ret=0
+I (1904) wifi:state: init -> auth (0xb0)
+W (1905) wifi:m f auth
+I (1905) wifi:state: auth -> assoc (0x0)
+W (1905) wifi:m f assoc req l=221
+I (2906) wifi:state: assoc -> init (0x400)
+I (6888) wifi:state: init -> auth (0xb0)
+I (7889) wifi:state: auth -> init (0x200)
+I (11889) wifi:state: init -> auth (0xb0)
+I (11890) wifi:state: auth -> assoc (0x0)
+W (11890) wifi:m f assoc req l=221
+I (12891) wifi:state: assoc -> init (0x400)
+I (16890) wifi:state: init -> auth (0xb0)
+I (17891) wifi:state: auth -> init (0x200)
+I (21891) wifi:state: init -> auth (0xb0)
+I (21892) wifi:state: auth -> assoc (0x0)
+W (21892) wifi:m f assoc req l=221
+I (22893) wifi:state: assoc -> init (0x400)
+I (26892) wifi:state: init -> auth (0xb0)
+I (27893) wifi:state: auth -> init (0x200)
+I (31892) lume-engine: js: [NETCHECK] ip FAIL timeout state=0 ip=null

@@ -50,7 +50,11 @@ const R129_ALLOWLIST = ['runtime/shell.js', 'runtime/types/lume.d.ts', // r166 C
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
-  'firmware/components/lume-ui-bridge/lume_ui_bridge.c']; // r181 backpressure
+  // r181 backpressure bridge.
+  'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
+  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
+  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
+  'firmware/sdkconfig.defaults']; // r173 companion P1, r75 and r179 already on main
 function gitChanged() {
   const head = execFileSync('git',
     ['diff', '--name-only', '3514c76', 'HEAD', '--', 'firmware/', 'runtime/'],

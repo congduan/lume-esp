@@ -562,7 +562,10 @@ const R166_ALLOWED = ['runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume
   // r75 app-independent raster and refresh improvements already on main.
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
-  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js'];
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
+  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
+  'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
+  'firmware/sdkconfig.defaults'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const preludeChanged = gitChanged(['firmware/components/lume-engine/lume_scripts.c'], '3514c76');
 
