@@ -1,3 +1,7 @@
+# ESP-IDF includes component CMakeLists in script mode for requirement
+# gathering; add_custom_command is not scriptable, so only add the
+# generation rule in real build mode.
+if(NOT CMAKE_SCRIPT_MODE_FILE)
 set(LUME_PRELUDE_DIR "${CMAKE_CURRENT_LIST_DIR}/prelude")
 set(LUME_SCRIPTS_INC "${CMAKE_CURRENT_BINARY_DIR}/lume_scripts.inc")
 add_custom_command(
@@ -11,6 +15,7 @@ add_custom_command(
     VERBATIM
 )
 set_source_files_properties(lume_scripts.c PROPERTIES OBJECT_DEPENDS "${LUME_SCRIPTS_INC}")
+endif()
 
 idf_component_register(
     SRCS "lume_engine.c" "lume_math.c" "lume_fft.c" "lume_imgscale.c" "lume_image.c" "lume_svg_cache.c" "lume_image_header.c" "lume_image_pixels.c" "lume_image_decode.c" "lume_apps.c" "lume_scripts.c"
