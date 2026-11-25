@@ -690,6 +690,18 @@ const ALLOWED = [
   'scripts/check_website.py',
   'tests/examples_gallery.js',
   'docs/r189-report.md',
+
+  // r187: security defaults -- TLS cert verify on by default (per-request
+  // httpsInsecure opt-in), gateway WebSocket handshake token. Host-verifiable
+  // surface: gateway handshake auth harness + regression suite, HTTP consumer
+  // harnesses, gateway tooling, protocol docs, sdkconfig defaults.
+  'docs/voice-gateway-protocol.md',
+  'tests/gateway.js',
+  'tests/gateway_handshake_auth.js',
+  'tools/gateway/cli.js',
+  'tools/gateway/device-sim.js',
+  'tools/gateway/server.js',
+  'tools/gateway/ws.js',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -766,8 +778,8 @@ const checks = [
       f.startsWith('artifacts/r181/') || f.startsWith('artifacts/r182/') ||
       f.startsWith('artifacts/r183/') || f.startsWith('artifacts/r179/') ||
       f.startsWith('artifacts/r184/') || f.startsWith('artifacts/r185/') ||
-      f.startsWith('artifacts/r186/') || f.startsWith('artifacts/r188/') ||
-      f.startsWith('artifacts/r189/') ||
+      f.startsWith('artifacts/r186/') || f.startsWith('artifacts/r187/') ||
+      f.startsWith('artifacts/r188/') || f.startsWith('artifacts/r189/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 
