@@ -1,0 +1,28 @@
+r189 verification summary (raw outputs are the sibling files)
+=============================================================
+
+1. python3 scripts/check_website.py                     EXIT 0  -> check_website.txt
+   (includes the new gallery --check, exit 0: "up to date (70 cards)")
+2. for t in tests/*.js; do node $t || echo "FAIL $t"; done
+   104 harnesses, FAIL lines = 0                       -> host_harnesses.txt
+3. python3 scripts/gen_api_docs.py --check              EXIT 0  -> api_check.txt
+   (api.html up to date, 161 entries)
+4. node tools/playground/build.mjs                      EXIT 0  -> playground_build.txt
+   git status: no diff in tools/playground/build.mjs or website/playground/*
+   ("PASS esbuild-wasm assets and 70 editable sources", "70 apps")
+5. node card/catalog count                              EXIT 0  -> card_count.txt
+   manifest=70, metadata=70, LUME_SOURCES=70, cards=70, same set=true,
+   12 hardware-badged cards
+6. mutation proofs:
+   - node tests/ota_consumers.js      EXIT 0 (38 PASS = 19 checks + 19 mutations) -> ota_guard.txt
+   - node tests/examples_gallery.js   EXIT 0 (12 PASS, 6 mutation cases)  -> examples_gallery_harness.txt
+   - stale-card injection -> check_website.py EXIT 1 (caught), page restored
+     byte-identical                                        -> staleness_mutation.txt
+   - node tests/board_abi.js          EXIT 0 (zero-diff guard not triggered) -> board_abi_guard.txt
+
+Note: scripts/mobile-viewport-audit.mjs (extra, not in the required gate)
+reports examples.html pass at 320px and 375px; the overall script exits 1 on
+pre-existing overflow in index.html and guide.html, neither touched by r189.
+-> mobile_viewport.txt
+
+No idf.py build (disk constraint), no push, no firmware/runtime/tooling change.

@@ -1,0 +1,9 @@
+CMD: node -e (count catalog + rendered cards)
+manifest apps          = 70
+page.js metadata rows  = 70
+LUME_SOURCES keys      = 70
+rendered card articles = 70
+rendered source paths  = 70
+same set (manifest/metadata/sources/cards) = true
+hardware-badged cards  = 12
+EXIT=0

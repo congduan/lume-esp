@@ -1,0 +1,14 @@
+CMD: node scripts/mobile-viewport-audit.mjs website
+320px index.html: FAIL {"scrollWidth":320,"clientWidth":320,"offenders":[{"tag":"A","cls":"","left":269.5625,"right":346.453125},{"tag":"SPAN","cls":"","left":269.5625,"right":346.453125},{"tag":"A","cls":"","left":362.453125,"right":388.765625},{"tag":"SPAN","cls":"","left":362.453125,"right":388.765625}]}
+320px guide.html: FAIL {"scrollWidth":320,"clientWidth":320,"offenders":[{"tag":"CODE","cls":"","left":37,"right":404.890625}]}
+320px api.html: pass; overflow=0; elements out of bounds=0
+320px examples.html: pass; overflow=0; elements out of bounds=0
+320px faq.html: pass; overflow=0; elements out of bounds=0
+320px 404.html: pass; overflow=0; elements out of bounds=0
+375px index.html: FAIL {"scrollWidth":375,"clientWidth":375,"offenders":[{"tag":"A","cls":"","left":362.453125,"right":388.765625},{"tag":"SPAN","cls":"","left":362.453125,"right":388.765625}]}
+375px guide.html: FAIL {"scrollWidth":375,"clientWidth":375,"offenders":[{"tag":"CODE","cls":"","left":37,"right":404.890625}]}
+375px api.html: pass; overflow=0; elements out of bounds=0
+375px examples.html: pass; overflow=0; elements out of bounds=0
+375px faq.html: pass; overflow=0; elements out of bounds=0
+375px 404.html: pass; overflow=0; elements out of bounds=0
+EXIT=1

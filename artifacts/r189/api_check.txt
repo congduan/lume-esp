@@ -1,0 +1,3 @@
+CMD: python3 scripts/gen_api_docs.py --check
+api.html is up to date with lume.d.ts (161 entries)
+EXIT=0
