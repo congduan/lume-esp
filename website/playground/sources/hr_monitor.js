@@ -15,6 +15,10 @@
  *  stub) every call is guarded with `typeof lume.ble !== 'undefined'` and the
  *  app degrades to an ASCII note instead of throwing.
  *
+ *  r200: round-screen SafeArea layout (docs/DESIGN-TOKENS.md): all cards,
+ *  hero BPM readout, shell.Sparkline (explicitly positioned, no overlap), and
+ *  action button live inside global [80, 400] x [76, 396].
+ *
  *  No radio / board on the host: this is simulator/host evidence only, not
  *  on-device BLE acceptance (docs/KNOWN-SIMPLIFICATIONS.md r146).
  */
@@ -135,49 +139,68 @@ lume.app.onResume(function () { if (advertising()) startAdv(); });
 
 /* ---- r146: UI BEGIN ---- */
 var hrTheme = {
-  colors: { bg: '#07111D', surface: '#132435', surfaceAlt: '#1C3449',
+  colors: { bg: '#0D1420', surface: '#16202E', surfaceAlt: '#1F2C3D',
     text: '#F2F7FB', textDim: '#9EB3C6', accent: '#40D8B0', danger: '#FF6B79' },
-  radius: 12, spacing: 12, fontScale: 1
+  radius: 12, spacing: 8, fontScale: 1
 };
 lume.theme.set(hrTheme);
 var history = signal([72, 74, 71, 76, 73, 75, 72, 77]);
 
-/* r194: the hand-rolled Canvas polyline is now shell.Sparkline. `history`
- * stays the caller-owned signal; the component reads it inside onDraw, so a
- * publish from sendHr() repaints. The old fixed 55..105 BPM domain is kept
- * via min/max; the opaque surface fill was a visual-only detail. */
-var spark = lume.ui.shell.Sparkline({ width: 400, height: 96, data: history,
-  min: 55, max: 105, strokeWidth: 3 });
+var backdrop = View({ style: {
+  x: 0, y: 0, width: 480, height: 480, padding: 0, gap: 0,
+  background: 'bg', scroll: 'none'
+} });
 
-function card(label, value) {
-  return View({ style: {
-    width: '100%', height: 44, background: 'surface', borderRadius: 12,
+var safe = lume.ui.shell.SafeArea({ parent: backdrop, shape: 'round', size: 480, children: [] });
+
+/* Header + hero BPM readout (unique primary metric, global y: 76..122). */
+Text({ parent: safe, text: 'HR MONITOR',
+  style: { x: 10, y: 8, width: 160, height: 24, fontSize: 20, borderRadius: 0, color: 'text', scroll: 'none' } });
+Text({ parent: safe, text: function () { return note() === '' ? 'BLE PERIPHERAL' : note(); },
+  style: { x: 10, y: 32, width: 176, height: 18, fontSize: 14, borderRadius: 0, color: 'textDim', scroll: 'none' } });
+Text({ parent: safe, text: function () { return String(hrSig()) + ' BPM'; },
+  style: { x: 184, y: 6, width: 146, height: 38, fontSize: 32, borderRadius: 0, textAlign: 'right',
+    color: 'text', scroll: 'none' } });
+
+function card(label, value, x, y, w) {
+  return View({ parent: safe, style: {
+    x: x, y: y, width: w, height: 36, background: 'surface', borderRadius: 8,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 10, scroll: 'none' } }, [
-    Text({ text: label, style: { color: 'textDim', fontSize: 13 } }),
-    Text({ text: value, style: { color: 'text', fontSize: 15 } })
+    alignItems: 'center', padding: 8, gap: 4, scroll: 'none' } }, [
+    Text({ text: label, style: { color: 'textDim', fontSize: 14, borderRadius: 0, scroll: 'none' } }),
+    Text({ text: value, style: { color: 'text', fontSize: 14, borderRadius: 0, scroll: 'none' } })
   ]);
 }
 
-View({ style: {
-  width: '100%', height: '100%', background: 'bg', scroll: 'none',
-  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-  padding: 24, gap: 8
-} }, [
-  View({ style: { width: '100%', height: 58, display: 'flex', flexDirection: 'column', gap: 2 } }, [
-    Text({ text: 'HR monitor', style: { fontSize: 24, color: 'text' } }),
-    Text({ text: 'BLE peripheral / simulated telemetry', style: { fontSize: 13, color: 'textDim' } })
-  ]),
-  card('state', function () { return bleState(); }),
-  card('subscribed', function () { return subsSig() ? 'yes' : 'no'; }),
-  card('pending', function () { return String(pendingSig()); }),
-  card('mtu', function () { return String(mtuSig()); }),
-  card('HR', function () { return String(hrSig()) + ' BPM / tx ' + txCount(); }),
-  card('last cmd', function () { return lastCmd() + ' / rx ' + rxCount(); }),
-  card('note', function () { return note() === '' ? '-' : note(); }),
-  spark,
-  Button({ title: function () {
+/* 2x2 BLE status grid inside global [80..400] x [128..208]. */
+card('state', function () { return bleState(); }, 10, 58, 156);
+card('subscribed', function () { return subsSig() ? 'yes' : 'no'; }, 174, 58, 156);
+card('pending', function () { return String(pendingSig()); }, 10, 100, 156);
+card('mtu', function () { return String(mtuSig()); }, 174, 100, 156);
+
+Text({ parent: safe, text: function () {
+    return 'TX ' + txCount() + '  RX ' + rxCount() + '  CMD ' + lastCmd();
+  },
+  style: { x: 10, y: 142, width: 320, height: 18, fontSize: 14, borderRadius: 0, color: 'textDim', scroll: 'none' } });
+
+/* Sparkline panel (bg-2 card with explicitly positioned shell.Sparkline). */
+View({ parent: safe, style: {
+  x: 10, y: 164, width: 320, height: 96, padding: 0, gap: 0,
+  background: 'surface', borderRadius: 12, scroll: 'none'
+} });
+/* r194: the hand-rolled Canvas polyline is now shell.Sparkline. `history`
+ * stays the caller-owned signal; the component reads it inside onDraw, so a
+ * publish from sendHr() repaints. The old fixed 55..105 BPM domain is kept. */
+var spark = lume.ui.shell.Sparkline({ parent: safe, x: 18, y: 172, width: 304, height: 80,
+  data: history, min: 55, max: 105, strokeWidth: 3 });
+
+Button({ parent: safe, title: function () {
     return advertising() ? 'Stop adv' : 'Start adv';
-  }, onPress: toggleAdvert, style: { width: '100%', height: 56, background: 'accent', borderRadius: 999 } })
-]);
+  }, onPress: toggleAdvert, style: {
+    x: 40, y: 274, width: 260, height: 52, borderRadius: 999, fontSize: 16,
+    background: function () { return advertising() ? '#16202E' : '#117B69'; },
+    borderWidth: 2,
+    borderColor: function () { return advertising() ? '#FF6B79' : '#40D8B0'; },
+    scroll: 'none'
+  } });
 /* ---- r146: UI END ---- */

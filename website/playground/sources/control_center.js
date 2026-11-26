@@ -1,6 +1,9 @@
 /*
  * r159: control_center -- phone-style quick settings on the r141 shell layout
  * components. Pure app layer: no firmware / runtime / tools/lume / .d.ts change.
+ * r200: aligned to docs/DESIGN-TOKENS.md round-screen safe area ([75, 405]),
+ * removed redundant STATE ON/OFF copy, moved RESET into a dedicated weakened
+ * danger row below the cards, and unified TAP TO RAISE at the card footer.
  *
  * SHELL CONSUMPTION (first real consumer of the three zero-consumer components):
  *   - shell.SafeArea: round-screen safe container; size 480 -> 339x339 safe square.
@@ -30,9 +33,9 @@
  */
 import '../../runtime/shell.js';
 
-lume.theme.set({ colors: { bg:'#07111D', primary:'#07111D', surface:'#132435',
-  surfaceAlt:'#1C3449', text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0',
-  danger:'#FF6B79', success:'#40D8B0' }, radius: 12, spacing: 12 });
+lume.theme.set({ colors: { bg:'#0D1420', primary:'#0D1420', surface:'#16202E',
+  surfaceAlt:'#1F2C3D', text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0',
+  danger:'#FF6B79', success:'#40D8B0' }, radius: 12, spacing: 8 });
 
 var KV_WIFI = 'cc.wifi';   /* 7 chars */
 var KV_BLE = 'cc.ble';     /* 6 chars */
@@ -92,75 +95,89 @@ function resetAll() {
 }
 
 function accent() { return lume.theme.get().colors.accent || '#40D8B0'; }
-function surfaceAlt() { return lume.theme.get().colors.surfaceAlt || '#1C3449'; }
+function surfaceAlt() { return lume.theme.get().colors.surfaceAlt || '#1F2C3D'; }
 function flagLabel(v) { return v ? 'ON' : 'OFF'; }
 function flagStatus(prefix, v) { return prefix + ' ' + (v ? 'ON' : 'OFF'); }
 
-/* ---- UI: 339x339 safe square, 21 static nodes, zero Canvas ------------- */
+/* ---- UI: 339x339 safe square (content inset to global [80, 400]), 21 nodes ---- */
 var root = lume.ui.shell.SafeArea({ shape: 'round', size: 480, children: [] });
 
 Text({ parent: root, text: 'CONTROL CENTER',
-  style: { x: 0, y: 0, width: 339, height: 32, fontSize: 32,
-    color: '#F2F7FB', scroll: 'none' } });
+  style: { x: 10, y: 8, width: 320, height: 28, fontSize: 20, borderRadius: 0,
+    textAlign: 'center', color: '#F2F7FB', scroll: 'none' } });
 
-/* Card default padding 16 / gap 12 are tightened to fit four cards plus the
- * RESET key inside the 339 px safe square; the Card surface / radius / column
- * flex behaviour is inherited untouched. */
-var CARD_W = 163, CARD_H = 122;
+/* Four cards sit on an 8 px grid inside local [10..330] (global [80..400]).
+ * WiFi / Bluetooth toggles express state directly via button color + ON/OFF
+ * label (no redundant STATE line). RESET occupies a dedicated centered row
+ * below the cards with a weakened danger outline. */
+var CARD_W = 156, TOP_H = 104, BOT_H = 108;
 
 var wifiBtn = lume.ui.shell.IconButton({ title: function () { return flagLabel(wifi()); }, size: 56,
-  style: { background: function () { return wifi() ? accent() : surfaceAlt(); } },
+  style: { fontSize: 14,
+    background: function () { return wifi() ? '#117B69' : surfaceAlt(); },
+    borderWidth: 2,
+    borderColor: function () { return wifi() ? accent() : '#5C7794'; } },
   onPress: function () { toggleWifi(); } });
 var bleBtn = lume.ui.shell.IconButton({ title: function () { return flagLabel(ble()); }, size: 56,
-  style: { background: function () { return ble() ? accent() : surfaceAlt(); } },
+  style: { fontSize: 14,
+    background: function () { return ble() ? '#117B69' : surfaceAlt(); },
+    borderWidth: 2,
+    borderColor: function () { return ble() ? accent() : '#5C7794'; } },
   onPress: function () { toggleBle(); } });
 
 var wifiCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { toggleWifi(); },
-  style: { x: 0, y: 38, width: CARD_W, height: CARD_H, padding: 8, gap: 4 },
+  style: { x: 10, y: 44, width: CARD_W, height: TOP_H, padding: 8, gap: 8,
+    alignItems: 'center', justifyContent: 'space-between' },
   children: [
-    Text({ text: 'WIFI', style: { height: 18, fontSize: 14, color: '#9EB3C6', scroll: 'none' } }),
-    Text({ text: function () { return flagStatus('STATE', wifi()); },
-      style: { height: 24, fontSize: 20, color: '#F2F7FB', scroll: 'none' } }),
+    Text({ text: 'WIFI', style: { height: 18, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
     wifiBtn,
   ] });
 
 var bleCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { toggleBle(); },
-  style: { x: 176, y: 38, width: CARD_W, height: CARD_H, padding: 8, gap: 4 },
+  style: { x: 174, y: 44, width: CARD_W, height: TOP_H, padding: 8, gap: 8,
+    alignItems: 'center', justifyContent: 'space-between' },
   children: [
-    Text({ text: 'BLUETOOTH', style: { height: 18, fontSize: 14, color: '#9EB3C6', scroll: 'none' } }),
-    Text({ text: function () { return flagStatus('STATE', ble()); },
-      style: { height: 24, fontSize: 20, color: '#F2F7FB', scroll: 'none' } }),
+    Text({ text: 'BLUETOOTH', style: { height: 18, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
     bleBtn,
   ] });
 
 var volCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { cycleVol(); },
-  style: { x: 0, y: 166, width: CARD_W, height: CARD_H, padding: 8, gap: 4 },
+  style: { x: 10, y: 156, width: CARD_W, height: BOT_H, padding: 8, gap: 4,
+    justifyContent: 'space-between' },
   children: [
-    Text({ text: 'VOLUME', style: { height: 18, fontSize: 14, color: '#9EB3C6', scroll: 'none' } }),
-    Text({ text: 'TAP TO RAISE', style: { height: 24, fontSize: 20, color: '#F2F7FB', scroll: 'none' } }),
-    View({ style: { height: 8, width: function () { return Math.round(vol() * 12); },
-      borderRadius: 4, background: accent(), scroll: 'none' } }),
+    Text({ text: 'VOLUME', style: { height: 16, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
     Text({ text: function () { return 'VOL ' + vol() + '/10'; },
-      style: { height: 24, fontSize: 20, color: '#40D8B0', scroll: 'none' } }),
+      style: { height: 24, fontSize: 20, borderRadius: 0, color: '#F2F7FB', scroll: 'none' } }),
+    View({ style: { height: 8, width: 140, padding: 0, gap: 0,
+      borderRadius: 4, background: '#1F2C3D', scroll: 'none' } }, [
+      View({ style: { height: 8, width: function () { return Math.round(vol() * 14); },
+        padding: 0, gap: 0, borderRadius: 4, background: accent(), scroll: 'none' } }),
+    ]),
+    Text({ text: 'TAP TO RAISE', style: { height: 16, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
   ] });
 
 var brtCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { cycleBrt(); },
-  style: { x: 176, y: 166, width: CARD_W, height: CARD_H, padding: 8, gap: 4 },
+  style: { x: 174, y: 156, width: CARD_W, height: BOT_H, padding: 8, gap: 4,
+    justifyContent: 'space-between' },
   children: [
-    Text({ text: 'BRIGHTNESS', style: { height: 18, fontSize: 14, color: '#9EB3C6', scroll: 'none' } }),
-    Text({ text: 'TAP TO RAISE', style: { height: 24, fontSize: 20, color: '#F2F7FB', scroll: 'none' } }),
-    View({ style: { height: 8, width: function () { return brt() * 24; },
-      borderRadius: 4, background: accent(), scroll: 'none' } }),
+    Text({ text: 'BRIGHTNESS', style: { height: 16, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
     Text({ text: function () { return 'BRT ' + brt() + '/5'; },
-      style: { height: 24, fontSize: 20, color: '#40D8B0', scroll: 'none' } }),
+      style: { height: 24, fontSize: 20, borderRadius: 0, color: '#F2F7FB', scroll: 'none' } }),
+    View({ style: { height: 8, width: 140, padding: 0, gap: 0,
+      borderRadius: 4, background: '#1F2C3D', scroll: 'none' } }, [
+      View({ style: { height: 8, width: function () { return brt() * 28; },
+        padding: 0, gap: 0, borderRadius: 4, background: accent(), scroll: 'none' } }),
+    ]),
+    Text({ text: 'TAP TO RAISE', style: { height: 16, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
   ] });
 
 var resetBtn = lume.ui.shell.IconButton({ parent: root, title: 'RESET', size: 48,
-  style: { x: 145, y: 290, background: surfaceAlt() },
+  style: { x: 110, y: 280, width: 120, height: 48, borderRadius: 999,
+    fontSize: 14, background: '#16202E', borderWidth: 2, borderColor: '#FF6B79' },
   onPress: function () { resetAll(); } });
 
 /* Harness / simulator introspection surface (same convention as timer_kit). */

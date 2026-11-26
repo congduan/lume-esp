@@ -20,28 +20,32 @@
  * is the documented "clock not set" behaviour, not a bug; after SNTP the real
  * dayIndex takes over (it may switch the word within the same session). See
  * docs/KNOWN-SIMPLIFICATIONS.md. Touch feel stays deferred to board bring-up.
+ *
+ * r200: round-screen safe-area layout (docs/DESIGN-TOKENS.md): HUD, NEW key
+ * and 5x6 grid moved inside global [80, 400]; 400 px QWERTY shifted to y=240
+ * so all four tapered rows sit well inside the 466 px visible circle.
  */
 
 import '../../runtime/shell.js';
 
 /* ------------------- logic (host harness splits at GAME UI marker) ----- */
 
-/* One canvas 480x228 = 109,440 px; the native HUD band and the shell keyboard
- * are separate nodes. Full framebuffer budget is 480x480 = 230,400 px. */
-var IW = 480, CANVAS_H = 228, CANVAS_Y = 64;
+/* One canvas 320x128 = 40,960 px inside the round safe area; the native HUD
+ * band and shell keyboard are separate nodes. Budget <= 480x480 = 230,400 px. */
+var IW = 320, CANVAS_H = 128, CANVAS_Y = 110;
 var WORD_LEN = 5, ROWS = 6;
-var CELL = 30, GAP = 4, GX = 157, GY = 4;
+var CELL = 19, GAP = 2, GX = 108, GY = 2;
 var ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 var KV_BEST = 'hisc.wordle', KV_CUR = 'wordle.cur', KV_DAY = 'wr.day'; /* 11 / 10 / 7 chars */
 var MS_PER_DAY = 86400000;
 
 var COL = {
-  BG:'#0C0A10', EMPTY:'#191B24', EMPTY_B:'#333A48',
-  PEND:'#2E3440', PEND_B:'#8AA0BC',
+  BG:'#0D1420', EMPTY:'#16202E', EMPTY_B:'#5C7794',
+  PEND:'#1F2C3D', PEND_B:'#9EB3C6',
   GREEN:'#166B3E', GREEN_B:'#4FE08A',
   YELLOW:'#8A6A12', YELLOW_B:'#F2CE45',
   GRAY:'#30343E', GRAY_B:'#6E7585',
-  INK:'#F2F4F8'
+  INK:'#F2F7FB'
 };
 
 /* 5x7 hand-drawn glyphs, '#' = ink. Precomputed to run-length spans once. */
@@ -254,7 +258,7 @@ function wdLetterMarks(s) {
 /* ------------------------------ GAME UI ------------------------------ */
 
 var state = wdNewGame();
-var frame = signal(0), hudSig = signal(''), noteSig = signal('TYPE A WORD - ENTER TO SUBMIT');
+var frame = signal(0), hudSig = signal(''), noteSig = signal('TYPE 5 LETTERS');
 /* r153: translate the highest per-letter verdict into shell keyStates and
  * publish it as a signal; only keys whose tint changes rewrite their ATTR. */
 var keyStatesSig = signal({});
@@ -264,12 +268,12 @@ function refreshKeyStates() {
   keyStatesSig.set(out);
 }
 
-lume.theme.set({ colors: { bg:'#07111D', primary:'#07111D', surface:'#132435',
-  surfaceAlt:'#1C3449', text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0',
+lume.theme.set({ colors: { bg:'#0D1420', primary:'#0D1420', surface:'#16202E',
+  surfaceAlt:'#1F2C3D', text:'#F2F7FB', textDim:'#9EB3C6', accent:'#117B69',
   danger:'#FF6B79', success:'#40D8B0' }, radius: 12, spacing: 8 });
 
-var root = View({ style: { x: 0, y: 0, width: IW, height: 480,
-  background: '#0C0A10', scroll: 'none' } });
+var root = View({ style: { x: 0, y: 0, width: 480, height: 480,
+  padding: 0, gap: 0, background: '#0D1420', scroll: 'none' } });
 
 function logEvent(msg) { lume.log('WD ' + msg); }
 function box(x, y, w, h) { return { x: Math.floor(x), y: Math.floor(y), w: w, h: h }; }
@@ -307,18 +311,18 @@ function paintGrid(ctx, a) {
         bg = COL.PEND; edge = COL.PEND_B; ch = state.current.charAt(c);
       }
       drawRect(ctx, bg, box(cx, cy, CELL, CELL), a);
-      drawRect(ctx, edge, box(cx, cy, CELL, 2), a);
-      drawRect(ctx, edge, box(cx, cy, 2, CELL), a);
-      drawRect(ctx, edge, box(cx, cy + CELL - 2, CELL, 2), a);
-      drawRect(ctx, edge, box(cx + CELL - 2, cy, 2, CELL), a);
-      if (ch) drawGlyph(ctx, ch.toUpperCase(), cx + 7, cy + 4, 3, COL.INK, a);
+      drawRect(ctx, edge, box(cx, cy, CELL, 1), a);
+      drawRect(ctx, edge, box(cx, cy, 1, CELL), a);
+      drawRect(ctx, edge, box(cx, cy + CELL - 1, CELL, 1), a);
+      drawRect(ctx, edge, box(cx + CELL - 1, cy, 1, CELL), a);
+      if (ch) drawGlyph(ctx, ch.toUpperCase(), cx + 4, cy + 2, 2, COL.INK, a);
     }
   }
 }
 
 var painted = false;
 var canvas = Canvas({ parent: root, width: IW, height: CANVAS_H,
-  style: { position: 'absolute', x: 0, y: CANVAS_Y }, onDraw: function (ctx) {
+  style: { position: 'absolute', x: 80, y: CANVAS_Y, scroll: 'none' }, onDraw: function (ctx) {
     frame();
     var a = !painted ? box(0, 0, IW, CANVAS_H) :
       clip(box(0, GY - 2, IW, CANVAS_H - (GY - 2)));
@@ -329,50 +333,54 @@ var canvas = Canvas({ parent: root, width: IW, height: CANVAS_H,
     return [a];
   } });
 
-Text({ parent: root, text: 'WORDLE', style: { position: 'absolute', x: 8, y: 6,
-  fontSize: 14, color: '#F2F4F8' } });
+/* HUD inside round safe area (global x: 84..396, y: 75..110). */
 Text({ parent: root, text: function () { return hudSig(); },
-  style: { position: 'absolute', x: 8, y: 26, fontSize: 14, color: '#F2CE45' } });
+  style: { position: 'absolute', x: 84, y: 75, width: 248, height: 18,
+    fontSize: 14, borderRadius: 0, color: '#F2F7FB', scroll: 'none' } });
 Text({ parent: root, text: function () {
   if (state.status === 'win') return 'WIN IN ' + state.attempt + ' - TAP NEW';
-  if (state.status === 'lose') return 'LOST - ' + state.answer.toUpperCase() + ' - TAP NEW';
+  if (state.status === 'lose') return 'LOST - ' + state.answer.toUpperCase() + ' - NEW';
   return noteSig();
-}, style: { position: 'absolute', x: 8, y: 46, fontSize: 14, color: '#9FD8F0' } });
+}, style: { position: 'absolute', x: 84, y: 94, width: 248, height: 18,
+  fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } });
 
 function updateHud() {
-  hudSig.set('DAY #' + state.day + '  TRY ' + Math.min(state.attempt + 1, ROWS) + '/' + ROWS +
-    '  STREAK ' + state.streak + '  BEST ' + state.best);
+  hudSig.set('DAY #' + state.day + ' ' + Math.min(state.attempt + 1, ROWS) + '/' + ROWS +
+    ' S:' + state.streak + ' B:' + state.best);
 }
 function flush() { while (state.events.length) logEvent(state.events.shift()); updateHud(); }
 function newRound() {
   state = wdNewGame();
   refreshKeyStates();
-  noteSig.set('TYPE A WORD - ENTER TO SUBMIT');
+  noteSig.set('TYPE 5 LETTERS');
   painted = false;
   frame.set(frame() + 1);
   flush();
 }
 
-Button({ parent: root, title: 'NEW', style: { position: 'absolute', x: 402, y: 4,
-  width: 70, height: 32, borderRadius: 6, background: '#3A2A1F',
-  color: '#F2CE45', fontSize: 14 }, onPress: newRound });
+Button({ parent: root, title: 'NEW', style: { position: 'absolute', x: 336, y: 75,
+  width: 60, height: 48, borderRadius: 8, background: '#1F2C3D',
+  borderWidth: 1, borderColor: '#FFD78E', color: '#F2F7FB', fontSize: 14, scroll: 'none' },
+  onPress: newRound });
 
-/* r148 shell keyboard: keySize 40 (the touch floor), gap 0 so ten columns fit
- * 480 px, y 300 so the 168 px keyboard sits above the bottom bezel. */
+/* r148/r200 shell keyboard: 400 px width centered (x=40..440), keySize 40,
+ * gap 0, y=240. Natural QWERTY taper keeps all 4 rows >=28 px inside the 466 px
+ * circular bezel (row 4 spans x=120..360, y=364..404 <= 405). */
 var keyboard = lume.ui.shell.Keyboard({
-  parent: root, width: IW, keySize: 40, gap: 0, y: 300,
+  parent: root, width: 400, keySize: 40, gap: 0, x: 40, y: 240,
+  style: { background: '#0D1420', borderRadius: 12 },
   keyStates: keyStatesSig,
   onKey: function (ch) {
     var r = wdKey(state, ch);
-    if (r === 'full') noteSig.set('SLOT FULL - ENTER TO SUBMIT');
-    else if (r === 'space') noteSig.set('SPACE IGNORED - LETTERS ONLY');
-    else if (r === 'added') noteSig.set('TYPE A WORD - ENTER TO SUBMIT');
+    if (r === 'full') noteSig.set('SLOT FULL - TAP ENTER');
+    else if (r === 'space') noteSig.set('LETTERS ONLY');
+    else if (r === 'added') noteSig.set('TYPE 5 LETTERS');
     if (r !== 'done' && r !== 'ignore') frame.set(frame() + 1);
     flush();
   },
   onBackspace: function () {
     if (wdBackspace(state) === 'deleted') {
-      noteSig.set('TYPE A WORD - ENTER TO SUBMIT');
+      noteSig.set('TYPE 5 LETTERS');
       frame.set(frame() + 1);
     }
     flush();
@@ -385,7 +393,7 @@ var keyboard = lume.ui.shell.Keyboard({
     else if (r === 'duplicate') noteSig.set('ALREADY TRIED');
     else if (r === 'submitted') {
       noteSig.set(state.status === 'win' ? 'SOLVED - TAP NEW' :
-        state.status === 'lose' ? 'GAME OVER - TAP NEW' : 'TYPE A WORD - ENTER TO SUBMIT');
+        state.status === 'lose' ? 'GAME OVER - TAP NEW' : 'TYPE 5 LETTERS');
       frame.set(frame() + 1);
     }
     flush();
