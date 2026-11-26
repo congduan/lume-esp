@@ -1,0 +1,9 @@
+SLOW tests/alloc_inject.js secs=31 (pass)
+SLOW tests/compress.js secs=31 (pass)
+SLOW tests/crypto.js secs=32 (pass)
+SLOW tests/decode.js secs=30 (pass)
+SLOW tests/fft.js secs=33 (pass)
+SLOW tests/imgscale.js secs=34 (pass)
+TEST_FILES_RUN=110
+SLOW_PASS=6
+FULL_LOOP_EXIT=0
