@@ -184,9 +184,13 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   prevFrogRow=s.frog.row;prevHomes=s.homes.slice();painted=true;
   return valid.length?valid:undefined;
 }});
-Text({parent:root,text:'FROGGER',style:{position:'absolute',x:8,y:6,fontSize:14,color:'#E8E8F0'}});
-Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  LV '+levelSig();},style:{position:'absolute',x:92,y:6,fontSize:14,color:'#C8D6C0'}});
-Text({parent:root,text:function(){return noteSig()||('HOMES '+homeSig()+'/5   TAP AROUND FROG TO HOP');},style:{position:'absolute',x:8,y:24,fontSize:14,color:'#C8D6C0'}});
+/* r209: HUD/hint moved into the 480-round safe square ([84,396]) following the
+   r202 invaders pattern; the full-bleed canvas, grid (GX/GY/CELL) and hop
+   logic are unchanged. HUD draws after the canvas so text stays on top;
+   slight overdraw over lane sprites is the accepted r202 trade-off. */
+Text({parent:root,text:'FROGGER',style:{position:'absolute',x:84,y:80,fontSize:14,color:'#40D8B0',borderRadius:0}});
+Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  LV '+levelSig();},style:{position:'absolute',x:224,y:80,width:172,fontSize:14,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
+Text({parent:root,text:function(){return noteSig()||('HOMES '+homeSig()+'/5   TAP AROUND FROG TO HOP');},style:{position:'absolute',x:84,y:104,width:312,fontSize:13,color:'#FFD78E',borderRadius:0}});
 
 function updateSignals(){scoreSig.set(state.score);bestSig.set(gameSave('frogger',state.score,bestSig()));livesSig.set(state.lives);levelSig.set(state.level);homeSig.set(state.homes.filter(Boolean).length);}
 function start(){if(timer===null&&!state.over)timer=lume.system.setInterval(tick,period);}
