@@ -15,7 +15,7 @@ import { scan, renderScan } from './scan.js';
 import { context, renderContext } from './context.js';
 
 const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url), 'utf8'));
-const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --host <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume fput <local> <sd:/path|fs:/path> [--port <path>]\n  lume fls <sd:/dir|fs:/dir> [--port <path>]\n  lume fdel <sd:/path|fs:/path> [--port <path>]\n  lume repl [--port <path>] [--eval "expr"] [--host <ip> --token <t>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--visual] [--timeout <s>]\n  lume context [--json] [--skip-check] [--strict]
+const usage = `lume ${pkg.version}\nUsage:\n  lume create <name>\n  lume dev <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> [--port <path>] [--id <app-id>] [--ephemeral] [--source]\n  lume deploy <dir> --host <ip> --token <t> [--ota-port <n>] [--id <app-id>] [--source]\n  lume apps list|launch <id>|remove <id>|home [--port <path>]\n  lume fput <local> <sd:/path|fs:/path> [--port <path>]\n  lume fls <sd:/dir|fs:/dir> [--port <path>]\n  lume fdel <sd:/path|fs:/path> [--port <path>]\n  lume repl [--port <path>] [--eval "expr"] [--host <ip> --token <t>]\n  lume screenshot [file.bmp] [--port <path>] | --ota <ip> --token <t>\n  lume screenshot --scan <N> <app-dir> [--json]\n  lume check <app-dir> [--json] [--no-emu] [--visual] [--timeout <s>]\n  lume context [--json] [--skip-check] [--strict]\n  lume mcp   (MCP stdio server for MCP clients; see docs/r206-report.md)
   lume token <32hex> [--port <path>]
   lume --help | --version\n\nNode >=18. dev: p=pause, r=resume, b=back, Ctrl+C=exit.\n  check bundles the app, boots it under the esp32s3 emulator, verifies eval,\n  runs layout assertions (R1-R7) and prints a perf summary in one shot.\n  --json emits machine-readable output; exit 0 = all pass, 1 = any fail.\n  --visual captures browser frames at 1/3/6s and checks pixels/draws; it\n  skips the firmware emulator and needs Playwright.\n  --no-emu skips the emulator (fast bundle-only check); --timeout sets the\n  emulator step limit in seconds (default 120).
   context prints a machine-readable repo snapshot (version, repo, head,
@@ -29,7 +29,7 @@ function parse(args) {
   const [command, ...rest] = args;
   if (command === '--help' || command === '-h' || !command) return { command: 'help' };
   if (command === '--version' || command === '-v') return { command: 'version' };
-  if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check', 'context', 'token', 'repl', 'fput', 'fls', 'fdel'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
+  if (!['create', 'dev', 'deploy', 'apps', 'screenshot', 'check', 'context', 'mcp', 'token', 'repl', 'fput', 'fls', 'fdel'].includes(command)) throw new Error(`unknown command: ${command}\n${usage}`);
   let dir, port, ota, token, otaPort, id, sub, subArg, tokenHex, evalExpr = null, ephemeral = false, bytecode = true, devicePath;
   let json = false, noEmu = false, visual = false, timeout = 120, scanN = null, skipCheck = false, strict = false;
   for (let i = 0; i < rest.length; i++) {
@@ -435,6 +435,10 @@ try {
     const snapshot = await context({ skipCheck });
     process.stdout.write(renderContext(snapshot.data, { json }));
     process.exitCode = strict && snapshot.failed ? 1 : 0;
+  }
+  else if (command === 'mcp') {
+    const { run: runMcp } = await import('./mcp.js');
+    process.exitCode = await runMcp();
   } else {
     let source = await bundle(dir);
     const appId = id ?? defaultId(dir);
