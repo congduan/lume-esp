@@ -114,7 +114,9 @@ const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmwar
   'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
   // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
   'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
-  'firmware/sdkconfig.defaults'];
+  'firmware/sdkconfig.defaults',
+  // r199: lume context is pure tools/lume; no firmware/runtime change.
+  'tools/lume/context.js', 'tools/lume/context.test.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const allChanged = gitChanged([]);
 // r188 removes only the tracked, reproducible files enumerated in this audit.
@@ -780,6 +782,12 @@ const ALLOWED = [
   'tests/ipod_music.js',
   'website/playground/sources/controls_demo.js',
   'docs/r200-ui-quality-report.md',
+  // r199: lume context snapshot command (CLI + unit test + host harness),
+  // round report, and the already-allowlisted KNOWN-SIMPLIFICATIONS.md section.
+  'tools/lume/context.js',
+  'tools/lume/context.test.js',
+  'tests/lume_context.js',
+  'docs/r199-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -873,6 +881,8 @@ const checks = [
       // r198: Sparkline close-out evidence (host regression, CLI tests,
       // lume check, playground rebuild, website check, zero-diff, ASCII).
       f.startsWith('artifacts/r198/') ||
+      // r199: lume context snapshot command verification evidence.
+      f.startsWith('artifacts/r199/') ||
       // r200: round-screen UI quality before/after screenshots and verification logs.
       f.startsWith('artifacts/r200/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
