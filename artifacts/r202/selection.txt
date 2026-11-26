@@ -1,0 +1,66 @@
+r202 selection classification (survey method: /tmp/r202-survey.mjs = /tmp/r201-survey.mjs with root -> /tmp/lume-r202-wt; raw: artifacts/r202/survey-before.txt)
+Baseline HEAD: origin/main c3f8aa4 (r201 merged). Manifest apps: 73 (tools/playground/build.mjs unchanged).
+
+Static survey on current baseline (before edits): TOTAL 73 | OUT-OF-SAFE 51 | CLEAN 22.
+  Of the 51: 9 are r200-fixed (marked [r200] in survey.txt) and 42 are the remaining legacy pool.
+  The brief's "42" is confirmed by source evidence.
+  NOTE: the survey is a crude regex (y<75 or y>405); it has known false positives from
+  game-state coordinates (e.g. {x:12,y:12}) and full-screen overlay backgrounds (x:0,y:0),
+  and it does not check x<75. Every candidate below was verified by reading examples/<app>/app.js.
+
+SELECTED (15) - P0, ordered by severity (button unclickable > main value clipped > title clipped > decorative):
+
+  #  App             P0 defect verified in source (before)
+  1  minigolf        4 buttons (MODE/HIT/RESET/NEXT) at y=432..472, entirely below the round safe edge -> unclickable; HUD y=2/22/42 clipped
+  2  piano           3 octave buttons at y=404..452 -> unclickable; title y=16 + subtitle y=52 clipped; DEMO button only 44px high
+  3  invaders        HUD y=6/24 + hint y=462 clipped by the round edge (same P0 class as r200 skycombat); full-bleed canvas kept
+  4  lcd_dual        MODE affordance drawn at y=418 + tap zone e.y>=410 -> outside round; HUD y=6/24/46 clipped
+  5  flapdot         HUD y=4/6/30 clipped at the round top edge (same P0 class as r200 skycombat); full-bleed canvas kept
+  6  particles       STIR/MODE buttons at y=432..472 -> unclickable; HUD y=6/36/66 clipped
+  7  scroller        JUMP/DASH buttons at y=416..472 -> unclickable; HUD View x=4,y=4 + text y=8/28 corner-clipped
+  8  weather         refresh Button at x=368,y=26 (88x56) corner-clipped; header y=28/58; 3 forecast rows bottom y up to 444 clipped; x-gutter 24
+  9  games_breakout  same P0 class as r201 snake/2048: title y=22, score y=63, hint y=449 clipped; 384x350 board x=48..432 out of safe square
+ 10  raycast         HUD y=5, banner y=54, footer y=446 clipped; minimap x=8,y=48; all 3 Text nodes carry style.background -> renderer dark-text-on-dark (r201 trap)
+ 11  skyfire         HUD y=6 + footer y=448 clipped (same P0 class as r200 skycombat); full-bleed 480x480 game canvas kept
+ 12  abc123          mode text y=18 + hint text y=440 clipped (both key texts); glyph top y=64 slightly clipped; whole-screen tap target kept
+ 13  spectrum        title y=54, HUD y=102, footer y=417 clipped; canvas x=40..440 + x=40 texts out of safe; VU main value x=40
+ 14  keyboard_demo   input display x=24,y=48 (432x56) corner-clipped; result x=24,y=120; hint x=24,y=172 - all x<75; shell.Keyboard untouched
+ 15  golf            HUD y=4/6/28 (5 Text nodes) clipped at the round top edge; same P0 title/HUD class as r200 skycombat; full-bleed canvas kept
+
+REJECTED (27 of the 42 remaining) - reason per app or group:
+
+  watchface                         brief red line: canvas budget 228,544/230,400 px full; zero changes this round.
+  games_snake / games_2048 / games_tetris /
+  mario / pet / speedometer / compass /
+  sokoban / minesweeper / spectrum_music    r201 already fixed; survey hits are false positives from game-state coords
+                                           (e.g. {x:12,y:12}) or unchanged canvas geometry, not UI out-of-safe. No new P0 in source.
+  clock_round                       only a single small corner sync tag (x=8,y=8); decorative/mild, r201 already rejected.
+  dashboard_round                   canvas-only round dial; both Text nodes at y=126/222 are inside safe; no unreadable key text.
+  dashboard                         2x204px metric cards + title y=24 need a full column redesign to fit the 312px safe width;
+                                    a component/layout knife, not a mechanical P0 coordinate fix. Defer.
+  fishtank / plasma                 zero Text nodes (T0), pure decorative canvas; survey hit is canvas corner only.
+  aurora_clock                      time/date Text at y=79/209 are inside safe; only a small bottom tag y=423; mild/decorative.
+  memory                            DEAL button y=424 is unclickable, but the 4x4 grid is harness-frozen at CELL=88/GAP=8
+                                    (tests/memory.js asserts gridH<=424 against the button row); the 376px grid cannot fit the
+                                    330px safe square without changing a budget anchor. Dedicated knife. Defer.
+  wordring                          DEL/ENTER/NEW buttons at y=4 are P0, but the 5x6 grid (GY=56..328) and the letter
+                                    ring band (BAND_TOP..BAND_BOT ~340..420) leave no free 48px row inside [75,405];
+                                    relocating them requires a ring-band redesign (component knife). Defer.
+  color_demo                        title y=4 and bottom clusters are clipped, but shell.ColorPicker is 300x360 at (90,25)
+                                    and tests/color_demo.js taps it at absolute (330,135)/(240,225)/(335,359); moving it
+                                    breaks the harness anchor. Needs the compact-picker component knife. Defer.
+  frogger                           HUD-only corner clipping, same skycombat pattern already fixed by r200/r201;
+                                    duplicate fix pattern, lower severity than the 15 selected (no unclickable button/main value).
+  voice_assistant                   TALK button y=436 is P0, but its tap/longpress/pan share the root node with BLE/audio logic;
+                                    moving the button needs a gesture-hotzone redesign (component knife). Defer as one focused round.
+  mochi                            2 nav buttons y=410..468 are corner-clipped; needs the companion Text detail block re-laid out
+                                    together (dedicated tappable-card knife), not a mechanical coordinate shift.
+  sparkline_demo                    bottom hint rows y=444 only; mild/cosmetic clipping, no unreadable main value/button.
+  settings                          survey hits (x:0,y:0 x5) are full-screen overlay backgrounds, not out-of-safe UI; false positive.
+  files                             toolbar/preview titles are inside a flex column with GUTTER=24; preview title y=64/footer y=432
+                                    are on a secondary overlay page; needs flex-layout knife. Defer.
+  app_manager                       list rows use height=30 buttons and shell.List windowing; reliable fix needs the list-row component
+                                    (component knife), not a coordinate-only change. Defer.
+  counter (sentinel)                clean; used only as lume-check sentinel.
+
+Total selected 15 + rejected 27 = 42 remaining legacy hits.

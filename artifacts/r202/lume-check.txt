@@ -1,0 +1,144 @@
+=== minigolf ===
+lume check examples/minigolf
+
+[PASS] bundle   9827 bytes (23 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== piano ===
+lume check examples/piano
+
+[PASS] bundle   4490 bytes (20 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== invaders ===
+lume check examples/invaders
+
+[PASS] bundle   9033 bytes (32 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lcd_dual ===
+lume check examples/lcd_dual
+
+[PASS] bundle   7154 bytes (22 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== flapdot ===
+lume check examples/flapdot
+
+[PASS] bundle   5837 bytes (22 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== particles ===
+lume check examples/particles
+
+[PASS] bundle   5398 bytes (29 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== scroller ===
+lume check examples/scroller
+
+[PASS] bundle   7935 bytes (24 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== weather ===
+lume check examples/weather
+
+[PASS] bundle   8246 bytes (21 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== games_breakout ===
+lume check examples/games_breakout
+
+[PASS] bundle   4423 bytes (22 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== raycast ===
+lume check examples/raycast
+
+[PASS] bundle   7720 bytes (19 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== skyfire ===
+lume check examples/skyfire
+
+[PASS] bundle   7229 bytes (18 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== abc123 ===
+lume check examples/abc123
+
+[PASS] bundle   42627 bytes (24 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== spectrum ===
+lume check examples/spectrum
+
+[PASS] bundle   3907 bytes (20 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== keyboard_demo ===
+lume check examples/keyboard_demo
+
+[PASS] bundle   27864 bytes (32 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== golf ===
+lume check examples/golf
+
+[PASS] bundle   9233 bytes (23 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== counter ===
+lume check examples/counter
+
+[PASS] bundle   2160 bytes (24 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
