@@ -2572,3 +2572,13 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **不是防护真空**：check #18 `fwChanged ⊆ R166_ALLOWED` + mutation 原样保留；仓库共 22 份 harness 携带 git diff 守卫，其中 14 份用 `gitChanged(['firmware/','runtime/','tools/lume/'])` 且全部以 `R166_ALLOWED` 过滤；byte-identical 与 ASCII 纪律 check 及其 mutation 均未动。
 - **未加替代加固**：评估过「报告与 artifacts 最近 N 轮成对出现」的结构性断言，因会引入滑动窗口 / 逐轮枚举（新的逐轮维护项）与历史合法无 artifacts 轮的豁免而放弃；git 历史 + 逐轮报告已是权威来源。
 - **验证口径**：`node tests/ota_consumers.js` 18 check + 18 mutation 全 PASS / EXIT=0；全量 `tests/*.js` 110 个 harness 0 FAIL（`FULL_LOOP_EXIT=0`，6 个 C 编译 harness 需 150s/测试预算，20s 预算下 `ec=124` 属验证参数而非 flake）；`npm test --prefix tools/lume` 57 pass / 0 fail。未跑 `idf.py build`、未 push、未做真机验收，板级指标继续 deferred。
+
+## r206 / `lume mcp` MCP stdio server（AX 基建线第三刀 r173；主控接管实施）
+
+- **引擎额度尽，主控接管**：派发引擎（hy4flash-free）429 限流（重置点 2026-11-27 18:54 +0800），run.log 4 秒即退出零产出；按红线纪律不切模型，主控直接实施。这是 2026-11-27 凌晨轮的降级路径实录。
+- **零 SDK 自实现协议层**：不引入 `@modelcontextprotocol/sdk`，ndjson JSON-RPC 2.0 用 Node 内置（readline + JSON）实现。已知取舍：只支持 stdio 传输（HTTP/SSE 无消费方）；`initialize` 的 protocolVersion 协商是「已知集内回 client、未知回服务端最新」的保守实现，未逐条对齐 MCP 规范全部边界（如elicitation、sampling、roots）——server 只承诺 tools 面。
+- **stdout 铁律**：协议消息只走 stdout，诊断走 stderr（`[lume-mcp]` 前缀）。违者毁所有 MCP client，mcp.test.js 以真进程协议测试间接锁定。
+- **混合实现策略**：重 CLI 面（check / help / deploy）spawn `node lume.js` 子进程复用 exit code + `--json` 契约；纯数据面（bundle / manifest / context）进程内 import。`lume_check` 的 `noEmu` 默认 **true**（agent 场景要秒级反馈；要 emu 全跑显式传 false）——这是工具默认值与 CLI 默认值（CLI 不传即跑 emu）刻意分叉的点。
+- **deploy 无板语义**：无 `port` 且无 `host+token` 时立即回 `isError` + 指引文本，绝不挂起等待串口超时；「真机推包验收」本身仍是 deferred，不声称验证。
+- **14 份 R166 镜像守卫预加**（r199 同款超出简报列举面的机械同步）：`ota_consumers` / `wordle` / `control_center` / `archive_view` / `crypto_check` / `img_view` / `vec_demo` / `hr_monitor` / `keyboard_states` / `launcher_grid` / `reboot_consumers` / `timer_kit` / `sntp_consumers2` / `weather_sntp` 各自复制的 `R166_ALLOWED` 机械追加 `tools/lume/mcp.js` + `mcp.test.js` 两路径，不重钉 BASE、不改谓词。新文件 untracked 时 `git diff` 不可见、提交即转红，必须预加——这是仓库惯例的第二次实战复用，若再现第三次应评估把 14 份镜像收敛成共享模块（会改动 14 份 harness 结构，超出本轮授权面）。
+- **验证口径**：`npm test --prefix tools/lume` 71 pass / 0 fail（57→71，+14 条 spawn 真进程协议测试）；14 份围栏 harness 逐一单跑 OK；全量 `tests/*.js` 0 FAIL；`lume check examples/counter --no-emu` PASS；ASCII 0 命中；`git diff c74fc80 -- firmware/ runtime/ examples/ website/` 0 字节，未跑 `idf.py build`。MCP tools/list 六工具 schema、握手、错误码、生存性均为宿主进程级证据，**未接真实 MCP client（Claude Desktop 等）人工联调**——协议实现按规范保守实现，若有 client 端兼容性问题属后续修复面。
