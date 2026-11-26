@@ -266,7 +266,11 @@ one 300x360 Canvas with a 24-segment HSV hue ring, saturation/value strips,
 preview, and SAVE/CLOSE touch targets. `ColorPickerProps` accepts
 `parent?: lume.ui.Node`, integer `x?`/`y?` (default horizontally centered,
 `y=8`), `initialHex?: string`, `onChange?(hex: string): void`,
-`onConfirm?(hex: string): void`, and `onDismiss?(): void`. The initial color
+`onConfirm?(hex: string): void`, and `onDismiss?(): void`. Optional
+`compact?: boolean` (default false) scales the Canvas to 210x252 and divides
+the inverse hit-test coordinates by 0.7, so the picker fits a round safe area;
+the default 300x360 geometry, draw stream and touch anchors are unchanged.
+The initial color
 must be `#RRGGBB`; an invalid value logs a warning and falls back to
 `#40D8B0`. Drag-time `onChange` is limited to at most once per 100 ms; a
 pending final value is flushed on release or SAVE. SAVE calls `onConfirm`

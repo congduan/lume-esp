@@ -1,0 +1,40 @@
+=== lume check examples/controls_demo --no-emu ===
+lume check examples/controls_demo
+
+[PASS] bundle   30022 bytes (25 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+exit=0
+=== lume check examples/wordle --no-emu ===
+lume check examples/wordle
+
+[PASS] bundle   38775 bytes (30 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+exit=0
+=== lume check examples/color_demo --no-emu ===
+lume check examples/color_demo
+
+[PASS] bundle   29469 bytes (25 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+exit=0
+=== lume check examples/counter --no-emu ===
+lume check examples/counter
+
+[PASS] bundle   2160 bytes (17 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+exit=0

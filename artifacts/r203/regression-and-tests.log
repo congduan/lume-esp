@@ -1,0 +1,28 @@
+=== FULL HARNESS REGRESSION ===
+done
+=== npm test --prefix tools/lume ===
+  ---
+  duration_ms: 17.715569
+  type: 'test'
+  ...
+# Subtest: scan() fails cleanly when a frame is missing
+ok 56 - scan() fails cleanly when a frame is missing
+  ---
+  duration_ms: 0.822334
+  type: 'test'
+  ...
+# Subtest: CLI: --scan with no spec fails with exit 1 and parseable JSON
+ok 57 - CLI: --scan with no spec fails with exit 1 and parseable JSON
+  ---
+  duration_ms: 134.016116
+  type: 'test'
+  ...
+1..57
+# tests 57
+# suites 0
+# pass 57
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2498.607969

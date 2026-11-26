@@ -1,0 +1,35 @@
+=== playground build idempotency ===
+IDEMPOTENT: git status identical after second build
+=== playground verify ===
+  crypto_check: 18 nodes
+  archive_view: 14 nodes
+  img_view: 10 nodes
+  vec_demo: 9 nodes
+  settings: 122 nodes
+  hr_monitor: 21 nodes
+  keyboard_demo: 39 nodes
+  wordle: 39 nodes
+  controls_demo: 15 nodes
+  timer_kit: 38 nodes
+  control_center: 21 nodes
+  launcher_grid: 36 nodes
+  minigolf: 10 nodes
+  color_demo: 8 nodes
+  mochi: 7 nodes
+  shell_demo: 14 nodes
+  sparkline_demo: 12 nodes
+  app_manager: 6 nodes
+  imu_poll: 20 nodes
+PASS all examples load without runtime errors
+=== check_website.py ===
+examples.html gallery up to date (73 cards)
+HTML pages: 7; internal href/src and anchors checked
+API: 162 catalog entries, 162 type declarations, 34 function namespaces
+API missing: none
+API invented: none
+API duplicates: none
+API signatures not found in lume.d.ts: none
+=== gen_api_docs.py --check ===
+api.html is up to date with lume.d.ts (162 entries)
+=== ASCII discipline ===
+ASCII_LINE_COUNT=0
