@@ -1,0 +1,20 @@
+--- post-commit sweep BEFORE mirrored allowlist sync (13 FAIL) ---
+FAIL tests/archive_view.js
+FAIL tests/control_center.js
+FAIL tests/crypto_check.js
+FAIL tests/hr_monitor.js
+FAIL tests/img_view.js
+FAIL tests/keyboard_states.js
+FAIL tests/launcher_grid.js
+FAIL tests/reboot_consumers.js
+FAIL tests/sntp_consumers2.js
+FAIL tests/timer_kit.js
+FAIL tests/vec_demo.js
+FAIL tests/weather_sntp.js
+FAIL tests/wordle.js
+--- root cause (example) ---
+AssertionError [ERR_ASSERTION]: FAIL wordle: firmware/ runtime/ tools/lume/ identical to 3514c76
+actual: [ 'tools/lume/context.js', 'tools/lume/context.test.js' ], expected: []
+--- fix: mechanically append 2 paths to 13 mirrored R166_ALLOWED arrays; BASE/assertions untouched ---
+--- sweep AFTER sync ---
+DONE

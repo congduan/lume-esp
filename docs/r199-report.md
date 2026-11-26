@@ -31,7 +31,7 @@
 | # | 命令 | 结果 | 证据 |
 |---|---|---|---|
 | 1 | `node tests/lume_context.js` | 11 组 PASS，末行 `ALL LUME CONTEXT HARNESS CASES PASSED`，EXIT 0 | `harness.txt` |
-| 2 | `for t in tests/*.js; do node $t \|\| echo FAIL $t; done` | `DONE`，0 FAIL（基线 107 + 新增 1 = 108） | `tests-all.txt` |
+| 2 | `for t in tests/*.js; do node $t \|\| echo FAIL $t; done` | `DONE`，0 FAIL（基线 107 + 新增 1 = 108）；提交后同步 13 个镜像守卫后复跑仍 `DONE` / 0 FAIL | `tests-all.txt`、`post-commit-guard.txt` |
 | 3 | `npm test --prefix tools/lume` | `1..57 / pass 57 / fail 0`，EXIT 0（基线 52 + 新增 5） | `cli-tests.txt` |
 | 4 | `node tools/lume/lume.js context` | 完整 2 空格缩进 JSON；`version 0.1.0`、`head 83fd750`、`branch r199-lume-context`、`check.run true / ok true`、`errors {}` | `context-default.txt` |
 | 5 | `node tools/lume/lume.js context --json \| python3 -m json.tool >/dev/null` | `VALID_JSON` | `json-valid.txt` |
@@ -43,9 +43,15 @@
 
 快照关键字段实证：`manifest=73`、`examples=82`、`unregistered=9`、`harnesses=108`、`api=29`、`env.node=v22.23.1`、`env.platform=linux`、`env.qjsc=true`、`env.esp32sim=false`。
 
-## 5. 范围与取舍
+## 5. 提交后新发现：镜像零 diff 守卫同步（超出简报列举改动面，已如实登记）
+
+三个提交落地后复跑全量回归，出现 **13 个 FAIL**（`archive_view` / `control_center` / `crypto_check` / `hr_monitor` / `img_view` / `keyboard_states` / `launcher_grid` / `reboot_consumers` / `sntp_consumers2` / `timer_kit` / `vec_demo` / `weather_sntp` / `wordle`）。根因不是功能缺陷：这 13 个 harness 各自复制了一份 `R166_ALLOWED`，并用 `git diff --name-only <BASE> HEAD -- firmware/ runtime/ tools/lume/` 做零 diff 守卫；提交前新增文件是 untracked，`git diff` 看不见，提交后 `tools/lume/context.js` 与 `tools/lume/context.test.js` 进入 HEAD diff，守卫如实转红。
+
+处理：对这 13 份 harness **仅机械追加两个路径**到各自的 `R166_ALLOWED`，不重钉 BASE、不改任何断言谓词、不动 `firmware/` / `runtime/` / `examples/`。这是仓库既有惯例（r172/r195/r196 等同类型同步），也是让提交后的全量回归保持 0 FAIL 的必要维护。简报红线列举的测试改动面只含 `tests/ota_consumers.js`，本轮因该实证被迫扩面，在此明确登记；证据 `artifacts/r199/post-commit-guard.txt`。
+
+## 6. 范围与取舍
 
 - 不改 `firmware/`、`runtime/`、`examples/`、vendored；不重建 `website/playground` 生成物；不 push；未跑 codex review（主控轮负责）。
 - `--strict` 只把**块级 error** 视为失败；哨兵 `check.ok=false`（检查正常跑完但结果不绿）不触发 exit 1。本轮未人为注入失败路径测试 strict 的 exit 1，登记 KNOWN-SIMPLIFICATIONS。
 - 无真机验收；AX 快照仅描述宿主可实证的仓库事实，`env` 中的 `qjsc` / `esp32sim` 只表示宿主文件存在性，不代表设备侧能力。
-- commits 拆 feat / test / docs 三段，git 身份沿用 repo 级 `congduan` 配置。
+- commits 拆 feat / test / docs 三段（另加提交后守卫同步的 test 段与登记该偏差的 docs 段），git 身份沿用 repo 级 `congduan` 配置。
