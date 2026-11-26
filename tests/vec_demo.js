@@ -20,6 +20,8 @@ const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmwar
   'firmware/sdkconfig.defaults',
   // r199: lume context is pure CLI tooling; no firmware/runtime change.
   'tools/lume/context.js', 'tools/lume/context.test.js',
+  // r206: lume mcp MCP server is pure tools/lume; no firmware/runtime change.
+  'tools/lume/mcp.js', 'tools/lume/mcp.test.js',
 ];
 /* r137 host harness for examples/vec_demo (pure app + real host math stub).
  * Standalone CommonJS:  node tests/vec_demo.js

@@ -117,7 +117,9 @@ const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmwar
   'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
   'firmware/sdkconfig.defaults',
   // r199: lume context is pure tools/lume; no firmware/runtime change.
-  'tools/lume/context.js', 'tools/lume/context.test.js'];
+  'tools/lume/context.js', 'tools/lume/context.test.js',
+  // r206: lume mcp MCP server is pure tools/lume; no firmware/runtime change.
+  'tools/lume/mcp.js', 'tools/lume/mcp.test.js'];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
 // --- checks -----------------------------------------------------------------
