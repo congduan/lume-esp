@@ -27,19 +27,85 @@ import { manifestApps } from '../playground/build.mjs';
 const ROOT = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const PAGE_JS = join(ROOT, 'website/playground/page.js');
 
-/** Extract the `examples` array literal from page.js and evaluate it safely. */
+/** Extract the `examples` array literal from page.js and parse it as data.
+ *  r208 (Codex review fix #4): the previous implementation evaluated the
+ *  captured text with `Function(...)`, which executes arbitrary expressions
+ *  embedded in page.js. The array is specified as plain 6-string tuples, so we
+ *  parse it structurally: every element must be `[ 'str','str',... ]` with
+ *  single-quoted simple strings, separated by commas/newlines. Anything else
+ *  (an identifier, a call, a template literal) is a pointed parse error, not
+ *  executable code. Duplicate or unmatched entries are rejected so page shape
+ *  drift cannot silently change the catalog. */
 export async function parsePageExamples(pageSource = null) {
   const src = pageSource ?? await readFile(PAGE_JS, 'utf8');
   const m = src.match(/const examples = \[([\s\S]*?)\n  \];/);
   if (!m) throw new Error('lume examples: cannot locate "const examples = [...]" in website/playground/page.js - page.js shape changed, update the parser');
-  // The array literal contains only string/array literals; evaluate in a
-  // sandboxed Function with no access to page scope.
-  const entries = Function(`"use strict"; return [${m[1]}];`)();
-  if (!Array.isArray(entries) || !entries.length)
+  const entries = parseStringTuples(m[1]);
+  if (!entries.length)
     throw new Error('lume examples: page.js examples array is empty or malformed');
+  const seen = new Set();
   for (const e of entries) {
-    if (!Array.isArray(e) || e.length !== 6 || e.some(v => typeof v !== 'string'))
-      throw new Error('lume examples: page.js entry is not a 6-string tuple: ' + JSON.stringify(e));
+    if (seen.has(e[0]))
+      throw new Error('lume examples: duplicate page.js entry: ' + e[0]);
+    seen.add(e[0]);
+  }
+  return entries;
+}
+
+/* Strict tokenizer for the tuple-array body: only the grammar
+ *   tuple   := '[' STRING (',' STRING)* ']'
+ *   body    := (tuple | STRING-within-first-slot)*  separated by ',' / newlines
+ * is accepted. Strings are single-quoted with backslash escapes; every other
+ * token (identifiers, calls, backticks) throws. Returns string[] entries
+ * (one per tuple). */
+function parseStringTuples(body) {
+  const entries = [];
+  let i = 0;
+  const n = body.length;
+  const str = () => {
+    /* at body[i] === "'" */
+    let out = '';
+    i++;
+    for (;;) {
+      if (i >= n) throw new Error('lume examples: unterminated string in page.js examples array');
+      const c = body[i];
+      if (c === '\\') {
+        const next = body[i + 1];
+        if (next === undefined) throw new Error('lume examples: bad escape at end of page.js examples array');
+        out += next === 'n' ? '\n' : next === 't' ? '\t' : next;
+        i += 2;
+        continue;
+      }
+      if (c === "'") { i++; return out; }
+      out += c;
+      i++;
+    }
+  };
+  for (;;) {
+    while (i < n && /[\s,]/.test(body[i])) i++;
+    if (i >= n) break;
+    if (body[i] !== '[') {
+      throw new Error('lume examples: page.js entry is not a 6-string tuple (expected "[", got ' +
+        JSON.stringify(body.slice(i, i + 20)) + ') - non-literal content is not allowed');
+    }
+    i++;
+    const fields = [];
+    for (;;) {
+      while (i < n && /\s/.test(body[i])) i++;
+      if (i >= n) throw new Error('lume examples: unterminated tuple in page.js examples array');
+      if (body[i] === ']') { i++; break; }
+      if (body[i] !== "'") {
+        throw new Error('lume examples: page.js entry is not a 6-string tuple (non-string field) - non-literal content is not allowed');
+      }
+      fields.push(str());
+      while (i < n && /\s/.test(body[i])) i++;
+      if (body[i] === ',') { i++; continue; }
+      if (body[i] === ']') { i++; break; }
+      throw new Error('lume examples: malformed tuple separator in page.js examples array');
+    }
+    if (fields.length !== 6 || fields.some(v => typeof v !== 'string'))
+      throw new Error('lume examples: page.js entry is not a 6-string tuple: ' + JSON.stringify(fields));
+    entries.push(fields);
   }
   return entries;
 }
