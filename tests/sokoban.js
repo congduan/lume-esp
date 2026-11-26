@@ -20,7 +20,8 @@ function logic() {
   return ctx;
 }
 const s = logic();
-const ROOT = 1, CELL = 32, GX = 32, GY = 80;
+// r201 layout cascade: sokoban board origin/pitch trimmed into the round safe square.
+const ROOT = 1, CELL = 22, GX = 97, GY = 128;
 const DIRS = [[0,-1],[1,0],[0,1],[-1,0]];
 function plain(v) { return JSON.parse(JSON.stringify(v)); } // vm-realm arrays -> host realm
 

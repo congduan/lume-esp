@@ -788,6 +788,29 @@ const ALLOWED = [
   'tools/lume/context.test.js',
   'tests/lume_context.js',
   'docs/r199-report.md',
+  // r201: round-screen safe-area batch 2. Pure app/test/playground/docs slice;
+  // BASE and all assertion predicates are untouched (no re-pin, no widening).
+  'examples/games_2048/app.js', 'examples/games_snake/app.js',
+  'examples/games_tetris/app.js', 'examples/mario/app.js',
+  'examples/game_of_life/app.js', 'examples/pet/app.js',
+  'examples/speedometer/app.js', 'examples/compass/app.js',
+  'examples/sokoban/app.js', 'examples/minesweeper/app.js',
+  'examples/spectrum_music/app.js', 'examples/music_player/app.js',
+  'tests/sokoban.js',
+  'website/playground/sources.js',
+  'website/playground/apps/games_2048.js', 'website/playground/apps/games_snake.js',
+  'website/playground/apps/games_tetris.js', 'website/playground/apps/mario.js',
+  'website/playground/apps/game_of_life.js', 'website/playground/apps/pet.js',
+  'website/playground/apps/speedometer.js', 'website/playground/apps/compass.js',
+  'website/playground/apps/sokoban.js', 'website/playground/apps/minesweeper.js',
+  'website/playground/apps/spectrum_music.js', 'website/playground/apps/music_player.js',
+  'website/playground/sources/games_2048.js', 'website/playground/sources/games_snake.js',
+  'website/playground/sources/games_tetris.js', 'website/playground/sources/mario.js',
+  'website/playground/sources/game_of_life.js', 'website/playground/sources/pet.js',
+  'website/playground/sources/speedometer.js', 'website/playground/sources/compass.js',
+  'website/playground/sources/sokoban.js', 'website/playground/sources/minesweeper.js',
+  'website/playground/sources/spectrum_music.js', 'website/playground/sources/music_player.js',
+  'docs/r201-round-ui-batch2-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -885,6 +908,8 @@ const checks = [
       f.startsWith('artifacts/r199/') ||
       // r200: round-screen UI quality before/after screenshots and verification logs.
       f.startsWith('artifacts/r200/') ||
+      // r201: round-screen safe-area batch 2 before/after shots and verification logs.
+      f.startsWith('artifacts/r201/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 
