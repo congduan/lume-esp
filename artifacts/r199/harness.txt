@@ -1,0 +1,13 @@
+PASS context --json exits 0 with parseable stdout and all required fields
+PASS mutation: deleting head turns the must-have-fields check red
+PASS --json is a single compact line with absolute repo and semver version
+PASS manifest mirrors build.mjs with at least 73 apps
+PASS unregistered is the source-grounded examples-minus-manifest set (mutation -> FAIL)
+INFO unregistered count: 9 (brief expected 0; source is truth)
+PASS head matches independent git rev-parse (83fd750)
+PASS harnesses include this harness; api lists real lume namespaces
+PASS sentinel check green, no block errors, env.node is a v-prefixed version
+PASS --skip-check records run:false + skipReason and keeps every other block
+PASS --strict exits 0 when every block is green
+ALL LUME CONTEXT HARNESS CASES PASSED
+EXIT=0

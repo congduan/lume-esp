@@ -1,0 +1,357 @@
+
+> @lume/cli@0.1.0 test
+> node --test
+
+TAP version 13
+# Subtest: context emits every required field with --skip-check
+ok 1 - context emits every required field with --skip-check
+  ---
+  duration_ms: 32.515555
+  type: 'test'
+  ...
+# Subtest: unregistered is the source-grounded examples-minus-manifest set
+ok 2 - unregistered is the source-grounded examples-minus-manifest set
+  ---
+  duration_ms: 15.166046
+  type: 'test'
+  ...
+# Subtest: renderContext: compact one-line JSON and pretty JSON agree
+ok 3 - renderContext: compact one-line JSON and pretty JSON agree
+  ---
+  duration_ms: 13.476944
+  type: 'test'
+  ...
+# Subtest: a failing git block is isolated from the rest of the snapshot
+ok 4 - a failing git block is isolated from the rest of the snapshot
+  ---
+  duration_ms: 6.016282
+  type: 'test'
+  ...
+# Subtest: a failing sentinel check is recorded without dropping other fields
+ok 5 - a failing sentinel check is recorded without dropping other fields
+  ---
+  duration_ms: 15.387526
+  type: 'test'
+  ...
+# Subtest: file chunk command keeps raw bytes and app frames unchanged
+ok 6 - file chunk command keeps raw bytes and app frames unchanged
+  ---
+  duration_ms: 4.434005
+  type: 'test'
+  ...
+# Subtest: frame bytes match firmware wire layout and CRC-32
+ok 7 - frame bytes match firmware wire layout and CRC-32
+  ---
+  duration_ms: 0.767612
+  type: 'test'
+  ...
+# Subtest: r115 REPL frame uses LUMR magic with the same 12-byte header and CRC
+ok 8 - r115 REPL frame uses LUMR magic with the same 12-byte header and CRC
+  ---
+  duration_ms: 0.712158
+  type: 'test'
+  ...
+# Subtest: parseFrame rejects bad magic, zero/overlong length and bad CRC
+ok 9 - parseFrame rejects bad magic, zero/overlong length and bad CRC
+  ---
+  duration_ms: 0.566132
+  type: 'test'
+  ...
+# Subtest: clampReplOutput bounds to REPL_OUT_CAP and flags truncation
+ok 10 - clampReplOutput bounds to REPL_OUT_CAP and flags truncation
+  ---
+  duration_ms: 0.642924
+  type: 'test'
+  ...
+# Subtest: decodeReplLines joins R64 base64 and ignores device log noise
+ok 11 - decodeReplLines joins R64 base64 and ignores device log noise
+  ---
+  duration_ms: 0.516115
+  type: 'test'
+  ...
+# Subtest: r43b bytecode frame uses LUMB magic with the same 12-byte header and CRC
+ok 12 - r43b bytecode frame uses LUMB magic with the same 12-byte header and CRC
+  ---
+  duration_ms: 0.542754
+  type: 'test'
+  ...
+# Subtest: r43b LQBC payload header round-trips a raw qjsc blob
+ok 13 - r43b LQBC payload header round-trips a raw qjsc blob
+  ---
+  duration_ms: 0.860335
+  type: 'test'
+  ...
+# Subtest: engine version is read from the vendored QuickJS-NG sources
+ok 14 - engine version is read from the vendored QuickJS-NG sources
+  ---
+  duration_ms: 39.717352
+  type: 'test'
+  ...
+# Subtest: bytecode deploy rejects a mismatched device engine version locally
+ok 15 - bytecode deploy rejects a mismatched device engine version locally
+  ---
+  duration_ms: 1.995867
+  type: 'test'
+  ...
+# Subtest: binary STORE keeps bytecode bytes intact (no UTF-8 round trip)
+ok 16 - binary STORE keeps bytecode bytes intact (no UTF-8 round trip)
+  ---
+  duration_ms: 0.660617
+  type: 'test'
+  ...
+# Subtest: qjsc compiles an esbuild bundle to loadable bytecode
+ok 17 - qjsc compiles an esbuild bundle to loadable bytecode
+  ---
+  duration_ms: 62.543221
+  type: 'test'
+  ...
+# Subtest: create writes complete offline scaffold and bundles with prelude globals
+ok 18 - create writes complete offline scaffold and bundles with prelude globals
+  ---
+  duration_ms: 23.122474
+  type: 'test'
+  ...
+# Subtest: esbuild iife runs in global-script host; esm syntax does not
+ok 19 - esbuild iife runs in global-script host; esm syntax does not
+  ---
+  duration_ms: 10.898413
+  type: 'test'
+  ...
+# Subtest: bundle rejects oversize output before opening serial
+ok 20 - bundle rejects oversize output before opening serial
+  ---
+  duration_ms: 19.405489
+  type: 'test'
+  ...
+# Subtest: OTA auth vector: HMAC-SHA256(token, challenge ASCII) + default port
+ok 21 - OTA auth vector: HMAC-SHA256(token, challenge ASCII) + default port
+  ---
+  duration_ms: 2.087665
+  type: 'test'
+  ...
+# Subtest: OTA push reuses the USB frame() bytes (right-token path)
+ok 22 - OTA push reuses the USB frame() bytes (right-token path)
+  ---
+  duration_ms: 19.435207
+  type: 'test'
+  ...
+# Subtest: OTA wrong token is rejected (AUTH ERR path)
+ok 23 - OTA wrong token is rejected (AUTH ERR path)
+  ---
+  duration_ms: 5.486974
+  type: 'test'
+  ...
+# Subtest: OTA screenshot round trips the RGB565 frame past log noise
+ok 24 - OTA screenshot round trips the RGB565 frame past log noise
+  ---
+  duration_ms: 46.743604
+  type: 'test'
+  ...
+# Subtest: decodeShot rejects a corrupted payload and a CRC mismatch
+ok 25 - decodeShot rejects a corrupted payload and a CRC mismatch
+  ---
+  duration_ms: 0.863645
+  type: 'test'
+  ...
+# Subtest: bmpFromRgb565 produces a valid bottom-up 24-bit BMP
+ok 26 - bmpFromRgb565 produces a valid bottom-up 24-bit BMP
+  ---
+  duration_ms: 0.713145
+  type: 'test'
+  ...
+# Subtest: OTA RELOAD ERR is surfaced as a push error
+ok 27 - OTA RELOAD ERR is surfaced as a push error
+  ---
+  duration_ms: 5.90119
+  type: 'test'
+  ...
+# Subtest: command frame uses LUMC magic, same header and CRC as app frames
+ok 28 - command frame uses LUMC magic, same header and CRC as app frames
+  ---
+  duration_ms: 0.532102
+  type: 'test'
+  ...
+# Subtest: STORE payload layout: verb, id, one-line meta, then raw source
+ok 29 - STORE payload layout: verb, id, one-line meta, then raw source
+  ---
+  duration_ms: 0.469028
+  type: 'test'
+  ...
+# Subtest: r106 FWTAG is an id-less LUMC verb and parses the device reply
+ok 30 - r106 FWTAG is an id-less LUMC verb and parses the device reply
+  ---
+  duration_ms: 0.76986
+  type: 'test'
+  ...
+# Subtest: OTA command round trip: STORE + LIST + LAUNCH ACKs
+ok 31 - OTA command round trip: STORE + LIST + LAUNCH ACKs
+  ---
+  duration_ms: 7.248158
+  type: 'test'
+  ...
+# Subtest: CLI apps usage, sub-command and id validation
+ok 32 - CLI apps usage, sub-command and id validation
+  ---
+  duration_ms: 688.645109
+  type: 'test'
+  ...
+# Subtest: OTA no-board path: connection refused is a clear error
+ok 33 - OTA no-board path: connection refused is a clear error
+  ---
+  duration_ms: 2.09489
+  type: 'test'
+  ...
+# Subtest: CLI --host usage, arg validation and no-board error output
+ok 34 - CLI --host usage, arg validation and no-board error output
+  ---
+  duration_ms: 431.609283
+  type: 'test'
+  ...
+# Subtest: check: d.ts catalog + Levenshtein nearest-neighbour spelling hint
+ok 35 - check: d.ts catalog + Levenshtein nearest-neighbour spelling hint
+  ---
+  duration_ms: 1.517229
+  type: 'test'
+  ...
+# Subtest: check: parseEvalError reads the real JS exception/stack log format
+ok 36 - check: parseEvalError reads the real JS exception/stack log format
+  ---
+  duration_ms: 0.63955
+  type: 'test'
+  ...
+# Subtest: check: layout R1-R7 aggregation and best-effort perf parsing
+ok 37 - check: layout R1-R7 aggregation and best-effort perf parsing
+  ---
+  duration_ms: 0.959392
+  type: 'test'
+  ...
+# Subtest: check: success path aggregates bundle/eval/layout/perf
+ok 38 - check: success path aggregates bundle/eval/layout/perf
+  ---
+  duration_ms: 1.000171
+  type: 'test'
+  ...
+# Subtest: check: layout FAIL is aggregated and fails the run
+ok 39 - check: layout FAIL is aggregated and fails the run
+  ---
+  duration_ms: 0.44536
+  type: 'test'
+  ...
+# Subtest: check: bundle failure fails fast with esbuild file:line:column
+ok 40 - check: bundle failure fails fast with esbuild file:line:column
+  ---
+  duration_ms: 0.539492
+  type: 'test'
+  ...
+# Subtest: check: eval failure carries raw message, original line and a spelling hint
+ok 41 - check: eval failure carries raw message, original line and a spelling hint
+  ---
+  duration_ms: 9.577683
+  type: 'test'
+  ...
+# Subtest: check: emulator timeout is a FAIL with a serial-log tail
+ok 42 - check: emulator timeout is a FAIL with a serial-log tail
+  ---
+  duration_ms: 0.517489
+  type: 'test'
+  ...
+# Subtest: check: --no-emu skips emu/layout/perf but keeps the bundle check
+ok 43 - check: --no-emu skips emu/layout/perf but keeps the bundle check
+  ---
+  duration_ms: 0.240938
+  type: 'test'
+  ...
+# Subtest: check: visual mode aggregates browser result and skips emulator
+ok 44 - check: visual mode aggregates browser result and skips emulator
+  ---
+  duration_ms: 0.33885
+  type: 'test'
+  ...
+# Subtest: check: CLI --json is valid JSON and exit codes are 0 (pass) / 1 (fail)
+ok 45 - check: CLI --json is valid JSON and exit codes are 0 (pass) / 1 (fail)
+  ---
+  duration_ms: 409.575148
+  type: 'test'
+  ...
+# Subtest: CLI token command validates the 32-hex token before opening a port
+ok 46 - CLI token command validates the 32-hex token before opening a port
+  ---
+  duration_ms: 250.307597
+  type: 'test'
+  ...
+# Subtest: decodeRgb round-trips a synthetic RGB8 PNG
+ok 47 - decodeRgb round-trips a synthetic RGB8 PNG
+  ---
+  duration_ms: 3.930599
+  type: 'test'
+  ...
+# Subtest: decodeRgb rejects a non-PNG buffer
+ok 48 - decodeRgb rejects a non-PNG buffer
+  ---
+  duration_ms: 0.536089
+  type: 'test'
+  ...
+# Subtest: inkCount counts only pixels differing from the background
+ok 49 - inkCount counts only pixels differing from the background
+  ---
+  duration_ms: 0.423298
+  type: 'test'
+  ...
+# Subtest: changedPixels returns count and half-open bbox
+ok 50 - changedPixels returns count and half-open bbox
+  ---
+  duration_ms: 0.542371
+  type: 'test'
+  ...
+# Subtest: analyzeFrames passes when layers persist and changes stay in bounds
+ok 51 - analyzeFrames passes when layers persist and changes stay in bounds
+  ---
+  duration_ms: 0.869976
+  type: 'test'
+  ...
+# Subtest: analyzeFrames detects a missing expected layer
+ok 52 - analyzeFrames detects a missing expected layer
+  ---
+  duration_ms: 0.549775
+  type: 'test'
+  ...
+# Subtest: analyzeFrames detects changed pixels intruding into a static layer
+ok 53 - analyzeFrames detects changed pixels intruding into a static layer
+  ---
+  duration_ms: 1.514381
+  type: 'test'
+  ...
+# Subtest: renderScan emits PASS/FAIL text and parseable JSON
+ok 54 - renderScan emits PASS/FAIL text and parseable JSON
+  ---
+  duration_ms: 0.41607
+  type: 'test'
+  ...
+# Subtest: scan() engine runs assertions over injected captured frames
+ok 55 - scan() engine runs assertions over injected captured frames
+  ---
+  duration_ms: 16.286691
+  type: 'test'
+  ...
+# Subtest: scan() fails cleanly when a frame is missing
+ok 56 - scan() fails cleanly when a frame is missing
+  ---
+  duration_ms: 0.874494
+  type: 'test'
+  ...
+# Subtest: CLI: --scan with no spec fails with exit 1 and parseable JSON
+ok 57 - CLI: --scan with no spec fails with exit 1 and parseable JSON
+  ---
+  duration_ms: 131.330923
+  type: 'test'
+  ...
+1..57
+# tests 57
+# suites 0
+# pass 57
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2697.817425
+EXIT=0

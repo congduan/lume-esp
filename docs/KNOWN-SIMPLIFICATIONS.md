@@ -2554,3 +2554,13 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **ASCII 口径**：`grep -Pn '[^\x00-\x7F]'` 三个 app.js 命中 `dashboard/app.js:1` 的 1 个存量 em dash（`—`，基线注释）；相对 origin/main 的新增字节中非 ASCII 为 0（三 app diff 为 0 字节），符合「新增字节 0 非 ASCII」。存量字符不属本轮改动面，不修改。
 - **验证（全部宿主机）**：全量 `tests/*.js` 107 个 harness 0 FAIL（`artifacts/r198/tests-all.txt`）；`npm test --prefix tools/lume` 52 pass / 0 fail / 0 skip；三个 app `lume check --no-emu` 均 `RESULT: PASS`；playground 重建 73 apps 二次幂等；`check_website.py` 四类 none / API 162 entries；`git diff origin/main -- firmware/` 0 字节，未跑 `idf.py build`。
 - **无真机验收与范围**：证据为宿主 harness / esbuild bundle / 浏览器 stub；Sparkline 在 AMOLED 上的配色对比度、点标尺寸、面积带、刷新时序与触控手感全部 deferred 到 board bring-up，**不声称真机验证**。本轮 firmware/ runtime/ vendored（QuickJS/LVGL）/ tools/lume/ 零改动；未 push。
+
+## r199 / `lume context` 机器可读仓库快照（AX 基建线第二刀）
+
+- **基线口径纠偏**：简报写 `origin/main 4906a0f`（2026-11-26），实证当前分支 HEAD 与 `origin/main` 均为 `83fd750`（r200-ui-quality 合并，2026-11-26 18:24 +0800）；`4906a0f` 是更早已存在的 r198 docs 提交。按「不一致以源码为准」从 `83fd750` 开工；`git diff origin/main -- firmware/ runtime/ examples/` 0 字节。
+- **`unregistered` 期望值与源码不符**：简报期望 `[]`（examples ⊇ manifest），实证 manifest 73 个、`examples/` 82 个目录，差集 9 个（`ai_chat` / `device_monitor` / `games` / `launcher` / `net_check` / `nettest_open` / `typewriter_min` / `web_config` / `ws_echo`），反向差集为空。本轮**如实输出 9 个**，不改 playground manifest、不重建生成物（超授权面）；`tests/lume_context.js` 的断言改为「独立解析 build.mjs 的 apps 数组 + readdir examples 后集合相等」，并对该谓词做 mutation 自证明（追加 `bogus` 必须转红）。若后续要把差集清成 0，应另立刀补注册这 9 个 app。
+- **`api` 命名空间口径**：`runtime/types/lume.d.ts` 有 29 处 `declare namespace lume...`（含裸 `lume`），另有缩进的嵌套 `namespace Toast` / `ws` / `http` / `web` / `mp3`。按简报示例只取 `declare namespace` 列表（29 项），嵌套子命名空间不列入；若下游需要全限定嵌套清单，属后续口径变更而非本轮缺陷。
+- **`--strict` 失败路径未注入**：正常全绿路径已断言 exit 0；未人为制造块级 error 去验证 CLI 完整进程路径的 exit 1（`git` / `check` 的失败隔离由 `context.test.js` 通过 `deps` 注入在单元层证明）。哨兵 `check.ok=false`（检查跑完但结果不绿）**不**触发 `--strict` exit 1 —— strict 只认 `errors` 非空，这是刻意收窄的语义，避免把「仓库事实快照」与「CI 门禁」混为一谈。
+- **哨兵检查是复用而非子进程**：直接 import `tools/lume/check.js` 的 `check()`（`{noEmu:true, timeout:60}`），不 spawn 子 CLI、不解析打印文本；外层 60s `Promise.race` 超时记 `timeout:true` + `errors.check` 后照常输出。`--skip-check` 时只记 `{run:false, skipReason:'user requested'}`，不写 error。
+- **env 只是宿主文件事实**：`qjsc=true` 仅表示 `tools/lume/bin/qjsc` 软链存在；esp32sim 真实路径 `tools/emu/.cache/bin/esp32sim` 在本 worktree 不存在，故 `esp32sim=false`。两者都不代表设备侧能力或真机可用性，板级验收 deferred。
+- **验证与范围**：全量 `tests/*.js` 108 个 harness 0 FAIL；`npm test --prefix tools/lume` 57 pass / 0 fail；`check_website.py` 四类 none；`git diff origin/main -- firmware/ runtime/ examples/` 0 字节，未跑 `idf.py build`、未重建 playground；新增三份源码文件非 ASCII 0 命中。未 push；commits 拆 feat / test / docs；未跑 codex review（主控轮负责）。
