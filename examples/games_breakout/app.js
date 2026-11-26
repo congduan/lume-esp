@@ -33,20 +33,17 @@ function breakoutStep(s){
 function breakoutState(){return {x:BW/2,y:BH-52,vx:2.5,vy:-3,paddle:BW/2-36,bricks:breakoutBricks(),remaining:36,lastBrick:-1,score:0,lives:3,level:1,over:false};}
 /* GAME UI */
 var state=breakoutState(),frame=signal(0),brickRevision=signal(0),score=signal(0),best=signal(gameHigh('brkout')),lives=signal(3),level=signal(1),note=signal('DRAG PADDLE');
-var root=View({style:{width:480,height:480,background:'#0A1428',scroll:'none'}});
-Text({parent:root,text:'BREAKOUT',style:{position:'absolute',x:72,y:22,fontSize:32,color:'#ECF2FF'}});
-Text({parent:root,text:function(){return 'S '+score()+'  BEST '+best()+'  L '+lives()+'  LV '+level();},style:{position:'absolute',x:72,y:63,fontSize:20,color:'#ECF2FF'}});
-Text({parent:root,text:function(){return note();},style:{position:'absolute',x:155,y:449,color:'#ECF2FF'}});
+var root=View({style:{width:480,height:480,background:'#0D1420',scroll:'none'}});
 var oldBall=null,oldPaddle=null;
 var scene=Canvas({parent:root,width:BW,height:BH,style:{position:'absolute',x:48,y:91},onDraw:function(ctx){
  frame();
  var areas=[];
  /* Transparent Canvas is unsupported: repaint only entity trails with board color.
     Bricks live in Views above this layer, so cleared trails do not erase them. */
- if(oldBall){ctx.fillColor('#0A1428');ctx.fillRect(oldBall.x-7,oldBall.y-7,14,14);areas.push({x:Math.max(0,oldBall.x-7),y:Math.max(0,oldBall.y-7),w:14,h:14});}
- if(oldPaddle!==null){ctx.fillColor('#0A1428');ctx.fillRect(oldPaddle,BH-26,72,12);areas.push({x:oldPaddle,y:BH-26,w:72,h:12});}
- ctx.fillColor('#FFFFFF');ctx.fillRect(Math.round(state.x)-5,Math.round(state.y)-5,10,10);areas.push({x:Math.round(state.x)-5,y:Math.round(state.y)-5,w:10,h:10});
- ctx.fillColor('#5EE3C0');ctx.fillRect(Math.round(state.paddle),BH-25,72,10);areas.push({x:Math.round(state.paddle),y:BH-25,w:72,h:10});
+ if(oldBall){ctx.fillColor('#0D1420');ctx.fillRect(oldBall.x-7,oldBall.y-7,14,14);areas.push({x:Math.max(0,oldBall.x-7),y:Math.max(0,oldBall.y-7),w:14,h:14});}
+ if(oldPaddle!==null){ctx.fillColor('#0D1420');ctx.fillRect(oldPaddle,BH-26,72,12);areas.push({x:oldPaddle,y:BH-26,w:72,h:12});}
+ ctx.fillColor('#F2F7FB');ctx.fillRect(Math.round(state.x)-5,Math.round(state.y)-5,10,10);areas.push({x:Math.round(state.x)-5,y:Math.round(state.y)-5,w:10,h:10});
+ ctx.fillColor('#40D8B0');ctx.fillRect(Math.round(state.paddle),BH-25,72,10);areas.push({x:Math.round(state.paddle),y:BH-25,w:72,h:10});
  oldBall={x:Math.round(state.x),y:Math.round(state.y)};oldPaddle=Math.round(state.paddle);
  if(areas.length===2)return;
  var clipped=[];for(var i=0;i<areas.length;i++){
@@ -56,7 +53,12 @@ var scene=Canvas({parent:root,width:BW,height:BH,style:{position:'absolute',x:48
  return clipped.length?clipped:undefined;
 }});
 var bricks=[];
-for(var i=0;i<36;i++)(function(n){var b=state.bricks[n];bricks.push(View({parent:root,style:{position:'absolute',x:48+b.x,y:91+b.y,width:b.w,height:b.h,borderRadius:3,background:function(){brickRevision();return state.bricks[n].alive?['#F17A8A','#F8AB70','#F9D66C','#65D6B5','#63B8F0','#A48FE8'][Math.floor(n/6)]:'#0A1428';}}}));})(i);
+for(var i=0;i<36;i++)(function(n){var b=state.bricks[n];bricks.push(View({parent:root,style:{position:'absolute',x:48+b.x,y:91+b.y,width:b.w,height:b.h,borderRadius:3,background:function(){brickRevision();return state.bricks[n].alive?['#FF6B79','#FFD78E','#FFD78E','#40D8B0','#5B9DF7','#A48FE8'][Math.floor(n/6)]:'#0D1420';}}}));})(i);
+/* r202: HUD created after the canvas/bricks so it stays on top; text nodes
+   live in [84,396] inside the round safe square. Game physics unchanged. */
+Text({parent:root,text:'BREAKOUT',style:{position:'absolute',x:84,y:76,fontSize:24,color:'#F2F7FB',borderRadius:0}});
+Text({parent:root,text:function(){return 'S '+score()+'  BEST '+best()+'  L '+lives()+'  LV '+level();},style:{position:'absolute',x:84,y:356,width:312,fontSize:15,color:'#9EB3C6',textAlign:'center',borderRadius:0}});
+Text({parent:root,text:function(){return note();},style:{position:'absolute',x:84,y:382,width:312,fontSize:14,color:'#40D8B0',textAlign:'center',borderRadius:0}});
 var timer=null,lastDx=0;
 function tick(){var event=breakoutStep(state);frame.set(frame()+1);
  if(event==='brick'||event==='level'){score.set(state.score);best.set(gameSave('brkout',state.score,best()));if(event==='brick')lume.setAttr(bricks[state.lastBrick],5,0);else for(var j=0;j<bricks.length;j++)lume.setAttr(bricks[j],5,1);gameBeep(620,20);}

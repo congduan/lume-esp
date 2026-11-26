@@ -179,14 +179,6 @@ var state = scrollState();
 var frame = signal(0), best = gameHigh('scroller');
 var noteSig = signal('TAP JUMP   SWIPE DOWN DASH   HOLD TO RUN');
 var root = View({ style: { width: 480, height: 480, background: ROOT_BG, scroll: 'none' } });
-View({ parent: root, style: { position: 'absolute', x: 4, y: 4, width: 472, height: 40, background: HUD_BG, scroll: 'none' } });
-View({ parent: root, style: { position: 'absolute', x: 420, y: 12, width: 40, height: 24, background: '#40D8B0', scroll: 'none' } });
-Text({ parent: root, text: 'SCROLLER', style: { position: 'absolute', x: 12, y: 8, fontSize: 14, color: '#FFFFFF' } });
-Text({ parent: root, text: function () {
-  frame(); return 'X ' + Math.floor(state.cam) + ' C ' + state.coins + ' HI ' + best + ' L ' + state.lives;
-}, style: { position: 'absolute', x: 290, y: 8, fontSize: 14, color: '#9BD8FF' } });
-Text({ parent: root, text: function () { return noteSig(); }, style: { position: 'absolute', x: 12, y: 28, fontSize: 14, color: '#9BD8FF' } });
-
 var painted = false, spriteUploaded = false;
 var prevHero = null, prevSpikes = [], prevCoins = [];
 var dirtyPixels = 0, dirtyMax = 0, dirtySum = 0, dirtyNLast = 0;
@@ -273,6 +265,17 @@ var canvas = Canvas({ parent: root, width: MW, height: MH, style: { position: 'a
   return valid.length ? valid : [box(HERO_SX, s.heroY, 1, 1)];
 } });
 
+/* r202: HUD band, accent marker and texts are created AFTER the canvas so
+   they stay on top (playground layering), all inside [84,396]. World/physics
+   constants are unchanged. */
+View({ parent: root, style: { position: 'absolute', x: 84, y: 76, width: 312, height: 56, background: HUD_BG, borderRadius: 8, scroll: 'none' } });
+View({ parent: root, style: { position: 'absolute', x: 356, y: 84, width: 32, height: 24, background: '#40D8B0', borderRadius: 4, scroll: 'none' } });
+Text({ parent: root, text: 'SCROLLER', style: { position: 'absolute', x: 92, y: 80, fontSize: 14, color: '#F2F7FB', borderRadius: 0 } });
+Text({ parent: root, text: function () {
+  frame(); return 'X ' + Math.floor(state.cam) + ' C ' + state.coins + ' HI ' + best + ' L ' + state.lives;
+}, style: { position: 'absolute', x: 180, y: 80, width: 160, fontSize: 14, color: '#9EB3C6', textAlign: 'right', borderRadius: 0 } });
+Text({ parent: root, text: function () { return noteSig(); }, style: { position: 'absolute', x: 92, y: 104, width: 292, fontSize: 12, color: '#FFD78E', borderRadius: 0 } });
+
 function logEvent(s) { lume.log('SCROLLER ' + s); }
 var pending = { jump: false, dash: false };
 function doJump() { pending.jump = true; }
@@ -298,11 +301,11 @@ function tick() {
   }
 }
 function control(x, title, act) {
-  return Button({ parent: root, title: title, style: { position: 'absolute', x: x, y: 416,
-    width: 232, height: 56, background: '#305978', color: '#FFFFFF', fontSize: 20 }, onPress: act });
+  return Button({ parent: root, title: title, style: { position: 'absolute', x: x, y: 348,
+    width: 148, height: 48, background: '#1F2C3D', color: '#F2F7FB', borderRadius: 8, fontSize: 14 }, onPress: act });
 }
-control(4, 'JUMP / TAP', function () { if (state.over) { scrollRestart(state); noteSig.set('TAP JUMP   SWIPE DOWN DASH   HOLD TO RUN'); } else doJump(); });
-control(244, 'DASH / SWIPE', function () { if (state.over) { scrollRestart(state); noteSig.set('TAP JUMP   SWIPE DOWN DASH   HOLD TO RUN'); } else doDash(); });
+control(84, 'JUMP / TAP', function () { if (state.over) { scrollRestart(state); noteSig.set('TAP JUMP   SWIPE DOWN DASH   HOLD TO RUN'); } else doJump(); });
+control(240, 'DASH / SWIPE', function () { if (state.over) { scrollRestart(state); noteSig.set('TAP JUMP   SWIPE DOWN DASH   HOLD TO RUN'); } else doDash(); });
 lume.gesture.on(root, 'tap', function () {
   if (state.over) { scrollRestart(state); noteSig.set('TAP JUMP   SWIPE DOWN DASH   HOLD TO RUN'); frame.set(frame() + 1); }
   else doJump();

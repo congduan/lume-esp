@@ -91,7 +91,10 @@ var octaveIndex = 1;            /* default two-octave keyboard C4..B5 */
 var lastMidi = -1, lastNote = signal('--');
 var octaveLabel = signal(OCTAVE_LABELS[octaveIndex]);
 var highlightMidi = -1, highlightRev = signal(0), hlTimer = null;
-var KEY_Y = 160, WHITE_H = 230, BLACK_W = 22, BLACK_H = 140;
+/* r202: keyboard raised/shortened so the whole control stack fits the
+   480-round safe square ([84,396]); white-key x-pitch (KB_X/WHITE_W) is a
+   harness anchor and is unchanged. */
+var KEY_Y = 150, WHITE_H = 190, BLACK_W = 22, BLACK_H = 116;
 var WHITE_OFF = '#F2F7FB', WHITE_ON = '#FFD166';
 var BLACK_OFF = '#1B2436', BLACK_ON = '#40D8B0';
 /* Text nodes have no color attribute in this prelude (always white), so key
@@ -182,24 +185,22 @@ for (var bi = 0; bi < BLACK_KEYS.length; bi++) {
 var kbLayer = View({ parent: root, style: {
   position: 'absolute', x: KB_X, y: KEY_Y, width: WHITE_W * WHITE_OFFSETS.length, height: WHITE_H
 } });
-Text({ parent: root, text: 'TOUCH PIANO', style: { position: 'absolute', x: 130, y: 16, width: 220, height: 32,
-  fontSize: 26, color: '#E9F5FF', textAlign: 'center' } });
+Text({ parent: root, text: 'TOUCH PIANO', style: { position: 'absolute', x: 130, y: 76, width: 220, height: 28,
+  fontSize: 24, color: '#F2F7FB', textAlign: 'center', borderRadius: 0 } });
 Text({ parent: root, text: function () { return 'OCT ' + octaveLabel() + '   LAST ' + lastNote(); },
-  style: { position: 'absolute', x: 24, y: 52, width: 432, height: 26,
-    fontSize: 18, color: '#FFD166', textAlign: 'center' } });
+  style: { position: 'absolute', x: 84, y: 108, width: 312, height: 24,
+    fontSize: 16, color: '#FFD78E', textAlign: 'center', borderRadius: 0 } });
+/* r202: all four controls share one 48px-tall safe row (y=348..396). */
 Button({ parent: root, title: 'DEMO', onPress: demoStart,
-  style: { position: 'absolute', x: 180, y: 88, width: 120, height: 44,
-    background: '#25334F', borderRadius: 10, fontSize: 18, color: '#E9F5FF' } });
+  style: { position: 'absolute', x: 84, y: 348, width: 72, height: 48,
+    background: '#1F2C3D', borderRadius: 8, fontSize: 14, color: '#F2F7FB' } });
 for (var oi = 0; oi < OCTAVE_LABELS.length; oi++) {
   (function (k) {
     Button({ parent: root, title: OCTAVE_LABELS[k], onPress: function () { setOctave(k); },
-      style: { position: 'absolute', x: 30 + k * 145, y: 404, width: 135, height: 48,
-        background: '#25334F', borderRadius: 10, fontSize: 18, color: '#E9F5FF' } });
+      style: { position: 'absolute', x: 164 + k * 80, y: 348, width: 72, height: 48,
+        background: '#1F2C3D', borderRadius: 8, fontSize: 14, color: '#F2F7FB' } });
   })(oi);
 }
-Text({ parent: root, text: 'TAP a key  |  SLIDE across keys to glissando',
-  style: { position: 'absolute', x: 12, y: 458, width: 456, height: 20,
-    fontSize: 12, color: '#9FB0CC', textAlign: 'center' } });
 
 /* Tap and pan are both registered on the transparent hit layer above keys. */
 var panLast = -1;

@@ -360,26 +360,31 @@ var scene = Canvas({ parent: ROOT, width: CW, height: CH, style: { position: 'ab
     return [a];
   } });
 
-Text({ parent: ROOT, text: 'MINI GOLF', style: { position: 'absolute', x: 8, y: 2,
-  width: 196, height: 20, fontSize: 14, color: FAIR_EDGE } });
+/* r202: HUD and all four controls moved into the 480-round safe square
+   ([84,396]); course geometry, swing physics and KV keys are untouched. */
+Text({ parent: ROOT, text: 'MINI GOLF', style: { position: 'absolute', x: 84, y: 80,
+  width: 150, height: 20, fontSize: 14, color: '#40D8B0', borderRadius: 0 } });
 Text({ parent: ROOT, text: function () { return 'L' + levelSig() + '/' + LEVELS.length + '  ' + state.level.name + '  ' + modeSig(); },
-  style: { position: 'absolute', x: 210, y: 2, width: 262, height: 20, fontSize: 14, textAlign: 'right' } });
+  style: { position: 'absolute', x: 250, y: 80, width: 146, height: 20, fontSize: 14,
+    color: '#9EB3C6', textAlign: 'right', borderRadius: 0 } });
 Text({ parent: ROOT, text: function () { return 'STROKES ' + strokeSig() + '  PAR ' + parSig() + '  BEST ' + bestSig(); },
-  style: { position: 'absolute', x: 8, y: 22, width: 464, height: 20, fontSize: 14 } });
+  style: { position: 'absolute', x: 84, y: 104, width: 312, height: 20, fontSize: 14,
+    color: '#F2F7FB', borderRadius: 0 } });
 Text({ parent: ROOT, text: function () { return msgSig() || 'DRAG TO AIM THEN HIT  /  SWING IN IMU MODE'; },
-  style: { position: 'absolute', x: 8, y: 42, width: 464, height: 20, fontSize: 14, color: HOLE_RING } });
+  style: { position: 'absolute', x: 84, y: 126, width: 312, height: 20, fontSize: 13,
+    color: '#FFD78E', borderRadius: 0 } });
 
 function button(title, x, w, fn) {
   return Button({ parent: ROOT, title: title, onPress: fn,
-    style: { position: 'absolute', x: x, y: 432, width: w, height: 40,
-      background: '#1B3A30', borderRadius: 8, fontSize: 14 } });
+    style: { position: 'absolute', x: x, y: 348, width: w, height: 48,
+      background: '#1F2C3D', borderRadius: 8, fontSize: 14, color: '#F2F7FB' } });
 }
-button('MODE', 12, 108, function () { setMode(mode === 'demo' ? 'imu' : 'demo'); });
-button('HIT', 128, 108, fireDemo);
-button('RESET', 244, 108, function () {
+button('MODE', 84, 72, function () { setMode(mode === 'demo' ? 'imu' : 'demo'); });
+button('HIT', 164, 72, fireDemo);
+button('RESET', 244, 72, function () {
   state = golfState(state.li, state.total); issue('HOLE RESET'); drainEvents(); publish();
 });
-button('NEXT', 360, 108, function () {
+button('NEXT', 324, 72, function () {
   var nx = golfAdvance(state);
   if (nx) { state = nx; painted = false; issue('HOLE ' + state.li + ' READY'); drainEvents(); publish(); }
   else issue('COURSE COMPLETE');

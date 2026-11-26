@@ -301,43 +301,47 @@ function heroIcon(ctx) {
 
 /* 卡片内的两行文字也各自定位：真机上 flex column 的行高会与模拟器不同，
  * 靠布局自动排会让两行叠在一起。 */
+/* r202: three 96px cards laid out on a 312px safe row. The caller-supplied x
+   offsets are legacy; map them to the compact row without touching callers. */
+var metricLeft = 84;
 function metricCard(label, valueOf, x) {
+  var left = metricLeft; metricLeft += 108;
   return View({
     style: {
-      position: 'absolute', x: x, y: 256, width: 136, height: 60,
+      position: 'absolute', x: left, y: 260, width: 96, height: 52,
       background: 'surfaceAlt', borderRadius: 12, scroll: 'none',
     },
   }, [
     Text({
       text: label,
-      style: { position: 'absolute', x: 0, y: 8, width: 136, height: 18, fontSize: 14, color: 'textDim', textAlign: 'center' },
+      style: { position: 'absolute', x: 0, y: 6, width: 96, height: 16, fontSize: 12, color: 'textDim', textAlign: 'center', borderRadius: 0 },
     }),
     Text({
       text: valueOf,
-      style: { position: 'absolute', x: 0, y: 28, width: 136, height: 26, fontSize: 20, color: 'text', textAlign: 'center' },
+      style: { position: 'absolute', x: 0, y: 26, width: 96, height: 22, fontSize: 16, color: 'text', textAlign: 'center', borderRadius: 0 },
     }),
   ]);
 }
 
 function dayRow(index) {
-  var top = 328 + index * 44;
+  var top = 324 + index * 28;
   return View({
-    style: { position: 'absolute', x: 24, y: top, width: 432, height: 40 },
+    style: { position: 'absolute', x: 84, y: top, width: 312, height: 24 },
   }, [
     Text({
       text: function () { return dayAt(data(), index).label; },
-      style: { position: 'absolute', x: 0, y: 10, width: 120, height: 20, fontSize: 14, color: 'textDim', textAlign: 'left' },
+      style: { position: 'absolute', x: 0, y: 2, width: 84, height: 20, fontSize: 13, color: 'textDim', textAlign: 'left', borderRadius: 0 },
     }),
     Text({
       text: function () { return weatherOf(dayAt(data(), index).code).text; },
-      style: { position: 'absolute', x: 120, y: 10, width: 180, height: 20, fontSize: 14, color: 'text', textAlign: 'center' },
+      style: { position: 'absolute', x: 84, y: 2, width: 120, height: 20, fontSize: 13, color: 'text', textAlign: 'center', borderRadius: 0 },
     }),
     Text({
       text: function () {
         var d = dayAt(data(), index);
         return fmtTemp(d.lo) + ' / ' + fmtTemp(d.hi);
       },
-      style: { position: 'absolute', x: 300, y: 10, width: 132, height: 20, fontSize: 14, color: 'text', textAlign: 'right' },
+      style: { position: 'absolute', x: 204, y: 2, width: 108, height: 20, fontSize: 13, color: 'text', textAlign: 'right', borderRadius: 0 },
     }),
   ]);
 }
@@ -345,7 +349,7 @@ function dayRow(index) {
 /* 每个节点都显式给 x/y：真机上带 padding 的 flex column 会把首段顶出可视区，
  * 卡片内的行高也和模拟器不同（home 与 examples/speedometer 同样只用绝对定位）。
  * 24 px gutter；顶部留 28 px 给面板圆角。 */
-var GUTTER = 24;
+var GUTTER = 84;
 var CONTENT = 480 - GUTTER * 2;
 
 var root = View({
@@ -355,22 +359,22 @@ var root = View({
   Text({
     text: function () { return city.name; },
     style: {
-      position: 'absolute', x: GUTTER, y: 28, width: 300, height: 28,
-      fontSize: 20, color: 'text', longMode: 'dots',
+      position: 'absolute', x: GUTTER, y: 76, width: 200, height: 28, borderRadius: 0,
+      fontSize: 18, color: 'text', longMode: 'dots',
     },
   }),
   Text({
     text: headerLine,
     style: {
-      position: 'absolute', x: GUTTER, y: 58, width: 300, height: 20,
-      fontSize: 14, color: function () { return online() ? 'textDim' : 'danger'; }, longMode: 'dots',
+      position: 'absolute', x: GUTTER, y: 106, width: 200, height: 18, borderRadius: 0,
+      fontSize: 12, color: function () { return online() ? 'textDim' : 'danger'; }, longMode: 'dots',
     },
   }),
   Button({
     title: function () { return busy() ? '…' : '刷新'; },
     style: {
-      position: 'absolute', x: 368, y: 26, width: 88, height: 56,
-      borderRadius: 28, background: 'accent',
+      position: 'absolute', x: 308, y: 76, width: 88, height: 48,
+      borderRadius: 8, background: 'accent',
     },
     onPress: refresh,
   }),
@@ -378,22 +382,22 @@ var root = View({
   /* hero：Canvas 天气图标 + 温度 / 天气 / 体感 */
   View({
     style: {
-      position: 'absolute', x: GUTTER, y: 100, width: CONTENT, height: 144,
-      background: 'surface', borderRadius: 20, scroll: 'none',
+      position: 'absolute', x: GUTTER, y: 132, width: CONTENT, height: 116,
+      background: 'surface', borderRadius: 12, scroll: 'none',
     },
   }, [
-    Canvas({ width: 112, height: 112, onDraw: heroIcon, style: { position: 'absolute', x: 16, y: 16 } }),
+    Canvas({ width: 112, height: 112, onDraw: heroIcon, style: { position: 'absolute', x: 8, y: 2 } }),
     Text({
       text: function () { return fmtTemp(data().temp); },
-      style: { position: 'absolute', x: 144, y: 16, width: 264, height: 42, fontSize: 32, color: 'text' },
+      style: { position: 'absolute', x: 128, y: 14, width: 176, height: 36, fontSize: 28, color: 'text', borderRadius: 0 },
     }),
     Text({
       text: function () { return weatherOf(data().code).text; },
-      style: { position: 'absolute', x: 144, y: 64, width: 264, height: 28, fontSize: 20, color: 'text' },
+      style: { position: 'absolute', x: 128, y: 52, width: 176, height: 24, fontSize: 18, color: 'text', borderRadius: 0 },
     }),
     Text({
       text: function () { return '体感 ' + fmtTemp(data().feels); },
-      style: { position: 'absolute', x: 144, y: 96, width: 264, height: 20, fontSize: 14, color: 'textDim' },
+      style: { position: 'absolute', x: 128, y: 82, width: 176, height: 18, fontSize: 13, color: 'textDim', borderRadius: 0 },
     }),
   ]),
 

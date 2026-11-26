@@ -66,14 +66,16 @@ function specDraw(ctx) {
   return { x: 0, y: 0, w: specW, h: specH };
 }
 
+/* r202: key texts moved into [84,396]; the 400x200 spectrum canvas is a
+   harness budget anchor (dirty rect) and is untouched. */
 var specCanvas = Canvas({ width: specW, height: specH,
   style: { position: 'absolute', x: 40, y: 149 }, onDraw: specDraw });
-var specRoot = View({ style: { width: '100%', height: '100%', background: '#07111D', scroll: 'none' } }, [
-  Text({ text: 'LIVE SPECTRUM', style: { position: 'absolute', x: 40, y: 54, width: 400, height: 36, fontSize: 26, color: '#E9F5FF' } }),
-  Text({ text: function () { return specHud(); }, style: { position: 'absolute', x: 40, y: 102, width: 400, height: 25, fontSize: 16, color: '#9EB3C6' } }),
+var specRoot = View({ style: { width: '100%', height: '100%', background: '#0D1420', scroll: 'none' } }, [
+  Text({ text: 'LIVE SPECTRUM', style: { position: 'absolute', x: 84, y: 80, width: 312, height: 34, fontSize: 22, color: '#F2F7FB', borderRadius: 0 } }),
+  Text({ text: function () { return specHud(); }, style: { position: 'absolute', x: 84, y: 114, width: 312, height: 25, fontSize: 14, color: '#9EB3C6', borderRadius: 0 } }),
   specCanvas,
-  Text({ text: function () { return 'VU ' + Math.round(specVu() * 100) + '%'; }, style: { position: 'absolute', x: 40, y: 370, width: 400, height: 30, fontSize: 20, color: '#40D8B0' } }),
-  Text({ text: 'TAP START / STOP   SWIPE UP 256 / 512', style: { position: 'absolute', x: 40, y: 417, width: 400, height: 25, fontSize: 13, color: '#9EB3C6' } })
+  Text({ text: function () { return 'VU ' + Math.round(specVu() * 100) + '%'; }, style: { position: 'absolute', x: 84, y: 352, width: 312, height: 28, fontSize: 18, color: '#40D8B0', borderRadius: 0 } }),
+  Text({ text: 'TAP START / STOP   SWIPE UP 256 / 512', style: { position: 'absolute', x: 84, y: 382, width: 312, height: 22, fontSize: 12, color: '#9EB3C6', textAlign: 'center', borderRadius: 0 } })
 ]);
 lume.gesture.on(specRoot, 'tap', specToggle);
 lume.gesture.on(specCanvas, 'tap', specToggle);

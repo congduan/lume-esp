@@ -357,15 +357,17 @@ var scene = Canvas({ parent: root, width: COURSE_W, height: COURSE_H,
   } });
 
 /* HUD is native Text nodes above the canvas: zero canvas-pixel cost. */
-Text({ parent: root, text: 'GOLF', style: { position: 'absolute', x: 8, y: 4, fontSize: 16, color: '#F2E7C9' } });
+/* r202: HUD moved into the 480-round safe square ([84,396]); the full-bleed
+   course canvas, swing physics and KV keys are unchanged. */
+Text({ parent: root, text: 'GOLF', style: { position: 'absolute', x: 84, y: 80, fontSize: 14, color: '#40D8B0', borderRadius: 0 } });
 Text({ parent: root, text: function () { return hudSig() || hudText(); },
-  style: { position: 'absolute', x: 70, y: 6, width: 260, height: 20, fontSize: 14, color: '#D9A21B' } });
+  style: { position: 'absolute', x: 160, y: 80, width: 144, height: 20, fontSize: 13, color: '#F2F7FB', textAlign: 'center', borderRadius: 0 } });
 Text({ parent: root, text: function () { return modeSig() || mode.toUpperCase(); },
-  style: { position: 'absolute', x: 340, y: 6, width: 132, height: 20, fontSize: 14, color: '#9FD8F0', textAlign: 'right' } });
+  style: { position: 'absolute', x: 312, y: 80, width: 84, height: 20, fontSize: 13, color: '#9EB3C6', textAlign: 'right', borderRadius: 0 } });
 Text({ parent: root, text: function () { return noteSig() || noteText(); },
-  style: { position: 'absolute', x: 8, y: 28, width: 464, height: 20, fontSize: 13, color: '#8CDA4A' } });
+  style: { position: 'absolute', x: 84, y: 104, width: 312, height: 20, fontSize: 12, color: '#FFD78E', borderRadius: 0 } });
 Text({ parent: root, text: function () { return bestSig() > 0 ? 'BEST ' + bestSig() : 'BEST -'; },
-  style: { position: 'absolute', x: 340, y: 28, width: 132, height: 20, fontSize: 13, color: '#7A8F4E', textAlign: 'right' } });
+  style: { position: 'absolute', x: 84, y: 126, width: 312, height: 20, fontSize: 12, color: '#9EB3C6', borderRadius: 0 } });
 
 /* ---- input -------------------------------------------------------------- */
 function coursePoint(e) { return { x: e.x - CANVAS_X, y: e.y - CANVAS_Y }; }

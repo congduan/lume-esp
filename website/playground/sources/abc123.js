@@ -56,7 +56,9 @@ var card = signal('A');
 var mode = signal('seq');
 var idx = 0;             /* sequential / case pointer into ABC_CARDS */
 var bag = [], bagPtr = 0; /* random deck */
-var GW = 320, GH = 320;  /* SVG raster target; 90% ink height = 288 px */
+/* Glyph raster target is a harness anchor (320x320); card data, glyph SVGs
+   and shuffle logic are unchanged. */
+var GW = 320, GH = 320;
 var GLYPH_X = 80, GLYPH_Y = 64;
 
 function abcLogCard(ch, m) {
@@ -111,10 +113,13 @@ var root = View({ style: { width:'100%', height:'100%', background:'#000000', sc
   display:'flex', flexDirection:'column', alignItems:'center' } });
 glyphNode = Image({ parent:root, src:abcSource(card(), mode()),
   style:{ position:'absolute', x:GLYPH_X, y:GLYPH_Y, width:GW, height:GH } });
-Text({ parent:root, text:modeText, style:{ position:'absolute', x:0, y:18, width:480,
-  fontSize:20, color:'#FFFFFF', textAlign:'center' } });
-Text({ parent:root, text:hintText, style:{ position:'absolute', x:0, y:440, width:480,
-  fontSize:20, color:'#FFFFFF', textAlign:'center' } });
+/* r202: both key text lines moved below the glyph into the 480-round safe
+   square ([84,396]) so white text never sits on the white glyph raster;
+   glyph bounds/card data and the whole-screen tap target are unchanged. */
+Text({ parent:root, text:modeText, style:{ position:'absolute', x:84, y:368, width:312, height:18,
+  fontSize:14, color:'#F2F7FB', textAlign:'center', borderRadius:0 } });
+Text({ parent:root, text:hintText, style:{ position:'absolute', x:84, y:386, width:312, height:18,
+  fontSize:14, color:'#40D8B0', textAlign:'center', borderRadius:0 } });
 
 lume.gesture.on(root, 'tap', function (e) {
   /* The whole lower screen is one big "next card" target; only the 74 px

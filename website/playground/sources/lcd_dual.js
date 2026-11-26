@@ -95,7 +95,7 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   frame();var s=state;
   if(!ghostPidA){ghostPidA=ctx.retainSegments(GHOST_A,GHOST,SEG);ghostPidB=ctx.retainSegments(GHOST_B,GHOST,SEG);pathDefines+=2;}
   var a=s.mode==='a'?clip(box(AX-6,AY-6,AC*CELL+12,AR*CELL+12)):clip(box(0,BY-6,IW,3*LANE_H+12));
-  var ab=clip(box(160,418,160,52)); /* canvas-drawn MODE affordance, no Button node */
+  var ab=clip(box(160,348,160,48)); /* r202: MODE affordance inside round safe row */
   /* A MODE change repaints the whole canvas once so the outgoing mode's lit
    * pixels cannot linger outside the incoming mode's smaller dirty region. */
   if(!painted||(prevMode!==null&&prevMode!==s.mode)){a=box(0,0,IW,IH);ab=null;}
@@ -115,11 +115,13 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   }
   painted=true;return ab?[a,ab]:[a];
 }});
-Text({parent:root,text:'LCD DUAL',style:{position:'absolute',x:8,y:6,fontSize:14,color:'#8CDA4A'}});
-Text({parent:root,text:function(){return 'GAME '+modeSig().toUpperCase()+'  SCORE '+scoreSig()+'  HI '+bestSig()+'  MISS '+missSig()+'/'+MISS_MAX;},style:{position:'absolute',x:100,y:6,fontSize:14,color:'#5FA832'}});
-Text({parent:root,text:function(){return noteSig();},style:{position:'absolute',x:8,y:26,fontSize:14,color:'#8CDA4A'}});
-Text({parent:root,text:function(){return 'GHOST SEGMENTS: dim = all positions, bright = driven';},style:{position:'absolute',x:8,y:46,fontSize:14,color:'#1C3A1A'}});
-Text({parent:root,text:'MODE',style:{position:'absolute',x:222,y:434,fontSize:14,color:'#8CDA4A'}});
+/* r202: HUD and MODE caption moved into [84,396]; the canvas-drawn MODE
+   affordance and its tap zone moved with them. Game geometry/KV unchanged. */
+Text({parent:root,text:'LCD DUAL',style:{position:'absolute',x:84,y:80,fontSize:14,color:'#40D8B0',borderRadius:0}});
+Text({parent:root,text:function(){return 'GAME '+modeSig().toUpperCase()+'  SCORE '+scoreSig()+'  HI '+bestSig()+'  MISS '+missSig()+'/'+MISS_MAX;},style:{position:'absolute',x:176,y:80,width:220,fontSize:13,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
+Text({parent:root,text:function(){return noteSig();},style:{position:'absolute',x:84,y:104,width:312,fontSize:13,color:'#F2F7FB',borderRadius:0}});
+Text({parent:root,text:function(){return 'GHOST SEGMENTS: dim = all positions, bright = driven';},style:{position:'absolute',x:84,y:126,width:312,fontSize:12,color:'#9EB3C6',borderRadius:0}});
+Text({parent:root,text:'MODE',style:{position:'absolute',x:160,y:358,width:160,fontSize:14,color:'#FFD78E',textAlign:'center',borderRadius:0}});
 /* MODE is drawn INTO THE CANVAS (no LVGL Button node) and handled by the tap
  * gesture's bottom-zone branch below. A Button node would swallow the touch
  * in the emulator and double-fire with the canvas gesture in the browser, so
@@ -136,7 +138,7 @@ function swipe(e){
   drain();sync();
 }
 function tap(e){var g=lcdActive(state);
-  if(e.y>=410){lcdSwitchMode(state);drain();sync();return;} /* MODE button zone */
+  if(e.y>=344){lcdSwitchMode(state);drain();sync();return;} /* MODE button zone (r202: inside round safe row) */
   if(g.over){lcdReset(state);drain();sync();return;}
   if(state.mode==='a')lcdMoveChef(state,e.x<IW/2?-1:1);else lcdMoveLane(state,e.y<IH/2?-1:1);drain();sync();}
 lume.gesture.on(root,'swipe',swipe);lume.gesture.on(root,'tap',tap);

@@ -118,9 +118,11 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   painted=true;
   return valid.length?valid:undefined;
 }});
-Text({parent:root,text:'INVADERS',style:{position:'absolute',x:8,y:6,fontSize:14,color:'#9BBC0F'}});
-Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  W'+waveSig();},style:{position:'absolute',x:8,y:24,fontSize:14,color:'#8BAC0F'}});
-Text({parent:root,text:function(){return noteSig();},style:{position:'absolute',x:8,y:462,fontSize:14,color:'#8BAC0F'}});
+/* r202: HUD/hint moved into the 480-round safe square ([84,396]); the
+   full-screen render canvas, ground line and cannon physics are unchanged. */
+Text({parent:root,text:'INVADERS',style:{position:'absolute',x:84,y:80,fontSize:14,color:'#40D8B0',borderRadius:0}});
+Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  W'+waveSig();},style:{position:'absolute',x:224,y:80,width:172,fontSize:14,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
+Text({parent:root,text:function(){return noteSig();},style:{position:'absolute',x:84,y:104,width:312,fontSize:13,color:'#FFD78E',borderRadius:0}});
 
 function updateSignals(){scoreSig.set(state.score);bestSig.set(gameSave('invaders',state.score,bestSig()));livesSig.set(state.lives);waveSig.set(state.wave);}
 function start(){if(timer===null&&!state.over)timer=lume.system.setInterval(tick,period);}

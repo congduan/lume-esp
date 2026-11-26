@@ -50,8 +50,10 @@ function sfDraw(ctx){sfFrame();var i,e,b,p,x,y;ctx.fillColor(SF_BG);ctx.fillRect
  if(!sf.over&&(sf.invuln===0||sf.tick%4<2)){x=Math.round(sf.player.x);y=Math.round(sf.player.y);ctx.fillEllipse(x,y,12,20,SF_CYAN);ctx.fillRect(x-25,y+3,50,8,SF_CYAN);ctx.fillEllipse(x,y-8,5,9,SF_WHITE);ctx.fillRect(x-9,y+18,18,5,'#5B98CC');if(sf.shield){ctx.fillCircle(x,y,28,SF_GREEN);ctx.fillCircle(x,y,26,SF_BG);}}
 }
 Canvas({parent:sfRoot,width:480,height:480,onDraw:sfDraw});
-Text({parent:sfRoot,text:function(){sfFrame();return 'SKYFIRE   '+sf.score+'   L '+sf.lives+'   W '+sf.wave+(sf.shield?'   SHIELD':'');},style:{position:'absolute',x:8,y:6,width:464,height:25,fontSize:16,color:SF_WHITE}});
-Text({parent:sfRoot,text:function(){sfFrame();return sf.over?'GAME OVER   SCORE '+sf.score+'   TAP TO RESTART':(sf.drag?'':'DRAG TO MOVE AND FIRE');},style:{position:'absolute',x:8,y:448,width:464,height:28,fontSize:16,color:SF_CYAN}});
+/* r202: HUD and footer moved into [84,396]; the full-bleed 480x480 render
+   canvas, wave logic and entity pools are unchanged. */
+Text({parent:sfRoot,text:function(){sfFrame();return 'SKYFIRE   '+sf.score+'   L '+sf.lives+'   W '+sf.wave+(sf.shield?'   SHIELD':'');},style:{position:'absolute',x:84,y:80,width:312,height:26,fontSize:14,color:'#F2F7FB',borderRadius:0}});
+Text({parent:sfRoot,text:function(){sfFrame();return sf.over?'GAME OVER   SCORE '+sf.score+'   TAP TO RESTART':(sf.drag?'':'DRAG TO MOVE AND FIRE');},style:{position:'absolute',x:84,y:372,width:312,height:26,fontSize:14,color:'#40D8B0',textAlign:'center',borderRadius:0}});
 function sfTick(){sfStep(sf,Math.random);for(var i=0;i<sf.events.length;i++)sfPlay(sf.events[i]);sf.events.length=0;sfFrame.set(sfFrame()+1);}
 function sfDrag(e){if(sf.over)return;sf.drag=true;sfMovePlayer(sf,e.x,e.y);sfFrame.set(sfFrame()+1);}
 function sfStopDrag(){sf.drag=false;}

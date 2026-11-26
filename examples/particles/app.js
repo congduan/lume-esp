@@ -207,16 +207,18 @@ var scene = Canvas({ parent: particleRoot, width: PW, height: PH,
     return [area];
   } });
 
+/* r202: HUD and both controls moved into the 480-round safe square
+   ([84,396]); particle simulation and full-bleed canvas are unchanged. */
 Text({ parent: particleRoot, text: 'FLUID PARTICLES',
-  style: { position: 'absolute', x: 12, y: 6, width: 300, height: 30, fontSize: 22, color: '#E9F7F5' } });
+  style: { position: 'absolute', x: 84, y: 80, width: 312, height: 28, fontSize: 20, color: '#F2F7FB', borderRadius: 0 } });
 Text({ parent: particleRoot, text: function () { return pMode() + '  N=' + PN + (pShake() ? '  SHAKE' : ''); },
-  style: { position: 'absolute', x: 12, y: 36, width: 456, height: 26, fontSize: 17, color: '#5AE0D0' } });
+  style: { position: 'absolute', x: 84, y: 110, width: 312, height: 24, fontSize: 16, color: '#40D8B0', borderRadius: 0 } });
 Text({ parent: particleRoot, text: 'TAP=BURST  SWIPE=STIR  SHAKE DEVICE',
-  style: { position: 'absolute', x: 12, y: 66, width: 456, height: 24, fontSize: 15, color: '#9FC2CC' } });
+  style: { position: 'absolute', x: 84, y: 134, width: 312, height: 22, fontSize: 13, color: '#9EB3C6', borderRadius: 0 } });
 Button({ parent: particleRoot, title: 'STIR', onPress: function () { stirRandom(); },
-  style: { position: 'absolute', x: 12, y: 432, width: 108, height: 40, background: '#183348', borderRadius: 8, fontSize: 17 } });
+  style: { position: 'absolute', x: 84, y: 348, width: 148, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } });
 Button({ parent: particleRoot, title: 'MODE', onPress: function () { cycleMode(); },
-  style: { position: 'absolute', x: 130, y: 432, width: 108, height: 40, background: '#183348', borderRadius: 8, fontSize: 17 } });
+  style: { position: 'absolute', x: 240, y: 348, width: 148, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } });
 
 function stirRandom() {
   particlePerturb(pstate, PW / 2, PH / 2,

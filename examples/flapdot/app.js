@@ -310,13 +310,15 @@ var scene = Canvas({ parent: root, width: FW, height: FH,
   } });
 
 /* HUD is native Text nodes above the canvas: zero canvas-pixel cost. */
-Text({ parent: root, text: 'FLAPDOT', style: { position: 'absolute', x: 8, y: 4, fontSize: 16, color: '#F2C14E' } });
+/* r202: HUD moved into the 480-round safe square ([84,396]); pipe/flap
+   physics and the full-bleed render canvas are unchanged. */
+Text({ parent: root, text: 'FLAPDOT', style: { position: 'absolute', x: 84, y: 80, fontSize: 14, color: '#40D8B0', borderRadius: 0 } });
 Text({ parent: root, text: function () { return 'SCORE ' + (scoreSig() || 0); },
-  style: { position: 'absolute', x: 150, y: 6, width: 120, height: 20, fontSize: 14, color: '#FFFFFF' } });
+  style: { position: 'absolute', x: 188, y: 80, width: 112, height: 20, fontSize: 14, color: '#F2F7FB', textAlign: 'center', borderRadius: 0 } });
 Text({ parent: root, text: function () { return bestSig() > 0 ? 'BEST ' + bestSig() : 'BEST -'; },
-  style: { position: 'absolute', x: 350, y: 6, width: 122, height: 20, fontSize: 14, color: '#8FD3A0', textAlign: 'right' } });
+  style: { position: 'absolute', x: 296, y: 80, width: 100, height: 20, fontSize: 14, color: '#9EB3C6', textAlign: 'right', borderRadius: 0 } });
 Text({ parent: root, text: function () { return noteSig() || noteText(); },
-  style: { position: 'absolute', x: 8, y: 30, width: 464, height: 20, fontSize: 13, color: '#CFE8F5' } });
+  style: { position: 'absolute', x: 84, y: 104, width: 312, height: 20, fontSize: 13, color: '#FFD78E', borderRadius: 0 } });
 
 /* ---- input -------------------------------------------------------------- */
 var ROOT_ID = 1;
