@@ -1,0 +1,83 @@
+=== BASELINE theme_mapping ===
+PASS set/get returns an isolated snapshot
+PASS named background and borderColor resolve
+PASS hex literals remain valid
+dark→light ATTR messages: [[1,1,15332090],[1,12,16],[1,14,2310751]]
+PASS theme.set invalidates every named color and implicit radius
+PASS unreferenced literal colors and explicit radius post no messages
+PASS removing default radius clears inherited radius
+PASS invalid theme is atomic
+PASS disposed node stops receiving theme updates
+PASS unknown token falls through to literal parser
+demo dark→light ATTR messages: [[2,1,16777215],[7,1,15332090]]
+PASS demo buttons recolor card, controls and full-screen root
+=== BASELINE style_mapping ===
+PASS column + dimensions + color: [[1,728639],[16,100],[17,50],[7,1]]
+PASS row: [[7,0]]
+PASS row wrap: [[7,2]]
+PASS column wrap: [[7,3]]
+PASS justify start: [[8,0]]
+PASS justify end: [[8,1]]
+PASS justify center: [[8,2]]
+PASS justify space-between: [[8,3]]
+PASS justify space-around: [[8,4]]
+PASS justify space-evenly: [[8,5]]
+PASS stretch + gap + padding: [[9,3],[10,16],[11,8]]
+PASS radius + border + opacity: [[12,12],[13,2],[14,11259375],[15,128]]
+PASS pixel + legacy bg: [[1,1122867],[2,240],[3,120]]
+PASS vertical scroll + auto scrollbar: [[20,1],[21,1]]
+PASS horizontal scroll + on scrollbar: [[20,2],[21,2]]
+PASS scroll disabled + scrollbar off: [[20,0],[21,0]]
+PASS per-side padding overrides box shorthand: [[10,8],[30,2],[31,4],[32,6],[33,10]]
+PASS margin box + per-side margin: [[34,4],[38,12]]
+PASS margin sides only: [[35,2],[36,3],[37,5],[38,7]]
+PASS flex grow inside a flex row: [[7,0],[39,1]]
+PASS auto sizing: [[43,1],[44,1]]
+PASS min/max size bounds: [[45,10],[46,200],[47,20],[48,40]]
+PASS absolute position escapes the flow: [[23,1],[18,4],[19,8]]
+PASS relative position sends nothing: []
+PASS translate px + percent: [[49,6],[52,50]]
+PASS text align + long mode: [[53,1],[54,1]]
+PASS align string + alignTo + alignOffset: [[40,5],[41,-8],[42,-4],[4,6]]
+PASS align center: [[4,0]]
+PASS align top-left: [[4,1]]
+PASS align top-mid: [[4,2]]
+PASS align top-right: [[4,3]]
+PASS align bottom-mid: [[4,4]]
+PASS align bottom-left: [[4,5]]
+PASS align bottom-right: [[4,6]]
+PASS align left-mid: [[4,7]]
+PASS align right-mid: [[4,8]]
+PASS align numeric constant: [[4,4]]
+PASS aligned to parent with an offset: [[40,0],[42,12],[4,2]]
+PASS outside align below a base node: [[40,7],[4,13]]
+PASS outside align above a base node: [[40,7],[4,10]]
+PASS outside align right of a base node: [[40,7],[4,19]]
+PASS outside align corner: [[40,7],[41,4],[4,18]]
+PASS outside align numeric constant: [[4,20]]
+PASS invalid align/alignTo/alignOffset/flexGrow/margin/position/translate/text rejected in prelude
+PASS Row presets flex row: [[7,0]]
+PASS Column presets flex column: [[16,100],[7,1]]
+PASS fontSize/letterSpacing/lineHeight: [[55,20],[56,1],[57,-2]]
+PASS fontSize snaps + scales via theme.fontScale: [[55,18]]
+PASS fontScale below 1 keeps faces in range: [[55,22]]
+PASS invalid percentage/metric/color/opacity rejected in prelude
+PASS all style mapping cases
+PASS embedded demo and refreshed counter both register buttons
+=== BASELINE apps ===
+PASS apps entries merges meta.json and falls back per field
+PASS apps entries tolerates a store without native metadata
+PASS apps entries ignores malformed meta instead of throwing
+PASS apps current() reports the running app id
+PASS apps launch/home/remove return the native status codes
+PASS apps setBoot pins independently of launch and home, then clears
+PASS apps setBoot reports invalid ids and storage errors
+PASS apps launcher pins itself and its edit exit clears the pin before home
+PASS apps Launcher defaults to the installed app set
+PASS apps Launcher tap launches the app by default (no host callback)
+PASS apps explicit apps + onLaunch still override the store
+PASS apps Launcher rejects a non-array app list
+PASS apps embedded home renders a clock and one tile per installed app
+PASS apps embedded home launches a tile and keeps BACK at the root
+PASS apps embedded home shows an empty state with no apps
+PASS 15 multi-app cases

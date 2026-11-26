@@ -1,0 +1,8 @@
+lume check examples/counter
+
+[PASS] bundle   2160 bytes (22 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)

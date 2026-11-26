@@ -1,0 +1,7 @@
+FAIL tests/apps.js
+FAIL tests/controls_demo.js
+FAIL tests/keyboard_demo.js
+FAIL tests/keyboard_states.js
+FAIL tests/ota_consumers.js
+FAIL tests/wordle.js
+done
