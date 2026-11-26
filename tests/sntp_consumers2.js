@@ -90,6 +90,8 @@ const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmwar
   // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
   'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
   'firmware/sdkconfig.defaults',
+  // r199: lume context is pure CLI tooling; no firmware/runtime change.
+  'tools/lume/context.js', 'tools/lume/context.test.js',
 ];
 const changed = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 
