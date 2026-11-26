@@ -1,0 +1,36 @@
+===== games_2048 =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== games_snake =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== games_tetris =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== mario =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== game_of_life =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== pet =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== speedometer =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== compass =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== sokoban =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== minesweeper =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== spectrum_music =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+===== music_player =====
+
+RESULT: PASS (4 steps, 0 failed; exit 0)

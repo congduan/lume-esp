@@ -1,0 +1,35 @@
+r201 selection classification (survey method: /tmp/r201-survey.mjs, see survey.txt)
+Manifest apps: 73 (tools/playground/build.mjs, unchanged this round)
+Initial static survey (before edits): 53 out-of-safe hits = 9 r200-fixed + 44 remaining.
+Post-fix survey (survey.txt): 51 out-of-safe hits = 9 r200-fixed + 42 remaining.
+
+SELECTED (12) - P0 titles/HUD/main buttons/main values cut or unclickable:
+  games_2048      title y=42, status y=443 both clipped by round edge
+  games_snake     title y=22, note y=449, 384px board bottom out of safe square
+  games_tetris    title y=28, score y=65, note y=439 clipped
+  mario           HUD x=12,y=16 corner cut; LEFT/RIGHT/JUMP buttons y=423..471 unclickable
+  game_of_life    title y=12, status y=46, hint y=442 clipped
+  pet             LUME PET x=24,y=18 + SKIN button x=360,y=54 corner cut
+  speedometer     HUD x=32/352,y=24 corners cut; TRIP bar y=396..456 clipped
+  compass         title y=8 cut; MODE button y=430..470 unclickable
+  sokoban         HUD x=8,y=6 corner; PREV/RESET/NEXT buttons y=424..468 unclickable
+  minesweeper     title x=8,y=8 + RESTART button x=384,y=6 corner cut
+  spectrum_music  GAIN/COLOR buttons y=422..460 unclickable
+  music_player    Library button x=360,y=24 corner cut; bottom controls y=400..456 clipped
+
+REJECTED - batch 2 candidates (not selected this round, reasons):
+  watchface       explicitly forbidden by brief (canvas budget 228,544/230,400 px full)
+  clock_round     single small corner tag; mild, decorative-only cut
+  dashboard_round canvas-only round dial; no unreadable key text
+  games_breakout  same P0 class as snake/2048 but duplicate fix pattern; defer
+  weather / dashboard / files / settings / app_manager / keyboard_demo /
+  sparkline_demo / color_demo / mochi / voice_assistant / aurora_clock /
+  minigolf / spectrum / scroller / raycast / skyfire / piano / invaders /
+  frogger / abc123 / lcd_dual / memory / golf / fishtank / particles /
+  plasma / flapdot / wordring / minigolf
+                  remaining 42 hits; either decorative-only canvas corners,
+                  mild/cosmetic clipping, or dedicated component/harness work
+                  better batched separately (see report section 5).
+  r200-fixed 9    control_center, controls_demo, hr_monitor, ipod_music,
+                  launcher_grid, skycombat, storybook, timer_kit, wordle —
+                  already fixed in r200, excluded by scope.

@@ -1,0 +1,12 @@
+PASS games_2048-after.png
+PASS games_snake-after.png
+PASS games_tetris-after.png
+PASS mario-after.png
+PASS game_of_life-after.png
+PASS pet-after.png
+PASS speedometer-after.png
+PASS compass-after.png
+PASS sokoban-after.png
+PASS minesweeper-after.png
+PASS spectrum_music-after.png
+PASS music_player-after.png
