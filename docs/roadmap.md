@@ -952,7 +952,7 @@ Host regression raw summary: 22 `tests/*.js` scripts printed `PASS`; `npm test -
 | **全屏精灵卷轴游戏**（横向卷轴平台跳跃完整版） | mario 单屏已证明玩法链路；r83 已交 blit 卷轴 POC（`examples/scroller/`，含性能口径），钥匙已解除 | 🟡 r83 POC 落地（8 槽精灵全 drawImage、4 脏矩形/帧、20fps 模拟侧可行）；完整版仍需接板帧率/触摸验收与关卡/敌人系统，非纯复刻可照搬 |
 | **真·指南针（磁北 / 地理方位）** | 要的是绝对地理方位，而非 r67 惯性方位仪表给的相对航向 | 🔴 blocked：QMI8658 是加速度计+陀螺仪六轴 IMU，**板子没有磁力计**，物理上无法测磁北；需外接磁力计硬件 + 固件刀（新 I2C 传感器绑定、校准/倾斜补偿），非 app 层可解。r67 仪表只登记为「惯性方位/相对航向」，README/UI 均不承诺指北 |
 | **儿童绘本故事播放器（StoryBook）** | 圆屏 + TF 卡 + 免插网是儿童设备标准形态；`lume.audio.mp3`（TF 解码）/Image 插画/typewriter 字幕/gesture 翻页/mochi 表情全部现成，纯 app 层可落地 | 🟡 计划 r172（简报已备）：TF 卡故事包协议（`storybook/<名>/page-NN.mp3` + meta：插画/字幕/情绪/互动热点）+ 书架/阅读/自动翻页/续读 + mochi 陪伴 + 无卡降级内置示例。无 TTS（家长 TTS 预生成，内容可控是卖点）；真机音频/触摸 deferred |
-| **Agent Experience（AX）基建线** | Lume 的目标作者就是 AI agent——把 agent 派工的实战摩擦产品化 | 🟡 计划四刀：r171 manifest 单源化 + `lume check --visual`（已落地）；r172 `lume context`（机器可读快照，已落地 r199）；r173 MCP server（已落地 r206：`lume mcp` ndjson JSON-RPC stdio server，六工具 lume_check / lume_bundle / lume_manifest / lume_context / lume_help / lume_deploy，零 SDK 依赖，见 `docs/r206-report.md`；真机 deploy 验收 deferred）；r174 examples meta.json 检索（未做）。依额度窗口逐刀推进 |
+| **Agent Experience（AX）基建线** | Lume 的目标作者就是 AI agent——把 agent 派工的实战摩擦产品化 | ✅ 四刀全部落地：r171 manifest 单源化 + `lume check --visual`（已落地）；r172 `lume context`（机器可读快照，已落地 r199）；r173 MCP server（已落地 r206：`lume mcp` ndjson JSON-RPC stdio server，六工具 lume_check / lume_bundle / lume_manifest / lume_context / lume_help / lume_deploy，零 SDK 依赖，见 `docs/r206-report.md`；真机 deploy 验收 deferred）；r174 examples 元数据检索（已落地 r207：`lume examples [name] [--json]`，运行时解析 page.js 元数据单源 + manifest ∪ examples/ 目录并集，见 `docs/r207-report.md`）。原 r174 编号已被 2026-11-23 retained-paths 轮占用，故顺延 |
 
 ### 与现有 examples 的去重边界
 
