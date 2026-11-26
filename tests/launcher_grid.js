@@ -1,25 +1,23 @@
 /*
  * r160 host harness for examples/launcher_grid (pure app), extended in r162
- * for shell.Launcher's onEditingChange observable edit state.
+ * for shell.Launcher's onEditingChange observable edit state, and synced in
+ * r200 for the round-screen SafeArea + circular-badge layout (DESIGN-TOKENS).
  *
  *   node tests/launcher_grid.js
  *
- * Part 1: static source contracts -- shell.Launcher is really consumed with an
- * explicit 9-app literal list (no lume.apps.entries / no real apps.launch),
- * onLaunch / onBack host callbacks exist, indicator is off so the only Canvases
- * are the 9 48x48 icons (20736 px <= 230400 px full frame), the theme is
- * customised, ASCII-only copy (app AND this harness), 14/20/32 fonts, the
- * playground manifest, byte-identical playground source, and firmware/runtime/
- * tools/lume zero-diff vs the r162 feat commit. r162 adds static contracts for
- * the shell setEditing notification (both change points), the .d.ts prop and
- * the app's EDIT status consumption. Every static predicate has a mutation
- * proof.
+ * Part 1: static source contracts -- SafeArea + EdgeNavigation consumed with
+ * an explicit 9-app literal list (no lume.apps.entries / no real apps.launch),
+ * circular fillCircle badges (no octagonal fillRect), indicator off so the
+ * only Canvases are the 9 48x48 icons (20736 px <= 230400 px full frame),
+ * custom DESIGN-TOKENS theme, ASCII-only copy (app AND this harness), 14/20/32
+ * fonts, playground manifest, byte-identical playground source, shell.Launcher
+ * onEditingChange contract on runtime/shell.js + .d.ts, and firmware/runtime/
+ * tools/lume zero-diff vs 3514c76. Every static predicate has a mutation proof.
  *
  * Part 2: live runs of the REAL app against the firmware prelude + shell.js.
  * Tile onPress drives the real onLaunch host callback; the edit button and an
- * edge swipe drive Launcher's two onEditingChange sites; shutdown clears
- * effects/timers. A no-callback variant proves the old shell path is intact.
- * No board, no touch, no real app switch: host evidence only (r160/r162 docs).
+ * edge swipe drive edit state + EDIT status feedback; shutdown clears effects
+ * and timers. No board, no touch, no real app switch: host evidence only.
  */
 'use strict';
 const assert = require('node:assert/strict');
@@ -109,12 +107,14 @@ const checks = [
     s.includes("import '../../runtime/shell.js';") &&
     (s.match(/^\s*import\s/gm) || []).length === 1]],
 
-  ['shell.Launcher is consumed', [source, s =>
-    (s.match(/lume\.ui\.shell\.Launcher\(\{/g) || []).length === 1]],
+  ['round SafeArea and circular fillCircle icons consumed', [source, s =>
+    s.includes("lume.ui.shell.SafeArea({ parent: root, shape: 'round', size: 480") &&
+    s.includes('c.fillCircle(24, 24, 22, app.color);') &&
+    !s.includes('c.fillRect(')]],
 
-  ['explicit 9-app literal list passed to Launcher', [source, s => {
+  ['explicit 9-app literal list rendered in 3x3 grid', [source, s => {
     const ids = idsOf(s);
-    return s.includes('apps: APPS,') && ids.length === APPS_N &&
+    return s.includes('var COLUMNS = 3;') && ids.length === APPS_N &&
       new Set(ids).size === APPS_N && !s.includes('lume.apps.entries');
   }]],
 
@@ -125,9 +125,9 @@ const checks = [
       (block.match(/color: '#/g) || []).length === APPS_N;
   }]],
 
-  ['Launcher title / columns / indicator fixed (canvas lock)', [source, s =>
-    s.includes("title: 'GRID',") && s.includes('columns: 3,') &&
-    s.includes('indicator: false,')]],
+  ['EdgeNavigation indicator disabled (canvas lock)', [source, s =>
+    s.includes('lume.ui.shell.EdgeNavigation({ parent: root, indicator: false,') &&
+    s.includes("text: 'GRID'") && s.includes("text: '9 APPS'")]],
 
   ['canvas budget constants are explicit and correct', [source, s =>
     s.includes('var ICON_PX = 48;') &&
@@ -136,13 +136,13 @@ const checks = [
     ICON_AREA === 2304 && TOTAL_AREA === 20736 && TOTAL_AREA <= FRAME_AREA]],
 
   ['onLaunch host callback records id and updates status', [source, s =>
-    s.includes("onLaunch: function (id) { lastAction.set('launch ' + id); },") &&
+    s.includes("function onLaunch(id) { lastAction.set('launch ' + id); }") &&
     !s.includes('lume.apps.launch')]],
 
   ['onBack host handler returns true (editing-state fallback)', [source, s =>
-    s.includes("onBack: function () { lastAction.set('BACK'); return true; },")]],
+    s.includes("function onBack() { lastAction.set('BACK'); return true; }")]],
 
-  ['status Text is signal-driven with r162 EDIT feedback', [source, s =>
+  ['status Text is signal-driven with EDIT feedback', [source, s =>
     s.includes("return editing() ? 'EDIT' : lastAction();") &&
     s.includes("var lastAction = signal('READY');")]],
 
@@ -158,10 +158,10 @@ const checks = [
       b.includes('/** Fires when edit mode toggles (edit button or back-out-of-edit). */');
   }]],
 
-  ['app consumes onEditingChange and shows EDIT in the status line', [source, s =>
+  ['app wires edit toggle and back-out into editing signal', [source, s =>
     s.includes('var editing = signal(false);') &&
-    s.includes('onEditingChange: function (v) { editing.set(v); },') &&
-    s.includes("return editing() ? 'EDIT' : lastAction();")]],
+    s.includes('function setEditing(v) { editing.set(!!v); }') &&
+    s.includes('if (editing()) { setEditing(false); return true; }')]],
 
   ['custom theme sets primary / surface / accent / text', [source, s =>
     s.includes('lume.theme.set({') && /primary: '#/.test(s) && /surface: '#/.test(s) &&
@@ -203,17 +203,17 @@ function must(name, mutation, checkName, subject) {
   console.log('PASS launcher_grid mutation: ' + name + ' -> FAIL as expected');
 }
 const IMPORT = 'shell.js imported by the documented relative path';
-const LAUNCHER = 'shell.Launcher is consumed';
-const APPS = 'explicit 9-app literal list passed to Launcher';
+const SAFE_CIRCLE = 'round SafeArea and circular fillCircle icons consumed';
+const APPS = 'explicit 9-app literal list rendered in 3x3 grid';
 const FIELDS = 'every app carries id / label / color / ASCII glyph';
-const GRID = 'Launcher title / columns / indicator fixed (canvas lock)';
+const GRID = 'EdgeNavigation indicator disabled (canvas lock)';
 const BUDGET = 'canvas budget constants are explicit and correct';
 const ONLAUNCH = 'onLaunch host callback records id and updates status';
 const ONBACK = 'onBack host handler returns true (editing-state fallback)';
-const STATUS = 'status Text is signal-driven with r162 EDIT feedback';
+const STATUS = 'status Text is signal-driven with EDIT feedback';
 const SHELL_EDIT = 'shell.Launcher setEditing notifies onEditingChange at both change points';
 const DTS_EDIT = 'LauncherProps declares the onEditingChange callback';
-const APP_EDIT = 'app consumes onEditingChange and shows EDIT in the status line';
+const APP_EDIT = 'app wires edit toggle and back-out into editing signal';
 const THEME = 'custom theme sets primary / surface / accent / text';
 const ASCII = 'entire app file is ASCII-only (r64)';
 const HARNESS_ASCII = 'entire harness file is ASCII-only (r64)';
@@ -225,30 +225,26 @@ const GUARD = 'firmware/ runtime/ tools/lume/ identical to 3514c76';
 
 must('drop the shell import',
   x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);
-must('app stops consuming shell.Launcher',
-  x => x.replace('lume.ui.shell.Launcher({', 'View({'), LAUNCHER, source);
-must('drop the explicit apps argument (falls back to app store)',
-  x => x.replace('  apps: APPS,\n', ''), APPS, source);
-must('use the app store instead of a literal',
-  x => x.replace('apps: APPS,', 'apps: lume.apps.entries(),'), APPS, source);
+must('icon reverts to octagonal fillRect',
+  x => x.replace('c.fillCircle(24, 24, 22, app.color);', 'c.fillRect(2, 2, 44, 44);'), SAFE_CIRCLE, source);
 must('drop one curated app',
-  x => x.replace("  { id: 'settings',       label: 'SETTINGS', color: '#4A5568', glyph: 'S' },\n", ''),
+  x => x.replace("  { id: 'settings',       label: 'SETTINGS', color: '#1F2C3D', ring: '#9EB3C6', glyph: 'S' },\n", ''),
   APPS, source);
 must('non-ASCII glyph slips into the app',
   x => x.replace("glyph: 'S'", "glyph: '\u4E2D'"), FIELDS, source);
 must('indicator re-enabled (two extra edge canvases)',
   x => x.replace('indicator: false,', 'indicator: true,'), GRID, source);
 must('columns drift off 3x3',
-  x => x.replace('columns: 3,', 'columns: 4,'), GRID, source);
+  x => x.replace('var COLUMNS = 3;', 'var COLUMNS = 4;'), APPS, source);
 must('icon size drifts off 48',
   x => x.replace('var ICON_PX = 48;', 'var ICON_PX = 64;'), BUDGET, source);
 must('drop the onLaunch host callback',
-  x => x.replace("onLaunch: function (id) { lastAction.set('launch ' + id); },", ''), ONLAUNCH, source);
+  x => x.replace("function onLaunch(id) { lastAction.set('launch ' + id); }", ''), ONLAUNCH, source);
 must('onLaunch falls back to a real app switch',
-  x => x.replace("onLaunch: function (id) { lastAction.set('launch ' + id); },",
-                 "onLaunch: function (id) { lume.apps.launch(id); },"), ONLAUNCH, source);
+  x => x.replace("function onLaunch(id) { lastAction.set('launch ' + id); }",
+                 'function onLaunch(id) { lume.apps.launch(id); }'), ONLAUNCH, source);
 must('drop the onBack host handler',
-  x => x.replace("onBack: function () { lastAction.set('BACK'); return true; },", ''), ONBACK, source);
+  x => x.replace("function onBack() { lastAction.set('BACK'); return true; }", ''), ONBACK, source);
 must('status stops following the launch/editing signals',
   x => x.replace("return editing() ? 'EDIT' : lastAction();", "return 'STATIC';"), STATUS, source);
 must('shell drops the onEditingChange notification call',
@@ -261,10 +257,8 @@ must('back-out bypasses setEditing',
                  'if (editing()) { editing.set(false); return true; }'), SHELL_EDIT, shell);
 must('LauncherProps drops the onEditingChange declaration',
   x => x.replace('    onEditingChange?: (editing: boolean) => void;\n', ''), DTS_EDIT, dts);
-must('app drops the onEditingChange consumer',
-  x => x.replace('onEditingChange: function (v) { editing.set(v); },\n', ''), APP_EDIT, source);
-must('app drops the EDIT status feedback',
-  x => x.replace("return editing() ? 'EDIT' : lastAction();", 'return lastAction();'), APP_EDIT, source);
+must('app drops back-out edit reset',
+  x => x.replace('if (editing()) { setEditing(false); return true; }', 'if (editing()) return false;'), APP_EDIT, source);
 must('a non-ASCII byte slips into the harness', x => x + '\n// \u4E2D', HARNESS_ASCII, harness);
 must('custom theme is dropped',
   x => x.replace('lume.theme.set(', 'lume.noTheme('), THEME, source);
@@ -292,8 +286,6 @@ function attempt(fn) { try { fn(); return true; } catch (e) { return false; } }
 function pressIds(s) { return s.messages.filter(m => m[0] === 'press').map(m => m[1]); }
 function canvasNodes(s) { return s.messages.filter(m => m[0] === 'create' && m[2] === 3); }
 function gestureIds(s) { return s.messages.filter(m => m[0] === 'gesture').map(m => m[1]); }
-/* The status Text owns the last ATTR_TEXT emit; read its rendered value, not
- * the lastAction signal (the r162 EDIT prefix lives in the Text expression). */
 function statusText(s) {
   const id = s.api().statusNode;
   const attrs = s.messages.filter(m => m[0] === 'attr' && m[1] === id && m[2] === 0);
@@ -336,56 +328,34 @@ const live = {
     assert.equal(a.status(), 'launch settings', 'last tile -> launch settings');
   }),
 
-  'onEditingChange mirrors edit state true then false into the app signal': (src, shellSrc) => attempt(() => {
+  'edit toggle and EdgeNavigation back update editing signal and status': (src, shellSrc) => attempt(() => {
     const s = boot(src, shellSrc), a = s.api();
     const ids = pressIds(s);
-    const left = gestureIds(s)[1];
+    const left = gestureIds(s)[1]; // EdgeNavigation left strip (0 is root)
     assert.equal(a.editing(), false, 'no spurious first-frame true/false report');
     assert.equal(statusText(s), 'READY');
     s.press(ids[0]);                              // edit button -> setEditing(true)
-    assert.equal(a.editing(), true, 'callback fired with true');
+    assert.equal(a.editing(), true, 'editing toggled true');
     assert.equal(statusText(s), 'EDIT', 'status shows EDIT');
     drag(s, left, 10, 90, 0);                     // EdgeNavigation back -> setEditing(false)
-    assert.equal(a.editing(), false, 'callback fired with false');
+    assert.equal(a.editing(), false, 'editing cleared on back');
     assert.equal(statusText(s), 'READY', 'status restored to prior action');
-  }),
-
-  'app without onEditingChange boots and keeps baseline status semantics': src => attempt(() => {
-    const noCb = src
-      .replace('onEditingChange: function (v) { editing.set(v); },\n', '')
-      .replace("return editing() ? 'EDIT' : lastAction();", 'return lastAction();');
-    assert.notEqual(noCb, src, 'no-callback variant must differ from source');
-    const s = boot(noCb), a = s.api();
-    const ids = pressIds(s);
-    const left = gestureIds(s)[1];
-    assert.equal(statusText(s), 'READY');
-    s.press(ids[0]);
-    assert.equal(a.editing(), false, 'app signal untouched with no callback');
-    assert.equal(statusText(s), 'READY', 'no EDIT feedback with no callback');
-    drag(s, left, 10, 90, 0);
-    assert.equal(statusText(s), 'READY', 'editing back still consumed internally');
-    s.press(ids[1]);
-    assert.equal(statusText(s), 'launch counter', 'tile launch still works');
   }),
 
   'edit-mode back and onBack fallback update status': src => attempt(() => {
     const s = boot(src), a = s.api();
     const ids = pressIds(s);
-    const left = gestureIds(s)[1]; // EdgeNavigation left strip (0 is the List)
+    const left = gestureIds(s)[1];
     s.press(ids[1]);
     assert.equal(statusText(s), 'launch counter');
-    /* Enter editing mode: the edit button is the first press handler. */
     s.press(ids[0]);
     assert.equal(statusText(s), 'EDIT', 'edit tap shows EDIT');
-    /* While editing, tile presses are suppressed by Launcher. */
     s.press(ids[2]);
     assert.equal(statusText(s), 'EDIT', 'editing suppresses launches');
-    /* First back exits editing (Launcher consumes it) and restores status. */
     drag(s, left, 10, 90, 0);
     assert.equal(statusText(s), 'launch counter', 'editing back restores prior status');
     s.press(ids[2]);
     assert.equal(statusText(s), 'launch timer_kit', 'tile launches after back-out');
-    /* Second back reaches the host onBack callback. */
     drag(s, left, 10, 90, 200);
     assert.equal(statusText(s), 'BACK', 'host onBack fallback fires');
   }),
@@ -412,43 +382,14 @@ function mustLive(name, mutation, liveName) {
     'live assertion is decorative; mutation did not FAIL: ' + name);
   console.log('PASS launcher_grid live mutation: ' + name + ' -> FAIL as expected');
 }
-mustLive('live: explicit apps dropped -> zero canvases',
-  x => x.replace('  apps: APPS,\n', ''),
-  'root node exists with an exact 9-icon canvas budget');
 mustLive('live: indicator re-enabled -> two extra canvases',
   x => x.replace('indicator: false,', 'indicator: true,'),
   'root node exists with an exact 9-icon canvas budget');
 mustLive('live: onLaunch host callback dropped -> status stays READY',
-  x => x.replace("onLaunch: function (id) { lastAction.set('launch ' + id); },\n", ''),
+  x => x.replace("function onLaunch(id) { lastAction.set('launch ' + id); }", 'function onLaunch() {}'),
   'tile onPress drives the onLaunch host callback (no app-store launch)');
-mustLive('live: onLaunch falls back to a real app switch',
-  x => x.replace("onLaunch: function (id) { lastAction.set('launch ' + id); },\n",
-                 "onLaunch: function (id) { lume.apps.launch(id); },\n"),
-  'tile onPress drives the onLaunch host callback (no app-store launch)');
-mustLive('live: app drops onEditingChange consumer -> no EDIT feedback',
-  x => x.replace('onEditingChange: function (v) { editing.set(v); },\n', ''),
-  'onEditingChange mirrors edit state true then false into the app signal');
 mustLive('live: app drops EDIT status expression -> no EDIT feedback',
   x => x.replace("return editing() ? 'EDIT' : lastAction();", 'return lastAction();'),
-  'onEditingChange mirrors edit state true then false into the app signal');
-
-function mustLiveShell(name, mutation, liveName) {
-  const mutated = mutation(shell);
-  assert.notEqual(mutated, shell, 'shell live mutation did not change source: ' + name);
-  assert.equal(live[liveName](source, mutated), false,
-    'shell live assertion is decorative; mutation did not FAIL: ' + name);
-  console.log('PASS launcher_grid live mutation: ' + name + ' -> FAIL as expected');
-}
-mustLiveShell('live: shell notification removed -> app editing stays false',
-  x => x.replace('if (p.onEditingChange) p.onEditingChange(v);', ''),
-  'onEditingChange mirrors edit state true then false into the app signal');
-mustLiveShell('live: edit toggle bypasses setEditing -> no true callback',
-  x => x.replace('onPress: function () { setEditing(!editing()); }',
-                 'onPress: function () { editing.set(!editing()); }'),
-  'onEditingChange mirrors edit state true then false into the app signal');
-mustLiveShell('live: back-out bypasses setEditing -> no false callback',
-  x => x.replace('if (editing()) { setEditing(false); return true; }',
-                 'if (editing()) { editing.set(false); return true; }'),
-  'onEditingChange mirrors edit state true then false into the app signal');
+  'edit toggle and EdgeNavigation back update editing signal and status');
 
 console.log('ALL LAUNCHER GRID HARNESS CASES PASSED');
