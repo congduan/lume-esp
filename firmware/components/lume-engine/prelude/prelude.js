@@ -690,7 +690,11 @@ function __alignValue(v) {
   if (typeof v === 'string' && Object.prototype.hasOwnProperty.call(__ALIGN_NAMES, v)) return __ALIGN_NAMES[v];
   throw new Error('lume: unsupported align ' + v);
 }
-function __applyAttrs(id, p) {
+/* r204: `nodeType` is passed only by content nodes (Text / Canvas / Image).
+ * They skip implicit theme-radius inheritance: a rounded clip rect combined
+ * with scroll:'none' cuts the first/last glyph corners and canvas pixels.
+ * Box nodes (View / Row / Column / List / Button / Arc) keep the old default. */
+function __applyAttrs(id, p, nodeType) {
   var s = p.style || {};
   var color = __color;
   var tr = s.transition;
@@ -813,7 +817,7 @@ function __applyAttrs(id, p) {
   if (s.flexGrow !== undefined) grow(s.flexGrow);
   if (s.gap !== undefined) metric(s.gap, ATTR_GAP);
   if (s.borderRadius !== undefined) metric(s.borderRadius, ATTR_RADIUS);
-  else {
+  else if (nodeType !== NODE_TEXT && nodeType !== NODE_CANVAS && nodeType !== NODE_IMAGE) {
     __ownedEffects[id] = __ownedEffects[id] || [];
     var lastRadius;
     __ownedEffects[id].push(effect(function () {
@@ -869,7 +873,7 @@ function View(props, children) {
 function Text(props) {
   props = props || {};
   var id = lume.createNode(NODE_TEXT, props.parent || 0);
-  __applyAttrs(id, props);
+  __applyAttrs(id, props, NODE_TEXT);
   if (props.text !== undefined) __bindText(id, props.text);
   return id;
 }
@@ -950,7 +954,7 @@ function Image(props) {
   else if (typeof style.height === 'number' && style.width === undefined) style.width = Math.max(1, Math.round(style.height * size.width / size.height));
   var id = lume.createNode(NODE_IMAGE, props.parent || 0);
   var own = {}; for (var name in props) own[name] = props[name]; own.style = style;
-  __applyAttrs(id, own);
+  __applyAttrs(id, own, NODE_IMAGE);
   var rc = lume.image._setSource(id, props.src, style.width, style.height);
   if (rc < 0) { lume.removeChild(id); return rc; }
   return id;
@@ -1061,7 +1065,7 @@ function Canvas(props) {
   if (__canvasBytes + w*h*2 > SW*SH*2) throw new Error('lume: canvas PSRAM budget exceeded');
   var id = lume.createNode(NODE_CANVAS, props.parent || 0, w, h);
   __canvasAlloc[id] = w*h*2; __canvasBytes += w*h*2;
-  if (props.style) __applyAttrs(id, {style: props.style});
+  if (props.style) __applyAttrs(id, {style: props.style}, NODE_CANVAS);
   var ink = 0xffffff, pendingLines = [], pathSeq = 0;
   function flushLines() { if (pendingLines.length) { lume.canvasBatch(id, pendingLines); pendingLines = []; } }
   function pushLine(x1,y1,x2,y2,col,wd) {
