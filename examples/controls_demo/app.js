@@ -40,12 +40,15 @@ var soundSwitch = lume.ui.shell.Switch({ parent: safe, x: 10, y: 66,
   value: sound, trackWidth: 68, height: 48, label: 'Sound FX',
   onChange: function (v) { sound.set(v); } });
 
-/* Slider: brightness 0..100, step 5. Drag maps dx back into the range. */
+/* Slider: brightness 0..100, step 5. Drag maps dx back into the range.
+ * r203: opt into the round thumb (36px diameter); existing apps keep the
+ * component's byte-identical default square-thumb rendering. */
 Text({ parent: safe, text: function () { return 'Brightness ' + bright(); },
   style: { x: 10, y: 128, width: 320, height: 22, fontSize: 16, borderRadius: 0,
     color: '#F2F7FB', scroll: 'none' } });
 var brightSlider = lume.ui.shell.Slider({ parent: safe, x: 10, y: 154,
   width: 320, height: 48, min: 0, max: 100, step: 5, value: bright,
+  roundThumb: true,
   onChange: function (v) { bright.set(v); } });
 
 /* Progress: simulated charging animation, 0..1 clamped, label above bar. */

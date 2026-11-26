@@ -320,8 +320,18 @@
     if (typeof keySize !== 'number' || !isFinite(keySize) || Math.floor(keySize) !== keySize ||
         keySize < 40 || keySize > 128)
       throw new RangeError('lume: Keyboard keySize must be 40..128 pixels');
+    /* r203: BKSP / ENTER carry 4-5 character labels in a 40px cap. The default
+     * ratio 1 (and keyHeight = keySize) reproduces the r148 geometry exactly;
+     * both knobs are opt-in so existing apps render byte-for-byte unchanged. */
+    var controlRatio = p.controlKeyRatio === undefined ? 1 : p.controlKeyRatio;
+    if (typeof controlRatio !== 'number' || !isFinite(controlRatio) || controlRatio < 1 || controlRatio > 3)
+      throw new RangeError('lume: Keyboard controlKeyRatio must be 1..3');
+    var keyHeight = p.keyHeight === undefined ? keySize : p.keyHeight;
+    if (typeof keyHeight !== 'number' || !isFinite(keyHeight) || Math.floor(keyHeight) !== keyHeight ||
+        keyHeight < 40 || keyHeight > 128)
+      throw new RangeError('lume: Keyboard keyHeight must be 40..128 pixels');
     var pad = 4;
-    var height = 4 * keySize + 3 * gap + 2 * pad;
+    var height = 4 * keyHeight + 3 * gap + 2 * pad;
     var style = { x: p.x === undefined ? Math.floor((screen.w - width) / 2) : p.x,
       y: p.y === undefined ? Math.max(0, screen.h - height - 24) : p.y,
       width: width, height: height, display: 'flex', flexDirection: 'column',
@@ -337,10 +347,15 @@
       children.forEach(function (child) { child(id); });
       return id;
     }
+    /* SPACE already spans four keys; only the two short control caps need the
+     * extra width. Math.round keeps ratio 1 exactly equal to keyWidth. */
+    function controlWidth(label, keyWidth) {
+      return (label === 'BKSP' || label === 'ENTER') ? Math.round(keyWidth * controlRatio) : keyWidth;
+    }
     function key(label, keyWidth, onPress, background) {
       return function (parent) {
         nodes.push(Button({ parent: parent, title: label,
-          style: { width: keyWidth, height: keySize, borderRadius: 8,
+          style: { width: controlWidth(label, keyWidth), height: keyHeight, borderRadius: 8,
             background: background || color('surface', '#132435') },
           onPress: onPress }));
       };
@@ -439,6 +454,19 @@
     var value = p.value === undefined ? min : p.value;
     if (typeof value !== 'function' && (typeof value !== 'number' || !isFinite(value)))
       throw new TypeError('lume: Slider value must be a number or a signal function');
+    /* r203: opt-in round thumb. The default false path keeps the pre-r203
+     * fillRect draw stream byte-for-byte; knobDiameter is floored to an integer
+     * radius because the prelude Canvas.fillCircle takes an integer radius. */
+    var roundThumb = p.roundThumb === undefined ? false : p.roundThumb;
+    if (typeof roundThumb !== 'boolean')
+      throw new TypeError('lume: Slider roundThumb must be a boolean');
+    var maxKnob = Math.min(height, 64), knobDiameter = 36;
+    if (p.knobDiameter !== undefined) {
+      if (!isFinite(p.knobDiameter) || Math.floor(p.knobDiameter) !== p.knobDiameter ||
+          p.knobDiameter < 32 || p.knobDiameter > maxKnob)
+        throw new RangeError('lume: Slider knobDiameter must be 32..' + maxKnob + ' pixels');
+      knobDiameter = p.knobDiameter;
+    }
     function current() {
       var v = typeof value === 'function' ? value() : value;
       if (!isFinite(v)) v = min;
@@ -460,6 +488,14 @@
       onDraw: function (c) {
         c.clear();
         var frac = (current() - min) / (max - min);
+        if (roundThumb) {
+          var r = Math.floor(knobDiameter / 2);
+          var tx = Math.round(frac * (width - 2 * r));
+          c.fillColor(trackColor()); c.fillRect(0, mid - 2, width, 4);
+          c.fillColor(fillColor()); c.fillRect(0, mid - 2, tx + r, 4);
+          c.fillCircle(tx + r, mid, r, knobColor());
+          return;
+        }
         var kx = Math.round(frac * (width - knob));
         c.fillColor(trackColor()); c.fillRect(0, mid - 2, width, 4);
         c.fillColor(fillColor()); c.fillRect(0, mid - 2, kx + knob, 4);
@@ -585,6 +621,22 @@
     var light = 0.299*parseInt(hex.slice(1,3),16) + 0.587*parseInt(hex.slice(3,5),16) + 0.114*parseInt(hex.slice(5,7),16);
     return light >= 145 ? '#07111D' : '#FFFFFF';
   }
+  /* r203: compact mode scales Canvas coordinates through a thin context
+   * wrapper, so the r166 hit-test and paint source stays verbatim. The 14px
+   * canvas font cannot be scaled; labels keep their native size. k=1 bypasses
+   * the wrapper entirely, preserving the pre-r203 draw stream byte-for-byte. */
+  function scaledPickerContext(c, k) {
+    var R = function (v) { return Math.round(v * k); };
+    return {
+      nodeId: c.nodeId,
+      fillColor: function (color) { c.fillColor(color); },
+      clear: function () { c.clear(); },
+      fillRect: function (x, y, w, h) { c.fillRect(R(x), R(y), R(w), R(h)); },
+      fillCircle: function (x, y, r, color) { c.fillCircle(R(x), R(y), R(r), color); },
+      arc: function (x, y, r, from, to, width, color) { c.arc(R(x), R(y), R(r), from, to, R(width), color); },
+      text: function (x, y, str, color) { c.text(R(x), R(y), str, color); }
+    };
+  }
   /* r166: one Canvas; local HSV state, gesture subscriptions and disposal. */
   function ColorPicker(p) {
     p = p || {};
@@ -596,6 +648,12 @@
     var y = p.y === undefined ? 8 : p.y;
     if (![x,y].every(function (n) { return typeof n === 'number' && isFinite(n) && Math.floor(n) === n; }))
       throw new RangeError('lume: ColorPicker x/y must be integer pixels');
+    /* r203: compact:true shrinks the 300x360 picker to 210x252 (k=0.7) so it
+     * fits a round safe area; default false keeps the r166 geometry exactly. */
+    var compact = p.compact === undefined ? false : p.compact;
+    if (typeof compact !== 'boolean')
+      throw new TypeError('lume: ColorPicker compact must be a boolean');
+    var scale = compact ? 0.7 : 1;
     var hsv = hexToHsv(p.initialHex === undefined ? '#40D8B0' : p.initialHex);
     if (!hsv) {
       if (typeof console !== 'undefined' && console.warn) console.warn('lume: ColorPicker invalid initialHex; using #40D8B0');
@@ -617,7 +675,7 @@
     /* Local ring centre (150,110), annulus 82..98; strips x=30..270. */
     function hit(e) {
       if (!e || !isFinite(e.x) || !isFinite(e.y)) return null;
-      var px=e.x-x, py=e.y-y, dx=px-150, dy=py-110, radius=Math.sqrt(dx*dx+dy*dy);
+      var px=(e.x-x)/scale, py=(e.y-y)/scale, dx=px-150, dy=py-110, radius=Math.sqrt(dx*dx+dy*dy);
       if (radius >= 82 && radius <= 98) return {kind:'h', value:(Math.atan2(dy,dx)*180/Math.PI+360)%360};
       if (px >= 30 && px <= 270 && py >= 213 && py <= 249) return {kind:'s',value:(px-30)/240};
       if (px >= 30 && px <= 270 && py >= 263 && py <= 299) return {kind:'v',value:(px-30)/240};
@@ -632,8 +690,9 @@
       else if (target.kind === 's') set(h,target.value,v,immediate);
       else if (target.kind === 'v') set(h,s,target.value,immediate);
     }
-    var canvas = Canvas({parent:p.parent,width:300,height:360,
-      style:{position:'absolute',x:x,y:y,scroll:'none'},onDraw:function (c) {
+    var canvas = Canvas({parent:p.parent,width:Math.round(300*scale),height:Math.round(360*scale),
+      style:{position:'absolute',x:x,y:y,scroll:'none'},onDraw:function (raw) {
+        var c = scale === 1 ? raw : scaledPickerContext(raw, scale);
         revision();
         c.fillColor('#132435'); c.fillRect(0,0,300,360);
         for (var i=0;i<24;i++) c.arc(150,110,90,i*15,i*15+15,16,hsvToHex(i*15,1,1));

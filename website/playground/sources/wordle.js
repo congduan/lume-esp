@@ -365,9 +365,11 @@ Button({ parent: root, title: 'NEW', style: { position: 'absolute', x: 336, y: 7
 
 /* r148/r200 shell keyboard: 400 px width centered (x=40..440), keySize 40,
  * gap 0, y=240. Natural QWERTY taper keeps all 4 rows >=28 px inside the 466 px
- * circular bezel (row 4 spans x=120..360, y=364..404 <= 405). */
+ * circular bezel. r203 widens BKSP/ENTER to 72 px (controlKeyRatio 1.8): bottom
+ * row spans x=88..392, y=364..404 <= 405, so the labels are no longer cramped
+ * while every key stays inside the round safe area. */
 var keyboard = lume.ui.shell.Keyboard({
-  parent: root, width: 400, keySize: 40, gap: 0, x: 40, y: 240,
+  parent: root, width: 400, keySize: 40, gap: 0, x: 40, y: 240, controlKeyRatio: 1.8,
   style: { background: '#0D1420', borderRadius: 12 },
   keyStates: keyStatesSig,
   onKey: function (ch) {

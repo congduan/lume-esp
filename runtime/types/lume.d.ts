@@ -261,6 +261,14 @@ declare namespace lume.ui.shell {
     gap?: number;
     /** Key side in px (40..128); defaults to the largest size that fits the row. */
     keySize?: number;
+    /** BKSP / ENTER width multiplier (1..3, default 1). 1 keeps the r148
+     * 40 px cap; e.g. 1.8 makes both control keys 72 px on a 40 px keySize,
+     * which keeps their labels readable inside a round safe area. Letter and
+     * SPACE widths are untouched. */
+    controlKeyRatio?: number;
+    /** Key height in px (40..128, default keySize). Decouples the 40 px touch
+     * height from the letter width; the root height tracks this value. */
+    keyHeight?: number;
     /** Optional per-key tint map, or a signal getter returning one. A getter
      * makes each letter key re-resolve its own background on publish (only that
      * key's ATTR_BG_COLOR is rewritten; no node rebuild). Undefaulted/absent
@@ -311,6 +319,11 @@ declare namespace lume.ui.shell {
     x?: number; y?: number;
     /** #RRGGBB; invalid values warn and use #40D8B0. */
     initialHex?: string;
+    /** Default false: 300x360 Canvas. true scales all geometry and the
+     * inverse hit-test by 0.7 to a 210x252 Canvas that fits a round safe
+     * area; the 14px canvas font is not scaled. Default rendering and touch
+     * coordinates are byte-identical to the pre-r203 component. */
+    compact?: boolean;
     /** Live selection, at most once per 100 ms during a drag; final value flushes on release. */
     onChange?: (hex: string) => void;
     onConfirm?: (hex: string) => void;
@@ -333,6 +346,14 @@ declare namespace lume.ui.shell {
     onChange?: (value: number) => void;
     /** Track width in px (default screen width - 48); height in px (40..128, default 40). */
     width?: number; height?: number;
+    /** Default false: square fillRect thumb (pre-r203 rendering). true draws a
+     * round Canvas.fillCircle thumb with an integer radius of floor(knobDiameter/2)
+     * (diameter >= 32 px); the gesture target stays the whole Canvas. */
+    roundThumb?: boolean;
+    /** Round thumb diameter in px (32..min(height,64), default 36). Floored to
+     * an even pixel diameter because Canvas.fillCircle takes an integer radius.
+     * Ignored unless roundThumb is true. */
+    knobDiameter?: number;
     x?: number; y?: number;
   }
   /** Canvas + pan slider. dx from the press start maps back through
