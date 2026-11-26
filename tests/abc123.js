@@ -54,7 +54,8 @@ assert.equal(creates.filter(m => m[2] === 3).length, 0, 'no auxiliary Canvas');
 const textIds = creates.filter(m => m[2] === 1).map(m => m[1]);
 assert.equal(textIds.length, 2, 'top and bottom Text nodes');
 const yOf = id => ui.messages.find(m => m[0] === 'attr' && m[1] === id && m[2] === 19)[3];
-assert.deepEqual(textIds.map(yOf), [18, 440], 'symmetric top/bottom text margins');
+// r202 layout cascade: both text lines moved below the glyph, inside the round safe square.
+assert.deepEqual(textIds.map(yOf), [368, 386], 'safe-area text margins');
 const rootId = creates[0][1];
 assert.ok(ui.messages.some(m => m[0] === 'attr' && m[1] === rootId && m[2] === 1 && m[3] === 0),
   'root background is static black');

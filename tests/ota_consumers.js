@@ -811,6 +811,34 @@ const ALLOWED = [
   'website/playground/sources/sokoban.js', 'website/playground/sources/minesweeper.js',
   'website/playground/sources/spectrum_music.js', 'website/playground/sources/music_player.js',
   'docs/r201-round-ui-batch2-report.md',
+  // r202: round-screen safe-area batch 3. Pure app/playground/docs slice;
+  // BASE and all assertion predicates are untouched (no re-pin, no widening).
+  'examples/abc123/app.js', 'examples/flapdot/app.js',
+  'examples/games_breakout/app.js', 'examples/golf/app.js',
+  'examples/invaders/app.js', 'examples/keyboard_demo/app.js',
+  'examples/lcd_dual/app.js', 'examples/minigolf/app.js',
+  'examples/particles/app.js', 'examples/piano/app.js',
+  'examples/raycast/app.js', 'examples/scroller/app.js',
+  'examples/skyfire/app.js', 'examples/spectrum/app.js',
+  'examples/weather/app.js',
+  'website/playground/sources.js',
+  'website/playground/apps/abc123.js', 'website/playground/apps/flapdot.js',
+  'website/playground/apps/games_breakout.js', 'website/playground/apps/golf.js',
+  'website/playground/apps/invaders.js', 'website/playground/apps/keyboard_demo.js',
+  'website/playground/apps/lcd_dual.js', 'website/playground/apps/minigolf.js',
+  'website/playground/apps/particles.js', 'website/playground/apps/piano.js',
+  'website/playground/apps/raycast.js', 'website/playground/apps/scroller.js',
+  'website/playground/apps/skyfire.js', 'website/playground/apps/spectrum.js',
+  'website/playground/apps/weather.js',
+  'website/playground/sources/abc123.js', 'website/playground/sources/flapdot.js',
+  'website/playground/sources/games_breakout.js', 'website/playground/sources/golf.js',
+  'website/playground/sources/invaders.js', 'website/playground/sources/keyboard_demo.js',
+  'website/playground/sources/lcd_dual.js', 'website/playground/sources/minigolf.js',
+  'website/playground/sources/particles.js', 'website/playground/sources/piano.js',
+  'website/playground/sources/raycast.js', 'website/playground/sources/scroller.js',
+  'website/playground/sources/skyfire.js', 'website/playground/sources/spectrum.js',
+  'website/playground/sources/weather.js',
+  'docs/r202-round-ui-batch3-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -910,6 +938,8 @@ const checks = [
       f.startsWith('artifacts/r200/') ||
       // r201: round-screen safe-area batch 2 before/after shots and verification logs.
       f.startsWith('artifacts/r201/') ||
+      // r202: round-screen safe-area batch 3 before/after shots and verification logs.
+      f.startsWith('artifacts/r202/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 
