@@ -773,6 +773,13 @@ const ALLOWED = [
   // and regenerable evidence directory need admitting. BASE and all assertion
   // predicates are untouched (no re-pin, no widening).
   'docs/r198-report.md',
+  // r200: round-screen UI quality audit & batch fix (DESIGN-TOKENS.md).
+  // Pure app/test/playground/docs slice; zero firmware/runtime/tools changes.
+  'examples/controls_demo/app.js',
+  'examples/ipod_music/app.js',
+  'tests/ipod_music.js',
+  'website/playground/sources/controls_demo.js',
+  'docs/r200-ui-quality-report.md',
 ];
 
 // --- checks -----------------------------------------------------------------
@@ -866,6 +873,8 @@ const checks = [
       // r198: Sparkline close-out evidence (host regression, CLI tests,
       // lume check, playground rebuild, website check, zero-diff, ASCII).
       f.startsWith('artifacts/r198/') ||
+      // r200: round-screen UI quality before/after screenshots and verification logs.
+      f.startsWith('artifacts/r200/') ||
       (R188_REMOVED.has(f) && !fs.existsSync(path.join(root, f))))]],
 ];
 

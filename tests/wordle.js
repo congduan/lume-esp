@@ -289,15 +289,15 @@ check('KV keys <= 15 chars, storage failures non-fatal', () => {
 // r153 removed the self-drawn 26-letter bar: letter verdicts now tint the
 // shell keyboard keys via keyStates, so the grid only has to fit the canvas
 // and the canvas must clear the keyboard.
-check('canvas budget 109440/230400 px, grid in bounds', () => {
-  assert.equal(s.IW * s.CANVAS_H, 109440);
+check('canvas budget 40960/230400 px, grid in bounds', () => {
+  assert.equal(s.IW * s.CANVAS_H, 40960);
   assert.ok(s.IW * s.CANVAS_H <= 230400);
   const gridRight = s.GX + 5 * (s.CELL + s.GAP) - s.GAP;
   const gridBottom = s.GY + 6 * (s.CELL + s.GAP) - s.GAP;
   assert.ok(gridRight <= s.IW, 'grid right inside canvas');
   assert.ok(gridBottom <= s.CANVAS_H, 'grid bottom inside canvas');
-  assert.ok(s.CANVAS_Y + s.CANVAS_H <= 300, 'canvas clears the keyboard at y 300');
-  assert.ok(300 + 4 * 40 + 2 * 4 <= 480, '4-row keyboard fits the 480 px screen');
+  assert.ok(s.CANVAS_Y + s.CANVAS_H <= 240, 'canvas clears the keyboard at y 240');
+  assert.ok(240 + 4 * 40 + 2 * 4 <= 480, '4-row keyboard fits the 480 px screen');
 });
 
 // 14. r165: day ordinal + deterministic pick from the wall clock
@@ -403,14 +403,14 @@ check('prelude boot: paint + HUD + 4 keyboard rows / 29 keys', () => {
   assert.ok(ui.s.messages.filter(m => m[0] === 'attr').length > 0, 'HUD text attrs');
   const invs = ui.s.messages.filter(m => m[0] === 'invalidate');
   assert.ok(invs.length >= 1, 'first paint');
-  assert.deepEqual(invs[0].slice(2), [0, 0, 480, 228], 'first paint covers the canvas');
+  assert.deepEqual(invs[0].slice(2), [0, 0, 320, 128], 'first paint covers the canvas');
   const firstCalls = ui.s.messages.filter(m => m[0] === 'draw').length;
   assert.ok(firstCalls > 100 && firstCalls <= 1000, 'first-paint call budget ' + firstCalls);
   assert.equal(vm.runInContext('painted', ui.s.ctx), true, 'first paint latches painted');
   const before = ui.s.messages.length;
   vm.runInContext('__lume_tick()', ui.s.ctx);
   assert.equal(ui.s.messages.slice(before).filter(m => m[0] === 'invalidate').length, 0, 'idle tick skips paint');
-  console.log('EVIDENCE wordle idle 0 paints/tick; first paint ' + firstCalls + ' calls on 480x228 canvas');
+  console.log('EVIDENCE wordle idle 0 paints/tick; first paint ' + firstCalls + ' calls on 320x128 canvas');
 });
 
 // 15. keyboard callback injection: onKey / BKSP / SPACE / ENTER routing
@@ -507,8 +507,8 @@ check('~60 s smoke: bounded state, draws and invalidates in canvas', () => {
   assert.ok(draws.length > 1000, 'draw traffic ' + draws.length);
   for (const m of invs) {
     const [, , x, y, w, h] = m;
-    assert.ok(x + w <= 480 && y + h <= 228, 'invalidate inside canvas');
-    assert.ok(w * h <= 480 * 228, 'invalidate within budget');
+    assert.ok(x + w <= 320 && y + h <= 128, 'invalidate inside canvas');
+    assert.ok(w * h <= 320 * 128, 'invalidate within budget');
   }
   const st = vm.runInContext('wdGetGame()', p.s.ctx);
   assert.ok(st.current.length <= 5, 'slot bounded');
@@ -597,8 +597,8 @@ const checks = [
     x.includes('wdKey(state, ch)') && x.includes('wdBackspace(state)') &&
     x.includes('wdSubmit(state)')]],
 
-  ['Keyboard geometry: 40 px key, gap 0, y 300', [wiring, x =>
-    x.includes('keySize: 40, gap: 0, y: 300')]],
+  ['Keyboard geometry: 40 px key, gap 0, x 40, y 240', [wiring, x =>
+    x.includes('keySize: 40, gap: 0, x: 40, y: 240')]],
 
   ['keyStates consume wdLetterMarks (r153 tint replaces the letter bar)', [source, x =>
     x.includes('var marks = wdLetterMarks(state)') &&
@@ -657,7 +657,7 @@ function must(name, mutation, checkName, sourceForCheck) {
 
 const REG = 'Keyboard registered on lume.ui.shell';
 const WIRE = 'app wires onKey/onBackspace/onSubmit into game logic';
-const GEO = 'Keyboard geometry: 40 px key, gap 0, y 300';
+const GEO = 'Keyboard geometry: 40 px key, gap 0, x 40, y 240';
 const TINT = 'keyStates consume wdLetterMarks (r153 tint replaces the letter bar)';
 const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
@@ -675,7 +675,7 @@ must('drop shell.Keyboard registration',
 must('app stops forwarding onKey',
   x => x.replace('wdKey(state, ch)', 'null'), WIRE, wiring);
 must('shrink the keyboard touch target',
-  x => x.replace('keySize: 40, gap: 0, y: 300', 'keySize: 40, gap: 8, y: 300'), GEO, wiring);
+  x => x.replace('keySize: 40, gap: 0, x: 40, y: 240', 'keySize: 40, gap: 8, x: 40, y: 240'), GEO, wiring);
 must('keyStates drop feedback marks',
   x => x.replace('var marks = wdLetterMarks(state)', 'var marks = {}'), TINT, source);
 must('a key label drifts from QWERTY',

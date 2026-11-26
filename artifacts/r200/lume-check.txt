@@ -1,0 +1,81 @@
+=== lume check examples/control_center --no-emu ===
+lume check examples/control_center
+
+[PASS] bundle   31470 bytes (38 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lume check examples/launcher_grid --no-emu ===
+lume check examples/launcher_grid
+
+[PASS] bundle   29543 bytes (46 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lume check examples/timer_kit --no-emu ===
+lume check examples/timer_kit
+
+[PASS] bundle   36496 bytes (46 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lume check examples/wordle --no-emu ===
+lume check examples/wordle
+
+[PASS] bundle   37198 bytes (34 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lume check examples/hr_monitor --no-emu ===
+lume check examples/hr_monitor
+
+[PASS] bundle   30740 bytes (30 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lume check examples/storybook --no-emu ===
+lume check examples/storybook
+
+[PASS] bundle   10608 bytes (27 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lume check examples/ipod_music --no-emu ===
+lume check examples/ipod_music
+
+[PASS] bundle   29979 bytes (35 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lume check examples/skycombat --no-emu ===
+lume check examples/skycombat
+
+[PASS] bundle   8351 bytes (28 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)
+=== lume check examples/controls_demo --no-emu ===
+lume check examples/controls_demo
+
+[PASS] bundle   28457 bytes (36 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)

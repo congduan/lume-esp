@@ -191,10 +191,10 @@ check('Switch press routes onChange(!value) through the signal', () => {
 check('Slider pan maps dx back into range and quantises to step', () => {
   const p = probe();
   assert.equal(vm.runInContext('bright()', p.s.ctx), 50);
-  /* width 432, min 0 max 100, step 5. dx=43 -> 50+43*100/432 ~= 59.95 -> 60. */
+  /* width 320, min 0 max 100, step 5. dx=32 -> 50+32*100/320 = 60. */
   p.s.gesture(p.d.slider, 0, 100, 20, 0);
-  p.s.gesture(p.d.slider, 1, 143, 20, 16);
-  p.s.gesture(p.d.slider, 2, 143, 20, 32);
+  p.s.gesture(p.d.slider, 1, 132, 20, 16);
+  p.s.gesture(p.d.slider, 2, 132, 20, 32);
   assert.equal(vm.runInContext('bright()', p.s.ctx), 60);
 });
 
@@ -219,11 +219,11 @@ check('Slider onChange fires once per changed step, not per pan frame', () => {
 check('Progress clamps value and updates fill ATTR_WIDTH only', () => {
   const p = probe();
   const w = () => lastAttr(p.s, p.fill, 2);
-  assert.equal(w(), 86); /* 0.2 * 432 = 86.4 -> 86 */
+  assert.equal(w(), 64); /* 0.2 * 320 = 64 */
   vm.runInContext('charge.set(0.75);', p.s.ctx);
-  assert.equal(w(), 324); /* 0.75 * 432 */
+  assert.equal(w(), 240); /* 0.75 * 320 */
   vm.runInContext('charge.set(2);', p.s.ctx);
-  assert.equal(w(), 432); /* clamped to 1.0 */
+  assert.equal(w(), 320); /* clamped to 1.0 */
   /* no Canvas was created for Progress (kind 3 = NODE_CANVAS) */
   assert.equal(p.s.messages.filter(m => m[0] === 'create' && m[2] === 3).length, 1);
   assert.equal(p.s.messages.filter(m => m[0] === 'create' && m[2] === 3 && m[3] === p.d.progress).length, 0);

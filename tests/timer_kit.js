@@ -30,7 +30,7 @@ const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
 const playgroundSrc = read('website/playground/sources/timer_kit.js');
 const KV_TIMER = 'hisc.timer', KV_STOP = 'timer.best';
-const CANVAS_PX = 432 * 40;
+const CANVAS_PX = 312 * 48;
 
 function stripImport(x) {
   return x.replace(/^\s*import\s+[^;]*runtime\/shell\.js[^;]*;\s*$/m, '');
@@ -97,10 +97,15 @@ const checks = [
     s.includes('lume.ui.shell.Switch({') && s.includes('value: mode') &&
     s.includes('onChange: function (v) { setMode(v); }')]],
 
-  ['Slider consumed 0..60 step 1, minutes value, setMinutes onChange', [source, s =>
-    s.includes('lume.ui.shell.Slider({') && s.includes('min: 0, max: 60, step: 1') &&
-    s.includes('value: minutes') &&
-    s.includes('onChange: function (v) { setMinutes(v); }')]],
+  ['Circular-thumb slider 0..60 step 1, >=32 px thumb, setMinutes onChange', [source, s =>
+    s.includes('var THUMB_R = 16;') && s.includes('c.fillCircle(cx, mid, THUMB_R,') &&
+    s.includes('setMinutes(q);') && s.includes('lume.ui.shell.SafeArea({')]],
+
+  ['State-machine buttons hide illegal actions (READY/RUNNING/PAUSED/OVER)', [source, s =>
+    s.includes("lume.setAttr(btnStart, 5, p === 'READY' ? 1 : 0);") &&
+    s.includes("lume.setAttr(btnPause, 5, p === 'RUNNING' ? 1 : 0);") &&
+    s.includes("lume.setAttr(btnReset, 5, (p === 'RUNNING' || p === 'PAUSED') ? 1 : 0);") &&
+    s.includes("lume.setAttr(btnRestart, 5, p === 'OVER' ? 1 : 0);")]],
 
   ['Progress consumed with remainFrac getter', [source, s =>
     s.includes('lume.ui.shell.Progress({') && s.includes('value: remainFrac')]],
@@ -150,9 +155,9 @@ const checks = [
   ['Text fontSize limited to bundled 14/20/32 faces', [fontSize,
     arr => arr.length > 0 && arr.every(v => v === 14 || v === 20 || v === 32)]],
 
-  ['canvas budget locked: slider only, 17280 <= 230400 px', [source, s =>
-    s.includes('CANVAS_BUDGET: 230400') && s.includes('SLIDER_W: 432') &&
-    s.includes('SLIDER_H: 40') && CANVAS_PX <= 230400]],
+  ['canvas budget locked: circular slider only, 14976 <= 230400 px', [source, s =>
+    s.includes('CANVAS_BUDGET: 230400') && s.includes('var SLIDER_W = 312;') &&
+    s.includes('var SLIDER_H = 48;') && CANVAS_PX <= 230400]],
 
   ['playground sources/timer_kit.js byte-identical to the example', [playgroundSrc, x =>
     x === source]],
@@ -180,7 +185,8 @@ function must(name, mutation, checkName, subject) {
 
 const IMPORT = 'shell.js imported by the documented relative path';
 const SWITCH = 'Switch consumed with mode signal and setMode onChange';
-const SLIDER = 'Slider consumed 0..60 step 1, minutes value, setMinutes onChange';
+const SLIDER = 'Circular-thumb slider 0..60 step 1, >=32 px thumb, setMinutes onChange';
+const PHASE_BTNS = 'State-machine buttons hide illegal actions (READY/RUNNING/PAUSED/OVER)';
 const PROGRESS = 'Progress consumed with remainFrac getter';
 const CLOCK = 'clock is lume.system.time() (no nonexistent system.now)';
 const ABSDIFF = 'countdown advances from an absolute-time difference';
@@ -193,7 +199,7 @@ const KEYS = 'KV keys within the 15-char NVS cap';
 const LAPS = 'LAP_LIMIT is three and laps keep only the last three';
 const ASCII = 'all source literals ASCII-only (r64)';
 const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
-const BUDGET = 'canvas budget locked: slider only, 17280 <= 230400 px';
+const BUDGET = 'canvas budget locked: circular slider only, 14976 <= 230400 px';
 const SRC = 'playground sources/timer_kit.js byte-identical to the example';
 const MANIFEST = 'timer_kit is in the playground manifest';
 const GUARD = 'firmware/ runtime/ tools/lume/ identical to 3514c76';
@@ -202,8 +208,11 @@ must('drop the shell import',
   x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);
 must('app stops consuming Switch',
   x => x.replace('lume.ui.shell.Switch({', 'View({'), SWITCH, source);
-must('app stops consuming Slider',
-  x => x.replace('lume.ui.shell.Slider({', 'View({'), SLIDER, source);
+must('slider reverts to square thumb / drops SafeArea',
+  x => x.replace('c.fillCircle(cx, mid, THUMB_R,', 'c.fillRect(cx, mid, 16,'), SLIDER, source);
+must('state-machine button visibility breaks',
+  x => x.replace("lume.setAttr(btnStart, 5, p === 'READY' ? 1 : 0);", 'lume.setAttr(btnStart, 5, 1);'),
+  PHASE_BTNS, source);
 must('app stops consuming Progress',
   x => x.replace('lume.ui.shell.Progress({', 'View({'), PROGRESS, source);
 must('clock drifts back to a nonexistent system.now',
@@ -233,7 +242,7 @@ must('a CJK UI literal slips in', arr => arr.concat('中'), ASCII, lits);
 must('font size escapes the bundled faces',
   arr => arr.concat(40), FONT, fontSize);
 must('canvas budget rises past 230400 px',
-  x => x.replace('SLIDER_W: 432', 'SLIDER_W: 40000'), BUDGET, source);
+  x => x.replace('var SLIDER_W = 312;', 'var SLIDER_W = 40000;'), BUDGET, source);
 must('playground generated source drifts',
   x => x + '\n// drift', SRC, playgroundSrc);
 must('playground manifest drops timer_kit',
@@ -283,12 +292,15 @@ const live = {
 
   'slider drag writes a step-quantised minute value': src => attempt(() => {
     const s = boot(src), k = s.kit();
+    assert.equal(k.displayCdMs(), 300000, 'READY displays 5 min = 05:00');
+    assert.equal(k.remainFrac(), 1, 'READY progress is 100%');
     s.eval('timerKit.setMinutes(5)');
     const id = k.sliderNode;
     s.gesture(id, 0, 100, 200, 0);                       /* DOWN */
-    s.gesture(id, 1, 150.4, 200, 50);                    /* dx = 50.4 px */
-    s.gesture(id, 2, 150.4, 200, 100);                   /* UP */
-    assert.equal(k.minutes(), 12, '5 + 50.4*60/432 = 12 at step 1');
+    s.gesture(id, 1, 136.4, 200, 50);                    /* dx = 36.4 px */
+    s.gesture(id, 2, 136.4, 200, 100);                   /* UP */
+    assert.equal(k.minutes(), 12, '5 + 36.4*60/312 = 12 at step 1');
+    assert.equal(k.displayCdMs(), 720000, 'READY updates display immediately to 12:00');
   }),
 
   'switch toggles TIMER / STOPWATCH view': src => attempt(() => {
@@ -382,9 +394,9 @@ const live = {
     const s = boot(src), k = s.kit();
     s.eval('timerKit.setMinutes(2); timerKit.cdStart()');
     assert.equal(s.eval('Object.keys(__timers).length'), 1);
-    s.eval('lume.ui.shell.dispose(timerKit.sliderNode)');
+    s.eval('timerKit.disposeSlider(); lume.ui.shell.dispose(timerKit.progressNode)');
     s.gesture(k.sliderNode, 0, 100, 200, 0);
-    s.gesture(k.sliderNode, 1, 150.4, 200, 50);
+    s.gesture(k.sliderNode, 1, 136.4, 200, 50);
     assert.equal(k.minutes(), 2, 'slider gesture unsubscribed on dispose');
     s.eval('__lume_shutdown()');
     assert.equal(s.eval('Object.keys(__timers).length'), 0);
