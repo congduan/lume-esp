@@ -9,16 +9,24 @@ function launch(text, kv) { return runApp(bundle(text), {kv:{get:key=>kv[key]||n
 function tap(s,x,y) { const id=s.ctx.colorDemo.picker; s.gesture(id,0,x,y,0); s.gesture(id,2,x,y,20); }
 function last(s,id,attr) { return s.messages.filter(m=>m[0]==='attr'&&m[1]===id&&m[2]===attr).at(-1)?.[3]; }
 function proof(name,fn,mutate) { fn(source);const bad=mutate(source);assert.notEqual(bad,source);assert.throws(()=>fn(bad),undefined,'mutation survived '+name);console.log('PASS color_demo '+name+'; mutation FAIL as expected'); }
+/* r203: compact picker is 210x252 at (135,104) -> [135,345]x[104,356], well
+ * inside [75,405]. Tap anchors are the old anchors scaled by 0.7 about the
+ * picker origin: (330,135)->(303,181), (240,225)->(240,244), (335,359)->(306,338). */
+{
+  const s=launch(source,{}); const c=s.messages.find(m=>m[0]==='create'&&m[1]===s.ctx.colorDemo.picker);
+  assert.deepEqual([c[2],c[4],c[5]],[3,210,252]);
+  console.log('PASS color_demo compact picker canvas 210x252');
+}
 proof('live selection tints circle rectangle and text and HEX',src=>{
-  const s=launch(src,{'demo.color':'#00FF00'}); tap(s,330,135); // ring +x, hue red
+  const s=launch(src,{'demo.color':'#00FF00'}); tap(s,303,181); // ring +x, hue red
   assert.equal(last(s,s.ctx.colorDemo.display,0),'#FF0000');
   assert.equal(last(s,s.ctx.colorDemo.circle,1),0xFF0000);
   assert.equal(last(s,s.ctx.colorDemo.rectangle,1),0xFF0000);
   assert.ok(s.messages.some(m=>m[0]==='draw'&&m[1]===s.ctx.colorDemo.sample&&m[2]===4&&m[7]===0xFF0000));
 },src=>src.replace('selected.set(hex); saved.set(false);','saved.set(false);'));
 proof('SAVE writes KV; next launch restores selection',src=>{
-  const kv={}; const s=launch(src,kv); tap(s,240,225); // ring bottom -> greenish hue
-  const picked=last(s,s.ctx.colorDemo.display,0); tap(s,335,359); // SAVE local x245 y334
+  const kv={}; const s=launch(src,kv); tap(s,240,244); // ring bottom -> greenish hue
+  const picked=last(s,s.ctx.colorDemo.display,0); tap(s,306,338); // SAVE
   assert.equal(kv['demo.color'],picked);
   assert.equal(last(s,s.ctx.colorDemo.toast,0),'SAVED');
   const next=launch(src,kv); assert.equal(last(next,next.ctx.colorDemo.display,0),picked);
