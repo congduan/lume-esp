@@ -28,6 +28,14 @@ pass('named background and borderColor resolve');
 run("var literal = View({style:{background:'#112233',borderColor:'#445566',borderRadius:3}})");
 assert.deepStrictEqual(rows(), [[2,1,0x112233],[2,12,3],[2,14,0x445566]]);
 pass('hex literals remain valid');
+/* r204: content nodes skip implicit theme.radius (a rounded clip rect would
+ * cut glyph/canvas corners), while an explicit borderRadius still applies. */
+run("Text({style:{}})");
+assert.deepStrictEqual(rows(), []);
+pass('Text without borderRadius does not inherit theme.radius');
+run("Text({style:{borderRadius:5}})");
+assert.deepStrictEqual(rows(), [[4,12,5]]);
+pass('explicit borderRadius still applies on Text');
 run("lume.theme.set({colors:{primary:'#E9F2FA',text:'#23425F'},radius:16,fontScale:1})");
 const light = rows();
 assert.deepStrictEqual(light, [[1,1,0xE9F2FA],[1,12,16],[1,14,0x23425F]]);
