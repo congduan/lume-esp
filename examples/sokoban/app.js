@@ -8,8 +8,10 @@
  * Player moves are teleport + one highlight, no tween (same r68 frogger
  * simplification). NVS keys cap at 15 chars (lume_kv.c), so the brief's
  * 'hisc.soko_progress' (18) is shortened to 'hisc.soko_pg' (12). */
-var IW=480, IH=480, CELL=32, GX=32, GY=80, COLS=13, ROWS=10;
-var BG='#121A10';
+/* r201: cell pitch/board origin trimmed so the 13x10 board and all HUD/buttons
+   sit inside the 480-round safe square. Grid data, push logic and KV keys are unchanged. */
+var IW=480, IH=480, CELL=22, GX=97, GY=128, COLS=13, ROWS=10;
+var BG='#0D1420';
 var PAL={
   A:'#7A8F4E', B:'#4C5E33', C:'#28331F',
   D:'#9BBC0F',
@@ -120,14 +122,14 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   for(var y=0;y<s.level.h;y++)for(var x=0;x<s.level.w;x++)paintCell(ctx,x,y,a,s);
   painted=true;return [a];
 }});
-Text({parent:root,text:'SOKOBAN',style:{position:'absolute',x:8,y:6,fontSize:14,color:'#9BBC0F'}});
-Text({parent:root,text:function(){return 'L'+(levelSig())+'/'+LEVELS.length+'  MV '+movesSig()+'  PAR '+parSig()+'  BOX '+boxSig()+'/'+state.level.boxCount;},style:{position:'absolute',x:104,y:6,fontSize:14,color:'#A98A50'}});
-Text({parent:root,text:function(){return stuckSig()?'STUCK  -  PRESS RESET':(noteSig()||'SWIPE TO STEP  TAP A NEIGHBOUR');},style:{position:'absolute',x:8,y:26,fontSize:14,color:'#9FD8F0'}});
-Text({parent:root,text:function(){return state.level.name+'  UNLOCKED '+unlockSig()+'/'+LEVELS.length;},style:{position:'absolute',x:8,y:46,fontSize:14,color:'#7A8F4E'}});
-function btn(title,x,fn){return Button({title:title,style:{position:'absolute',x:x,y:424,width:144,height:44,borderRadius:6,background:'#28331F',color:'#E8D46A',fontSize:14},onPress:fn});}
-btn('< PREV',32,function(){if(state.li>0){sokoLoad(state,state.li-1);sync();}});
-btn('RESET',184,function(){sokoRestart(state);sync();});
-btn('NEXT >',336,function(){if(state.li+1<LEVELS.length&&state.li+1<sokoProgress()){sokoLoad(state,state.li+1);sync();}});
+Text({parent:root,text:'SOKOBAN',style:{position:'absolute',x:84,y:78,width:120,fontSize:14,borderRadius:0,color:'#F2F7FB'}});
+Text({parent:root,text:function(){return 'L'+(levelSig())+'/'+LEVELS.length+'  MV '+movesSig()+'  PAR '+parSig()+'  BOX '+boxSig()+'/'+state.level.boxCount;},style:{position:'absolute',x:204,y:78,width:192,fontSize:11,borderRadius:0,color:'#9EB3C6',textAlign:'right'}});
+Text({parent:root,text:function(){return stuckSig()?'STUCK  -  PRESS RESET':(noteSig()||'SWIPE TO STEP  TAP A NEIGHBOUR');},style:{position:'absolute',x:84,y:96,width:312,fontSize:12,borderRadius:0,color:'#5B9DF7'}});
+Text({parent:root,text:function(){return state.level.name+'  UNLOCKED '+unlockSig()+'/'+LEVELS.length;},style:{position:'absolute',x:84,y:112,width:312,fontSize:11,borderRadius:0,color:'#9EB3C6'}});
+function btn(title,x,fn){return Button({title:title,style:{position:'absolute',x:x,y:352,width:92,height:48,borderRadius:8,background:'#1F2C3D',color:'#F2F7FB',fontSize:12},onPress:fn});}
+btn('< PREV',84,function(){if(state.li>0){sokoLoad(state,state.li-1);sync();}});
+btn('RESET',194,function(){sokoRestart(state);sync();});
+btn('NEXT >',304,function(){if(state.li+1<LEVELS.length&&state.li+1<sokoProgress()){sokoLoad(state,state.li+1);sync();}});
 
 function updateSignals(){levelSig.set(state.li+1);movesSig.set(state.moves);parSig.set(state.level.par);boxSig.set(sokoOnGoalCount(state));stuckSig.set(state.stuck);unlockSig.set(sokoProgress());}
 function sync(){updateSignals();noteSig.set(state.completed?'CLEARED - NEXT UNLOCKED':'');frame.set(frame()+1);}

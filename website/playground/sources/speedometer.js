@@ -11,7 +11,7 @@
  * background, the needle and the hub: clearing the needle box cannot erase
  * static dial content. */
 var SPEED_MODE = 'demo'; /* 'demo', 'imu', or 'manual' */
-var speedTheme = { colors: { bg: '#08121C', surface: '#102333', surfaceAlt: '#1B3647', text: '#F1F7FA', textDim: '#8EACB8', accent: '#53E1C4', success: '#53E1C4', danger: '#FF667B', primary: '#08121C' } };
+var speedTheme = { colors: { bg: '#0D1420', surface: '#16202E', surfaceAlt: '#1F2C3D', text: '#F2F7FB', textDim: '#9EB3C6', accent: '#40D8B0', success: '#40D8B0', danger: '#FF6B79', primary: '#0D1420' } };
 lume.theme.set(speedTheme);
 var speedTarget = signal(0); /* In manual mode, external JS can call speedTarget.set(kmH). */
 var speedShown = signal(0);
@@ -62,7 +62,7 @@ function speedLabelWidgets() {
         x: 24 + t[0] - (label >= 100 ? 12 : 8),
         y: 64 + t[1] - 8,
         width: 48, height: 18,
-        color: 'textDim', fontSize: 14
+        borderRadius: 0, color: 'textDim', fontSize: 14
       }
     }));
   }
@@ -126,15 +126,17 @@ function speedTick() {
   if (now - speedSave > 10000) { lume.storage.kv.set('drive.trip', Math.round(tripKm() * 1000)); speedSave = now; }
   if (now - speedClock().getTime() >= 1000) speedClock.set(new Date());
 }
+/* r201: HUD/footer inside the 480-round safe square; dial canvas + needle
+   physics stay unchanged. Canvas is created first so the HUD Texts stack above it. */
 var speedChildren = [
-  Text({ text: 'LUME DRIVE', style: { position: 'absolute', x: 32, y: 24, width: 200, height: 32, color: 'textDim', fontSize: 14 } }),
-  Text({ text: function () { var d = speedClock(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }, style: { position: 'absolute', x: 352, y: 24, width: 96, height: 32, textAlign: 'right', color: 'textDim', fontSize: 14 } }),
-  Canvas({ width: DIAL_W, height: DIAL_H, style: { position: 'absolute', x: 24, y: 64 }, onDraw: speedDraw })
+  Canvas({ width: DIAL_W, height: DIAL_H, style: { position: 'absolute', x: 24, y: 64 }, onDraw: speedDraw }),
+  Text({ text: 'LUME DRIVE', style: { position: 'absolute', x: 84, y: 80, width: 200, height: 24, borderRadius: 0, color: 'textDim', fontSize: 14 } }),
+  Text({ text: function () { var d = speedClock(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }, style: { position: 'absolute', x: 296, y: 80, width: 100, height: 24, textAlign: 'right', borderRadius: 0, color: 'textDim', fontSize: 14 } })
 ];
 speedChildren = speedChildren.concat(speedLabelWidgets()).concat([
-  Text({ text: function () { return String(Math.round(speedShown())); }, style: { position: 'absolute', x: 144, y: 244, width: 192, height: 64, textAlign: 'center', color: 'text', fontSize: 48 } }),
-  Text({ text: 'km/h', style: { position: 'absolute', x: 176, y: 306, width: 128, height: 24, textAlign: 'center', color: 'textDim', fontSize: 14 } }),
-  View({ style: { position: 'absolute', x: 24, y: 396, width: 432, height: 60, background: 'surface', borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'row', justifyContent: 'space-between' } }, [
+  Text({ text: function () { return String(Math.round(speedShown())); }, style: { position: 'absolute', x: 144, y: 244, width: 192, height: 64, textAlign: 'center', borderRadius: 0, color: 'text', fontSize: 48 } }),
+  Text({ text: 'km/h', style: { position: 'absolute', x: 176, y: 306, width: 128, height: 24, textAlign: 'center', borderRadius: 0, color: 'textDim', fontSize: 14 } }),
+  View({ style: { position: 'absolute', x: 84, y: 352, width: 312, height: 48, background: 'surface', borderRadius: 12, padding: 12, display: 'flex', flexDirection: 'row', justifyContent: 'space-between' } }, [
     Text({ text: 'TRIP', style: { color: 'textDim', fontSize: 14, width: 92 } }),
     Text({ text: function () { return tripKm().toFixed(2) + ' km'; }, style: { color: 'text', fontSize: 20, textAlign: 'right', width: 180 } })
   ])

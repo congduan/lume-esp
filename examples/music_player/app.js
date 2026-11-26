@@ -216,42 +216,45 @@ function musicShowPage(library) {
 }
 var musicTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
 lume.theme.set(musicTheme);
+/* r201: now-playing page pulled into the 480-round safe square x,y in [75,405].
+   All signal labels, KV keys and playback logic are unchanged. */
 var musicNowPage = View({style:{width:480,height:480,background:'bg',scroll:'none'}}, [
-  Text({text:'NOW PLAYING',style:{x:24,y:43,width:300,height:24,color:'accent',fontSize:13}}),
-  Button({title:'Library',style:{x:360,y:24,width:96,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicShowPage(true);}}),
-  Text({text:musicTitle,style:{x:24,y:88,width:432,height:32,color:'text',fontSize:24}}),
-  Text({text:musicArtist,style:{x:24,y:120,width:432,height:24,color:'textDim',fontSize:16}}),
-  View({style:{x:24,y:152,width:432,height:120,background:'surface',borderRadius:20}}),
-  Text({text:musicLineBefore2,style:{x:48,y:160,width:384,height:16,color:'textDim',fontSize:13,textAlign:'center'}}),
-  Text({text:musicLineBefore,style:{x:48,y:176,width:384,height:20,color:'textDim',fontSize:13,textAlign:'center'}}),
-  View({style:{x:40,y:194,width:400,height:36,background:'surfaceAlt',borderRadius:12}}),
-  Text({text:musicLineNow,style:{x:40,y:201,width:400,height:22,color:'accent',textAlign:'center',fontSize:21}}),
-  Text({text:musicLineAfter,style:{x:48,y:232,width:384,height:20,color:'textDim',fontSize:13,textAlign:'center'}}),
-  Text({text:musicLineAfter2,style:{x:48,y:252,width:384,height:16,color:'textDim',fontSize:13,textAlign:'center'}}),
-  View({style:{x:24,y:280,width:432,height:8,background:'surfaceAlt',borderRadius:999}}),
-  View({style:{x:24,y:280,width:function(){musicProgress();return musicDurationMs?Math.max(8,Math.min(432,Math.round(432*musicPosition()/musicDurationMs))):8;},height:8,background:'accent',borderRadius:999}}),
-  Text({text:musicTime,style:{x:24,y:296,width:432,height:16,color:'textDim',fontSize:13,textAlign:'center'}}),
-  Button({title:'Prev',style:{x:96,y:336,width:72,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicSelect(musicIndex-1);}}),
-  Button({title:musicPauseLabel,style:{x:196,y:336,width:88,height:56,background:'accent',borderRadius:999},onPress:musicPause}),
-  Button({title:'Next',style:{x:312,y:336,width:72,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicSelect(musicIndex+1);}}),
-  Button({title:'Vol-',style:{x:24,y:400,width:64,height:56,background:'surfaceAlt',borderRadius:12},onPress:function(){musicVolume=Math.max(0,musicVolume-10);musicAudio.setVolume(musicVolume);}}),
-  Button({title:'-0.5',style:{x:96,y:400,width:64,height:56,background:'surfaceAlt',borderRadius:12},onPress:function(){musicOffset(-500);}}),
-  Text({text:musicOffsetLabel,style:{x:184,y:416,width:112,height:24,color:'textDim',fontSize:11,textAlign:'center'}}),
-  Button({title:'+0.5',style:{x:320,y:400,width:64,height:56,background:'surfaceAlt',borderRadius:12},onPress:function(){musicOffset(500);}}),
-  Button({title:'Vol+',style:{x:392,y:400,width:64,height:56,background:'surfaceAlt',borderRadius:12},onPress:function(){musicVolume=Math.min(100,musicVolume+10);musicAudio.setVolume(musicVolume);}}),
-  Text({text:musicStatus,style:{x:24,y:316,width:432,height:16,color:'textDim',fontSize:11,textAlign:'center'}})
+  Text({text:'NOW PLAYING',style:{x:84,y:80,width:200,height:20,color:'accent',fontSize:12,borderRadius:0}}),
+  Button({title:'Library',style:{x:288,y:76,width:108,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicShowPage(true);}}),
+  Text({text:musicTitle,style:{x:84,y:112,width:312,height:28,color:'text',fontSize:20,borderRadius:0}}),
+  Text({text:musicArtist,style:{x:84,y:140,width:312,height:20,color:'textDim',fontSize:14,borderRadius:0}}),
+  View({style:{x:84,y:166,width:312,height:86,background:'surface',borderRadius:12}}),
+  Text({text:musicLineBefore2,style:{x:96,y:170,width:288,height:14,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
+  Text({text:musicLineBefore,style:{x:96,y:184,width:288,height:16,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
+  View({style:{x:96,y:200,width:288,height:28,background:'surfaceAlt',borderRadius:8}}),
+  Text({text:musicLineNow,style:{x:96,y:204,width:288,height:20,color:'accent',borderRadius:0,textAlign:'center',fontSize:18}}),
+  Text({text:musicLineAfter,style:{x:96,y:224,width:288,height:16,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
+  Text({text:musicLineAfter2,style:{x:96,y:238,width:288,height:14,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
+  View({style:{x:84,y:262,width:312,height:8,background:'surfaceAlt',borderRadius:999}}),
+  View({style:{x:84,y:262,width:function(){musicProgress();return musicDurationMs?Math.max(8,Math.min(312,Math.round(312*musicPosition()/musicDurationMs))):8;},height:8,background:'accent',borderRadius:999}}),
+  Text({text:musicTime,style:{x:84,y:274,width:312,height:16,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
+  Text({text:musicStatus,style:{x:84,y:292,width:312,height:16,color:'textDim',fontSize:11,borderRadius:0,textAlign:'center'}}),
+  Button({title:'Prev',style:{x:84,y:314,width:96,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicSelect(musicIndex-1);}}),
+  Button({title:musicPauseLabel,style:{x:192,y:314,width:96,height:48,background:'accent',borderRadius:8,fontSize:14},onPress:musicPause}),
+  Button({title:'Next',style:{x:300,y:314,width:96,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicSelect(musicIndex+1);}}),
+  Button({title:'Vol-',style:{x:84,y:366,width:60,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicVolume=Math.max(0,musicVolume-10);musicAudio.setVolume(musicVolume);}}),
+  Button({title:'-0.5',style:{x:150,y:366,width:60,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicOffset(-500);}}),
+  Text({text:musicOffsetLabel,style:{x:216,y:378,width:48,height:20,color:'textDim',fontSize:10,borderRadius:0,textAlign:'center'}}),
+  Button({title:'+0.5',style:{x:270,y:366,width:60,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicOffset(500);}}),
+  Button({title:'Vol+',style:{x:336,y:366,width:60,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicVolume=Math.min(100,musicVolume+10);musicAudio.setVolume(musicVolume);}})
 ]);
+/* r201: library page pulled into the same safe square; scan/paging logic kept. */
 var musicLibraryItems = [
-  Text({text:'Music library',style:{x:24,y:24,width:320,height:40,color:'text',fontSize:24}}),
-  Text({text:'TF CARD  /  MUSIC',style:{x:24,y:64,width:300,height:22,color:'textDim',fontSize:13}}),
-  Button({title:'Back',style:{x:24,y:400,width:96,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicShowPage(false);}}),
-  Button({title:'Refresh',style:{x:136,y:400,width:112,height:56,background:'accent',borderRadius:999},onPress:musicScan}),
-  Text({text:musicStatus,style:{x:24,y:368,width:432,height:24,color:'textDim',fontSize:13}}),
-  Button({title:'<',style:{x:320,y:400,width:56,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicPageBy(-1);}}),
-  Button({title:'>',style:{x:400,y:400,width:56,height:56,background:'surfaceAlt',borderRadius:999},onPress:function(){musicPageBy(1);}})
+  Text({text:'Music library',style:{x:84,y:80,width:312,height:32,color:'text',fontSize:20,borderRadius:0}}),
+  Text({text:'TF CARD  /  MUSIC',style:{x:84,y:112,width:312,height:20,color:'textDim',fontSize:12,borderRadius:0}}),
+  Text({text:musicStatus,style:{x:84,y:312,width:312,height:20,color:'textDim',fontSize:12,borderRadius:0}}),
+  Button({title:'Back',style:{x:84,y:346,width:84,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicShowPage(false);}}),
+  Button({title:'Refresh',style:{x:176,y:346,width:84,height:48,background:'accent',borderRadius:8,fontSize:12},onPress:musicScan}),
+  Button({title:'<',style:{x:268,y:346,width:48,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicPageBy(-1);}}),
+  Button({title:'>',style:{x:324,y:346,width:48,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicPageBy(1);}})
 ];
 for (var m = 0; m < 4; m++) (function (index) {
-  musicLibraryItems.push(Button({title:musicRows[index],style:{x:24,y:104+index*60,width:432,height:56,background:index%2?'surfaceAlt':'surface',borderRadius:12},
+  musicLibraryItems.push(Button({title:musicRows[index],style:{x:84,y:136+index*52,width:312,height:48,background:index%2?'surfaceAlt':'surface',borderRadius:8,fontSize:14},
     onPress:function(){if(musicPage*4+index<musicFiles.length)musicSelect(musicPage*4+index);}}));
 })(m);
 musicLibraryPage = View({visible:false,style:{width:480,height:480,background:'bg',scroll:'none'}},musicLibraryItems);

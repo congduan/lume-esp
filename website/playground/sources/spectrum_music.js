@@ -98,16 +98,17 @@ var smCanvas = Canvas({ parent: smRoot, width: 480, height: 480,
     ctx.circle(cx, cy, 63, theme.mid);
     ctx.text(204, 239, 'LUME', theme.core);
     ctx.text(194, 258, 'SPECTRUM', '#D3E7EC');
-    ctx.text(140, 31, smMode === 'DEMO' ? 'MIC OFF · DEMO MODE' : 'MIC LIVE · 16 kHz', theme.core);
-    ctx.fillColor(theme.dim); ctx.fillRect(157, 58, 166, 6);
-    ctx.fillColor(theme.bright); ctx.fillRect(157, 58, Math.round(166 * smLevel), 6);
-    ctx.text(156, 75, 'ENERGY', '#8799A4');
+    /* r201: HUD text pulled into the 480-round safe square; radial geometry unchanged. */
+    ctx.text(140, 80, smMode === 'DEMO' ? 'MIC OFF - DEMO MODE' : 'MIC LIVE - 16 kHz', theme.core);
+    ctx.fillColor(theme.dim); ctx.fillRect(157, 104, 166, 6);
+    ctx.fillColor(theme.bright); ctx.fillRect(157, 104, Math.round(166 * smLevel), 6);
+    ctx.text(156, 120, 'ENERGY', '#9EB3C6');
     return { x: 0, y: 0, w: 480, h: 480 };
   } });
 Button({ parent: smRoot, title: 'GAIN', onPress: function () { smSensitivity = (smSensitivity + 1) % 3; smRev.set(smRev() + 1); },
-  style: { position: 'absolute', x: 122, y: 422, width: 106, height: 38, background: '#17313A', color: '#D3E7EC' } });
+  style: { position: 'absolute', x: 84, y: 352, width: 150, height: 48, borderRadius: 8, background: '#1F2C3D', color: '#F2F7FB' } });
 Button({ parent: smRoot, title: 'COLOR', onPress: function () { smTheme = (smTheme + 1) % 3; smRev.set(smRev() + 1); },
-  style: { position: 'absolute', x: 252, y: 422, width: 106, height: 38, background: '#17313A', color: '#D3E7EC' } });
+  style: { position: 'absolute', x: 246, y: 352, width: 150, height: 48, borderRadius: 8, background: '#1F2C3D', color: '#F2F7FB' } });
 var smResult = lume.audio && lume.audio.recordStream ?
   lume.audio.recordStream({ chunkSamples: 1024, onChunk: smOnChunk, onError: smFallback }) : -3;
 if (smResult < 0) smFallback();

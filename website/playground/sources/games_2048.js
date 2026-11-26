@@ -51,15 +51,17 @@ var score = signal(0), best = signal(gameHigh('2048')), status = signal('Swipe t
 var color = { 2:'#EEE4DA',4:'#EDE0C8',8:'#F2B179',16:'#F59563',32:'#F67C5F',64:'#F65E3B',128:'#EDCF72',256:'#EDCC61',512:'#EDC850',1024:'#EDC53F',2048:'#EDC22E' };
 var revision = signal(0);
 var cells = [];
-var root = View({style:{width:480,height:480,background:'#1B1814',scroll:'none'}});
-Text({parent:root,text:'2048',style:{position:'absolute',x:82,y:42,fontSize:32,color:'#FAF8EF'}});
-Text({parent:root,text:function(){return 'SCORE '+score()+'    BEST '+best();},style:{position:'absolute',x:82,y:86,fontSize:20,color:'#FAF8EF'}});
-Text({parent:root,text:function(){return status();},style:{position:'absolute',x:145,y:443,fontSize:20,color:'#FAF8EF'}});
-View({parent:root,style:{position:'absolute',x:88,y:112,width:304,height:304,background:'#BBADA0',borderRadius:12}});
+/* r201: absolute HUD/board pulled inside the 480-round safe square x,y in [75,405].
+   Title/score/status and every tile now sit in the inscribed square; no gameplay change. */
+var root = View({style:{width:480,height:480,background:'#0D1420',scroll:'none'}});
+Text({parent:root,text:'2048',style:{position:'absolute',x:120,y:80,width:240,textAlign:'center',fontSize:24,borderRadius:0,color:'#F2F7FB'}});
+Text({parent:root,text:function(){return 'SCORE '+score()+'    BEST '+best();},style:{position:'absolute',x:120,y:112,width:240,textAlign:'center',fontSize:16,borderRadius:0,color:'#9EB3C6'}});
+Text({parent:root,text:function(){return status();},style:{position:'absolute',x:120,y:388,width:240,textAlign:'center',fontSize:14,borderRadius:0,color:'#40D8B0'}});
+View({parent:root,style:{position:'absolute',x:120,y:146,width:240,height:240,background:'#16202E',borderRadius:12}});
 for (var n = 0; n < 16; n++) (function(i) {
-  var x = 96 + (i % 4) * 74, y = 120 + Math.floor(i / 4) * 74;
-  var tile = View({parent:root,style:{position:'absolute',x:x,y:y,width:66,height:66,borderRadius:6,background:function(){revision();return color[board[i]] || (board[i] ? '#3C3A32' : '#CDC1B4');},transition:{property:'width',durationMs:90}}});
-  var label = Text({parent:tile,text:function(){revision();return board[i] ? ''+board[i] : '';},style:{position:'absolute',x:0,y:22,width:66,textAlign:'center',fontSize:24,color:'#332D27'}});
+  var x = 123 + (i % 4) * 60, y = 149 + Math.floor(i / 4) * 60;
+  var tile = View({parent:root,style:{position:'absolute',x:x,y:y,width:54,height:54,borderRadius:6,background:function(){revision();return color[board[i]] || (board[i] ? '#3C3A32' : '#1F2C3D');},transition:{property:'width',durationMs:90}}});
+  var label = Text({parent:tile,text:function(){revision();return board[i] ? ''+board[i] : '';},style:{position:'absolute',x:0,y:15,width:54,textAlign:'center',fontSize:20,borderRadius:0,color:'#332D27'}});
   cells.push({tile:tile,label:label});
 })(n);
 function play2048(dir) {
@@ -71,7 +73,7 @@ function play2048(dir) {
   gameBeep(boardOver(board) ? 180 : result.score ? 620 : 360, 30);
   for (var i = 0; i < result.merges.length; i++) {
     var tile = cells[result.merges[i]].tile;
-    lume.anim.to(tile,{attr:'width',from:58,to:66,durationMs:100});
+    lume.anim.to(tile,{attr:'width',from:48,to:54,durationMs:100});
   }
 }
 lume.gesture.on(root,'swipe',function(e){play2048(e.dir);});

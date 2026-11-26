@@ -220,16 +220,18 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   painted=true;return [a];
 }});
 
-Text({parent:root,text:'MINESWEEPER',style:{position:'absolute',x:8,y:8,fontSize:14,color:'#F2E7C9'}});
-Text({parent:root,text:function(){return hudSig()||'FLAGS '+MINES+'  TIME 000';},style:{position:'absolute',x:150,y:8,fontSize:14,color:'#D9A21B'}});
+/* r201: HUD + RESTART inside the 480-round safe square. The 480x480 canvas,
+   CELL/GAP/GX/GY grid math and all game logic are harness anchors and unchanged. */
+Text({parent:root,text:'MINESWEEPER',style:{position:'absolute',x:84,y:80,width:110,fontSize:14,borderRadius:0,color:'#F2F7FB'}});
+Text({parent:root,text:function(){return hudSig()||'FLAGS '+MINES+'  TIME 000';},style:{position:'absolute',x:194,y:80,width:102,fontSize:11,borderRadius:0,color:'#9EB3C6'}});
 Text({parent:root,text:function(){
   if(state.over&&state.won)return 'CLEARED IN '+state.time+'S! TAP RESTART';
   if(state.over)return 'BOOM! TAP RESTART';
   return noteSig()||'TAP TO DIG - HOLD TO FLAG';
-},style:{position:'absolute',x:8,y:28,fontSize:14,color:'#9FD8F0'}});
-Text({parent:root,text:function(){return bestSig()>0?('BEST '+bestSig()+'S'):('BEST -');},style:{position:'absolute',x:8,y:48,fontSize:14,color:'#7A8F4E'}});
+},style:{position:'absolute',x:84,y:100,width:312,fontSize:12,borderRadius:0,color:'#5B9DF7'}});
+Text({parent:root,text:function(){return bestSig()>0?('BEST '+bestSig()+'S'):('BEST -');},style:{position:'absolute',x:84,y:116,width:200,fontSize:11,borderRadius:0,color:'#9EB3C6'}});
 
-Button({title:'RESTART',style:{position:'absolute',x:384,y:6,width:88,height:32,borderRadius:6,background:'#28331F',color:'#E8D46A',fontSize:14},onPress:function(){newGame();}});
+Button({title:'RESTART',style:{position:'absolute',x:304,y:78,width:92,height:48,borderRadius:8,background:'#1F2C3D',color:'#F2F7FB',fontSize:12},onPress:function(){newGame();}});
 
 function hudText(){
   var flags=0;

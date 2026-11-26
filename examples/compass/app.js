@@ -142,21 +142,23 @@ var scene = Canvas({ width: CW, height: CH,
     return [{ x: 0, y: 0, w: CW, h: CH }];
   } });
 
-var root = View({ style: { width: 480, height: 480, background: BG, scroll: 'none' } }, [scene]);
-Text({ parent: root, text: 'INERTIAL HEADING DIAL', style: { position: 'absolute', x: 40, y: 8,
-  width: 400, height: 26, fontSize: 20, color: INK, textAlign: 'center' } });
-Text({ parent: root, text: 'relative estimate - no magnetometer (drag to nudge)', style: { position: 'absolute', x: 20, y: 36,
-  width: 440, height: 22, fontSize: 13, textAlign: 'center' } });
+/* r201: title/subtitle/MODE row inside the 480-round safe square; dial canvas
+   and heading math unchanged. The "no magnetometer" disclaimer text is kept. */
+var root = View({ style: { width: 480, height: 480, background: '#0D1420', scroll: 'none' } }, [scene]);
+Text({ parent: root, text: 'INERTIAL HEADING DIAL', style: { position: 'absolute', x: 84, y: 80,
+  width: 312, height: 24, fontSize: 18, borderRadius: 0, color: '#F2F7FB', textAlign: 'center' } });
+Text({ parent: root, text: 'relative estimate - no magnetometer (drag to nudge)', style: { position: 'absolute', x: 84, y: 106,
+  width: 312, height: 20, fontSize: 11, borderRadius: 0, color: '#9EB3C6', textAlign: 'center' } });
 Text({ parent: root, text: function () { return headingText(); }, style: { position: 'absolute',
   x: CANVAS_X + CX - 70, y: CANVAS_Y + CY - 23, width: 140, height: 46,
-  fontSize: 32, textAlign: 'center' } });
+  borderRadius: 0, fontSize: 32, textAlign: 'center' } });
 Text({ parent: root, text: 'DEG', style: { position: 'absolute', x: CANVAS_X + CX - 20, y: CANVAS_Y + CY + 24,
-  width: 40, height: 18, fontSize: 12, textAlign: 'center' } });
-Button({ parent: root, title: 'MODE', onPress: toggleMode, style: { position: 'absolute', x: 28, y: 430,
-  width: 120, height: 40, background: '#25334F', borderRadius: 10, fontSize: 18 } });
+  width: 40, height: 18, borderRadius: 0, fontSize: 12, textAlign: 'center' } });
+Button({ parent: root, title: 'MODE', onPress: toggleMode, style: { position: 'absolute', x: 84, y: 348,
+  width: 120, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } });
 Text({ parent: root, text: function () { return modeLabel() + (badge() ? '   ' + badge() : ''); },
-  style: { position: 'absolute', x: 160, y: 434, width: 300, height: 32,
-    fontSize: 18, textAlign: 'left' } });
+  style: { position: 'absolute', x: 212, y: 352, width: 184, height: 40,
+    borderRadius: 0, fontSize: 14, textAlign: 'left' } });
 
 var dragLastX = null;
 lume.gesture.on(scene, 'panstart', function (e) { dragLastX = e.x; });

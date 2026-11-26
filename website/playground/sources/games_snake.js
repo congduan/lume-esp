@@ -15,7 +15,9 @@ function gameBeep(hz, ms) {
 }
 function gameAabb(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
-var GRID = 24, CELL = 16;
+/* r201: cell pitch trimmed 16 -> 10 so the 24x24 board (240px) sits inside the
+   480-round safe square; gameplay GRID and step logic are unchanged. */
+var GRID = 24, CELL = 10;
 /* Board tuning point: adjust threshold and axis signs on the physical board.
  * The QMI8658 reports the raw sensor frame, not the LVGL screen frame. On this
  * board it reads az≈+9.5 lying flat screen-up (+Z out of the panel), and the
@@ -56,19 +58,19 @@ function imuDirection(ax,ay) {
 var state={body:[{x:12,y:12},{x:11,y:12},{x:10,y:12}],dir:'right',next:'right',food:null,score:0,over:false};
 state.food=snakeFood(state,Math.random);
 var best=signal(gameHigh('snake')),score=signal(0),note=signal('SWIPE OR TILT'),redraw=signal(0),dirty=[];
-var root=View({style:{width:480,height:480,background:'#081715',scroll:'none'}});
-Text({parent:root,text:'SNAKE',style:{position:'absolute',x:70,y:22,fontSize:32,color:'#D9FFE8'}});
-Text({parent:root,text:function(){return 'SCORE '+score()+'  BEST '+best();},style:{position:'absolute',x:70,y:60,fontSize:20,color:'#D9FFE8'}});
-Text({parent:root,text:function(){return note();},style:{position:'absolute',x:145,y:449,fontSize:14,color:'#D9FFE8'}});
-var scene=Canvas({parent:root,width:384,height:384,style:{position:'absolute',x:48,y:88},onDraw:function(ctx){
+var root=View({style:{width:480,height:480,background:'#0D1420',scroll:'none'}});
+Text({parent:root,text:'SNAKE',style:{position:'absolute',x:120,y:80,width:240,textAlign:'center',fontSize:24,borderRadius:0,color:'#F2F7FB'}});
+Text({parent:root,text:function(){return 'SCORE '+score()+'  BEST '+best();},style:{position:'absolute',x:120,y:106,width:240,textAlign:'center',fontSize:16,borderRadius:0,color:'#9EB3C6'}});
+Text({parent:root,text:function(){return note();},style:{position:'absolute',x:120,y:376,width:240,textAlign:'center',fontSize:14,borderRadius:0,color:'#40D8B0'}});
+var scene=Canvas({parent:root,width:240,height:240,style:{position:'absolute',x:120,y:128},onDraw:function(ctx){
   redraw();
   /* Canvas keeps its prior pixels; repaint only head, vacated tail and food. */
   var full=!dirty.length;
-  if(full) {ctx.fillColor('#12332B');ctx.fillRect(0,0,384,384);for(var i=0;i<state.body.length;i++)dirty.push(state.body[i]);if(state.food)dirty.push(state.food);}
+  if(full) {ctx.fillColor('#16202E');ctx.fillRect(0,0,240,240);for(var i=0;i<state.body.length;i++)dirty.push(state.body[i]);if(state.food)dirty.push(state.food);}
   for(var j=0;j<dirty.length;j++){
     var p=dirty[j], body=false;for(var k=0;k<state.body.length;k++)if(state.body[k].x===p.x&&state.body[k].y===p.y)body=true;
     var food=state.food&&state.food.x===p.x&&state.food.y===p.y;
-    ctx.fillColor(food?'#FFB84D':body?'#57E49B':'#12332B');ctx.fillRect(p.x*CELL+1,p.y*CELL+1,CELL-2,CELL-2);
+    ctx.fillColor(food?'#FFD78E':body?'#40D8B0':'#16202E');ctx.fillRect(p.x*CELL+1,p.y*CELL+1,CELL-2,CELL-2);
   }
   var areas=[];for(var n=0;n<dirty.length;n++)areas.push({x:dirty[n].x*CELL+1,y:dirty[n].y*CELL+1,w:CELL-2,h:CELL-2});
   dirty=[];

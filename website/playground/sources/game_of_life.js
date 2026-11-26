@@ -21,7 +21,7 @@ var CANVAS_X = 90, CANVAS_Y = 76;/* canvas origin on the 480x480 screen */
 var GRID = 33;                   /* <= 60x60; 33 * 9 = 297 px fits the 300 px canvas */
 var CELL = 9;                    /* 8 px cell + 1 px gap */
 var OX = 1, OY = 1;              /* grid origin inside the canvas */
-var BG = '#0A1020', LINE = '#25334F', LIVE = '#5CE1C8';
+var BG = '#0D1420', LINE = '#1F2C3D', LIVE = '#40D8B0';
 var SPEEDS = [200, 350, 500];    /* generation interval, ms (below frame pressure) */
 
 /* ---- B3/S23 core (pure; torus neighbour wrap) -------------------------- */
@@ -225,17 +225,18 @@ function seedTap(gx, gy) {
 /* ---- HUD (native widgets; no canvas text/font glyph issues) ------------ */
 var root = View({ style: { width: 480, height: 480, background: BG, scroll: 'none' } }, [
   scene,
-  Text({ text: 'GAME OF LIFE', style: { position: 'absolute', x: 110, y: 12, width: 260, height: 32,
-    fontSize: 26, color: '#E9F5FF', textAlign: 'center' } }),
+  /* r201: HUD/controls inside the 480-round safe square; canvas + grid logic untouched. */
+  Text({ text: 'GAME OF LIFE', style: { position: 'absolute', x: 84, y: 78, width: 312, height: 26,
+    fontSize: 18, color: '#F2F7FB', borderRadius: 0, textAlign: 'center' } }),
   Text({ text: function () { return 'GEN ' + stGen() + '   ALIVE ' + stAlive() + '   ' + stSpeed() + 'MS  ' + stRun(); },
-    style: { position: 'absolute', x: 24, y: 46, width: 432, height: 24,
-      fontSize: 16, color: '#5CE1C8', textAlign: 'center' } }),
+    style: { position: 'absolute', x: 84, y: 106, width: 312, height: 22,
+      fontSize: 13, color: '#40D8B0', borderRadius: 0, textAlign: 'center' } }),
   Button({ title: 'PATTERN', onPress: function () { applyPattern(patternIndex + 1); },
-    style: { position: 'absolute', x: 170, y: 386, width: 140, height: 42,
-      background: '#25334F', borderRadius: 10, fontSize: 18, color: '#E9F5FF' } }),
+    style: { position: 'absolute', x: 170, y: 330, width: 140, height: 48,
+      background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } }),
   Text({ text: 'TAP seed  SWIPE UP play/pause  SWIPE L/R speed  HOLD clear',
-    style: { position: 'absolute', x: 12, y: 442, width: 456, height: 22,
-      fontSize: 12, color: '#9FB0CC', textAlign: 'center' } })
+    style: { position: 'absolute', x: 84, y: 380, width: 312, height: 18,
+      fontSize: 11, color: '#9EB3C6', borderRadius: 0, textAlign: 'center' } })
 ]);
 
 lume.gesture.on(scene, 'tap', function (e) {
