@@ -908,6 +908,11 @@
   }
   function Launcher(p) {
     p = p || {};
+    /* r204: 'round' is opt-in. 'square' keeps every legacy default exactly. */
+    var shape = p.shape === undefined ? 'square' : p.shape;
+    if (shape !== 'square' && shape !== 'round')
+      throw new TypeError('lume: Launcher shape must be square or round');
+    var round = shape === 'round';
     /* Default source: the installed app set (lume.apps.entries()). Passing
      * `apps` still wins, so the component stays usable without the store. */
     var apps = p.apps;
@@ -926,41 +931,75 @@
     function setEditing(v) { editing.set(v); if (p.onEditingChange) p.onEditingChange(v); }
     var root = View({ parent: p.parent, style: { width: '100%', height: 480,
       background: '#000000', scroll: 'none' } });
-    var bar = p.statusBar === false ? null : StatusBar({ parent: root, left: p.title || 'Lume',
-      right: p.right === undefined ? function () { var v = lume.pmic.battPercent(); return v >= 0 && v <= 100 ? 'battery ' + v + '%' : 'battery --'; } : p.right });
-    var top = bar === null ? 24 : 96;
-    var listTop = bar === null ? 96 : 168;
-    if (bar === null) Text({ parent: root, text: p.title || 'Lume', style: { x: 24, y: 40 } });
+    var barOpts = { parent: root, left: p.title || 'Lume',
+      right: p.right === undefined ? function () { var v = lume.pmic.battPercent(); return v >= 0 && v <= 100 ? 'battery ' + v + '%' : 'battery --'; } : p.right };
+    /* StatusBar's own round geometry uses the same safeInsets() as SafeArea. */
+    if (round) { barOpts.shape = 'round'; barOpts.height = 48; }
+    var bar = p.statusBar === false ? null : StatusBar(barOpts);
+    /* Round defaults derive from the 466 round screen's 339x339 inscribed
+     * square (safeInsets('round', 480)); square defaults are the legacy
+     * byte-for-byte values. */
+    var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
+    var insets = round ? safeInsets('round', screen.w) : null;
+    var bx = round ? insets.left : 0, by = round ? insets.top : 0;
+    var side = round ? screen.w - insets.left - insets.right : 480;
+    var roundTop = by + (bar === null ? 8 : 56);
+    var geo = round
+      ? { top: roundTop, listTop: roundTop + 64, editX: bx + side - 64,
+          listX: bx + 8, listWidth: side - 16, listHeight: by + side - 8 - roundTop - 64,
+          itemHeight: 70, rowHeight: 70, cellHeight: 68, icon: 44, pad: 0, gap: 2,
+          titleX: bx + 8, titleY: by + 8 }
+      : { top: bar === null ? 24 : 96, listTop: bar === null ? 96 : 168,
+          editX: 400, listX: 24, listWidth: 432, listHeight: 456 - (bar === null ? 96 : 168),
+          itemHeight: 84, rowHeight: 96, cellHeight: 94, icon: 48, pad: undefined, gap: undefined,
+          titleX: 24, titleY: 40 };
+    if (bar === null) Text({ parent: root, text: p.title || 'Lume',
+      style: { x: geo.titleX, y: geo.titleY } });
     Button({ parent: root, title: function () { return editing() ? 'done' : 'edit'; },
-      style: { x: 400, y: top, width: 56, height: 56 },
+      style: { x: geo.editX, y: geo.top, width: 56, height: 56 },
       onPress: function () { setEditing(!editing()); } });
     var rows = [];
     for (var i = 0; i < apps.length; i += columns) rows.push(apps.slice(i, i + columns));
     var list = List({ parent: root,
-      style: { x: 24, y: listTop, width: 432, height: 456 - listTop,
+      style: { x: geo.listX, y: geo.listTop, width: geo.listWidth, height: geo.listHeight,
         background: '#000000', scrollbar: 'auto' },
-      items: rows, itemHeight: 84, overscan: 1,
+      items: rows, itemHeight: geo.itemHeight, overscan: 1,
       renderItem: function (row) {
-        return View({ style: { display: 'flex', flexDirection: 'row',
-          justifyContent: 'space-evenly', width: '100%', height: 96, scroll: 'none' } },
-          row.map(function (app) {
-            return View({ style: { display: 'flex', flexDirection: 'column',
-              alignItems: 'center', width: Math.floor(432 / columns), height: 94, scroll: 'none',
-              opacity: function () { return launching() === app.id ? 0.55 : 1; } },
-              onPress: function () {
-                if (editing()) return;
-                launching.set(app.id);
-                /* Default to a real runtime switch; a host callback overrides. */
-                if (p.onLaunch) p.onLaunch(app.id);
-                else if (lume.apps && typeof lume.apps.launch === 'function') lume.apps.launch(app.id);
-              } }, [
-              Canvas({ width: 48, height: 48, style: { borderRadius: 24 }, onDraw: function (c) {
-                c.clear(); c.fillColor(app.color || '#385CA5'); c.fillRect(2, 2, 44, 44);
-                c.text(17, 18, String(app.icon || app.glyph || app.label || '').slice(0, 1), '#FFFFFF');
+        var rowStyle = { display: 'flex', flexDirection: 'row',
+          justifyContent: 'space-evenly', width: '100%', height: geo.rowHeight, scroll: 'none' };
+        if (round) { rowStyle.padding = geo.pad; rowStyle.gap = geo.gap; }
+        return View({ style: rowStyle }, row.map(function (app) {
+          var cellStyle = { display: 'flex', flexDirection: 'column',
+            alignItems: 'center', width: Math.floor(geo.listWidth / columns), height: geo.cellHeight, scroll: 'none',
+            opacity: function () { return launching() === app.id ? 0.55 : 1; } };
+          if (round) { cellStyle.padding = geo.pad; cellStyle.gap = geo.gap; }
+          var glyph = String(app.icon || app.glyph || app.label || '').slice(0, 1);
+          return View({ style: cellStyle, onPress: function () {
+            if (editing()) return;
+            launching.set(app.id);
+            /* Default to a real runtime switch; a host callback overrides. */
+            if (p.onLaunch) p.onLaunch(app.id);
+            else if (lume.apps && typeof lume.apps.launch === 'function') lume.apps.launch(app.id);
+          } }, [
+            Canvas({ width: geo.icon, height: geo.icon,
+              style: round ? { scroll: 'none' } : { borderRadius: 24 },
+              onDraw: function (c) {
+                c.clear();
+                if (round) {
+                  /* r200 launcher_grid badge: filled circle + token-colour ring
+                   * + crisp centred white glyph. app.ring is a token colour. */
+                  var r = geo.icon / 2;
+                  c.fillCircle(r, r, r - 2, app.color || '#1F2C3D');
+                  c.circle(r, r, r - 3, app.ring || '#40D8B0', 2);
+                  c.text(r - 5, r - 7, glyph, '#F2F7FB');
+                } else {
+                  c.fillColor(app.color || '#385CA5'); c.fillRect(2, 2, 44, 44);
+                  c.text(17, 18, glyph, '#FFFFFF');
+                }
               } }),
-              Text({ text: app.label || app.id || '', style: {} }),
-            ]);
-          }));
+            Text({ text: app.label || app.id || '', style: {} }),
+          ]);
+        }));
       },
     });
     var edge = EdgeNavigation({ parent: root, indicator: p.indicator,

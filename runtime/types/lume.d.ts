@@ -415,11 +415,22 @@ declare namespace lume.ui.shell {
    * polyline cap. Returns a node for shell.dispose(node). Touch/pixel feel is
    * deferred to board bring-up. */
   function Sparkline(props?: SparklineProps): lume.ui.Node;
-  interface LauncherApp { id: string; label: string; color?: string; icon?: string; glyph?: string }
+  interface LauncherApp {
+    id: string; label: string;
+    /** Badge fill colour; round shape defaults to bg-3 (#1F2C3D). */
+    color?: string;
+    /** Badge ring colour (a design token); round shape defaults to accent (#40D8B0). */
+    ring?: string;
+    icon?: string; glyph?: string;
+  }
   interface LauncherProps {
     parent?: lume.ui.Node;
     /** Defaults to lume.apps.entries(); pass a list to render something else. */
     apps?: LauncherApp[];
+    /** Defaults to 'square' (legacy 480-square layout). 'round' inscribes every
+     * default in the 466 round screen's 339x339 safe square and draws circular
+     * badges; square defaults are byte-for-byte unchanged. */
+    shape?: 'square' | 'round';
     /** Defaults to lume.apps.launch(id) (real runtime switch). */
     onLaunch?: (id: string) => void;
     statusBar?: boolean; columns?: number; title?: string;
