@@ -89,8 +89,11 @@ check('setBoot reports invalid ids and storage errors', () => {
 });
 
 check('launcher pins itself and its edit exit clears the pin before home', () => {
-  const source = fs.readFileSync('examples/launcher/app.js', 'utf8');
-  const s = runApp(source, { apps: { launcher: {}, clock: {} } });
+  /* r204: the example is an esbuild bundle consumer (imports shell.js); this
+   * vm harness prepends shell.js itself, so drop the static import line. */
+  const source = fs.readFileSync('examples/launcher/app.js', 'utf8')
+    .replace(/^\s*import\s+[^;]+;\s*$/gm, '');
+  const s = app(source, { apps: { launcher: {}, clock: {} } });
   assert.equal(s.bootPin(), 'launcher');
   vm.runInContext('editing.set(true); exitLauncher();', s.ctx);
   assert.equal(s.bootPin(), '');

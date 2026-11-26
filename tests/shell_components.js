@@ -56,6 +56,29 @@ check('Launcher creates bounded virtual grid', () => {
   const canvases = s.messages.filter(m => m[0] === 'create' && m[2] === 3);
   assert.ok(canvases.length > 0 && canvases.length < 90, 'only visible icons mounted');
 });
+check('Launcher round shape inscribes defaults in the 466 safe square', () => {
+  const s = app('globalThis.apps=Array.from({length:9},(_,i)=>({id:"app"+i,label:"App "+i,color:"#117B69",ring:"#40D8B0"}));globalThis.root=lume.ui.shell.Launcher({apps,shape:"round"});');
+  /* safeInsets('round', 480) -> 339x339 box at (70,70): every default control
+   * must stay inside [70,409] on both axes. */
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 2 && m[3] === 339), 'bar width is the inscribed side');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 18 && m[3] === 70), 'bar x at safe left');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 19 && m[3] === 70), 'bar y at safe top');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 18 && m[3] === 345), 'edit button right edge inside safe square');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 19 && m[3] === 126), 'edit button below bar');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 18 && m[3] === 78), 'list x inside safe square');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 19 && m[3] === 190), 'list y below edit button');
+  const icon = s.messages.find(m => m[0] === 'create' && m[2] === 3 && m[4] === 44 && m[5] === 44);
+  assert.ok(icon, '44px round icon canvas');
+  const draws = s.messages.filter(m => m[0] === 'draw' && m[1] === icon[1]);
+  assert.ok(draws.some(m => m[2] === 6 && m[3] === 22 && m[4] === 22 && m[5] === 20), 'fillCircle badge');
+  assert.ok(draws.some(m => m[2] === 3 && m[3] === 22 && m[4] === 22 && m[5] === 19), 'token colour ring');
+  assert.ok(draws.some(m => m[2] === 4 && m[9] === 'A'), 'centred white glyph');
+  assert.ok(!draws.some(m => m[2] === 1), 'no octagonal fillRect placeholder');
+  assert.ok(!s.messages.some(m => m[0] === 'attr' && m[2] === 12 && m[3] === 24), 'no borderRadius:24 clip');
+});
+check('Launcher rejects an unknown shape', () => {
+  assert.throws(() => app('lume.ui.shell.Launcher({shape:"oval"});'), /shape must be square or round/);
+});
 check('app press and edge gesture route independently', () => {
   const s = app('globalThis.hits=[];globalThis.btn=Button({title:"Go",onPress:()=>hits.push("press")});globalThis.edge=lume.ui.shell.EdgeNavigation({onBack:()=>{hits.push("back");return true}});');
   s.press(s.ctx.btn); drag(s, s.ctx.edge, 10, 90);

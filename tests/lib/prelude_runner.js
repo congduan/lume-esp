@@ -29,9 +29,10 @@ const prelude = extract('lume_prelude_js');
 const demo = extract('lume_demo_js');
 // Historical app guard harnesses compare the prelude with 3514c76. The C
 // container changed in r186, so compare the extracted JS bytes instead.
+// r204: re-pinned after the sanctioned Text/Canvas/Image radius fix.
 function preludeChangesSince3514c76() {
   const hash = createHash('sha256').update(fs.readFileSync(path.join(scriptDir, 'prelude.js'))).digest('hex');
-  return hash === '8880e9c205c017430db4c2e0d215330c37f16669020259c9c65a426c3743486c'
+  return hash === '268c3acf94116179b7716a5d58d415818d3adbcbb6fcd3b706197d2f863d5ccc'
     ? [] : ['firmware/components/lume-engine/prelude/prelude.js'];
 }
 
