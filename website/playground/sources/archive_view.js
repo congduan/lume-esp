@@ -87,27 +87,27 @@ View({ style: { width: '100%', height: '100%', background: '#000000', scroll: 'n
     background: '#09101A', scroll: 'none'
   } }, [
     Text({ text: 'Archive Viewer', style: {
-      position: 'absolute', x: 4, y: 4, width: 210, height: 28,
+      position: 'absolute', x: 4, y: 10, width: 210, height: 28,
       fontSize: 20, color: '#F2F7FB'
     } }),
     Button({ title: 'NEXT', onPress: cyclePayload, style: {
-      position: 'absolute', x: 224, y: 0, width: 100, height: 36,
-      borderRadius: 18, background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
+      position: 'absolute', x: 224, y: 0, width: 100, height: 48,
+      borderRadius: 12, background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
       color: '#F2F7FB', fontSize: 13
     } }),
     View({ style: {
-      position: 'absolute', x: 4, y: 42, width: 320, height: 34,
+      position: 'absolute', x: 4, y: 54, width: 320, height: 30,
       background: '#12262B', borderColor: '#2E7D6B', borderWidth: 1, borderRadius: 10,
       paddingLeft: 12, paddingRight: 12, display: 'flex', alignItems: 'center', scroll: 'none'
     } }, [
       Text({ text: pagerDisplay, style: { fontSize: 13, color: '#40D8B0' } })
     ]),
     View({ style: {
-      position: 'absolute', x: 4, y: 82, width: 320, height: 134,
+      position: 'absolute', x: 4, y: 90, width: 320, height: 126,
       background: '#101A28', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
       padding: 10, scroll: 'none'
     } }, [
-      Text({ text: contentDisplay, style: { width: 300, height: 114, fontSize: 13, color: '#F2F7FB' } })
+      Text({ text: contentDisplay, style: { width: 300, height: 106, fontSize: 13, color: '#F2F7FB' } })
     ]),
     View({ style: {
       position: 'absolute', x: 4, y: 222, width: 320, height: 48,

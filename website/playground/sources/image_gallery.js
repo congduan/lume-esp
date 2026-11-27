@@ -127,12 +127,12 @@ function main() {
         var col = slot % 2;
         var row = Math.floor(slot / 2);
         var cx = 4 + col * 165;
-        var cy = 38 + row * 120;
+        var cy = 36 + row * 118;
         if (entry) {
           gridCards.push(View({
             onPress: function () { activeIdx.set(slot); },
             style: {
-              position: 'absolute', x: cx, y: cy, width: 155, height: 112,
+              position: 'absolute', x: cx, y: cy, width: 155, height: 110,
               background: function () { return activeIdx() === slot ? '#14292E' : '#16202E'; },
               borderColor: function () { return activeIdx() === slot ? '#34A88B' : '#233245'; },
               borderWidth: 1, borderRadius: 12, padding: 6,
@@ -148,7 +148,7 @@ function main() {
         } else {
           gridCards.push(View({
             style: {
-              position: 'absolute', x: cx, y: cy, width: 155, height: 112,
+              position: 'absolute', x: cx, y: cy, width: 155, height: 110,
               background: '#101824', borderColor: '#1E2C3E', borderWidth: 1, borderRadius: 12,
               display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
             }
@@ -178,15 +178,15 @@ function main() {
     for (var j = 0; j < gridCards.length; j++) safeChildren.push(gridCards[j]);
 
     safeChildren.push(View({ style: {
-      position: 'absolute', x: 4, y: 280, width: 320, height: 44,
+      position: 'absolute', x: 4, y: 272, width: 320, height: 52,
       background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
       display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-      paddingLeft: 10, paddingRight: 10, scroll: 'none'
+      paddingLeft: 4, paddingRight: 4, scroll: 'none'
     } }, [
       Button({ title: '<', onPress: function () {
         if (tiles.length > 0) activeIdx.set((activeIdx() + tiles.length - 1) % tiles.length);
       }, style: {
-        width: 48, height: 34, borderRadius: 9, background: '#1F2C3D', color: '#F2F7FB', fontSize: 14
+        width: 48, height: 48, borderRadius: 10, background: '#1F2C3D', color: '#F2F7FB', fontSize: 14
       } }),
       Text({ text: function () {
         if (!tiles.length) return 'No images decoded';
@@ -196,7 +196,7 @@ function main() {
       Button({ title: '>', onPress: function () {
         if (tiles.length > 0) activeIdx.set((activeIdx() + 1) % tiles.length);
       }, style: {
-        width: 48, height: 34, borderRadius: 9, background: '#1F2C3D', color: '#F2F7FB', fontSize: 14
+        width: 48, height: 48, borderRadius: 10, background: '#1F2C3D', color: '#F2F7FB', fontSize: 14
       } })
     ]));
 
