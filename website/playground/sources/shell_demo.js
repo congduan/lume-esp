@@ -9,7 +9,7 @@ const pages = ['Home', 'Sensors', 'Settings'];
 View({ style: {
   width: '100%', height: '100%', background: '#0B1E3F', scroll: 'none',
   display: 'flex', flexDirection: 'column', alignItems: 'center',
-  justifyContent: 'center', gap: 16
+  justifyContent: 'center', padding: 0, paddingTop: 144, paddingBottom: 76, gap: 10
 } }, [
   Text({ text: () => pages[page()], style: { textAlign: 'center' } }),
   Text({ text: () => 'page ' + (page() + 1) + ' / 3', style: {} }),
@@ -23,8 +23,8 @@ View({ style: {
     onPress: () => lume.ui.shell.Toast.show('Saved', {durationMs:2000}) }),
 ]);
 
-lume.ui.shell.StatusBar({ left: 'Shell demo', right: () => 'page ' + (page() + 1),
-  background: '#111111' });
+lume.ui.shell.StatusBar({ shape: 'round', left: 'Shell demo',
+  right: () => 'page ' + (page() + 1), background: '#111111' });
 lume.ui.shell.EdgeNavigation({
   onBack: () => { if (page() > 0) { page.set(page() - 1); return true; } return false; },
   onPageSwipe: dir => page.set((page() + (dir === 'left' ? 1 : -1) + pages.length) % pages.length),
