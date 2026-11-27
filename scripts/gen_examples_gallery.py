@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate the examples gallery cards in website/examples.html.
 
-Three catalogs are read-only inputs and must describe the same 73 apps:
+Three catalogs are read-only inputs and must describe the same app set:
 
   tools/playground/build.mjs   authoritative app id list (the `apps` array)
   website/playground/page.js   per-app display metadata (6-tuple in `examples`)
@@ -9,9 +9,11 @@ Three catalogs are read-only inputs and must describe the same 73 apps:
 
 Drift between any two is a hard error, so the gallery cannot silently show a
 different set than the playground picker. Card copy comes only from the
-page.js metadata: titles, bilingual descriptions and source links. No feature
-claim is invented. The rendered region is plain static HTML, so the page keeps
-working without JavaScript and keeps the site's data-en/data-zh mechanism.
+page.js metadata: titles, bilingual descriptions and source links. Real
+firmware thumbnails are attached only when website/assets/shots/<id>.webp
+exists (rendered by esp32sim). No feature claim is invented. The rendered
+region is plain static HTML, so the page keeps working without JavaScript and
+keeps the site's data-en/data-zh mechanism.
 
 Usage:
   python3 scripts/gen_examples_gallery.py           # rewrite the marked region
@@ -25,6 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PAGE = ROOT / 'website' / 'examples.html'
+SHOTS = ROOT / 'website' / 'assets' / 'shots'
 MANIFEST = ROOT / 'tools' / 'playground' / 'build.mjs'
 META = ROOT / 'website' / 'playground' / 'page.js'
 SOURCES = ROOT / 'website' / 'playground' / 'sources.js'
@@ -89,25 +92,60 @@ def needs_hardware(entry):
 
 
 def card(index, app_id, entry):
-    _, _, en, cn, desc_en, desc_zh = entry
+    _, icon, en, cn, desc_en, desc_zh = entry
     title = f'{en} / {cn}' if cn and cn != en else en
     esc = html.escape
+    hw = needs_hardware(entry)
+    shot_file = SHOTS / f'{app_id}.webp'
+    has_shot = shot_file.exists()
+    search_blob = f'{app_id} {en} {cn} {desc_en} {desc_zh}'.lower()
+    path_str = f'examples/{app_id}/app.js'
+
     parts = [
-        '<article class="example-card card reveal">',
-        f'<div class="example-index">{index:02d} / EXAMPLE</div>',
+        f'<article class="example-card card reveal" '
+        f'data-app="{esc(app_id, quote=True)}" '
+        f'data-shot="{"1" if has_shot else "0"}" '
+        f'data-hw="{"1" if hw else "0"}" '
+        f'data-search="{esc(search_blob, quote=True)}">',
+    ]
+    if has_shot:
+        parts.append(
+            f'<div class="example-thumb">'
+            f'<img src="assets/shots/{esc(app_id)}.webp" width="280" height="280" '
+            f'loading="lazy" alt="{esc(en, quote=True)} - real firmware rendered by esp32sim">'
+            f'<span class="shot-tag">esp32sim</span>'
+            f'</div>'
+        )
+    else:
+        parts.append(
+            f'<div class="example-thumb example-thumb-placeholder">'
+            f'<span class="example-thumb-glyph" aria-hidden="true">{esc(icon or app_id[:2].upper())}</span>'
+            f'<span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span>'
+            f'</div>'
+        )
+
+    meta_row = [f'<div class="example-meta-row"><div class="example-index">{index:02d} / EXAMPLE</div>']
+    if hw:
+        meta_row.append(
+            '<span class="pill status-warn" title="Board hardware may be required" '
+            'data-en="Board hardware" data-zh="需板载外设">Board hardware</span>'
+        )
+    meta_row.append('</div>')
+    parts.append(''.join(meta_row))
+
+    parts.extend([
         f'<h2>{esc(title)}</h2>',
         f'<p data-en="{esc(desc_en, quote=True)}" data-zh="{esc(desc_zh, quote=True)}">'
         f'{esc(desc_en)}</p>',
-        f'<pre><code>examples/{esc(app_id)}/app.js</code></pre>',
-    ]
-    if needs_hardware(entry):
-        parts.append(
-            '<span class="pill" data-en="Board hardware may be required" '
-            'data-zh="可能需要板载外设">Board hardware may be required</span>')
-    parts.extend([
-        f'<a href="{REPO}/examples/{esc(app_id)}/app.js">',
-        '<span data-en="View source →" data-zh="查看源码 →">View source →</span>',
-        '</a>',
+        f'<div class="path-row"><code>{esc(path_str)}</code>'
+        f'<button type="button" class="copy-btn" data-copy="{esc(path_str, quote=True)}" '
+        f'data-en="Copy" data-zh="复制">Copy</button></div>',
+        '<div class="example-actions">',
+        '<a class="button primary button-sm" href="playground/index.html">'
+        '<span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>',
+        f'<a class="button ghost button-sm" href="{REPO}/examples/{esc(app_id)}/app.js">'
+        '<span data-en="View source" data-zh="查看源码">View source</span></a>',
+        '</div>',
         '</article>',
     ])
     return '\n'.join(parts)
@@ -135,7 +173,9 @@ def main():
         sys.exit(1)
     PAGE.write_text(updated)
     badged = [name for name in apps if needs_hardware(meta[name])]
+    with_shots = [name for name in apps if (SHOTS / f'{name}.webp').exists()]
     print(f'wrote {PAGE.relative_to(ROOT)}: {len(apps)} cards from build.mjs + page.js')
+    print(f'esp32sim thumbnails ({len(with_shots)}): ' + ', '.join(with_shots[:10]) + (' ...' if len(with_shots) > 10 else ''))
     print(f'hardware-annotated cards ({len(badged)}): ' + ', '.join(badged))
 
 
