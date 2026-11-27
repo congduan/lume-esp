@@ -72,9 +72,9 @@ function luStar(i){return {x:((i*127+37)*73)%480,y:((i*83+19)*47)%480};}
 function luDraw(c){luFrame();lu.draws++;c.fillColor('#030711');c.fillRect(0,0,480,480);
  for(var i=0;i<40;i++){var p=luStar(i),x=(p.x-lu.rot*.08%480+480)%480;if(x>32&&x<448&&p.y>38&&p.y<442)c.fillCircle(Math.round(x),p.y,i%7===0?2:1,i%7===0?'#B7C9E3':'#53647C');}
  c.fillCircle(240,240,166,'#101A2B');luRender();c.retainImage(1,320,320,luPixels);c.drawImage(1,80,80);
- c.text(30,22,'LUNA  /  '+(lu.live?'LIVE':'CLOCK NOT SET'),'#DDE9F6');
- c.text(30,444,phaseName(lu.phase)+'  ·  TAP FOR DETAILS','#BCCADB');
- if(lu.card){c.fillColor('#091321');c.fillRect(60,314,360,123);c.text(79,326,phaseName(lu.phase),'#F1E8D7');c.text(79,350,'AGE  '+lu.age.toFixed(1)+' DAYS    '+Math.round(lu.distance)+' KM','#B9C8D8');c.text(79,374,'CENTER  '+Math.round(luWrap(lu.rot))+' E  /  '+Math.round(lu.pitch)+' N','#B9C8D8');c.text(79,400,lu.live?'SNTP WALL CLOCK':'EXAMPLE PHASE · SET CLOCK','#D3AA78');}
+ c.text(104,80,'LUNA  /  '+(lu.live?'LIVE':'CLOCK NOT SET'),'#DDE9F6');
+ c.text(92,386,phaseName(lu.phase)+' - TAP DETAILS','#BCCADB');
+ if(lu.card){c.fillColor('#091321');c.fillRect(88,286,304,114);c.text(100,296,phaseName(lu.phase),'#F1E8D7');c.text(100,320,'AGE  '+lu.age.toFixed(1)+' DAYS  '+Math.round(lu.distance)+' KM','#B9C8D8');c.text(100,344,'CENTER  '+Math.round(luWrap(lu.rot))+' E  /  '+Math.round(lu.pitch)+' N','#B9C8D8');c.text(100,368,lu.live?'SNTP WALL CLOCK':'EXAMPLE PHASE - SET CLOCK','#D3AA78');}
 }
 Canvas({parent:luRoot,width:480,height:480,onDraw:luDraw});
 var luTimer=null;

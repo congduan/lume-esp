@@ -387,7 +387,7 @@ View({ style: { width: '100%', height: '100%', background: COLORS.bg, scroll: 'n
   Text({ text: function () {
     var i = stateIdx() + 1;
     return (i < 10 ? '0' : '') + i + ' / ' + STATES.length;
-  }, style: { x: 384, y: 8, width: 84, height: 20, textAlign: 'right' } }),
+  }, style: { x: 312, y: 80, width: 84, height: 20, textAlign: 'right', borderRadius: 0 } }),
   Text({ text: function () { return STATES[stateIdx()].name; },
     style: { x: 84, y: 298, width: 312, height: 24, fontSize: 16 } }),
   Text({ text: function () { return STATES[stateIdx()].detail; },

@@ -8,14 +8,19 @@ var tick=signal(0);
  * remains the caller-owned signal, read by the component inside onDraw. The
  * old surface fill and baseline hairline were visual-only; auto min/max keeps
  * the same relative pulse shape and showDots keeps a marker per sample. */
-var chart=lume.ui.shell.Sparkline({width:400,height:152,data:samples,strokeWidth:3,showDots:true});
-View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:24,gap:12}},[
-  View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[Text({text:'Heart curve',style:{fontSize:24,color:'text'}}),Text({text:'Simulated pulse',style:{fontSize:13,color:'textDim'}})]),
-  View({style:{width:'100%',height:264,background:'surface',borderRadius:20,padding:16,display:'flex',flexDirection:'column',gap:8}},[
-    View({style:{width:'100%',height:64,display:'flex',flexDirection:'row',alignItems:'center',padding:0,gap:8}},[
-      Text({text:function(){return String(samples()[samples().length-1]);},style:{fontSize:48,color:'text'}}),
-      Text({text:'BPM  /  latest',style:{fontSize:13,color:'textDim'}})
-    ]),chart,Text({text:function(){return 'Pulse    /    '+tick()+' new samples';},style:{fontSize:13,color:'textDim'}})
+var chart=lume.ui.shell.Sparkline({width:304,height:116,x:12,y:62,data:samples,strokeWidth:3,showDots:true});
+View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:76,gap:8}},[
+  View({style:{width:'100%',height:44,display:'flex',flexDirection:'column',padding:0,gap:2}},[
+    Text({text:'Heart curve',style:{fontSize:20,color:'text',borderRadius:0}}),
+    Text({text:'Simulated pulse',style:{fontSize:12,color:'textDim',borderRadius:0}})
   ]),
-  Button({title:'Next sample',style:{width:'100%',height:56,background:'accent',borderRadius:999},onPress:function(){var n=tick()+1;var old=samples();samples.set(old.slice(1).concat([35+((n*37)%50)]));tick.set(n);}})
+  View({style:{width:'100%',height:216,background:'surface',borderRadius:12,padding:12,display:'flex',flexDirection:'column',justifyContent:'space-between',gap:6}},[
+    View({style:{width:'100%',height:44,display:'flex',flexDirection:'row',alignItems:'center',padding:0,gap:8}},[
+      Text({text:function(){return String(samples()[samples().length-1]);},style:{fontSize:32,color:'text',borderRadius:0}}),
+      Text({text:'BPM  /  latest',style:{fontSize:12,color:'textDim',borderRadius:0}})
+    ]),
+    chart,
+    Text({text:function(){return 'Pulse    /    '+tick()+' new samples';},style:{fontSize:12,color:'textDim',borderRadius:0}})
+  ]),
+  Button({title:'Next sample',style:{width:'100%',height:48,background:'accent',borderRadius:12},onPress:function(){var n=tick()+1;var old=samples();samples.set(old.slice(1).concat([35+((n*37)%50)]));tick.set(n);}})
 ]);
