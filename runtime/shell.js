@@ -186,22 +186,19 @@
   function StatusBar(p) {
     p = p || {};
     var height = positive('StatusBar height', p.height, 56, 480);
-    /* r109: geometry used to be hard-coded to width 432 / x,y 24 (a 480px
-     * square layout). Derive it from the screen instead, reusing SafeArea's
-     * safeInsets() so a round 1.75C bar matches the inscribed safe square
-     * instead of overflowing it. Square screens keep the legacy 24px margin,
-     * which evaluates to the exact old 432x24 layout at 480px (2.16 / 1.8
-     * unchanged). No firmware or prelude change. */
+    /* r109/r219: derive geometry from the screen via SafeArea's safeInsets().
+     * Square screens keep the legacy 24px margin (432x24 at 480px; 320x24 at
+     * 368px). Round screens add an 8px inner margin inside the inscribed square
+     * so top corners stay inside the [75,405] safe box and clear the circular
+     * bezel (480px -> [78..401, 78..134] Rmax=229.1; 466px -> [76..389, 76..132]
+     * Rmax=222.0), matching Launcher's bx+8 / side-16 inset. No firmware or
+     * prelude change. */
     var screen = typeof __lumeScreen === 'object' ? __lumeScreen : {w:480,h:480};
     var shape = p.shape === undefined ? 'square' : p.shape;
     if (shape !== 'square' && shape !== 'round')
       throw new TypeError('lume: StatusBar shape must be square or round');
     var insets = safeInsets(shape, screen.w);
-    /* Round: the SafeArea insets already provide the margin, so the bar spans
-     * the full safe side (equal-width with a SafeArea View). Square: the
-     * classic 24px side margins; width tracks the screen so 368px-wide bars
-     * no longer overflow. */
-    var margin = shape === 'round' ? 0 : 24;
+    var margin = shape === 'round' ? 8 : 24;
     var barWidth = Math.max(1, screen.w - insets.left - insets.right - 2 * margin);
     var clock = signal('');
     var timer;
@@ -935,7 +932,8 @@
       background: '#000000', scroll: 'none' } });
     var barOpts = { parent: root, left: p.title || 'Lume',
       right: p.right === undefined ? function () { var v = lume.pmic.battPercent(); return v >= 0 && v <= 100 ? 'battery ' + v + '%' : 'battery --'; } : p.right };
-    /* StatusBar's own round geometry uses the same safeInsets() as SafeArea. */
+    /* StatusBar's round geometry adds an 8px margin inside safeInsets(),
+     * aligning with Launcher's bx+8 / side-16 grid inset. */
     if (round) { barOpts.shape = 'round'; barOpts.height = 48; }
     var bar = p.statusBar === false ? null : StatusBar(barOpts);
     /* Round defaults derive from the 466 round screen's 339x339 inscribed

@@ -234,7 +234,7 @@ declare namespace lume.ui.shell {
   interface StatusBarProps {
     parent?: lume.ui.Node; left?: string | (() => string); right?: string | (() => string);
     height?: number; background?: string; clock?: boolean; x?: number; y?: number;
-    /** 'round' sizes the bar to the inscribed safe square (e.g. 1.75C); default 'square'. */
+    /** 'round' insets the bar 8px inside the inscribed safe square so corners stay inside R<=240 (480px: [78..401]); default 'square'. */
     shape?: 'square' | 'round';
   }
   interface EdgeNavigationProps {
