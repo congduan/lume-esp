@@ -1,0 +1,8 @@
+runtime/shell.js: 0
+examples/shell_demo/app.js: 0
+examples/piano/app.js: 0
+tests/statusbar_round.js: 0
+tests/shell_components.js: 0
+tests/piano.js: 0
+website/playground/sources/shell_demo.js: 0
+website/playground/sources/piano.js: 0

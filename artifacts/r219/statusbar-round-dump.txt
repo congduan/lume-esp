@@ -1,0 +1,5 @@
+StatusBar(round, default h=56): screen=480x480 bar=323x56 abs=[78..401,78..134] Rmax=229.1 IN_R=true IN_SAFE=true
+StatusBar(round, Launcher h=48): screen=480x480 bar=323x48 abs=[78..401,78..126] Rmax=229.1 IN_R=true IN_SAFE=true
+StatusBar(round, 1.75C 466): screen=466x466 bar=313x56 abs=[76..389,76..132] Rmax=222.0 IN_R=true IN_SAFE=true
+StatusBar(square, legacy 480): screen=480x480 bar=432x56 abs=[24..456,24..80] Rmax=305.5 IN_R=false IN_SAFE=false
+StatusBar(square, 1.8 368): screen=368x448 bar=320x56 abs=[24..344,24..80] Rmax=256.1 IN_R=false IN_SAFE=false

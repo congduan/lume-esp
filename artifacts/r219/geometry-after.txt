@@ -1,0 +1,63 @@
+# Lume r218 Full-Manifest Geometry Audit (2/74 apps)
+# Screen: 480x480 circle center=(240,240) R=240; Safe square=[75,405]; Touch>=48x48; Card radius<=12
+
+APP                  NODES BTNS  MAX_R OUT240 OUTSAF  T<48  R>12  CTXT  NASC  FLAGS
+----------------------------------------------------------------------------------------------------
+shell_demo              14    3  242.1      2      0     0     0     0     0  OUT_R240(2)
+piano                   34    4  220.6      0      0     0     0     0     0  CLEAN
+
+=== DETAILED FINDINGS (non-clean apps) ===
+
+--- shell_demo (nodes=14, btns=3, worstR=242.1, fullCanvas=false) ---
+  [OUT_R240] node 12 (Canvas): 24x64 abs=[0..24,208..272] Rmax=242.1 text=""
+  [OUT_R240] node 14 (Canvas): 24x64 abs=[456..480,208..272] Rmax=242.1 text=""
+  [NODE] 1 (Text p=6): 36x20 abs=[222..258,162..182] r=null vis=true press=false Rmax=80 text="Home"
+  [NODE] 2 (Text p=6): 88x20 abs=[196..284,192..212] r=null vis=true press=false Rmax=65.1 text="page 1 / 3"
+  [NODE] 3 (Btn p=6): 180x48 abs=[150..330,222..270] r=12 vis=true press=true Rmax=94.9 text="Next"
+  [NODE] 4 (Btn p=6): 180x48 abs=[150..330,280..328] r=12 vis=true press=true Rmax=125.9 text="Dialog"
+  [NODE] 5 (Btn p=6): 180x48 abs=[150..330,338..386] r=12 vis=true press=true Rmax=171.5 text="Toast"
+  [NODE] 6 (View p=0): 480x480 abs=[0..480,0..480] r=12 vis=true press=false Rmax=339.4 text=""
+  [NODE] 7 (Text p=9): 88x20 abs=[78..166,96..116] r=null vis=true press=false Rmax=216.7 text="Shell demo"
+  [NODE] 8 (Text p=9): 53x20 abs=[348..401,96..116] r=null vis=true press=false Rmax=216 text="page 1"
+  [NODE] 9 (View p=0): 323x56 abs=[78..401,78..134] r=12 vis=true press=false Rmax=229.1 text=""
+  [NODE] 10 (View p=0): 432x480 abs=[24..456,0..480] r=12 vis=false press=false Rmax=322.9 text=""
+  [NODE] 11 (View p=0): 24x480 abs=[0..24,0..480] r=12 vis=true press=false Rmax=339.4 text=""
+  [NODE] 12 (Canvas p=11): 24x64 abs=[0..24,208..272] r=null vis=true press=false Rmax=242.1 text=""
+  [NODE] 13 (View p=0): 24x480 abs=[456..480,0..480] r=12 vis=true press=false Rmax=339.4 text=""
+  [NODE] 14 (Canvas p=13): 24x64 abs=[456..480,208..272] r=null vis=true press=false Rmax=242.1 text=""
+
+--- piano (nodes=34, btns=4, worstR=220.6, fullCanvas=false) ---
+  [NODE] 1 (View p=0): 480x480 abs=[0..480,0..480] r=null vis=true press=false Rmax=339.4 text=""
+  [NODE] 2 (View p=1): 46x190 abs=[79..125,148..338] r=6 vis=true press=false Rmax=188.5 text=""
+  [NODE] 3 (View p=1): 24x22 abs=[90..114,308..330] r=4 vis=true press=false Rmax=174.9 text=""
+  [NODE] 4 (Text p=1): 24x18 abs=[90..114,310..328] r=null vis=true press=false Rmax=173.9 text="C"
+  [NODE] 5 (View p=1): 46x190 abs=[125..171,148..338] r=6 vis=true press=false Rmax=151.1 text=""
+  [NODE] 6 (View p=1): 24x22 abs=[136..160,308..330] r=4 vis=true press=false Rmax=137.5 text=""
+  [NODE] 7 (Text p=1): 24x18 abs=[136..160,310..328] r=null vis=true press=false Rmax=136.2 text="D"
+  [NODE] 8 (View p=1): 46x190 abs=[171..217,148..338] r=6 vis=true press=false Rmax=119.9 text=""
+  [NODE] 9 (View p=1): 24x22 abs=[182..206,308..330] r=4 vis=true press=false Rmax=107.1 text=""
+  [NODE] 10 (Text p=1): 24x18 abs=[182..206,310..328] r=null vis=true press=false Rmax=105.4 text="E"
+  [NODE] 11 (View p=1): 46x190 abs=[217..263,148..338] r=6 vis=true press=false Rmax=100.7 text=""
+  [NODE] 12 (View p=1): 24x22 abs=[228..252,308..330] r=4 vis=true press=false Rmax=90.8 text=""
+  [NODE] 13 (Text p=1): 24x18 abs=[228..252,310..328] r=null vis=true press=false Rmax=88.8 text="F"
+  [NODE] 14 (View p=1): 46x190 abs=[263..309,148..338] r=6 vis=true press=false Rmax=119.9 text=""
+  [NODE] 15 (View p=1): 24x22 abs=[274..298,308..330] r=4 vis=true press=false Rmax=107.1 text=""
+  [NODE] 16 (Text p=1): 24x18 abs=[274..298,310..328] r=null vis=true press=false Rmax=105.4 text="G"
+  [NODE] 17 (View p=1): 46x190 abs=[309..355,148..338] r=6 vis=true press=false Rmax=151.1 text=""
+  [NODE] 18 (View p=1): 24x22 abs=[320..344,308..330] r=4 vis=true press=false Rmax=137.5 text=""
+  [NODE] 19 (Text p=1): 24x18 abs=[320..344,310..328] r=null vis=true press=false Rmax=136.2 text="A"
+  [NODE] 20 (View p=1): 46x190 abs=[355..401,148..338] r=6 vis=true press=false Rmax=188.5 text=""
+  [NODE] 21 (View p=1): 24x22 abs=[366..390,308..330] r=4 vis=true press=false Rmax=174.9 text=""
+  [NODE] 22 (Text p=1): 24x18 abs=[366..390,310..328] r=null vis=true press=false Rmax=173.9 text="B"
+  [NODE] 23 (View p=1): 28x114 abs=[111..139,148..262] r=5 vis=true press=false Rmax=158.4 text=""
+  [NODE] 24 (View p=1): 28x114 abs=[157..185,148..262] r=5 vis=true press=false Rmax=123.9 text=""
+  [NODE] 25 (View p=1): 28x114 abs=[249..277,148..262] r=5 vis=true press=false Rmax=99.2 text=""
+  [NODE] 26 (View p=1): 28x114 abs=[295..323,148..262] r=5 vis=true press=false Rmax=123.9 text=""
+  [NODE] 27 (View p=1): 28x114 abs=[341..369,148..262] r=5 vis=true press=false Rmax=158.4 text=""
+  [NODE] 28 (View p=1): 322x190 abs=[79..401,148..338] r=null vis=true press=false Rmax=188.5 text=""
+  [NODE] 29 (Text p=1): 220x28 abs=[130..350,78..106] r=0 vis=true press=false Rmax=195.8 text="TOUCH PIANO"
+  [NODE] 30 (Text p=1): 312x24 abs=[84..396,112..136] r=0 vis=true press=false Rmax=201.8 text="OCT C4   LAST --"
+  [NODE] 31 (Btn p=1): 72x48 abs=[84..156,348..396] r=8 vis=true press=true Rmax=220.6 text="DEMO"
+  [NODE] 32 (Btn p=1): 72x48 abs=[164..236,348..396] r=8 vis=true press=true Rmax=173.5 text="C3"
+  [NODE] 33 (Btn p=1): 72x48 abs=[244..316,348..396] r=8 vis=true press=true Rmax=173.5 text="C4"
+  [NODE] 34 (Btn p=1): 72x48 abs=[324..396,348..396] r=8 vis=true press=true Rmax=220.6 text="C5"

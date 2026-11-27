@@ -1,0 +1,1 @@
+PASS playground manifest 74 apps match generated sources and examples; removal/addition mutation caught
