@@ -899,7 +899,7 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
                               int argc, JSValueConst *argv)
 {
     (void)this_val;
-    int32_t kind, parent, canvas_w = 0, canvas_h = 0;
+    int32_t kind, parent, canvas_w = 0, canvas_h = 0, canvas_flags = 0;
     if (argc < 2 || JS_ToInt32(ctx, &kind, argv[0]) < 0 ||
         JS_ToInt32(ctx, &parent, argv[1]) < 0) {
         return JS_EXCEPTION;
@@ -908,6 +908,11 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
         if (argc < 4) return JS_ThrowTypeError(ctx, "lume: canvas width and height required");
         if (JS_ToInt32(ctx, &canvas_w, argv[2]) < 0 ||
             JS_ToInt32(ctx, &canvas_h, argv[3]) < 0) return JS_EXCEPTION;
+        if (argc >= 5 && !JS_IsUndefined(argv[4])) {
+            int sb = JS_ToBool(ctx, argv[4]);
+            if (sb < 0) return JS_EXCEPTION;
+            if (sb) canvas_flags = 1;
+        }
         if (canvas_w < 1 || canvas_h < 1 ||
             canvas_w > LUME_LCD_H_RES || canvas_h > LUME_LCD_V_RES ||
             (size_t)canvas_w * canvas_h * (LUME_LCD_BPP / 8u) >
@@ -928,6 +933,7 @@ static JSValue js_create_node(JSContext *ctx, JSValueConst this_val,
     m.parent_id = (uint16_t)parent;
     m.from = canvas_w;
     m.to = canvas_h;
+    m.value = canvas_flags;
     if (lume_ui_bridge_post(&m) != 0) {
         s_node_live[id] = false;
         ESP_LOGE(TAG, "createNode: ui queue full after retries (id=%u); "

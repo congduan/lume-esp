@@ -153,7 +153,7 @@ declare namespace lume.ui {
     drawImage(slot: number, dx?: number, dy?: number, flip?: boolean): void;
   }
   interface CanvasProps {
-    /** 1..480 pixels; all canvases share a 460,800-byte RGB565 budget. */
+    /** 1..480 pixels; all canvases share a 921,600-byte (2 full-frame) RGB565 pool (2x image bytes by default, 1x with singleBuffer). */
     width: number;
     height: number;
     /** Runs on creation and when a signal read inside changes. Return one or up to eight local dirty rectangles; omit to invalidate all. */
@@ -161,6 +161,8 @@ declare namespace lume.ui {
     parent?: Node;
     /** Layout styling; width and height must be specified above. */
     style?: Omit<Style, 'width' | 'height'>;
+    /** Opt into single buffering (1x PSRAM instead of 2x front+work); use only for full-frame redraw loops (games), not dirty-rect dials/rings. Default false. */
+    singleBuffer?: boolean;
   }
 
   /** Anti-aliased LVGL arc (native `lv_arc`), for ring gauges. Unlike Canvas,

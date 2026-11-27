@@ -61,7 +61,7 @@ static uint8_t s_align[LUME_MAX_NODES];            /* wire lume_align_t */
 static uint8_t s_align_target[LUME_MAX_NODES];     /* 0 = parent, else node_id */
 static int16_t s_align_ofs_x[LUME_MAX_NODES], s_align_ofs_y[LUME_MAX_NODES];
 static uint16_t *s_canvas_pixels[LUME_MAX_NODES];   /* front: what lv_canvas displays */
-static uint16_t *s_canvas_work[LUME_MAX_NODES];     /* work: raster target (== front if the 2nd alloc failed) */
+static uint16_t *s_canvas_work[LUME_MAX_NODES];     /* work: raster target (== front if singleBuffer opt-in or 2nd alloc failed) */
 static uint8_t *s_image_pixels[LUME_MAX_NODES];
 static lv_image_dsc_t s_image_dsc[LUME_MAX_NODES];
 static uint16_t s_canvas_w[LUME_MAX_NODES], s_canvas_h[LUME_MAX_NODES];
@@ -80,9 +80,12 @@ static uint16_t *s_sprite_px[LUME_MAX_NODES][LUME_CANVAS_SPRITES];
 static uint16_t s_sprite_w[LUME_MAX_NODES][LUME_CANVAS_SPRITES];
 static uint16_t s_sprite_h[LUME_MAX_NODES][LUME_CANVAS_SPRITES];
 static size_t s_sprite_bytes;
-/* r27: canvas budget is one full framebuffer; geometry comes from the board
- * profile instead of a hardcoded frame size. Every canvas is double buffered
- * (front + work), so the budget counts two full framebuffer images. */
+/* r27 / r221: shared canvas PSRAM pool is two full framebuffers (geometry from
+ * the board profile). Default canvases are double buffered (front + work, 2x
+ * image bytes) to preserve r48 frame atomicity; canvases with singleBuffer
+ * opt-in (LUME_OP_CREATE m->value & 1) allocate one buffer (work == front, 1x
+ * image bytes) and give up mid-frame atomicity -- intended for full-frame
+ * redraw surfaces (e.g. 20 ms game loops), not dirty-rect faces (dials/rings). */
 #define CANVAS_BUDGET ((size_t)LUME_LCD_H_RES * LUME_LCD_V_RES * (LUME_LCD_BPP / 8u) * 2u)
 static void clear_subtree(lv_obj_t *obj);
 static void release_dead_canvases(void);
@@ -473,9 +476,12 @@ static void apply_create(const lume_ui_msg_t *m)
         }
         case LUME_NODE_CANVAS: {
             int32_t w = m->from, h = m->to;
+            bool single_buf = (m->value & 1) != 0;
+            size_t copies = single_buf ? 1u : 2u;
             size_t bytes = (size_t)lv_draw_buf_width_to_stride(w, LV_COLOR_FORMAT_RGB565) * h;
             if (w < 1 || h < 1 || w > LUME_LCD_H_RES || h > LUME_LCD_V_RES ||
-                bytes > (CANVAS_BUDGET - s_canvas_bytes) / 2u) {
+                s_canvas_bytes >= CANVAS_BUDGET ||
+                bytes > (CANVAS_BUDGET - s_canvas_bytes) / copies) {
                 ESP_LOGE(TAG, "canvas id=%u invalid dimensions/budget %ldx%ld", m->node_id, (long)w, (long)h);
                 fail_create(m->node_id);
                 return;
@@ -485,12 +491,16 @@ static void apply_create(const lume_ui_msg_t *m)
             memset(pixels, 0, bytes);
             /* Second image: raster commands land here and are published on the
              * closing invalidate, so a refresh never samples a half-drawn dial.
-             * Without it (PSRAM exhausted) the canvas degrades to the old
-             * single-buffer behaviour instead of failing to create. */
-            uint16_t *work = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
-            if (work) memset(work, 0, bytes);
-            else ESP_LOGW(TAG, "canvas id=%u single buffered (no PSRAM for the 2nd image, %u bytes)",
-                          (unsigned)m->node_id, (unsigned)bytes);
+             * Opt-in singleBuffer skips this allocation (work == front, 1x
+             * budget); without opt-in, PSRAM exhaustion still degrades to
+             * single-buffer with a warning instead of failing to create. */
+            uint16_t *work = NULL;
+            if (!single_buf) {
+                work = heap_caps_malloc(bytes, MALLOC_CAP_SPIRAM);
+                if (work) memset(work, 0, bytes);
+                else ESP_LOGW(TAG, "canvas id=%u single buffered (no PSRAM for the 2nd image, %u bytes)",
+                              (unsigned)m->node_id, (unsigned)bytes);
+            }
             obj = lv_canvas_create(parent);
             if (!obj) { heap_caps_free(work); heap_caps_free(pixels); fail_create(m->node_id); return; }
             lv_canvas_set_buffer(obj, pixels, w, h, LV_COLOR_FORMAT_RGB565);
@@ -925,8 +935,9 @@ static void apply_image_source(const lume_ui_msg_t *m)
  *   front = the buffer lv_canvas displays (always a finished frame)
  *   work  = the buffer raster commands are written to
  * The closing invalidate publishes work (swap on a full redraw, memcpy of the
- * dirty rect on a partial one). Cost: two canvas-sized PSRAM buffers per node
- * (CANVAS_BUDGET covers both). */
+ * dirty rect on a partial one). Default cost: two canvas-sized PSRAM buffers
+ * per node. r221: a canvas created with singleBuffer opt-in (m->value & 1)
+ * sets work == front (1x budget), skipping the swap/memcpy in canvas_publish. */
 static void canvas_publish(uint16_t id, const lume_ui_msg_t *m);
 
 /* Raster commands are applied only by the LVGL timer. The buffer belongs to

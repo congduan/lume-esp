@@ -1062,9 +1062,14 @@ function Canvas(props) {
   var w = __canvasInt(props.width, 1, SW), h = __canvasInt(props.height, 1, SH);
   if (typeof props.onDraw !== 'function') throw new Error('lume: Canvas needs onDraw');
   if (props.style && (props.style.width !== undefined || props.style.height !== undefined)) throw new Error('lume: Canvas size is fixed by width/height');
-  if (__canvasBytes + w*h*2 > SW*SH*2) throw new Error('lume: canvas PSRAM budget exceeded');
-  var id = lume.createNode(NODE_CANVAS, props.parent || 0, w, h);
-  __canvasAlloc[id] = w*h*2; __canvasBytes += w*h*2;
+  if (props.singleBuffer !== undefined && typeof props.singleBuffer !== 'boolean') throw new Error('lume: singleBuffer must be a boolean');
+  var singleBuf = props.singleBuffer === true;
+  var cost = w * h * 2 * (singleBuf ? 1 : 2);
+  if (__canvasBytes + cost > SW * SH * 4) throw new Error('lume: canvas PSRAM budget exceeded');
+  var id = singleBuf
+    ? lume.createNode(NODE_CANVAS, props.parent || 0, w, h, 1)
+    : lume.createNode(NODE_CANVAS, props.parent || 0, w, h);
+  __canvasAlloc[id] = cost; __canvasBytes += cost;
   if (props.style) __applyAttrs(id, {style: props.style}, NODE_CANVAS);
   var ink = 0xffffff, pendingLines = [], pathSeq = 0;
   function flushLines() { if (pendingLines.length) { lume.canvasBatch(id, pendingLines); pendingLines = []; } }
