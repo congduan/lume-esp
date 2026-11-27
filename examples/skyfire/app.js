@@ -54,10 +54,13 @@ Canvas({parent:sfRoot,width:480,height:480,onDraw:sfDraw});
    canvas, wave logic and entity pools are unchanged. */
 Text({parent:sfRoot,text:function(){sfFrame();return 'SKYFIRE   '+sf.score+'   L '+sf.lives+'   W '+sf.wave+(sf.shield?'   SHIELD':'');},style:{position:'absolute',x:84,y:80,width:312,height:26,fontSize:14,color:'#F2F7FB',borderRadius:0}});
 Text({parent:sfRoot,text:function(){sfFrame();return sf.over?'GAME OVER   SCORE '+sf.score+'   TAP TO RESTART':(sf.drag?'':'DRAG TO MOVE AND FIRE');},style:{position:'absolute',x:84,y:372,width:312,height:26,fontSize:14,color:'#40D8B0',textAlign:'center',borderRadius:0}});
-function sfTick(){sfStep(sf,Math.random);for(var i=0;i<sf.events.length;i++)sfPlay(sf.events[i]);sf.events.length=0;sfFrame.set(sfFrame()+1);}
+var SF_IDLE_DT=100,sfTimer=null,sfTimerDt=0,sfOverPainted=false;
+function sfSchedule(){var dt=sf.over?SF_IDLE_DT:SF_DT;if(sfTimer!==null&&sfTimerDt===dt)return;if(sfTimer!==null)lume.system.clearInterval(sfTimer);sfTimerDt=dt;sfTimer=lume.system.setInterval(sfTick,dt);}
+function sfStart(){sfSchedule();}
+function sfStop(){if(sfTimer!==null){lume.system.clearInterval(sfTimer);sfTimer=null;}sfTimerDt=0;}
+function sfTick(){if(sf.over){sfSchedule();if(!sfOverPainted){sfOverPainted=true;sfFrame.set(sfFrame()+1);}return;}sfStep(sf,Math.random);for(var i=0;i<sf.events.length;i++)sfPlay(sf.events[i]);sf.events.length=0;if(sf.over){sfOverPainted=true;sfSchedule();}sfFrame.set(sfFrame()+1);}
 function sfDrag(e){if(sf.over)return;sf.drag=true;sfMovePlayer(sf,e.x,e.y);sfFrame.set(sfFrame()+1);}
 function sfStopDrag(){sf.drag=false;}
-function sfRestart(){sf=sfState();sfFrame.set(sfFrame()+1);}
+function sfRestart(){sf=sfState();sfOverPainted=false;sfSchedule();sfFrame.set(sfFrame()+1);}
 lume.gesture.on(sfRoot,'panstart',sfDrag);lume.gesture.on(sfRoot,'pan',sfDrag);lume.gesture.on(sfRoot,'panend',sfStopDrag);lume.gesture.on(sfRoot,'tap',function(e){if(sf.over)sfRestart();else sfStopDrag();});
-var sfTimer=null;function sfStart(){if(sfTimer===null)sfTimer=lume.system.setInterval(sfTick,SF_DT);}function sfStop(){if(sfTimer!==null){lume.system.clearInterval(sfTimer);sfTimer=null;}}
 lume.app.onPause(sfStop);lume.app.onResume(sfStart);sfStart();

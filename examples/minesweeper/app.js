@@ -182,42 +182,80 @@ function box(x,y,w,h){return {x:Math.floor(x),y:Math.floor(y),w:w,h:h};}
 function clip(r){var x=Math.max(0,r.x),y=Math.max(0,r.y),rx=Math.min(IW,r.x+r.w),by=Math.min(IH,r.y+r.h);return rx>x&&by>y?box(x,y,rx-x,by-y):null;}
 function drawRect(ctx,color,r,a){var x=Math.max(r.x,a.x),y=Math.max(r.y,a.y),x2=Math.min(r.x+r.w,a.x+a.w),y2=Math.min(r.y+r.h,a.y+a.h);if(x2>x&&y2>y){ctx.fillColor(color);ctx.fillRect(x,y,x2-x,y2-y);}}
 function drawSprite(ctx,key,cx,cy,scale,a){var list=SPANS[key];for(var i=0;i<list.length;i++){var sp=list[i];drawRect(ctx,PAL[sp[3]],box(cx+sp[0]*scale,cy+sp[1]*scale,sp[2]*scale,scale),a);}}
-
+function hex565(hex){var v=parseInt(hex.slice(1),16);return ((((v>>16)&255)>>3)<<11)|((((v>>8)&255)>>2)<<5)|((v&255)>>3);}
+function tileFill(px,x,y,w,h,c){for(var yy=y;yy<y+h;yy++)for(var xx=x;xx<x+w;xx++)px[yy*CELL+xx]=c;}
+function tileStamp(px,key,ox,oy,scale){var list=SPANS[key];for(var i=0;i<list.length;i++){var sp=list[i];tileFill(px,ox+sp[0]*scale,oy+sp[1]*scale,sp[2]*scale,scale,hex565(PAL[sp[3]]));}}
+function makeTile(bgHex,borderHex,bw,spriteKey,ox,oy){
+  var px=new Uint16Array(CELL*CELL),bg=hex565(bgHex),bd=hex565(borderHex);
+  tileFill(px,0,0,CELL,CELL,bg);tileFill(px,0,0,CELL,bw,bd);tileFill(px,0,0,bw,CELL,bd);
+  if(spriteKey)tileStamp(px,spriteKey,ox,oy,4);
+  return px;
+}
+var TILE_SLOTS={hidden:1,flagged:2,rev0:3,mine:4,boom:5,rev1:6,rev2:7,rev3:8};
+var TILES={
+  hidden:makeTile(HID,HID_B,2,null,0,0),
+  flagged:makeTile(FLAG_BG,HID_B,2,'flag',5,5),
+  rev0:makeTile(REV,REV_B,1,null,0,0),
+  mine:makeTile(REV,REV_B,1,'mine',5,5),
+  boom:makeTile(BOOM_BG,REV_B,1,'mine',5,5),
+  rev1:makeTile(REV,REV_B,1,'1',9,5),
+  rev2:makeTile(REV,REV_B,1,'2',9,5),
+  rev3:makeTile(REV,REV_B,1,'3',9,5)
+};
+var tilesUploaded=false,prevSnap=null;
+function ensureTiles(ctx){if(tilesUploaded)return;for(var k in TILE_SLOTS)ctx.retainImage(TILE_SLOTS[k],CELL,CELL,TILES[k]);tilesUploaded=true;}
+function cellCode(c){
+  var m=state.mask[c];
+  if(m===0)return 0;
+  if(m===2)return 2;
+  if(state.mines&&state.mines[c])return (state.over&&!state.won)?11:10;
+  return 20+(state.counts?state.counts[c]:0);
+}
+function cellBox(c){return box(GX+(c%COLS)*(CELL+GAP),GY+Math.floor(c/COLS)*(CELL+GAP),CELL,CELL);}
 function paintCell(ctx,c,a){
   var cx=GX+(c%COLS)*(CELL+GAP),cy=GY+Math.floor(c/COLS)*(CELL+GAP);
   var m=state.mask[c];
-  if(m===0){                       /* hidden: face + light top-left border */
-    drawRect(ctx,HID,box(cx,cy,CELL,CELL),a);
-    drawRect(ctx,HID_B,box(cx,cy,CELL,2),a);
-    drawRect(ctx,HID_B,box(cx,cy,2,CELL),a);
-    return;
-  }
-  if(m===2){                       /* flagged: hidden face + flag sprite */
-    drawRect(ctx,FLAG_BG,box(cx,cy,CELL,CELL),a);
-    drawRect(ctx,HID_B,box(cx,cy,CELL,2),a);
-    drawRect(ctx,HID_B,box(cx,cy,2,CELL),a);
-    drawSprite(ctx,'flag',cx+5,cy+5,4,a);
-    return;
-  }
-  /* revealed */
-  var boom=state.over&&!state.won&&state.mines[c];
-  drawRect(ctx,boom?BOOM_BG:REV,box(cx,cy,CELL,CELL),a);
-  drawRect(ctx,REV_B,box(cx,cy,CELL,1),a);
-  drawRect(ctx,REV_B,box(cx,cy,1,CELL),a);
-  if(state.mines[c]){drawSprite(ctx,'mine',cx+5,cy+5,4,a);return;}
-  var n=state.counts[c];
-  if(n>0)drawSprite(ctx,String(n),cx+9,cy+5,4,a);
+  if(m===0){ctx.drawImage(TILE_SLOTS.hidden,cx,cy,0);return;}
+  if(m===2){ctx.drawImage(TILE_SLOTS.flagged,cx,cy,0);return;}
+  if(state.mines&&state.mines[c]){ctx.drawImage((state.over&&!state.won)?TILE_SLOTS.boom:TILE_SLOTS.mine,cx,cy,0);return;}
+  var n=state.counts?state.counts[c]:0;
+  if(n===0){ctx.drawImage(TILE_SLOTS.rev0,cx,cy,0);return;}
+  if(n===1){ctx.drawImage(TILE_SLOTS.rev1,cx,cy,0);return;}
+  if(n===2){ctx.drawImage(TILE_SLOTS.rev2,cx,cy,0);return;}
+  if(n===3){ctx.drawImage(TILE_SLOTS.rev3,cx,cy,0);return;}
+  ctx.drawImage(TILE_SLOTS.rev0,cx,cy,0);
+  drawSprite(ctx,String(n),cx+9,cy+5,4,a);
 }
 
 var painted=false;
 var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0,y:0},onDraw:function(ctx){
-  frame();var s=state;
+  frame();ensureTiles(ctx);
   var grid=box(GX,GY,COLS*(CELL+GAP)-GAP,ROWS*(CELL+GAP)-GAP);
-  var a=!painted?box(0,0,IW,IH):clip(grid);
-  if(!a)return undefined;
-  ctx.fillColor(BG);ctx.fillRect(a.x,a.y,a.w,a.h);
-  for(var c=0;c<CELLS;c++)paintCell(ctx,c,a);
-  painted=true;return [a];
+  if(!painted||!prevSnap){
+    var full=box(0,0,IW,IH);
+    ctx.fillColor(BG);ctx.fillRect(0,0,IW,IH);
+    prevSnap=[];
+    for(var c=0;c<CELLS;c++){paintCell(ctx,c,full);prevSnap.push(cellCode(c));}
+    painted=true;return [full];
+  }
+  var changed=[];
+  for(var i=0;i<CELLS;i++){var code=cellCode(i);if(code!==prevSnap[i])changed.push(i);}
+  if(!changed.length){
+    var ga=clip(grid);if(!ga)return undefined;
+    ctx.fillColor(BG);ctx.fillRect(ga.x,ga.y,ga.w,ga.h);
+    for(i=0;i<CELLS;i++)paintCell(ctx,i,ga);
+    return [ga];
+  }
+  if(changed.length<=8){
+    var rects=[];
+    for(i=0;i<changed.length;i++){var ci=changed[i],cb=cellBox(ci);paintCell(ctx,ci,cb);prevSnap[ci]=cellCode(ci);rects.push(cb);}
+    return rects;
+  }
+  var minX=IW,minY=IH,maxX=0,maxY=0;
+  for(i=0;i<changed.length;i++){var b=cellBox(changed[i]);if(b.x<minX)minX=b.x;if(b.y<minY)minY=b.y;if(b.x+b.w>maxX)maxX=b.x+b.w;if(b.y+b.h>maxY)maxY=b.y+b.h;}
+  var u=clip(box(minX,minY,maxX-minX,maxY-minY));if(!u)return undefined;
+  for(i=0;i<changed.length;i++){var idx=changed[i];paintCell(ctx,idx,u);prevSnap[idx]=cellCode(idx);}
+  return [u];
 }});
 
 /* r201: HUD + RESTART inside the 480-round safe square. The 480x480 canvas,
@@ -290,4 +328,3 @@ var timer=lume.system.setInterval(tick,1000);
 bestSig.set(mineBest());
 hudSig.set(hudText());
 logEvent('10x10 15 mines; best='+(bestSig()>0?bestSig():'-')+'s');
-frame.set(frame()+1);

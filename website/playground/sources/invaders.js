@@ -78,14 +78,25 @@ function pad(r,n){return box(r.x-n,r.y-n,r.w+2*n,r.h+2*n);}
 function union(a,b){if(!a)return b;if(!b)return a;var x=Math.min(a.x,b.x),y=Math.min(a.y,b.y);return box(x,y,Math.max(a.x+a.w,b.x+b.w)-x,Math.max(a.y+a.h,b.y+b.h)-y);}
 function intersects(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 function drawRect(ctx,color,r,a){var x=Math.max(r.x,a.x),y=Math.max(r.y,a.y),x2=Math.min(r.x+r.w,a.x+a.w),y2=Math.min(r.y+r.h,a.y+a.h);if(x2>x&&y2>y){ctx.fillColor(color);ctx.fillRect(x,y,x2-x,y2-y);}}
-function drawSprite(ctx,key,x,y,a){var list=SPANS[key];for(var i=0;i<list.length;i++){var s=list[i];drawRect(ctx,PAL[s[3]],box(x+s[0]*2,y+s[1]*2,s[2]*2,2),a);}}
+function hex565(hex){var v=parseInt(hex.slice(1),16);return ((((v>>16)&255)>>3)<<11)|((((v>>8)&255)>>2)<<5)|((v&255)>>3);}
+var SLOT={},PIXELS={},spritesUploaded=false;
+(function(){var keys=['smallA','smallB','medA','medB','largeA','largeB','cannon','ufo'];
+  for(var i=0;i<keys.length;i++){var k=keys[i],rows=SPRITES[k],rw=rows[0].length,rh=rows.length,w=rw*2,h=rh*2,px=new Uint16Array(w*h),list=SPANS[k];
+    for(var j=0;j<list.length;j++){var s=list[j],c=hex565(PAL[s[3]]);
+      for(var dy=0;dy<2;dy++){var yy=s[1]*2+dy;for(var dx=0;dx<s[2]*2;dx++)px[yy*w+s[0]*2+dx]=c;}
+    }
+    SLOT[k]=i+1;PIXELS[k]={w:w,h:h,px:px};
+  }
+})();
+function ensureSprites(ctx){if(spritesUploaded)return;for(var k in SLOT){var p=PIXELS[k];ctx.retainImage(SLOT[k],p.w,p.h,p.px);}spritesUploaded=true;}
+function drawSprite(ctx,key,x,y,a){var ix=Math.floor(x),iy=Math.floor(y),p=PIXELS[key];if(ix+p.w<=0||ix>=IW||iy+p.h<=0||iy>=IH)return;ctx.drawImage(SLOT[key],ix,iy,0);}
 function drawStatic(ctx,a){ctx.fillColor(BG);ctx.fillRect(a.x,a.y,a.w,a.h);drawRect(ctx,PAL.C,box(0,GROUND_Y,IW,2),a);}
 function bulletBBox(list){if(!list||!list.length)return null;var minX=IW,minY=IH,maxX=0,maxY=0;for(var i=0;i<list.length;i++){var e=list[i];if(e.x<minX)minX=e.x;if(e.y<minY)minY=e.y;if(e.x+4>maxX)maxX=e.x+4;if(e.y+8>maxY)maxY=e.y+8;}return box(minX,minY,maxX-minX,maxY-minY);}
 
 var prevFx=null,prevFy=null,prevCannonX=null,prevAlive=null,prevBullet=null,prevEnemy=[],prevUfo=null;
 var dirtyPixels=0,dirtyMax=0,perfCount=0,perfSum=0,perfMax=0,painted=false;
 var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0,y:0},onDraw:function(ctx){
-  frame();var s=state,areas=[];
+  frame();ensureSprites(ctx);var s=state,areas=[];
   if(!painted){areas.push(box(0,0,IW,IH));}
   else{
     var fb=invaderFormationBox(s,s.fx,s.fy,null);
@@ -125,9 +136,10 @@ Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L 
 Text({parent:root,text:function(){return noteSig();},style:{position:'absolute',x:84,y:104,width:312,fontSize:13,color:'#FFD78E',borderRadius:0}});
 
 function updateSignals(){scoreSig.set(state.score);bestSig.set(gameSave('invaders',state.score,bestSig()));livesSig.set(state.lives);waveSig.set(state.wave);}
-function start(){if(timer===null&&!state.over)timer=lume.system.setInterval(tick,period);}
+function start(){if(timer===null&&!state.over&&!state.paused)timer=lume.system.setInterval(tick,period);}
 function stop(){if(timer!==null)lume.system.clearInterval(timer);timer=null;}
-function tick(){var t0=Date.now();var ev=invaderStep(state,Math.random);
+function tick(){if(state.over||state.paused)return;var t0=Date.now();var ev=invaderStep(state,Math.random);
+  if(ev==='idle')return;
   while(state.events.length)logEvent(state.events.shift());
   if(ev==='kill'||ev==='wave'||ev==='hit'||ev==='over'||ev==='ufo')updateSignals();
   if(ev==='wave'){period=invaderPeriod(state.wave);stop();start();}
@@ -139,7 +151,7 @@ function tick(){var t0=Date.now();var ev=invaderStep(state,Math.random);
 function restart(){invaderRestart(state);while(state.events.length)logEvent(state.events.shift());updateSignals();noteSig.set('PAN MOVE   TAP FIRE   SWIPE UP PAUSE');period=invaderPeriod(state.wave);prevFx=null;prevAlive=null;painted=false;start();frame.set(frame()+1);}
 function moveCannon(e){if(state.over)return;state.cannonX=Math.max(0,Math.min(IW-CANNON_PX,e.x-CANNON_PX/2));frame.set(frame()+1);}
 function shoot(){if(state.over){restart();return;}if(invaderShoot(state))frame.set(frame()+1);}
-function swipe(e){if(e.dir!=='up'||Math.abs(e.dy)<50)return;if(state.over){restart();return;}state.paused=!state.paused;noteSig.set(state.paused?'PAUSED - SWIPE UP':'PAN MOVE   TAP FIRE   SWIPE UP PAUSE');frame.set(frame()+1);}
+function swipe(e){if(e.dir!=='up'||Math.abs(e.dy)<50)return;if(state.over){restart();return;}state.paused=!state.paused;noteSig.set(state.paused?'PAUSED - SWIPE UP':'PAN MOVE   TAP FIRE   SWIPE UP PAUSE');if(state.paused)stop();else start();}
 lume.gesture.on(root,'panstart',moveCannon);lume.gesture.on(root,'pan',moveCannon);
 lume.gesture.on(root,'tap',shoot);lume.gesture.on(root,'swipe',swipe);
 lume.app.onPause(stop);lume.app.onResume(start);
