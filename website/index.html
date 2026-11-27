@@ -1,8 +1,427 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><meta name="description" content="Declarative JavaScript UI for ESP32-S3 AMOLED boards."><title>JavaScript for ESP32-S3 AMOLED · Lume</title><link rel="canonical" href="https://congduan.github.io/lume-esp/index.html"><meta property="og:type" content="website"><meta property="og:site_name" content="Lume"><meta property="og:url" content="https://congduan.github.io/lume-esp/index.html"><meta property="og:title" content="JavaScript for ESP32-S3 AMOLED · Lume"><meta property="og:description" content="Lume — write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs with QuickJS-NG and LVGL behind the scenes."><meta property="og:image" content="https://congduan.github.io/lume-esp/assets/og-cover.png"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="JavaScript for ESP32-S3 AMOLED · Lume"><meta name="twitter:description" content="Lume — write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs with QuickJS-NG and LVGL behind the scenes."><link rel="alternate" hreflang="zh" href="https://congduan.github.io/lume-esp/index.html?lang=zh"><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/style.css"><script defer src="assets/site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="site-header"><div class="shell nav"><a class="brand" href="index.html" aria-label="Lume home"><span class="brand-mark">L</span> lume<span class="brand-dot">.</span></a><nav class="nav-links" aria-label="Main navigation"><a href="index.html" aria-current="true"><span data-en="Overview" data-zh="概览">Overview</span></a><a href="guide.html" aria-current="false"><span data-en="Guide" data-zh="上手">Guide</span></a><a href="api.html" aria-current="false"><span data-en="API" data-zh="API">API</span></a><a href="examples.html" aria-current="false"><span data-en="Examples" data-zh="示例">Examples</span></a><a href="playground/index.html"><span data-en="Playground" data-zh="在线体验">Playground</span></a><a href="faq.html" aria-current="false"><span data-en="FAQ" data-zh="问答">FAQ</span></a></nav><div class="nav-actions"><button id="lang-toggle" type="button" aria-label="Switch language">中文</button><button id="theme-toggle" type="button" aria-label="Switch color theme">◐</button></div></div></header><main id="main"><section class="hero shell"><div class="hero-copy reveal"><span class="eyebrow">ESP32-S3 / AMOLED / JAVASCRIPT</span><h1 data-en="The screen is yours. The firmware stays put." data-zh="屏幕由你定义，固件无需反复烧录。">The screen is yours. The firmware stays put.</h1><p class="lead" data-en="Write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs, with QuickJS-NG and LVGL behind the scenes." data-zh="用 JavaScript 编写完整 ESP32-S3 AMOLED 应用：声明式 UI、signals 与硬件 API，QuickJS-NG 和 LVGL 隐于幕后。">Write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs, with QuickJS-NG and LVGL behind the scenes.</p><div class="hero-actions"><a class="button primary" href="guide.html"><span data-en="Get started →" data-zh="开始上手 →">Get started →</span></a><a class="button ghost" href="playground/index.html"><span data-en="Try it in your browser" data-zh="在浏览器中体验">Try it in your browser</span></a><a class="button ghost" href="examples.html"><span data-en="Explore examples" data-zh="浏览示例">Explore examples</span></a></div><p class="fine"><span data-en="What’s new: 13 shell components including ColorPicker, ClickWheel, and Dialog; SafeArea round-screen layout; 66 bundled Playground apps (48 in the picker); SNTP time sync and HMAC-authenticated WiFi OTA code. Virtual WiFi association in the network emulator awaits upstream support, and board acceptance remains pending." data-zh="近期进展：13 个壳层组件（含 ColorPicker、ClickWheel、Dialog）、SafeArea 圆屏布局、66 份 Playground 应用 bundle（选择器列出 48 个）、SNTP 校时与 HMAC 鉴权的 WiFi OTA 代码。网络模拟器的虚拟 WiFi 关联仍待上游支持，真机验收尚未完成。">What’s new: 13 shell components including ColorPicker, ClickWheel, and Dialog; SafeArea round-screen layout; 66 bundled Playground apps (48 in the picker); SNTP time sync and HMAC-authenticated WiFi OTA code. Virtual WiFi association in the network emulator awaits upstream support, and board acceptance remains pending.</span></p><p class="fine"><span data-en="USB hot reload is implemented; real-device push latency is still pending measurement." data-zh="USB 热更新代码链路已实现；真机推包延迟仍待实测。">USB hot reload is implemented; real-device push latency is still pending measurement.</span></p></div><div class="demo reveal" aria-label="Illustrative hot reload animation"><div class="demo-top"><span class="window-dots">● ● ●</span><span>app.js <i class="live-dot"></i> LIVE LOOP</span></div><div class="demo-grid"><div class="editor"><span class="demo-label">01 / EDIT JAVASCRIPT</span><pre><code>const count = signal(0);
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="Declarative JavaScript UI for ESP32-S3 AMOLED boards.">
+  <title>JavaScript for ESP32-S3 AMOLED · Lume</title>
+  <link rel="canonical" href="https://congduan.github.io/lume-esp/index.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Lume">
+  <meta property="og:url" content="https://congduan.github.io/lume-esp/index.html">
+  <meta property="og:title" content="JavaScript for ESP32-S3 AMOLED · Lume">
+  <meta property="og:description" content="Lume — write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs with QuickJS-NG and LVGL behind the scenes.">
+  <meta property="og:image" content="https://congduan.github.io/lume-esp/assets/og-cover.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="JavaScript for ESP32-S3 AMOLED · Lume">
+  <meta name="twitter:description" content="Lume — write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs with QuickJS-NG and LVGL behind the scenes.">
+  <link rel="alternate" hreflang="zh" href="https://congduan.github.io/lume-esp/index.html?lang=zh">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script defer src="assets/site.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="shell nav">
+      <a class="brand" href="index.html" aria-label="Lume home"><span class="brand-mark">L</span>lume<span class="brand-dot">.</span></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="index.html" aria-current="true"><span data-en="Overview" data-zh="概览">Overview</span></a>
+        <a href="guide.html" aria-current="false"><span data-en="Guide" data-zh="上手">Guide</span></a>
+        <a href="api.html" aria-current="false"><span data-en="API" data-zh="API">API</span></a>
+        <a href="examples.html" aria-current="false"><span data-en="Examples" data-zh="示例">Examples</span></a>
+        <a href="playground/index.html"><span data-en="Playground" data-zh="在线体验">Playground</span></a>
+        <a href="faq.html" aria-current="false"><span data-en="FAQ" data-zh="问答">FAQ</span></a>
+      </nav>
+      <div class="nav-actions">
+        <a class="gh-badge-link" href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener" aria-label="Lume GitHub stars">
+          <img src="https://img.shields.io/github/stars/congduan/lume-esp?style=flat&amp;logo=github&amp;label=Stars&amp;color=08788c&amp;labelColor=0f1720" alt="GitHub stars" height="20">
+        </a>
+        <button id="lang-toggle" type="button" aria-label="Switch language">中文</button>
+        <button id="theme-toggle" type="button" aria-label="Switch color theme">◐</button>
+      </div>
+    </div>
+  </header>
 
-Button({
-  title: '+1',
-  onPress: () => {
+  <main id="main">
+    <section class="hero shell">
+      <div class="hero-copy reveal">
+        <span class="eyebrow">ESP32-S3 / AMOLED / JAVASCRIPT</span>
+        <h1>
+          <span data-en="The screen is yours." data-zh="屏幕由你定义，">The screen is yours.</span>
+          <span class="h1-accent" data-en="The firmware stays put." data-zh="固件无需反复烧录。">The firmware stays put.</span>
+        </h1>
+        <p class="lead" data-en="Write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs, with QuickJS-NG and LVGL behind the scenes." data-zh="用 JavaScript 编写完整的 ESP32-S3 AMOLED 应用：声明式 UI、signals 与硬件 API，QuickJS-NG 与 LVGL 隐于幕后。">Write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs, with QuickJS-NG and LVGL behind the scenes.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="guide.html"><span data-en="Get started →" data-zh="开始上手 →">Get started →</span></a>
+          <a class="button ghost" href="playground/index.html"><span data-en="Try in browser" data-zh="浏览器体验">Try in browser</span></a>
+          <a class="button ghost" href="examples.html"><span data-en="Explore examples" data-zh="浏览示例">Explore examples</span></a>
+        </div>
+        <div class="whats-new-card">
+          <div class="whats-new-head">
+            <span class="whats-new-tag" data-en="What's new" data-zh="近期进展">What's new</span>
+            <a class="fine" href="guide.html#safearea" data-en="Read release notes →" data-zh="查看详情 →">Read release notes →</a>
+          </div>
+          <div class="whats-new-chips">
+            <span class="meta-chip" data-en="13 shell components" data-zh="13 个壳层组件">13 shell components</span>
+            <span class="meta-chip" data-en="SafeArea round layout" data-zh="SafeArea 圆屏布局">SafeArea round layout</span>
+            <span class="meta-chip" data-en="74 Playground apps" data-zh="74 个在线示例">74 Playground apps</span>
+            <span class="meta-chip" data-en="SNTP + HMAC WiFi OTA" data-zh="SNTP 校时 + WiFi OTA">SNTP + HMAC WiFi OTA</span>
+          </div>
+          <p class="fine" data-en="Includes ColorPicker, ClickWheel, and Dialog. Virtual WiFi association awaits upstream support, and real-board acceptance remains pending." data-zh="含 ColorPicker、ClickWheel 与 Dialog。虚拟 WiFi 关联仍待上游支持，真机验收尚未完成。">Includes ColorPicker, ClickWheel, and Dialog. Virtual WiFi association awaits upstream support, and real-board acceptance remains pending.</p>
+        </div>
+      </div>
+
+      <div class="demo reveal" aria-label="Illustrative hot reload animation">
+        <div class="demo-top">
+          <span class="window-dots">● ● ●</span>
+          <span>app.js <i class="live-dot"></i> LIVE LOOP</span>
+        </div>
+        <div class="demo-grid">
+          <div class="editor">
+            <span class="demo-label">01 / EDIT JAVASCRIPT</span>
+            <pre><code><span class="tok-kw">const</span> count = <span class="tok-fn">signal</span>(<span class="tok-num">0</span>);
+
+<span class="tok-fn">Button</span>({
+  <span class="tok-prop">title</span>: <span class="tok-str">'+1'</span>,
+  <span class="tok-prop">onPress</span>: () =&gt; {
     <span id="typed-code"></span><span class="cursor">▋</span>
   }
-});</code></pre><div class="demo-status" id="demo-status">waiting for edit</div></div><div class="screen-side"><span class="demo-label">02 / ON DEVICE</span><div class="device"><div class="device-inner"><small>LUME / COUNTER</small><strong id="demo-count">00</strong><span>+ 1</span></div></div><div class="toast" id="demo-toast">↗ JS deployed · illustrative</div></div></div><div class="demo-caption"><span data-en="Concept animation. No measured deployment time is implied." data-zh="概念动画；不代表已测得的部署耗时。">Concept animation. No measured deployment time is implied.</span></div></div></section><section class="section shell"><div class="section-head"><span class="eyebrow">CAPABILITIES</span><h2 data-en="A smaller stack. A direct path to pixels." data-zh="更轻的技术栈，更直接的像素路径。">A smaller stack. A direct path to pixels.</h2></div><div class="feature-grid"><article class="feature card reveal"><div class="icon">↗</div><h3 data-en="Iterate in JavaScript" data-zh="用 JavaScript 快速迭代">Iterate in JavaScript</h3><p data-en="The USB channel replaces the app runtime without rebuilding firmware." data-zh="通过 USB 通道替换应用运行时，无需重新构建固件。">The USB channel replaces the app runtime without rebuilding firmware.</p></article><article class="feature card reveal"><div class="icon">◇</div><h3 data-en="UI that reacts" data-zh="响应式 UI">UI that reacts</h3><p data-en="Signals update native attributes; flex, List, Image and Canvas compose the screen." data-zh="signals 更新原生属性；flex、List、Image 和 Canvas 组合屏幕。">Signals update native attributes; flex, List, Image and Canvas compose the screen.</p></article><article class="feature card reveal"><div class="icon">⌁</div><h3 data-en="Hardware within reach" data-zh="硬件触手可及">Hardware within reach</h3><p data-en="GPIO, ADC, PMIC, IMU, storage, network and audio APIs share one JS surface." data-zh="GPIO、ADC、PMIC、IMU、存储、网络和音频共用 JS 接口。">GPIO, ADC, PMIC, IMU, storage, network and audio APIs share one JS surface.</p></article></div></section><section class="section architecture"><div class="shell"><div class="section-head"><span class="eyebrow">ARCHITECTURE</span><h2 data-en="JavaScript on top. Native performance underneath." data-zh="上层 JavaScript，底层原生渲染。">JavaScript on top. Native performance underneath.</h2></div><div class="arch-flow"><div>App JavaScript<small>signals · View · Canvas</small></div><span>↓</span><div>QuickJS-NG<small>engine · event loop · USB reload</small></div><span>↓</span><div>Native bridge + LVGL<small>layout · input · rendering</small></div><span>↓</span><div>ESP32-S3 AMOLED<small>touch · PMIC · IMU · audio</small></div></div></div></section><section class="section shell"><div class="section-head"><span class="eyebrow">ROADMAP / SOURCE: docs/roadmap.md</span><h2 data-en="Built in public view. Validated in stages." data-zh="开发进度公开，验收分阶段完成。">Built in public view. Validated in stages.</h2></div><div class="milestones"><div class="milestone"><b>M1</b><div><strong data-en="Minimal loop" data-zh="最小闭环">Minimal loop</strong><p data-en="Code checked; device acceptance pending." data-zh="代码项已勾选；真机验收待完成。">Code checked; device acceptance pending.</p></div><span class="pill done"><span data-en="Code checked" data-zh="代码已勾选">Code checked</span></span></div><div class="milestone"><b>M2</b><div><strong data-en="Hardware surface" data-zh="硬件接口">Hardware surface</strong><p data-en="GPIO, PMIC and IMU are checked; network, storage and audio code exists, while roadmap acceptance remains open." data-zh="GPIO、PMIC、IMU 已勾选；网络、存储、音频代码已具备，路线图中的验收仍未勾选。">GPIO, PMIC and IMU are checked; network, storage and audio code exists, while roadmap acceptance remains open.</p></div><span class="pill active"><span data-en="Mixed" data-zh="部分完成">Mixed</span></span></div><div class="milestone"><b>M3</b><div><strong data-en="Declarative UI" data-zh="声明式 UI">Declarative UI</strong><p data-en="Core code items checked; board visual and interaction checks pending." data-zh="核心代码项已勾选；真机视觉和交互待验收。">Core code items checked; board visual and interaction checks pending.</p></div><span class="pill done"><span data-en="Code checked" data-zh="代码已勾选">Code checked</span></span></div><div class="milestone"><b>M4</b><div><strong data-en="Tooling" data-zh="工具链">Tooling</strong><p data-en="CLI, host simulator, and HMAC-authenticated WiFi OTA code exist; virtual WiFi association and board acceptance remain open." data-zh="CLI、宿主模拟器和 HMAC 鉴权的 WiFi OTA 代码已具备；虚拟 WiFi 关联和真机验收仍待完成。">CLI, host simulator, and HMAC-authenticated WiFi OTA code exist; virtual WiFi association and board acceptance remain open.</p></div><span class="pill active"><span data-en="In progress" data-zh="进行中">In progress</span></span></div><div class="milestone"><b>M5</b><div><strong data-en="Ecosystem" data-zh="生态">Ecosystem</strong><p data-en="Optional JS shell components and the bilingual docs site have landed; board abstraction is not started." data-zh="可选 JS shell 组件与中英双语文档站已落地；板级抽象尚未开始。">Optional JS shell components and the bilingual docs site have landed; board abstraction is not started.</p></div><span class="pill active"><span data-en="In progress" data-zh="进行中">In progress</span></span></div></div><p class="fine"><span data-en="Status follows docs/roadmap.md and README.md; on-device acceptance is still pending." data-zh="状态与 docs/roadmap.md、README.md 同步；真机验收仍待完成。">Status follows docs/roadmap.md and README.md; on-device acceptance is still pending.</span></p></section></main><footer class="site-footer"><div class="shell footer-inner"><div><strong>lume<span class="accent">.</span></strong><p><span data-en="JavaScript for the ESP32-S3 AMOLED." data-zh="为 ESP32-S3 AMOLED 构建的 JavaScript 框架。">JavaScript for the ESP32-S3 AMOLED.</span></p></div><div><a href="https://github.com/congduan/lume-esp">GitHub</a><a href="https://github.com/congduan/lume-esp/blob/main/LICENSE">MIT</a><small>not affiliated with Espressif or Waveshare</small></div></div></footer></body></html>
+});</code></pre>
+            <div class="demo-status" id="demo-status">waiting for edit</div>
+          </div>
+          <div class="screen-side">
+            <span class="demo-label">02 / ON DEVICE</span>
+            <div class="device">
+              <div class="device-inner">
+                <small>LUME / COUNTER</small>
+                <strong id="demo-count">00</strong>
+                <span>+ 1</span>
+              </div>
+            </div>
+            <div class="toast" id="demo-toast">↗ JS deployed · illustrative</div>
+          </div>
+        </div>
+        <div class="demo-caption">
+          <span data-en="Concept animation — no measured deployment time is implied." data-zh="概念动画——不代表已测得的部署耗时。">Concept animation — no measured deployment time is implied.</span>
+          <span data-en="USB hot reload is implemented; real-device push latency is still pending measurement." data-zh="USB 热更新代码链路已实现；真机推包延迟仍待实测。">USB hot reload is implemented; real-device push latency is still pending measurement.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell" id="capabilities">
+      <div class="section-head">
+        <span class="eyebrow">CAPABILITIES</span>
+        <h2 data-en="A smaller stack. A direct path to pixels." data-zh="更轻的技术栈，更直接的像素路径。">A smaller stack. A direct path to pixels.</h2>
+        <p class="lead" data-en="No C toolchain on the app author's machine. Declarative components, fine-grained signals, and board APIs share one compact JavaScript runtime." data-zh="应用开发者无需安装 C 工具链。声明式组件、细粒度 signals 与板级 API 共用同一个轻量化 JavaScript 运行时。">No C toolchain on the app author's machine. Declarative components, fine-grained signals, and board APIs share one compact JavaScript runtime.</p>
+      </div>
+      <div class="feature-grid">
+        <article class="feature card reveal">
+          <div class="icon">↗</div>
+          <h3 data-en="Iterate in JavaScript" data-zh="用 JavaScript 快速迭代">Iterate in JavaScript</h3>
+          <p data-en="The USB channel replaces the app runtime without rebuilding or reflashing firmware." data-zh="通过 USB 通道替换应用运行时，无需重新构建或烧录固件。">The USB channel replaces the app runtime without rebuilding or reflashing firmware.</p>
+        </article>
+        <article class="feature card reveal">
+          <div class="icon">◇</div>
+          <h3 data-en="UI that reacts" data-zh="响应式 UI">UI that reacts</h3>
+          <p data-en="Signals update native LVGL attributes directly; flex, List, Image, and Canvas compose the screen." data-zh="signals 直接更新原生 LVGL 属性；flex、List、Image 与 Canvas 组合界面。">Signals update native LVGL attributes directly; flex, List, Image, and Canvas compose the screen.</p>
+        </article>
+        <article class="feature card reveal">
+          <div class="icon">⌁</div>
+          <h3 data-en="Hardware within reach" data-zh="硬件触手可及">Hardware within reach</h3>
+          <p data-en="GPIO, ADC, PMIC, IMU, storage, network, and audio APIs share one typed JS surface." data-zh="GPIO、ADC、PMIC、IMU、存储、网络与音频共用一套带类型定义的 JS 接口。">GPIO, ADC, PMIC, IMU, storage, network, and audio APIs share one typed JS surface.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section shell shots-section" id="screenshots">
+      <div class="shots-head-row">
+        <div class="section-head">
+          <span class="eyebrow">SCREENSHOTS / 480×480 AMOLED</span>
+          <h2 data-en="Real firmware, rendered by esp32sim." data-zh="真实固件画面，由 esp32sim 渲染。">Real firmware, rendered by esp32sim.</h2>
+          <p class="lead" data-en="Real firmware, rendered by esp32sim — not mockups. Every frame runs the same QuickJS-NG engine and LVGL pipeline compiled for the ESP32-S3 board." data-zh="真实固件由 esp32sim 渲染——并非概念效果图。每张画面都跑在与 ESP32-S3 开发板相同的 QuickJS-NG 引擎与 LVGL 渲染管线上。">Real firmware, rendered by esp32sim — not mockups. Every frame runs the same QuickJS-NG engine and LVGL pipeline compiled for the ESP32-S3 board.</p>
+        </div>
+        <span class="shots-honest-badge" data-en="esp32sim firmware output · not mockups" data-zh="esp32sim 真固件输出 · 非效果图">esp32sim firmware output · not mockups</span>
+      </div>
+
+      <div class="shots-grid">
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/counter.webp" width="460" height="460" loading="lazy" alt="Counter app — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Counter" data-zh="计数器">Counter</strong>
+            <span data-en="Signals reactivity + live theme switching" data-zh="Signals 响应式更新与即时主题切换">Signals reactivity + live theme switching</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/dashboard.webp" width="460" height="460" loading="lazy" alt="Dashboard app — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Dashboard" data-zh="仪表盘">Dashboard</strong>
+            <span data-en="Telemetry card grid and segmented controls" data-zh="遥测数据卡片网格与分段切换">Telemetry card grid and segmented controls</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/speedometer.webp" width="460" height="460" loading="lazy" alt="Speedometer app — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Speedometer" data-zh="速度表">Speedometer</strong>
+            <span data-en="270-degree arc dial with needle tweening" data-zh="270° 弧形刻度盘与指针缓动">270-degree arc dial with needle tweening</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/watchface.webp" width="460" height="460" loading="lazy" alt="Watchface app — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Watchface" data-zh="表盘">Watchface</strong>
+            <span data-en="Activity rings &amp; five switchable faces" data-zh="三环活动目标与五种可切换表盘">Activity rings &amp; five switchable faces</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/music_player.webp" width="460" height="460" loading="lazy" alt="Music player app — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Music Player" data-zh="音乐播放器">Music Player</strong>
+            <span data-en="Playback controls, progress bar &amp; lyrics UI" data-zh="播放控制、进度条与歌词界面">Playback controls, progress bar &amp; lyrics UI</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/heart_curve.webp" width="460" height="460" loading="lazy" alt="Heart curve app — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Heart Curve" data-zh="心率曲线">Heart Curve</strong>
+            <span data-en="Health pulse waveform via Canvas polyline" data-zh="基于 Canvas 折线的健康脉搏波形">Health pulse waveform via Canvas polyline</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/games_2048.webp" width="460" height="460" loading="lazy" alt="2048 game — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="2048" data-zh="2048">2048</strong>
+            <span data-en="Swipe-driven tile merging puzzle" data-zh="滑动合并方块益智游戏">Swipe-driven tile merging puzzle</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/games_breakout.webp" width="460" height="460" loading="lazy" alt="Breakout game — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Breakout" data-zh="打砖块">Breakout</strong>
+            <span data-en="Touch paddle arcade with dirty-rect repaint" data-zh="触控挡板街机与脏矩形局部重绘">Touch paddle arcade with dirty-rect repaint</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/mario.webp" width="460" height="460" loading="lazy" alt="Mario platformer — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Platformer" data-zh="平台跳跃">Platformer</strong>
+            <span data-en="Pixel-sprite Canvas game with touch pad" data-zh="像素精灵 Canvas 横版闯关">Pixel-sprite Canvas game with touch pad</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/piano.webp" width="460" height="460" loading="lazy" alt="Touch piano — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Touch Piano" data-zh="触屏钢琴">Touch Piano</strong>
+            <span data-en="Two-octave glissando keyboard + audio synth" data-zh="双八度滑音琴键与音频合成">Two-octave glissando keyboard + audio synth</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/weather.webp" width="460" height="460" loading="lazy" alt="Weather forecast — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Weather" data-zh="天气预报">Weather</strong>
+            <span data-en="Bilingual typography &amp; vector icon layout" data-zh="中英混排卡片与矢量天气图标">Bilingual typography &amp; vector icon layout</span>
+          </div>
+        </a>
+
+        <a class="shot-card card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/raycast.webp" width="460" height="460" loading="lazy" alt="Raycast 3D maze — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <strong data-en="Raycast 3D" data-zh="射线迷宫">Raycast 3D</strong>
+            <span data-en="First-person textured maze on RGB565 Canvas" data-zh="RGB565 画布第一人称纹理迷宫">First-person textured maze on RGB565 Canvas</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="shots-footer">
+        <p class="fine" data-en="All 12 captures are 480×480 RGB565 frames rendered by esp32sim in CI — not design mockups or physical board photos." data-zh="以上 12 张均为 CI 中由 esp32sim 渲染的 480×480 RGB565 真实帧，并非设计效果图或真机实拍照片。">All 12 captures are 480×480 RGB565 frames rendered by esp32sim in CI — not design mockups or physical board photos.</p>
+        <div class="hero-actions" style="margin-top:0">
+          <a class="button ghost button-sm" href="examples.html"><span data-en="Browse all 74 examples →" data-zh="浏览全部 74 个示例 →">Browse all 74 examples →</span></a>
+          <a class="button primary button-sm" href="playground/index.html"><span data-en="Open Playground" data-zh="打开 Playground">Open Playground</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section architecture" id="architecture">
+      <div class="shell">
+        <div class="section-head">
+          <span class="eyebrow">ARCHITECTURE</span>
+          <h2 data-en="JavaScript on top. Native performance underneath." data-zh="上层 JavaScript，底层原生渲染。">JavaScript on top. Native performance underneath.</h2>
+          <p class="lead" data-en="LVGL stays strictly behind the bridge. Your app declares UI and hardware intent in plain JS while the C runtime batches mutations onto the panel." data-zh="LVGL 严格留在桥接层之下。应用只需用纯 JS 声明界面与硬件意图，C 运行时负责批量同步到屏幕。">LVGL stays strictly behind the bridge. Your app declares UI and hardware intent in plain JS while the C runtime batches mutations onto the panel.</p>
+        </div>
+        <div class="arch-flow">
+          <div class="arch-node reveal">
+            <span class="arch-step">01 / APP LAYER</span>
+            <strong>App JavaScript</strong>
+            <small>signals · View · List · Canvas · lume.*</small>
+          </div>
+          <span class="arch-arrow" aria-hidden="true">→</span>
+          <div class="arch-node reveal">
+            <span class="arch-step">02 / RUNTIME</span>
+            <strong>QuickJS-NG</strong>
+            <small>ES2020 engine · event loop · USB &amp; OTA reload</small>
+          </div>
+          <span class="arch-arrow" aria-hidden="true">→</span>
+          <div class="arch-node reveal">
+            <span class="arch-step">03 / RENDERER</span>
+            <strong>Native bridge + LVGL</strong>
+            <small>batched op queue · flex layout · dirty-rect draw</small>
+          </div>
+          <span class="arch-arrow" aria-hidden="true">→</span>
+          <div class="arch-node reveal">
+            <span class="arch-step">04 / HARDWARE</span>
+            <strong>ESP32-S3 AMOLED</strong>
+            <small>CO5300 QSPI · touch · PMIC · IMU · audio</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section shell" id="roadmap">
+      <div class="section-head">
+        <span class="eyebrow">ROADMAP / SOURCE: docs/roadmap.md</span>
+        <h2 data-en="Built in public view. Validated in stages." data-zh="开发进度公开，验收分阶段完成。">Built in public view. Validated in stages.</h2>
+      </div>
+      <div class="milestones">
+        <div class="milestone reveal">
+          <b>M1</b>
+          <div>
+            <strong data-en="Minimal loop" data-zh="最小闭环">Minimal loop</strong>
+            <p data-en="Code checked; device acceptance pending." data-zh="代码项已勾选；真机验收待完成。">Code checked; device acceptance pending.</p>
+          </div>
+          <span class="pill status-ok"><span data-en="Code checked" data-zh="代码已勾选">Code checked</span></span>
+        </div>
+        <div class="milestone reveal">
+          <b>M2</b>
+          <div>
+            <strong data-en="Hardware surface" data-zh="硬件接口">Hardware surface</strong>
+            <p data-en="GPIO, PMIC and IMU are checked; network, storage and audio code exists, while roadmap acceptance remains open." data-zh="GPIO、PMIC、IMU 已勾选；网络、存储、音频代码已具备，路线图中的验收仍未勾选。">GPIO, PMIC and IMU are checked; network, storage and audio code exists, while roadmap acceptance remains open.</p>
+          </div>
+          <span class="pill status-warn"><span data-en="Mixed" data-zh="部分完成">Mixed</span></span>
+        </div>
+        <div class="milestone reveal">
+          <b>M3</b>
+          <div>
+            <strong data-en="Declarative UI" data-zh="声明式 UI">Declarative UI</strong>
+            <p data-en="Core code items checked; board visual and interaction checks pending." data-zh="核心代码项已勾选；真机视觉和交互待验收。">Core code items checked; board visual and interaction checks pending.</p>
+          </div>
+          <span class="pill status-ok"><span data-en="Code checked" data-zh="代码已勾选">Code checked</span></span>
+        </div>
+        <div class="milestone reveal">
+          <b>M4</b>
+          <div>
+            <strong data-en="Tooling" data-zh="工具链">Tooling</strong>
+            <p data-en="CLI, host simulator, and HMAC-authenticated WiFi OTA code exist; virtual WiFi association and board acceptance remain open." data-zh="CLI、宿主模拟器和 HMAC 鉴权的 WiFi OTA 代码已具备；虚拟 WiFi 关联和真机验收仍待完成。">CLI, host simulator, and HMAC-authenticated WiFi OTA code exist; virtual WiFi association and board acceptance remain open.</p>
+          </div>
+          <span class="pill status-prog"><span data-en="In progress" data-zh="进行中">In progress</span></span>
+        </div>
+        <div class="milestone reveal">
+          <b>M5</b>
+          <div>
+            <strong data-en="Ecosystem" data-zh="生态">Ecosystem</strong>
+            <p data-en="Optional JS shell components and the bilingual docs site have landed; board abstraction is not started." data-zh="可选 JS shell 组件与中英双语文档站已落地；板级抽象尚未开始。">Optional JS shell components and the bilingual docs site have landed; board abstraction is not started.</p>
+          </div>
+          <span class="pill status-prog"><span data-en="In progress" data-zh="进行中">In progress</span></span>
+        </div>
+      </div>
+      <p class="fine roadmap-foot"><span data-en="Status follows docs/roadmap.md and README.md; on-device acceptance is still pending." data-zh="状态与 docs/roadmap.md、README.md 同步；真机验收仍待完成。">Status follows docs/roadmap.md and README.md; on-device acceptance is still pending.</span></p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <strong>lume<span class="accent">.</span></strong>
+          <p data-en="Declarative JavaScript UI and hardware runtime for ESP32-S3 AMOLED boards." data-zh="面向 ESP32-S3 AMOLED 开发板的声明式 JavaScript UI 与硬件运行时。">Declarative JavaScript UI and hardware runtime for ESP32-S3 AMOLED boards.</p>
+          <div class="footer-badges">
+            <a class="gh-badge-link" href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener" aria-label="GitHub repository">
+              <img src="https://img.shields.io/github/stars/congduan/lume-esp?style=flat&amp;logo=github&amp;label=Stars&amp;color=08788c&amp;labelColor=0f1720" alt="GitHub stars" height="20">
+            </a>
+            <a class="gh-badge-link" href="https://github.com/congduan/lume-esp/blob/main/LICENSE" target="_blank" rel="noopener" aria-label="MIT License">
+              <img src="https://img.shields.io/badge/license-MIT-08788c?style=flat&amp;labelColor=0f1720" alt="MIT license" height="20">
+            </a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Documentation" data-zh="文档">Documentation</h3>
+          <ul>
+            <li><a href="index.html" data-en="Overview" data-zh="概览">Overview</a></li>
+            <li><a href="guide.html" data-en="Quickstart Guide" data-zh="上手指南">Quickstart Guide</a></li>
+            <li><a href="api.html" data-en="API Reference" data-zh="API 参考">API Reference</a></li>
+            <li><a href="faq.html" data-en="FAQ &amp; Caveats" data-zh="问答与边界">FAQ &amp; Caveats</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Explore" data-zh="探索">Explore</h3>
+          <ul>
+            <li><a href="examples.html" data-en="Examples Gallery" data-zh="示例画廊">Examples Gallery</a></li>
+            <li><a href="playground/index.html" data-en="Browser Playground" data-zh="在线体验">Browser Playground</a></li>
+            <li><a href="index.html#screenshots" data-en="Firmware Screenshots" data-zh="固件截图">Firmware Screenshots</a></li>
+            <li><a href="index.html#roadmap" data-en="Roadmap" data-zh="路线图">Roadmap</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Resources" data-zh="资源">Resources</h3>
+          <ul>
+            <li><a href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/issues" target="_blank" rel="noopener" data-en="Issue Tracker" data-zh="问题反馈">Issue Tracker</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/blob/main/docs/hardware-api.md" target="_blank" rel="noopener" data-en="Hardware Contract" data-zh="硬件接口契约">Hardware Contract</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/blob/main/LICENSE" target="_blank" rel="noopener" data-en="MIT License" data-zh="MIT 许可证">MIT License</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span data-en="MIT License · Not affiliated with Espressif Systems or Waveshare." data-zh="MIT 许可证 · 与乐鑫（Espressif）或微雪（Waveshare）无关联。">MIT License · Not affiliated with Espressif Systems or Waveshare.</span>
+        <span data-en="Screenshots rendered by esp32sim; on-device acceptance pending." data-zh="截图由 esp32sim 渲染；真机验收待完成。">Screenshots rendered by esp32sim; on-device acceptance pending.</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

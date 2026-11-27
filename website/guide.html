@@ -1,16 +1,159 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><meta name="description" content="Get started with Lume and its counter example."><title>Guide · Lume</title><link rel="canonical" href="https://congduan.github.io/lume-esp/guide.html"><meta property="og:type" content="website"><meta property="og:site_name" content="Lume"><meta property="og:url" content="https://congduan.github.io/lume-esp/guide.html"><meta property="og:title" content="Guide · Lume"><meta property="og:description" content="Get started with Lume: scaffold an app, edit app.js, hot reload over USB, and deploy to the board."><meta property="og:image" content="https://congduan.github.io/lume-esp/assets/og-cover.png"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Guide · Lume"><meta name="twitter:description" content="Get started with Lume: scaffold an app, edit app.js, hot reload over USB, and deploy to the board."><link rel="alternate" hreflang="zh" href="https://congduan.github.io/lume-esp/guide.html?lang=zh"><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/style.css"><script defer src="assets/site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="site-header"><div class="shell nav"><a class="brand" href="index.html" aria-label="Lume home"><span class="brand-mark">L</span> lume<span class="brand-dot">.</span></a><nav class="nav-links" aria-label="Main navigation"><a href="index.html" aria-current="false"><span data-en="Overview" data-zh="概览">Overview</span></a><a href="guide.html" aria-current="true"><span data-en="Guide" data-zh="上手">Guide</span></a><a href="api.html" aria-current="false"><span data-en="API" data-zh="API">API</span></a><a href="examples.html" aria-current="false"><span data-en="Examples" data-zh="示例">Examples</span></a><a href="faq.html" aria-current="false"><span data-en="FAQ" data-zh="问答">FAQ</span></a></nav><div class="nav-actions"><button id="lang-toggle" type="button" aria-label="Switch language">中文</button><button id="theme-toggle" type="button" aria-label="Switch color theme">◐</button></div></div></header><main id="main"><section class="page-intro shell reveal"><span class="eyebrow">01 / GUIDE</span><h1 data-en="From source to screen." data-zh="从源码到屏幕。">From source to screen.</h1><p class="lead" data-en="Start with the counter app, then edit and send JavaScript over USB." data-zh="从计数器应用开始，再通过 USB 编辑并推送 JavaScript。">Start with the counter app, then edit and send JavaScript over USB.</p></section><section class="section shell"><div class="section-head"><span class="eyebrow">WORKFLOW</span><h2 data-en="One app, two development loops." data-zh="同一个应用，两种开发循环。">One app, two development loops.</h2></div><div class="table-scroll"><table><thead><tr><th>Step / 步骤</th><th>Traditional firmware / 传统固件</th><th>Lume app / Lume 应用</th></tr></thead><tbody><tr><td>Edit / 修改</td><td>C / C++ source</td><td>JavaScript</td></tr><tr><td>Build / 构建</td><td>Rebuild firmware image</td><td>Bundle JS via CLI</td></tr><tr><td>Send / 推送</td><td>Flash firmware</td><td>USB Serial/JTAG app push</td></tr><tr><td>Verify / 验证</td><td>Reboot and inspect</td><td>Observe updated app on board</td></tr></tbody></table></div><p class="fine"><span data-en="Timing varies by project and device. No latency benchmark has been established." data-zh="耗时取决于项目和设备；目前没有已确认的延迟基准。">Timing varies by project and device. No latency benchmark has been established.</span></p></section><section class="section shell"><div class="section-head"><span class="eyebrow">PREREQUISITES</span><h2 data-en="Prepare the board and CLI." data-zh="准备开发板和 CLI。">Prepare the board and CLI.</h2></div><div class="prose"><p data-en="Use the Waveshare ESP32-S3-Touch-AMOLED-2.16 with Lume firmware installed. The documented CLI requires Node.js 18+; firmware builds use ESP-IDF 5.5. The website itself needs no build tools." data-zh="使用已烧录 Lume 固件的 Waveshare ESP32-S3-Touch-AMOLED-2.16。文档中的 CLI 需要 Node.js 18+；固件构建使用 ESP-IDF 5.5。官网本身无需构建工具。">Use the Waveshare ESP32-S3-Touch-AMOLED-2.16 with Lume firmware installed. The documented CLI requires Node.js 18+; firmware builds use ESP-IDF 5.5. The website itself needs no build tools.</p><pre><code>npm ci --prefix tools/lume
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="Get started with Lume and its counter example.">
+  <title>Guide · Lume</title>
+  <link rel="canonical" href="https://congduan.github.io/lume-esp/guide.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Lume">
+  <meta property="og:url" content="https://congduan.github.io/lume-esp/guide.html">
+  <meta property="og:title" content="Guide · Lume">
+  <meta property="og:description" content="Get started with Lume: scaffold an app, edit app.js, hot reload over USB, and deploy to the board.">
+  <meta property="og:image" content="https://congduan.github.io/lume-esp/assets/og-cover.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Guide · Lume">
+  <meta name="twitter:description" content="Get started with Lume: scaffold an app, edit app.js, hot reload over USB, and deploy to the board.">
+  <link rel="alternate" hreflang="zh" href="https://congduan.github.io/lume-esp/guide.html?lang=zh">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script defer src="assets/site.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="shell nav">
+      <a class="brand" href="index.html" aria-label="Lume home"><span class="brand-mark">L</span>lume<span class="brand-dot">.</span></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="index.html" aria-current="false"><span data-en="Overview" data-zh="概览">Overview</span></a>
+        <a href="guide.html" aria-current="true"><span data-en="Guide" data-zh="上手">Guide</span></a>
+        <a href="api.html" aria-current="false"><span data-en="API" data-zh="API">API</span></a>
+        <a href="examples.html" aria-current="false"><span data-en="Examples" data-zh="示例">Examples</span></a>
+        <a href="playground/index.html"><span data-en="Playground" data-zh="在线体验">Playground</span></a>
+        <a href="faq.html" aria-current="false"><span data-en="FAQ" data-zh="问答">FAQ</span></a>
+      </nav>
+      <div class="nav-actions">
+        <a class="gh-badge-link" href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener" aria-label="Lume GitHub stars">
+          <img src="https://img.shields.io/github/stars/congduan/lume-esp?style=flat&amp;logo=github&amp;label=Stars&amp;color=08788c&amp;labelColor=0f1720" alt="GitHub stars" height="20">
+        </a>
+        <button id="lang-toggle" type="button" aria-label="Switch language">中文</button>
+        <button id="theme-toggle" type="button" aria-label="Switch color theme">◐</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-intro shell reveal">
+      <span class="eyebrow">01 / GUIDE</span>
+      <h1 data-en="From source to screen." data-zh="从源码到屏幕。">From source to screen.</h1>
+      <p class="lead" data-en="Start with the counter app, then edit and send JavaScript over USB." data-zh="从计数器应用开始，再通过 USB 编辑并推送 JavaScript。">Start with the counter app, then edit and send JavaScript over USB.</p>
+    </section>
+
+    <section class="section shell">
+      <div class="section-head">
+        <span class="eyebrow">WORKFLOW</span>
+        <h2 data-en="One app, two development loops." data-zh="同一个应用，两种开发循环。">One app, two development loops.</h2>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Step / 步骤</th>
+              <th>Traditional firmware / 传统固件</th>
+              <th>Lume app / Lume 应用</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Edit / 修改</td><td>C / C++ source</td><td>JavaScript</td></tr>
+            <tr><td>Build / 构建</td><td>Rebuild firmware image</td><td>Bundle JS via CLI</td></tr>
+            <tr><td>Send / 推送</td><td>Flash firmware</td><td>USB Serial/JTAG app push</td></tr>
+            <tr><td>Verify / 验证</td><td>Reboot and inspect</td><td>Observe updated app on board</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fine" style="margin-top:12px"><span data-en="Timing varies by project and device. No latency benchmark has been established." data-zh="耗时取决于项目和设备；目前没有已确认的延迟基准。">Timing varies by project and device. No latency benchmark has been established.</span></p>
+    </section>
+
+    <section class="section shell">
+      <div class="section-head">
+        <span class="eyebrow">PREREQUISITES</span>
+        <h2 data-en="Prepare the board and CLI." data-zh="准备开发板和 CLI。">Prepare the board and CLI.</h2>
+      </div>
+      <div class="prose">
+        <p data-en="Use the Waveshare ESP32-S3-Touch-AMOLED-2.16 with Lume firmware installed. The documented CLI requires Node.js 18+; firmware builds use ESP-IDF 5.5. The website itself needs no build tools." data-zh="使用已烧录 Lume 固件的 Waveshare ESP32-S3-Touch-AMOLED-2.16。文档中的 CLI 需要 Node.js 18+；固件构建使用 ESP-IDF 5.5。官网本身无需构建工具。">Use the Waveshare ESP32-S3-Touch-AMOLED-2.16 with Lume firmware installed. The documented CLI requires Node.js 18+; firmware builds use ESP-IDF 5.5. The website itself needs no build tools.</p>
+        <pre><code>npm ci --prefix tools/lume
 node tools/lume/lume.js create my-app
-node tools/lume/lume.js dev my-app</code></pre><p data-en="Run these commands from the repository root. If auto-detection fails, add --port /dev/ttyACM0." data-zh="在仓库根目录运行这些命令。如果自动检测失败，添加 --port /dev/ttyACM0。">Run these commands from the repository root. If auto-detection fails, add --port /dev/ttyACM0.</p></div></section><section class="section shell"><div class="section-head"><span class="eyebrow">COUNTER WALKTHROUGH</span><h2 data-en="Touch → signal → text." data-zh="触摸 → signal → 文字。">Touch → signal → text.</h2></div><div class="split"><div class="prose"><p data-en="The repository counter creates a signal, reads it in a Text callback, and updates it from Button.onPress. The same app also switches themes and animates its card." data-zh="仓库中的计数器创建 signal，在 Text 回调中读取它，并在 Button.onPress 中更新它；同一应用还切换主题并为卡片添加动画。">The repository counter creates a signal, reads it in a Text callback, and updates it from Button.onPress. The same app also switches themes and animates its card.</p><p data-en="Open examples/counter/app.js for the complete source. Save an edit while the CLI dev command is running to send the new app over USB." data-zh="查看 examples/counter/app.js 获取完整源码。CLI dev 命令运行时保存修改，便会通过 USB 推送新应用。">Open examples/counter/app.js for the complete source. Save an edit while the CLI dev command is running to send the new app over USB.</p></div><pre><code>var count = signal(0);
+node tools/lume/lume.js dev my-app</code></pre>
+        <p data-en="Run these commands from the repository root. If auto-detection fails, add --port /dev/ttyACM0." data-zh="在仓库根目录运行这些命令。如果自动检测失败，添加 --port /dev/ttyACM0。">Run these commands from the repository root. If auto-detection fails, add --port /dev/ttyACM0.</p>
+      </div>
+    </section>
+
+    <section class="section shell">
+      <div class="section-head">
+        <span class="eyebrow">COUNTER WALKTHROUGH</span>
+        <h2 data-en="Touch → signal → text." data-zh="触摸 → signal → 文字。">Touch → signal → text.</h2>
+      </div>
+      <div class="split">
+        <div class="prose">
+          <p data-en="The repository counter creates a signal, reads it in a Text callback, and updates it from Button.onPress. The same app also switches themes and animates its card." data-zh="仓库中的计数器创建 signal，在 Text 回调中读取它，并在 Button.onPress 中更新它；同一应用还切换主题并为卡片添加动画。">The repository counter creates a signal, reads it in a Text callback, and updates it from Button.onPress. The same app also switches themes and animates its card.</p>
+          <p data-en="Open examples/counter/app.js for the complete source. Save an edit while the CLI dev command is running to send the new app over USB." data-zh="查看 examples/counter/app.js 获取完整源码。CLI dev 命令运行时保存修改，便会通过 USB 推送新应用。">Open examples/counter/app.js for the complete source. Save an edit while the CLI dev command is running to send the new app over USB.</p>
+        </div>
+        <pre><code class="lang-js">var count = signal(0);
 Text({ text: function () {
   return 'taps: ' + count();
 } });
 Button({ title: 'Count', onPress: function () {
   count.set(count() + 1);
-} });</code></pre></div><div class="callout"><span data-en="Current boundary: USB source push, optional bytecode deployment, and HMAC-authenticated WiFi OTA are implemented. On-device push latency and radio behavior await measurement." data-zh="当前边界：USB 源码推送、可选字节码部署和 HMAC 鉴权的 WiFi OTA 已实现。真机推包延迟与射频表现仍待测量。">Current boundary: USB source push, optional bytecode deployment, and HMAC-authenticated WiFi OTA are implemented. On-device push latency and radio behavior await measurement.</span></div></section><section class="section shell" id="safearea"><div class="section-head"><span class="eyebrow">ROUND SCREENS</span><h2 data-en="Keep content inside the round display." data-zh="把内容放进圆屏可见区域。">Keep content inside the round display.</h2></div><div class="prose"><p data-en="For the 1.75C round display, import the optional JS shell and wrap your content in lume.ui.shell.SafeArea. A 466-pixel logical diameter gives a centered 329×329 safe square. Use the logical screen size: the Playground round preview still uses 480 logical pixels." data-zh="适配 1.75C 圆屏时，导入可选 JS 壳层，用 lume.ui.shell.SafeArea 包裹内容。466 像素逻辑直径得到居中的 329×329 安全正方形。请传逻辑屏尺寸：Playground 圆屏预览仍使用 480 逻辑像素。">For the 1.75C round display, import the optional JS shell and wrap your content in lume.ui.shell.SafeArea. A 466-pixel logical diameter gives a centered 329×329 safe square. Use the logical screen size: the Playground round preview still uses 480 logical pixels.</p><pre><code>// In examples/your_app/app.js
+} });</code></pre>
+      </div>
+      <div class="callout"><span data-en="Current boundary: USB source push, optional bytecode deployment, and HMAC-authenticated WiFi OTA are implemented. On-device push latency and radio behavior await measurement." data-zh="当前边界：USB 源码推送、可选字节码部署和 HMAC 鉴权的 WiFi OTA 已实现。真机推包延迟与射频表现仍待测量。">Current boundary: USB source push, optional bytecode deployment, and HMAC-authenticated WiFi OTA are implemented. On-device push latency and radio behavior await measurement.</span></div>
+    </section>
+
+    <section class="section shell" id="safearea">
+      <div class="section-head">
+        <span class="eyebrow">ROUND SCREENS</span>
+        <h2 data-en="Keep content inside the round display." data-zh="把内容放进圆屏可见区域。">Keep content inside the round display.</h2>
+      </div>
+      <div class="prose">
+        <p data-en="For the 1.75C round display, import the optional JS shell and wrap your content in lume.ui.shell.SafeArea. A 466-pixel logical diameter gives a centered 329×329 safe square. Use the logical screen size: the Playground round preview still uses 480 logical pixels." data-zh="适配 1.75C 圆屏时，导入可选 JS 壳层，用 lume.ui.shell.SafeArea 包裹内容。466 像素逻辑直径得到居中的 329×329 安全正方形。请传逻辑屏尺寸：Playground 圆屏预览仍使用 480 逻辑像素。">For the 1.75C round display, import the optional JS shell and wrap your content in lume.ui.shell.SafeArea. A 466-pixel logical diameter gives a centered 329×329 safe square. Use the logical screen size: the Playground round preview still uses 480 logical pixels.</p>
+        <pre><code class="lang-js">// In examples/your_app/app.js
 import '../../runtime/shell.js';
 var label = Text({ text: 'Hello', style: { width: 200, height: 40 } });
 lume.ui.shell.SafeArea({ shape: 'round', size: 466,
-  children: [label] });</code></pre><p data-en="SafeArea returns a View; its children use local coordinates inside that square. The 1.75C display and touch still need device acceptance." data-zh="SafeArea 返回 View；子节点以安全正方形为局部坐标系。1.75C 的显示与触摸仍需真机验收。">SafeArea returns a View; its children use local coordinates inside that square. The 1.75C display and touch still need device acceptance.</p></div></section><section class="section shell" id="round-practice"><div class="section-head"><span class="eyebrow">ROUND-SCREEN PRACTICE</span><h2 data-en="Design from the safe center outward." data-zh="从安全中心向外设计。">Design from the safe center outward.</h2></div><div class="prose"><p><span data-en="SafeArea computes floor(466 / √2) = 329 logical pixels for the inscribed square; see the API contract." data-zh="SafeArea 用 floor(466 / √2) = 329 逻辑像素计算内接正方形；详见 API 契约。">SafeArea computes floor(466 / √2) = 329 logical pixels for the inscribed square; see the API contract.</span> <a href="api.html"><span data-en="SafeArea API →" data-zh="SafeArea API →">SafeArea API →</span></a></p><p><span data-en="ClickWheel uses a circular annulus and a center button, so its gesture geometry naturally suits a round screen. Keep its center and all four tappable sectors inside the visible circle." data-zh="ClickWheel 使用环形轨道和中央按钮，手势几何天然适合圆屏；中心和四个可点击扇区都应位于可见圆内。">ClickWheel uses a circular annulus and a center button, so its gesture geometry naturally suits a round screen. Keep its center and all four tappable sectors inside the visible circle.</span></p><ul><li><a href="https://github.com/congduan/lume-esp/blob/main/examples/clock_round/app.js">clock_round</a> — <span data-en="The 480-logical-pixel dial explicitly keeps essential marks within R=205 around its clock center; it scales to the 466 panel." data-zh="480 逻辑像素表盘明确将关键刻度放在时钟中心 R=205 内，并缩放到 466 面板。">The 480-logical-pixel dial explicitly keeps essential marks within R=205 around its clock center; it scales to the 466 panel.</span></li><li><a href="https://github.com/congduan/lume-esp/blob/main/examples/aurora_clock/app.js">aurora_clock</a> — <span data-en="The main time sits near the center over full-screen ribbons; its date and lower status are outside a strict R=205 zone, so review them before using it as a round-screen layout." data-zh="主时间位于全屏极光的中心附近；日期和下方状态超出严格 R=205 区域，作为圆屏布局使用前需重新审查。">The main time sits near the center over full-screen ribbons; its date and lower status are outside a strict R=205 zone, so review them before using it as a round-screen layout.</span></li><li><a href="https://github.com/congduan/lume-esp/blob/main/examples/watchface/app.js">watchface</a> — <span data-en="Analog, activity, and goal dials use centered 300×300 or 220×220 Canvases; labels and modular cards also extend toward the square corners and need a round-screen pass." data-zh="模拟、活动和目标表盘使用居中的 300×300 或 220×220 Canvas；标签和模块卡片仍延伸到方屏角落，需要另做圆屏适配。">Analog, activity, and goal dials use centered 300×300 or 220×220 Canvases; labels and modular cards also extend toward the square corners and need a round-screen pass.</span></li></ul><p><a href="https://github.com/congduan/lume-esp/blob/main/examples/skycombat/app.js">skycombat</a> — <span data-en="A full-screen 480×480 Canvas rotates the world and horizon with IMU roll while keeping the aiming reticle near the center. Its edge HUD needs repositioning for a round viewport." data-zh="全屏 480×480 Canvas 随 IMU 滚转旋转世界与地平线，瞄准环留在中心附近；边缘 HUD 用于圆屏时需重新定位。">A full-screen 480×480 Canvas rotates the world and horizon with IMU roll while keeping the aiming reticle near the center. Its edge HUD needs repositioning for a round viewport.</span></p><p><span data-en="Place every essential control and status item inside the inscribed safe region; decorative imagery may extend beyond it." data-zh="所有关键交互和状态元素都应落在内接安全区；装饰图像可以出界。">Place every essential control and status item inside the inscribed safe region; decorative imagery may extend beyond it.</span></p></div></section><section class="section shell" id="colorpicker"><div class="section-head"><span class="eyebrow">SHELL COMPONENT / COLORPICKER</span><h2 data-en="Choose and save a color." data-zh="选择并保存颜色。">Choose and save a color.</h2></div><div class="prose"><p><span data-en="ColorPicker renders a 24-segment HSV hue ring, separate saturation and value strips, a preview, and CLOSE/SAVE controls in one 300×360 Canvas." data-zh="ColorPicker 在一块 300×360 Canvas 中绘制 24 段 HSV 色相环、独立饱和度和明度条、预览，以及 CLOSE/SAVE 控件。">ColorPicker renders a 24-segment HSV hue ring, separate saturation and value strips, a preview, and CLOSE/SAVE controls in one 300×360 Canvas.</span></p><p><a href="https://github.com/congduan/lume-esp/blob/main/examples/color_demo/app.js"><span data-en="View complete example →" data-zh="查看完整示例 →">View complete example →</span></a></p><pre><code>import &#x27;../../runtime/shell.js&#x27;;
+  children: [label] });</code></pre>
+        <p data-en="SafeArea returns a View; its children use local coordinates inside that square. The 1.75C display and touch still need device acceptance." data-zh="SafeArea 返回 View；子节点以安全正方形为局部坐标系。1.75C 的显示与触摸仍需真机验收。">SafeArea returns a View; its children use local coordinates inside that square. The 1.75C display and touch still need device acceptance.</p>
+      </div>
+    </section>
+
+    <section class="section shell" id="round-practice">
+      <div class="section-head">
+        <span class="eyebrow">ROUND-SCREEN PRACTICE</span>
+        <h2 data-en="Design from the safe center outward." data-zh="从安全中心向外设计。">Design from the safe center outward.</h2>
+      </div>
+      <div class="prose">
+        <p><span data-en="SafeArea computes floor(466 / √2) = 329 logical pixels for the inscribed square; see the API contract." data-zh="SafeArea 用 floor(466 / √2) = 329 逻辑像素计算内接正方形；详见 API 契约。">SafeArea computes floor(466 / √2) = 329 logical pixels for the inscribed square; see the API contract.</span> <a href="api.html"><span data-en="SafeArea API →" data-zh="SafeArea API →">SafeArea API →</span></a></p>
+        <p><span data-en="ClickWheel uses a circular annulus and a center button, so its gesture geometry naturally suits a round screen. Keep its center and all four tappable sectors inside the visible circle." data-zh="ClickWheel 使用环形轨道和中央按钮，手势几何天然适合圆屏；中心和四个可点击扇区都应位于可见圆内。">ClickWheel uses a circular annulus and a center button, so its gesture geometry naturally suits a round screen. Keep its center and all four tappable sectors inside the visible circle.</span></p>
+        <ul>
+          <li><a href="https://github.com/congduan/lume-esp/blob/main/examples/clock_round/app.js">clock_round</a> — <span data-en="The 480-logical-pixel dial explicitly keeps essential marks within R=205 around its clock center; it scales to the 466 panel." data-zh="480 逻辑像素表盘明确将关键刻度放在时钟中心 R=205 内，并缩放到 466 面板。">The 480-logical-pixel dial explicitly keeps essential marks within R=205 around its clock center; it scales to the 466 panel.</span></li>
+          <li><a href="https://github.com/congduan/lume-esp/blob/main/examples/aurora_clock/app.js">aurora_clock</a> — <span data-en="The main time sits near the center over full-screen ribbons; its date and lower status are outside a strict R=205 zone, so review them before using it as a round-screen layout." data-zh="主时间位于全屏极光的中心附近；日期和下方状态超出严格 R=205 区域，作为圆屏布局使用前需重新审查。">The main time sits near the center over full-screen ribbons; its date and lower status are outside a strict R=205 zone, so review them before using it as a round-screen layout.</span></li>
+          <li><a href="https://github.com/congduan/lume-esp/blob/main/examples/watchface/app.js">watchface</a> — <span data-en="Analog, activity, and goal dials use centered 300×300 or 220×220 Canvases; labels and modular cards also extend toward the square corners and need a round-screen pass." data-zh="模拟、活动和目标表盘使用居中的 300×300 或 220×220 Canvas；标签和模块卡片仍延伸到方屏角落，需要另做圆屏适配。">Analog, activity, and goal dials use centered 300×300 or 220×220 Canvases; labels and modular cards also extend toward the square corners and need a round-screen pass.</span></li>
+        </ul>
+        <p><a href="https://github.com/congduan/lume-esp/blob/main/examples/skycombat/app.js">skycombat</a> — <span data-en="A full-screen 480×480 Canvas rotates the world and horizon with IMU roll while keeping the aiming reticle near the center. Its edge HUD needs repositioning for a round viewport." data-zh="全屏 480×480 Canvas 随 IMU 滚转旋转世界与地平线，瞄准环留在中心附近；边缘 HUD 用于圆屏时需重新定位。">A full-screen 480×480 Canvas rotates the world and horizon with IMU roll while keeping the aiming reticle near the center. Its edge HUD needs repositioning for a round viewport.</span></p>
+        <p><span data-en="Place every essential control and status item inside the inscribed safe region; decorative imagery may extend beyond it." data-zh="所有关键交互和状态元素都应落在内接安全区；装饰图像可以出界。">Place every essential control and status item inside the inscribed safe region; decorative imagery may extend beyond it.</span></p>
+      </div>
+    </section>
+
+    <section class="section shell" id="colorpicker">
+      <div class="section-head">
+        <span class="eyebrow">SHELL COMPONENT / COLORPICKER</span>
+        <h2 data-en="Choose and save a color." data-zh="选择并保存颜色。">Choose and save a color.</h2>
+      </div>
+      <div class="prose">
+        <p><span data-en="ColorPicker renders a 24-segment HSV hue ring, separate saturation and value strips, a preview, and CLOSE/SAVE controls in one 300×360 Canvas." data-zh="ColorPicker 在一块 300×360 Canvas 中绘制 24 段 HSV 色相环、独立饱和度和明度条、预览，以及 CLOSE/SAVE 控件。">ColorPicker renders a 24-segment HSV hue ring, separate saturation and value strips, a preview, and CLOSE/SAVE controls in one 300×360 Canvas.</span></p>
+        <p><a href="https://github.com/congduan/lume-esp/blob/main/examples/color_demo/app.js"><span data-en="View complete example →" data-zh="查看完整示例 →">View complete example →</span></a></p>
+        <pre><code class="lang-js">import &#x27;../../runtime/shell.js&#x27;;
 
 var stored = lume.storage.kv.get(&#x27;demo.color&#x27;);
 var initial = lume.ui.shell.hexToHsv(stored) ? stored : &#x27;#40D8B0&#x27;;
@@ -24,7 +167,32 @@ var picker = lume.ui.shell.ColorPicker({parent:root,x:90,y:25,initialHex:initial
   onConfirm:function (hex) {
     selected.set(hex);
     if (lume.storage.kv.set(&#x27;demo.color&#x27;,hex) === 0) saved.set(true);
-  }});</code></pre><div class="table-scroll"><table><thead><tr><th>Parameter / 参数</th><th>Behavior / 行为</th></tr></thead><tbody><tr><td><code>parent</code></td><td><span data-en="Parent node for the Canvas." data-zh="Canvas 的父节点。">Parent node for the Canvas.</span></td></tr><tr><td><code>x, y</code></td><td><span data-en="Integer top-left coordinates; default to centered x and y=8." data-zh="左上角整数坐标；默认水平居中、y=8。">Integer top-left coordinates; default to centered x and y=8.</span></td></tr><tr><td><code>initialHex</code></td><td><span data-en="A #RRGGBB value. Invalid input warns and falls back to #40D8B0." data-zh="使用 #RRGGBB；无效值会警告并回退到 #40D8B0。">A #RRGGBB value. Invalid input warns and falls back to #40D8B0.</span></td></tr><tr><td><code>onChange(hex)</code></td><td><span data-en="Live color; during drag, at most once per 100 ms. Pending final value is flushed on release or SAVE." data-zh="实时颜色；拖动中最多每 100 ms 一次，松手或 SAVE 时补发待发的最终值。">Live color; during drag, at most once per 100 ms. Pending final value is flushed on release or SAVE.</span></td></tr><tr><td><code>onConfirm(hex), onDismiss()</code></td><td><span data-en="SAVE reports the selected hex; CLOSE disposes the Canvas and calls onDismiss." data-zh="SAVE 返回所选 hex；CLOSE 销毁 Canvas 并调用 onDismiss。">SAVE reports the selected hex; CLOSE disposes the Canvas and calls onDismiss.</span></td></tr></tbody></table></div><p><span data-en="The example updates a signal live and writes KV only on SAVE. The Canvas also disposes on app pause." data-zh="示例实时更新 signal，只在 SAVE 时写入 KV；应用暂停时 Canvas 也会自动清理。">The example updates a signal live and writes KV only on SAVE. The Canvas also disposes on app pause.</span></p></div></section><section class="section shell" id="clickwheel"><div class="section-head"><span class="eyebrow">SHELL COMPONENT / CLICKWHEEL</span><h2 data-en="Turn a gesture into navigation." data-zh="用环形手势导航。">Turn a gesture into navigation.</h2></div><div class="prose"><p><span data-en="ClickWheel draws an annulus and center button and translates ring pans and taps into callbacks; the app owns selection and playback state." data-zh="ClickWheel 绘制环形轨道和中央按钮，把环形拖动与点击转换为回调；选择和播放状态由应用持有。">ClickWheel draws an annulus and center button and translates ring pans and taps into callbacks; the app owns selection and playback state.</span></p><p><a href="https://github.com/congduan/lume-esp/blob/main/examples/ipod_music/app.js"><span data-en="View complete example →" data-zh="查看完整示例 →">View complete example →</span></a></p><pre><code>import &#x27;../../runtime/shell.js&#x27;;
+  }});</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Parameter / 参数</th><th>Behavior / 行为</th></tr></thead>
+            <tbody>
+              <tr><td><code>parent</code></td><td><span data-en="Parent node for the Canvas." data-zh="Canvas 的父节点。">Parent node for the Canvas.</span></td></tr>
+              <tr><td><code>x, y</code></td><td><span data-en="Integer top-left coordinates; default to centered x and y=8." data-zh="左上角整数坐标；默认水平居中、y=8。">Integer top-left coordinates; default to centered x and y=8.</span></td></tr>
+              <tr><td><code>initialHex</code></td><td><span data-en="A #RRGGBB value. Invalid input warns and falls back to #40D8B0." data-zh="使用 #RRGGBB；无效值会警告并回退到 #40D8B0。">A #RRGGBB value. Invalid input warns and falls back to #40D8B0.</span></td></tr>
+              <tr><td><code>onChange(hex)</code></td><td><span data-en="Live color; during drag, at most once per 100 ms. Pending final value is flushed on release or SAVE." data-zh="实时颜色；拖动中最多每 100 ms 一次，松手或 SAVE 时补发待发的最终值。">Live color; during drag, at most once per 100 ms. Pending final value is flushed on release or SAVE.</span></td></tr>
+              <tr><td><code>onConfirm(hex), onDismiss()</code></td><td><span data-en="SAVE reports the selected hex; CLOSE disposes the Canvas and calls onDismiss." data-zh="SAVE 返回所选 hex；CLOSE 销毁 Canvas 并调用 onDismiss。">SAVE reports the selected hex; CLOSE disposes the Canvas and calls onDismiss.</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:16px"><span data-en="The example updates a signal live and writes KV only on SAVE. The Canvas also disposes on app pause." data-zh="示例实时更新 signal，只在 SAVE 时写入 KV；应用暂停时 Canvas 也会自动清理。">The example updates a signal live and writes KV only on SAVE. The Canvas also disposes on app pause.</span></p>
+      </div>
+    </section>
+
+    <section class="section shell" id="clickwheel">
+      <div class="section-head">
+        <span class="eyebrow">SHELL COMPONENT / CLICKWHEEL</span>
+        <h2 data-en="Turn a gesture into navigation." data-zh="用环形手势导航。">Turn a gesture into navigation.</h2>
+      </div>
+      <div class="prose">
+        <p><span data-en="ClickWheel draws an annulus and center button and translates ring pans and taps into callbacks; the app owns selection and playback state." data-zh="ClickWheel 绘制环形轨道和中央按钮，把环形拖动与点击转换为回调；选择和播放状态由应用持有。">ClickWheel draws an annulus and center button and translates ring pans and taps into callbacks; the app owns selection and playback state.</span></p>
+        <p><a href="https://github.com/congduan/lume-esp/blob/main/examples/ipod_music/app.js"><span data-en="View complete example →" data-zh="查看完整示例 →">View complete example →</span></a></p>
+        <pre><code class="lang-js">import &#x27;../../runtime/shell.js&#x27;;
 
 lume.theme.set({colors:{bg:&#x27;#08111E&#x27;,primary:&#x27;#08111E&#x27;,surface:&#x27;#173047&#x27;,
   surfaceAlt:&#x27;#24465D&#x27;,text:&#x27;#F2F7FB&#x27;,textDim:&#x27;#A7BCCC&#x27;,accent:&#x27;#55D7B5&#x27;,
@@ -53,7 +221,32 @@ function outer(q){
   }
 }
 var wheel=lume.ui.shell.ClickWheel({parent:root,cx:240,cy:380,outerR:95,innerR:36,
-  onRotate:rotate,onCenterTap:center,onOuterTap:outer});</code></pre><div class="table-scroll"><table><thead><tr><th>Parameter / 参数</th><th>Behavior / 行为</th></tr></thead><tbody><tr><td><code>parent</code></td><td><span data-en="Parent node for the Canvas." data-zh="Canvas 的父节点。">Parent node for the Canvas.</span></td></tr><tr><td><code>cx, cy, outerR, innerR</code></td><td><span data-en="Absolute integer screen center and radii; outerR ≥ 40 and 1 ≤ innerR &lt; outerR." data-zh="绝对屏幕中心与半径，均为整数；outerR ≥ 40，且 1 ≤ innerR &lt; outerR。">Absolute integer screen center and radii; outerR ≥ 40 and 1 ≤ innerR &lt; outerR.</span></td></tr><tr><td><code>onRotate(deltaSteps)</code></td><td><span data-en="One signed step per callback for each 1/16 turn (22.5°); clockwise is +1." data-zh="每转 1/16 圈（22.5°）回调一步；顺时针为 +1。">One signed step per callback for each 1/16 turn (22.5°); clockwise is +1.</span></td></tr><tr><td><code>onCenterTap()</code></td><td><span data-en="Fires for a tap at radius ≤ innerR." data-zh="点击内半径以内时触发。">Fires for a tap at radius ≤ innerR.</span></td></tr><tr><td><code>onOuterTap(quadrant)</code></td><td><span data-en="Cardinal sectors: 0 top, 1 right, 2 bottom, 3 left; only taps within ±22.5° of those axes fire." data-zh="四个基数扇区：0 上、1 右、2 下、3 左；仅轴线 ±22.5° 内的点击触发。">Cardinal sectors: 0 top, 1 right, 2 bottom, 3 left; only taps within ±22.5° of those axes fire.</span></td></tr></tbody></table></div><p><span data-en="The music example is UI-only; it does not output audio. Dispose the returned Canvas node to unregister gesture handlers." data-zh="音乐示例仅演示界面，不输出音频。销毁返回的 Canvas 节点会注销手势处理器。">The music example is UI-only; it does not output audio. Dispose the returned Canvas node to unregister gesture handlers.</span></p></div></section><section class="section shell" id="dialog"><div class="section-head"><span class="eyebrow">SHELL COMPONENT / DIALOG</span><h2 data-en="Confirm a destructive action once." data-zh="危险操作只确认一次。">Confirm a destructive action once.</h2></div><div class="prose"><p><span data-en="Settings replaces its former three-second arm/confirm gate with a Dialog: opening it does not reboot; only the danger button calls reboot." data-zh="设置页用 Dialog 取代原先的三秒 arm/confirm 两段确认：打开对话框不会重启，只有危险操作按钮会调用 reboot。">Settings replaces its former three-second arm/confirm gate with a Dialog: opening it does not reboot; only the danger button calls reboot.</span></p><p><a href="https://github.com/congduan/lume-esp/blob/main/examples/settings/app.js"><span data-en="View complete example →" data-zh="查看完整示例 →">View complete example →</span></a></p><pre><code>import &#x27;../../runtime/shell.js&#x27;;
+  onRotate:rotate,onCenterTap:center,onOuterTap:outer});</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Parameter / 参数</th><th>Behavior / 行为</th></tr></thead>
+            <tbody>
+              <tr><td><code>parent</code></td><td><span data-en="Parent node for the Canvas." data-zh="Canvas 的父节点。">Parent node for the Canvas.</span></td></tr>
+              <tr><td><code>cx, cy, outerR, innerR</code></td><td><span data-en="Absolute integer screen center and radii; outerR ≥ 40 and 1 ≤ innerR &lt; outerR." data-zh="绝对屏幕中心与半径，均为整数；outerR ≥ 40，且 1 ≤ innerR &lt; outerR。">Absolute integer screen center and radii; outerR ≥ 40 and 1 ≤ innerR &lt; outerR.</span></td></tr>
+              <tr><td><code>onRotate(deltaSteps)</code></td><td><span data-en="One signed step per callback for each 1/16 turn (22.5°); clockwise is +1." data-zh="每转 1/16 圈（22.5°）回调一步；顺时针为 +1。">One signed step per callback for each 1/16 turn (22.5°); clockwise is +1.</span></td></tr>
+              <tr><td><code>onCenterTap()</code></td><td><span data-en="Fires for a tap at radius ≤ innerR." data-zh="点击内半径以内时触发。">Fires for a tap at radius ≤ innerR.</span></td></tr>
+              <tr><td><code>onOuterTap(quadrant)</code></td><td><span data-en="Cardinal sectors: 0 top, 1 right, 2 bottom, 3 left; only taps within ±22.5° of those axes fire." data-zh="四个基数扇区：0 上、1 右、2 下、3 左；仅轴线 ±22.5° 内的点击触发。">Cardinal sectors: 0 top, 1 right, 2 bottom, 3 left; only taps within ±22.5° of those axes fire.</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:16px"><span data-en="The music example is UI-only; it does not output audio. Dispose the returned Canvas node to unregister gesture handlers." data-zh="音乐示例仅演示界面，不输出音频。销毁返回的 Canvas 节点会注销手势处理器。">The music example is UI-only; it does not output audio. Dispose the returned Canvas node to unregister gesture handlers.</span></p>
+      </div>
+    </section>
+
+    <section class="section shell" id="dialog">
+      <div class="section-head">
+        <span class="eyebrow">SHELL COMPONENT / DIALOG</span>
+        <h2 data-en="Confirm a destructive action once." data-zh="危险操作只确认一次。">Confirm a destructive action once.</h2>
+      </div>
+      <div class="prose">
+        <p><span data-en="Settings replaces its former three-second arm/confirm gate with a Dialog: opening it does not reboot; only the danger button calls reboot." data-zh="设置页用 Dialog 取代原先的三秒 arm/confirm 两段确认：打开对话框不会重启，只有危险操作按钮会调用 reboot。">Settings replaces its former three-second arm/confirm gate with a Dialog: opening it does not reboot; only the danger button calls reboot.</span></p>
+        <p><a href="https://github.com/congduan/lume-esp/blob/main/examples/settings/app.js"><span data-en="View complete example →" data-zh="查看完整示例 →">View complete example →</span></a></p>
+        <pre><code class="lang-js">import &#x27;../../runtime/shell.js&#x27;;
 var rebootNote = signal(&#x27;&#x27;);                 /* r143: transient reboot guard note */
 function rebootNow() {
   var shell = lume.ui &amp;&amp; lume.ui.shell;
@@ -77,4 +270,83 @@ function rebootNow() {
   });
 }
     Button({ title: &#x27;Reboot&#x27;, onPress: rebootNow,
-      style: { width: 132, height: 34, borderRadius: 8 } })</code></pre><div class="table-scroll"><table><thead><tr><th>Parameter / 参数</th><th>Behavior / 行为</th></tr></thead><tbody><tr><td><code>title, message</code></td><td><span data-en="Required title and optional body text." data-zh="必填标题和可选说明文字。">Required title and optional body text.</span></td></tr><tr><td><code>buttons</code></td><td><span data-en="Array of {label, style?, onPress?}; style is plain, primary, or danger." data-zh="{label, style?, onPress?} 数组；style 可为 plain、primary 或 danger。">Array of {label, style?, onPress?}; style is plain, primary, or danger.</span></td></tr><tr><td><code>modal</code></td><td><span data-en="Default true: top-dialog backdrop tap closes it; false: backdrop still blocks touch but does not close it." data-zh="默认 true：点击顶层对话框遮罩会关闭；false 时遮罩仍拦截触摸但不会关闭。">Default true: top-dialog backdrop tap closes it; false: backdrop still blocks touch but does not close it.</span></td></tr><tr><td><code>return value</code></td><td><span data-en="An idempotent close function; buttons close before calling onPress." data-zh="返回可重复调用的关闭函数；按钮先关闭对话框再调用 onPress。">An idempotent close function; buttons close before calling onPress.</span></td></tr></tbody></table></div><p><span data-en="The shell closes open dialogs on app pause. Keep the destructive binding inside the confirmed button callback, as the settings example does." data-zh="壳层在应用暂停时清理打开的对话框。危险操作绑定应像设置示例一样放在确认按钮回调内部。">The shell closes open dialogs on app pause. Keep the destructive binding inside the confirmed button callback, as the settings example does.</span></p></div></section><section class="section shell" id="emu-net"><div class="section-head"><span class="eyebrow">HEADLESS NETWORK</span><h2 data-en="Exercise the WiFi path with esp-emu." data-zh="用 esp-emu 运行 WiFi 路径。">Exercise the WiFi path with esp-emu.</h2></div><div class="prose"><p data-en="From the repository root, install esp-emu and the LittleFS Python dependency as described in tools/emu-net/README.md, then run the command below. The runner boots real firmware with virtual WPA2 WiFi and a loopback HTTP server, using the net_check app in LittleFS." data-zh="在仓库根目录按 tools/emu-net/README.md 安装 esp-emu 和 LittleFS Python 依赖，再运行下列命令。runner 以虚拟 WPA2 WiFi 和回环 HTTP 服务启动真实固件，通过 LittleFS 中的 net_check 应用检查网络路径。">From the repository root, install esp-emu and the LittleFS Python dependency as described in tools/emu-net/README.md, then run the command below. The runner boots real firmware with virtual WPA2 WiFi and a loopback HTTP server, using the net_check app in LittleFS.</p><pre><code>tools/emu-net/run.sh examples/net_check</code></pre><p data-en="Serial assertions use [NETCHECK] &lt;step&gt; &lt;PASS|FAIL&gt; (init, connect, IP, HTTP); completion requires [NETCHECK] ALL PASS. Logs go to artifacts/emu-net/net_check/serial.log. The recorded r144 run exits with IP FAIL after association fails; the runner is available, but virtual WiFi acceptance has not passed. Board radio and TF wiring remain unverified." data-zh="串口断言格式是 [NETCHECK] &lt;步骤&gt; &lt;PASS|FAIL&gt;（初始化、连接、IP、HTTP）；完成需要 [NETCHECK] ALL PASS。日志位于 artifacts/emu-net/net_check/serial.log。已记录的 r144 运行因关联失败而出现 IP FAIL；runner 已具备，虚拟 WiFi 验收尚未通过。真机射频与 TF 接线仍待验证。">Serial assertions use [NETCHECK] &lt;step&gt; &lt;PASS|FAIL&gt; (init, connect, IP, HTTP); completion requires [NETCHECK] ALL PASS. Logs go to artifacts/emu-net/net_check/serial.log. The recorded r144 run exits with IP FAIL after association fails; the runner is available, but virtual WiFi acceptance has not passed. Board radio and TF wiring remain unverified.</p></div></section></main><footer class="site-footer"><div class="shell footer-inner"><div><strong>lume<span class="accent">.</span></strong><p><span data-en="JavaScript for the ESP32-S3 AMOLED." data-zh="为 ESP32-S3 AMOLED 构建的 JavaScript 框架。">JavaScript for the ESP32-S3 AMOLED.</span></p></div><div><a href="https://github.com/congduan/lume-esp">GitHub</a><a href="https://github.com/congduan/lume-esp/blob/main/LICENSE">MIT</a><small>not affiliated with Espressif or Waveshare</small></div></div></footer></body></html>
+      style: { width: 132, height: 34, borderRadius: 8 } })</code></pre>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Parameter / 参数</th><th>Behavior / 行为</th></tr></thead>
+            <tbody>
+              <tr><td><code>title, message</code></td><td><span data-en="Required title and optional body text." data-zh="必填标题和可选说明文字。">Required title and optional body text.</span></td></tr>
+              <tr><td><code>buttons</code></td><td><span data-en="Array of {label, style?, onPress?}; style is plain, primary, or danger." data-zh="{label, style?, onPress?} 数组；style 可为 plain、primary 或 danger。">Array of {label, style?, onPress?}; style is plain, primary, or danger.</span></td></tr>
+              <tr><td><code>modal</code></td><td><span data-en="Default true: top-dialog backdrop tap closes it; false: backdrop still blocks touch but does not close it." data-zh="默认 true：点击顶层对话框遮罩会关闭；false 时遮罩仍拦截触摸但不会关闭。">Default true: top-dialog backdrop tap closes it; false: backdrop still blocks touch but does not close it.</span></td></tr>
+              <tr><td><code>return value</code></td><td><span data-en="An idempotent close function; buttons close before calling onPress." data-zh="返回可重复调用的关闭函数；按钮先关闭对话框再调用 onPress。">An idempotent close function; buttons close before calling onPress.</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:16px"><span data-en="The shell closes open dialogs on app pause. Keep the destructive binding inside the confirmed button callback, as the settings example does." data-zh="壳层在应用暂停时清理打开的对话框。危险操作绑定应像设置示例一样放在确认按钮回调内部。">The shell closes open dialogs on app pause. Keep the destructive binding inside the confirmed button callback, as the settings example does.</span></p>
+      </div>
+    </section>
+
+    <section class="section shell" id="emu-net">
+      <div class="section-head">
+        <span class="eyebrow">HEADLESS NETWORK</span>
+        <h2 data-en="Exercise the WiFi path with esp-emu." data-zh="用 esp-emu 运行 WiFi 路径。">Exercise the WiFi path with esp-emu.</h2>
+      </div>
+      <div class="prose">
+        <p data-en="From the repository root, install esp-emu and the LittleFS Python dependency as described in tools/emu-net/README.md, then run the command below. The runner boots real firmware with virtual WPA2 WiFi and a loopback HTTP server, using the net_check app in LittleFS." data-zh="在仓库根目录按 tools/emu-net/README.md 安装 esp-emu 和 LittleFS Python 依赖，再运行下列命令。runner 以虚拟 WPA2 WiFi 和回环 HTTP 服务启动真实固件，通过 LittleFS 中的 net_check 应用检查网络路径。">From the repository root, install esp-emu and the LittleFS Python dependency as described in tools/emu-net/README.md, then run the command below. The runner boots real firmware with virtual WPA2 WiFi and a loopback HTTP server, using the net_check app in LittleFS.</p>
+        <pre><code>tools/emu-net/run.sh examples/net_check</code></pre>
+        <p data-en="Serial assertions use [NETCHECK] &lt;step&gt; &lt;PASS|FAIL&gt; (init, connect, IP, HTTP); completion requires [NETCHECK] ALL PASS. Logs go to artifacts/emu-net/net_check/serial.log. The recorded r144 run exits with IP FAIL after association fails; the runner is available, but virtual WiFi acceptance has not passed. Board radio and TF wiring remain unverified." data-zh="串口断言格式是 [NETCHECK] &lt;步骤&gt; &lt;PASS|FAIL&gt;（初始化、连接、IP、HTTP）；完成需要 [NETCHECK] ALL PASS。日志位于 artifacts/emu-net/net_check/serial.log。已记录的 r144 运行因关联失败而出现 IP FAIL；runner 已具备，虚拟 WiFi 验收尚未通过。真机射频与 TF 接线仍待验证。">Serial assertions use [NETCHECK] &lt;step&gt; &lt;PASS|FAIL&gt; (init, connect, IP, HTTP); completion requires [NETCHECK] ALL PASS. Logs go to artifacts/emu-net/net_check/serial.log. The recorded r144 run exits with IP FAIL after association fails; the runner is available, but virtual WiFi acceptance has not passed. Board radio and TF wiring remain unverified.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <strong>lume<span class="accent">.</span></strong>
+          <p data-en="Declarative JavaScript UI and hardware runtime for ESP32-S3 AMOLED boards." data-zh="面向 ESP32-S3 AMOLED 开发板的声明式 JavaScript UI 与硬件运行时。">Declarative JavaScript UI and hardware runtime for ESP32-S3 AMOLED boards.</p>
+          <div class="footer-badges">
+            <a class="gh-badge-link" href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener" aria-label="GitHub repository">
+              <img src="https://img.shields.io/github/stars/congduan/lume-esp?style=flat&amp;logo=github&amp;label=Stars&amp;color=08788c&amp;labelColor=0f1720" alt="GitHub stars" height="20">
+            </a>
+            <a class="gh-badge-link" href="https://github.com/congduan/lume-esp/blob/main/LICENSE" target="_blank" rel="noopener" aria-label="MIT License">
+              <img src="https://img.shields.io/badge/license-MIT-08788c?style=flat&amp;labelColor=0f1720" alt="MIT license" height="20">
+            </a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Documentation" data-zh="文档">Documentation</h3>
+          <ul>
+            <li><a href="index.html" data-en="Overview" data-zh="概览">Overview</a></li>
+            <li><a href="guide.html" data-en="Quickstart Guide" data-zh="上手指南">Quickstart Guide</a></li>
+            <li><a href="api.html" data-en="API Reference" data-zh="API 参考">API Reference</a></li>
+            <li><a href="faq.html" data-en="FAQ &amp; Caveats" data-zh="问答与边界">FAQ &amp; Caveats</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Explore" data-zh="探索">Explore</h3>
+          <ul>
+            <li><a href="examples.html" data-en="Examples Gallery" data-zh="示例画廊">Examples Gallery</a></li>
+            <li><a href="playground/index.html" data-en="Browser Playground" data-zh="在线体验">Browser Playground</a></li>
+            <li><a href="index.html#screenshots" data-en="Firmware Screenshots" data-zh="固件截图">Firmware Screenshots</a></li>
+            <li><a href="index.html#roadmap" data-en="Roadmap" data-zh="路线图">Roadmap</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Resources" data-zh="资源">Resources</h3>
+          <ul>
+            <li><a href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/issues" target="_blank" rel="noopener" data-en="Issue Tracker" data-zh="问题反馈">Issue Tracker</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/blob/main/docs/hardware-api.md" target="_blank" rel="noopener" data-en="Hardware Contract" data-zh="硬件接口契约">Hardware Contract</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/blob/main/LICENSE" target="_blank" rel="noopener" data-en="MIT License" data-zh="MIT 许可证">MIT License</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span data-en="MIT License · Not affiliated with Espressif Systems or Waveshare." data-zh="MIT 许可证 · 与乐鑫（Espressif）或微雪（Waveshare）无关联。">MIT License · Not affiliated with Espressif Systems or Waveshare.</span>
+        <span data-en="Screenshots rendered by esp32sim; on-device acceptance pending." data-zh="截图由 esp32sim 渲染；真机验收待完成。">Screenshots rendered by esp32sim; on-device acceptance pending.</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
