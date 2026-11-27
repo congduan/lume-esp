@@ -9,5 +9,5 @@
   "app": "lume.bin"
  },
  "expect": "app eval ok",
- "_note": "Lume real firmware (Build firmware run 81, base commit 5b6b022). Launch: run.html?wasm&fw=lume"
+ "_note": "Lume real firmware (Build firmware run 81, base commit e1bcff6). Launch: run.html?wasm&fw=lume"
 }
