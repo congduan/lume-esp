@@ -45,43 +45,31 @@
   </header>
 
   <main id="main">
-    <section class="hero shell">
-      <div class="hero-copy reveal">
-        <span class="eyebrow">ESP32-S3 / AMOLED / JAVASCRIPT</span>
-        <h1>
-          <span data-en="The screen is yours." data-zh="屏幕由你定义，">The screen is yours.</span>
-          <span class="h1-accent" data-en="The firmware stays put." data-zh="固件无需反复烧录。">The firmware stays put.</span>
-        </h1>
-        <p class="lead" data-en="Write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs, with QuickJS-NG and LVGL behind the scenes." data-zh="用 JavaScript 编写完整的 ESP32-S3 AMOLED 应用：声明式 UI、signals 与硬件 API，QuickJS-NG 与 LVGL 隐于幕后。">Write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs, with QuickJS-NG and LVGL behind the scenes.</p>
-        <div class="hero-actions">
-          <a class="button primary" href="guide.html"><span data-en="Get started →" data-zh="开始上手 →">Get started →</span></a>
-          <a class="button ghost" href="playground/index.html"><span data-en="Try in browser" data-zh="浏览器体验">Try in browser</span></a>
-          <a class="button ghost" href="examples.html"><span data-en="Explore examples" data-zh="浏览示例">Explore examples</span></a>
-        </div>
-        <div class="whats-new-card">
-          <div class="whats-new-head">
-            <span class="whats-new-tag" data-en="What's new" data-zh="近期进展">What's new</span>
-            <a class="fine" href="guide.html#safearea" data-en="Read release notes →" data-zh="查看详情 →">Read release notes →</a>
+    <div class="hero-band">
+      <section class="hero shell">
+        <div class="hero-copy reveal">
+          <span class="eyebrow">ESP32-S3 / AMOLED / JAVASCRIPT</span>
+          <h1>
+            <span data-en="The screen is yours." data-zh="屏幕由你定义，">The screen is yours.</span>
+            <span class="h1-accent" data-en="The firmware stays put." data-zh="固件无需反复烧录。">The firmware stays put.</span>
+          </h1>
+          <p class="lead" data-en="Write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs, with QuickJS-NG and LVGL behind the scenes." data-zh="用 JavaScript 编写完整的 ESP32-S3 AMOLED 应用：声明式 UI、signals 与硬件 API，QuickJS-NG 与 LVGL 隐于幕后。">Write your entire ESP32-S3 AMOLED app in JavaScript. Declarative UI, signals, and hardware APIs, with QuickJS-NG and LVGL behind the scenes.</p>
+          <div class="hero-actions">
+            <a class="button primary" href="guide.html"><span data-en="Get started →" data-zh="开始上手 →">Get started →</span></a>
+            <a class="button ghost" href="playground/index.html"><span data-en="Try in browser" data-zh="浏览器体验">Try in browser</span></a>
+            <a class="button ghost" href="examples.html"><span data-en="Explore examples" data-zh="浏览示例">Explore examples</span></a>
           </div>
-          <div class="whats-new-chips">
-            <span class="meta-chip" data-en="13 shell components" data-zh="13 个壳层组件">13 shell components</span>
-            <span class="meta-chip" data-en="SafeArea round layout" data-zh="SafeArea 圆屏布局">SafeArea round layout</span>
-            <span class="meta-chip" data-en="74 Playground apps" data-zh="74 个在线示例">74 Playground apps</span>
-            <span class="meta-chip" data-en="SNTP + HMAC WiFi OTA" data-zh="SNTP 校时 + WiFi OTA">SNTP + HMAC WiFi OTA</span>
-          </div>
-          <p class="fine" data-en="Includes ColorPicker, ClickWheel, and Dialog. Virtual WiFi association awaits upstream support, and real-board acceptance remains pending." data-zh="含 ColorPicker、ClickWheel 与 Dialog。虚拟 WiFi 关联仍待上游支持，真机验收尚未完成。">Includes ColorPicker, ClickWheel, and Dialog. Virtual WiFi association awaits upstream support, and real-board acceptance remains pending.</p>
         </div>
-      </div>
 
-      <div class="demo reveal" aria-label="Illustrative hot reload animation">
-        <div class="demo-top">
-          <span class="window-dots">● ● ●</span>
-          <span>app.js <i class="live-dot"></i> LIVE LOOP</span>
-        </div>
-        <div class="demo-grid">
-          <div class="editor">
-            <span class="demo-label">01 / EDIT JAVASCRIPT</span>
-            <pre><code><span class="tok-kw">const</span> count = <span class="tok-fn">signal</span>(<span class="tok-num">0</span>);
+        <div class="demo reveal" aria-label="Illustrative hot reload animation">
+          <div class="demo-top">
+            <span class="window-dots">● ● ●</span>
+            <span>app.js <i class="live-dot"></i> LIVE LOOP</span>
+          </div>
+          <div class="demo-grid">
+            <div class="editor">
+              <span class="demo-label">01 / EDIT JAVASCRIPT</span>
+              <pre><code><span class="tok-kw">const</span> count = <span class="tok-fn">signal</span>(<span class="tok-num">0</span>);
 
 <span class="tok-fn">Button</span>({
   <span class="tok-prop">title</span>: <span class="tok-str">'+1'</span>,
@@ -89,26 +77,45 @@
     <span id="typed-code"></span><span class="cursor">▋</span>
   }
 });</code></pre>
-            <div class="demo-status" id="demo-status">waiting for edit</div>
+              <div class="demo-status" id="demo-status">waiting for edit</div>
+            </div>
+            <div class="screen-side">
+              <span class="demo-label">02 / ON DEVICE</span>
+              <div class="device">
+                <div class="device-inner">
+                  <small>LUME / COUNTER</small>
+                  <strong id="demo-count">00</strong>
+                  <span>+ 1</span>
+                </div>
+              </div>
+              <div class="toast" id="demo-toast">↗ JS deployed · illustrative</div>
+            </div>
           </div>
-          <div class="screen-side">
-            <span class="demo-label">02 / ON DEVICE</span>
-            <div class="device">
-              <div class="device-inner">
-                <small>LUME / COUNTER</small>
-                <strong id="demo-count">00</strong>
-                <span>+ 1</span>
+          <div class="demo-caption">
+            <span data-en="Concept animation — no measured deployment time is implied." data-zh="概念动画——不代表已测得的部署耗时。">Concept animation — no measured deployment time is implied.</span>
+            <span data-en="USB hot reload is implemented; real-device push latency is still pending measurement." data-zh="USB 热更新代码链路已实现；真机推包延迟仍待实测。">USB hot reload is implemented; real-device push latency is still pending measurement.</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="shell reveal">
+        <div class="changelog-strip" role="region" aria-label="Recent updates">
+          <div class="changelog-row">
+            <div class="changelog-left">
+              <span class="whats-new-tag" data-en="What's new" data-zh="近期进展">What's new</span>
+              <div class="whats-new-chips">
+                <span class="meta-chip" data-en="13 shell components" data-zh="13 个壳层组件">13 shell components</span>
+                <span class="meta-chip" data-en="SafeArea round layout" data-zh="SafeArea 圆屏布局">SafeArea round layout</span>
+                <span class="meta-chip" data-en="74 Playground apps" data-zh="74 个在线示例">74 Playground apps</span>
+                <span class="meta-chip" data-en="SNTP + HMAC WiFi OTA" data-zh="SNTP 校时 + WiFi OTA">SNTP + HMAC WiFi OTA</span>
               </div>
             </div>
-            <div class="toast" id="demo-toast">↗ JS deployed · illustrative</div>
+            <a class="changelog-link" href="guide.html#safearea" data-en="Read release notes →" data-zh="查看详情 →">Read release notes →</a>
           </div>
-        </div>
-        <div class="demo-caption">
-          <span data-en="Concept animation — no measured deployment time is implied." data-zh="概念动画——不代表已测得的部署耗时。">Concept animation — no measured deployment time is implied.</span>
-          <span data-en="USB hot reload is implemented; real-device push latency is still pending measurement." data-zh="USB 热更新代码链路已实现；真机推包延迟仍待实测。">USB hot reload is implemented; real-device push latency is still pending measurement.</span>
+          <p class="changelog-note" data-en="Includes ColorPicker, ClickWheel, and Dialog. Virtual WiFi association awaits upstream support, and real-board acceptance remains pending." data-zh="含 ColorPicker、ClickWheel 与 Dialog。虚拟 WiFi 关联仍待上游支持，真机验收尚未完成。">Includes ColorPicker, ClickWheel, and Dialog. Virtual WiFi association awaits upstream support, and real-board acceptance remains pending.</p>
         </div>
       </div>
-    </section>
+    </div>
 
     <section class="section shell" id="capabilities">
       <div class="section-head">
@@ -146,6 +153,18 @@
       </div>
 
       <div class="shots-grid">
+        <a class="shot-card shot-featured card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/speedometer.webp" width="460" height="460" loading="lazy" alt="Speedometer app — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <em class="shot-kicker" data-en="FEATURED · CIRCULAR DIAL" data-zh="精选 · 圆形表盘">FEATURED · CIRCULAR DIAL</em>
+            <strong data-en="Speedometer" data-zh="速度表">Speedometer</strong>
+            <span data-en="270-degree arc dial with needle tweening" data-zh="270° 弧形刻度盘与指针缓动">270-degree arc dial with needle tweening</span>
+          </div>
+        </a>
+
         <a class="shot-card card reveal" href="examples.html">
           <div class="shot-frame">
             <img src="assets/shots/counter.webp" width="460" height="460" loading="lazy" alt="Counter app — real firmware rendered by esp32sim">
@@ -165,28 +184,6 @@
           <div class="shot-meta">
             <strong data-en="Dashboard" data-zh="仪表盘">Dashboard</strong>
             <span data-en="Telemetry card grid and segmented controls" data-zh="遥测数据卡片网格与分段切换">Telemetry card grid and segmented controls</span>
-          </div>
-        </a>
-
-        <a class="shot-card card reveal" href="examples.html">
-          <div class="shot-frame">
-            <img src="assets/shots/speedometer.webp" width="460" height="460" loading="lazy" alt="Speedometer app — real firmware rendered by esp32sim">
-            <span class="shot-tag">esp32sim</span>
-          </div>
-          <div class="shot-meta">
-            <strong data-en="Speedometer" data-zh="速度表">Speedometer</strong>
-            <span data-en="270-degree arc dial with needle tweening" data-zh="270° 弧形刻度盘与指针缓动">270-degree arc dial with needle tweening</span>
-          </div>
-        </a>
-
-        <a class="shot-card card reveal" href="examples.html">
-          <div class="shot-frame">
-            <img src="assets/shots/watchface.webp" width="460" height="460" loading="lazy" alt="Watchface app — real firmware rendered by esp32sim">
-            <span class="shot-tag">esp32sim</span>
-          </div>
-          <div class="shot-meta">
-            <strong data-en="Watchface" data-zh="表盘">Watchface</strong>
-            <span data-en="Activity rings &amp; five switchable faces" data-zh="三环活动目标与五种可切换表盘">Activity rings &amp; five switchable faces</span>
           </div>
         </a>
 
@@ -234,6 +231,18 @@
           </div>
         </a>
 
+        <a class="shot-card shot-featured card reveal" href="examples.html">
+          <div class="shot-frame">
+            <img src="assets/shots/watchface.webp" width="460" height="460" loading="lazy" alt="Watchface app — real firmware rendered by esp32sim">
+            <span class="shot-tag">esp32sim</span>
+          </div>
+          <div class="shot-meta">
+            <em class="shot-kicker" data-en="FEATURED · ACTIVITY RINGS" data-zh="精选 · 活动圆环">FEATURED · ACTIVITY RINGS</em>
+            <strong data-en="Watchface" data-zh="表盘">Watchface</strong>
+            <span data-en="Activity rings &amp; five switchable faces" data-zh="三环活动目标与五种可切换表盘">Activity rings &amp; five switchable faces</span>
+          </div>
+        </a>
+
         <a class="shot-card card reveal" href="examples.html">
           <div class="shot-frame">
             <img src="assets/shots/mario.webp" width="460" height="460" loading="lazy" alt="Mario platformer — real firmware rendered by esp32sim">
@@ -256,23 +265,25 @@
           </div>
         </a>
 
-        <a class="shot-card card reveal" href="examples.html">
+        <a class="shot-card shot-wide card reveal" href="examples.html">
           <div class="shot-frame">
             <img src="assets/shots/weather.webp" width="460" height="460" loading="lazy" alt="Weather forecast — real firmware rendered by esp32sim">
             <span class="shot-tag">esp32sim</span>
           </div>
           <div class="shot-meta">
+            <em class="shot-kicker" data-en="TYPOGRAPHY · BILINGUAL UI" data-zh="排版 · 双语界面">TYPOGRAPHY · BILINGUAL UI</em>
             <strong data-en="Weather" data-zh="天气预报">Weather</strong>
             <span data-en="Bilingual typography &amp; vector icon layout" data-zh="中英混排卡片与矢量天气图标">Bilingual typography &amp; vector icon layout</span>
           </div>
         </a>
 
-        <a class="shot-card card reveal" href="examples.html">
+        <a class="shot-card shot-wide card reveal" href="examples.html">
           <div class="shot-frame">
             <img src="assets/shots/raycast.webp" width="460" height="460" loading="lazy" alt="Raycast 3D maze — real firmware rendered by esp32sim">
             <span class="shot-tag">esp32sim</span>
           </div>
           <div class="shot-meta">
+            <em class="shot-kicker" data-en="CANVAS · RGB565 3D" data-zh="画布 · RGB565 3D">CANVAS · RGB565 3D</em>
             <strong data-en="Raycast 3D" data-zh="射线迷宫">Raycast 3D</strong>
             <span data-en="First-person textured maze on RGB565 Canvas" data-zh="RGB565 画布第一人称纹理迷宫">First-person textured maze on RGB565 Canvas</span>
           </div>

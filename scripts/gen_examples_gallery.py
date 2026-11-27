@@ -48,6 +48,9 @@ HW_TERMS = re.compile(
 # badged: their metadata already tells the reader no real peripheral is used.
 STUB_TERMS = re.compile(r'\bstub\b|no audio|sample data|模拟|无音频', re.I)
 
+# Featured circular-dial showcases get bento 2-column emphasis on desktop.
+FEATURED_APPS = frozenset({'speedometer', 'watchface'})
+
 
 def catalog():
     manifest = MANIFEST.read_text()
@@ -106,6 +109,7 @@ def card(index, app_id, entry):
         f'data-app="{esc(app_id, quote=True)}" '
         f'data-shot="{"1" if has_shot else "0"}" '
         f'data-hw="{"1" if hw else "0"}" '
+        f'data-featured="{"1" if app_id in FEATURED_APPS else "0"}" '
         f'data-search="{esc(search_blob, quote=True)}">',
     ]
     if has_shot:
