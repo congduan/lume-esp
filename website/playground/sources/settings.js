@@ -4,10 +4,19 @@
  *  NODE BUDGET: the firmware node table is LUME_MAX_NODES = 128 slots and the
  *  engine does NOT reject ids beyond it (creates are silently dropped on the
  *  LVGL side, leaving JS/UI diverged), so this app keeps its static tree at
- *  ~98 nodes (incl. the r132 OTA status row) and its two virtualized Lists add
- *  <= ~25 visible rows worst case.
+ *  ~102 nodes (incl. the r132 OTA status row) and its two virtualized Lists add
+ *  <= ~20 visible rows worst case.
  *  The on-screen keyboard is therefore 4 compact rows; BACK navigation uses
- *  the prelude's global gesture (swipe up) instead of per-page back buttons.
+ *  the global prelude gesture (swipe up) instead of per-page back buttons.
+ *
+ *  r205 round-AMOLED redesign (from artifacts/r205/design/settings.html):
+ *  - Compact top header with time & battery complications flanking Settings.
+ *  - Three grouped sections (CONNECTIONS / SOUND / DEVICE) strictly inside the
+ *    [75, 405] circular safe area, replacing W/B/G letter placeholders with
+ *    inline SVG icons (Wi-Fi fan, Bluetooth rune, Speaker, Gear cog), iOS-style
+ *    toggle switches, volume bar, and chevrons.
+ *  - Removes permanent "Swipe up to go back" tutorial text and fixes General
+ *    row value semantics ("System" instead of "50% volume").
  *
  *  Pages are built once and switched by toggling ATTR_VISIBLE with
  *  lume.setAttr(node, 5, 0|1) -- the pattern already used by
@@ -43,14 +52,18 @@
 import '../../runtime/shell.js';
 
 var settingsTheme = { colors: {
-  primary: '#08111C',
-  surface: '#132436',
-  accent: '#1E88E5',
-  text: '#E8F2FF'
-}, radius: 10, fontScale: 1 };
+  bg: '#000000',
+  primary: '#09101A',
+  surface: '#16202E',
+  surfaceAlt: '#1F2C3D',
+  accent: '#40D8B0',
+  danger: '#FF6B79',
+  text: '#F2F7FB',
+  textDim: '#9EB3C6'
+}, radius: 12, fontScale: 1 };
 lume.theme.set(settingsTheme);
 
-var SAFE = 24;
+var SAFE = 76;
 var kv = lume.storage.kv;
 
 /* ---- persisted state ---------------------------------------------------- */
@@ -91,6 +104,8 @@ var btName = signal(function () {
   return typeof n === 'string' && n ? n : 'Lume';
 }());
 var battLine = signal('--');
+var battPct = signal(-1);
+var clockText = signal('--:--');
 var storeLine = signal('--');
 var volume = signal(function () {
   var v = kv.get('set.volume');
@@ -109,6 +124,107 @@ var autoSsid = signal(function () {
   var s = kv.get('wifi.auto');
   return typeof s === 'string' ? s : '';
 }());
+
+/* ---- inline SVG icons (lume-svg + browser compatible, ASCII-only) ------- */
+
+function svgBuf(svg) {
+  var b = new Uint8Array(svg.length);
+  for (var i = 0; i < svg.length; i++) b[i] = svg.charCodeAt(i);
+  return b.buffer;
+}
+
+var SVG_WIFI = svgBuf(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34">' +
+  '<circle cx="17" cy="17" r="16" fill="#133334" stroke="#285E5C" stroke-width="1"/>' +
+  '<path d="M 8 14 A 13 13 0 0 1 26 14" fill="none" stroke="#40D8B0" stroke-width="2.2" stroke-linecap="round"/>' +
+  '<path d="M 11 18 A 8 8 0 0 1 23 18" fill="none" stroke="#40D8B0" stroke-width="2.2" stroke-linecap="round"/>' +
+  '<path d="M 14 21.5 A 4 4 0 0 1 20 21.5" fill="none" stroke="#40D8B0" stroke-width="2.2" stroke-linecap="round"/>' +
+  '<circle cx="17" cy="24.5" r="1.8" fill="#40D8B0"/>' +
+  '</svg>'
+);
+
+var SVG_BT = svgBuf(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34">' +
+  '<circle cx="17" cy="17" r="16" fill="#152B44" stroke="#2B4E75" stroke-width="1"/>' +
+  '<polyline points="12,12 22,22 17,26 17,8 22,12 12,22" fill="none" stroke="#5B9DF7" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>' +
+  '</svg>'
+);
+
+var SVG_SOUND = svgBuf(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34">' +
+  '<circle cx="17" cy="17" r="16" fill="#322716" stroke="#624D29" stroke-width="1"/>' +
+  '<polygon points="9,14 13,14 18,10 18,24 13,20 9,20" fill="#5A4522" stroke="#FFD78E" stroke-width="1.8" stroke-linejoin="round"/>' +
+  '<path d="M 21 13.5 A 5 5 0 0 1 21 20.5" fill="none" stroke="#FFD78E" stroke-width="1.9" stroke-linecap="round"/>' +
+  '<path d="M 23.5 11 A 8.5 8.5 0 0 1 23.5 23" fill="none" stroke="#FFD78E" stroke-width="1.9" stroke-linecap="round"/>' +
+  '</svg>'
+);
+
+var SVG_GEAR = svgBuf(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34">' +
+  '<circle cx="17" cy="17" r="16" fill="#212F41" stroke="#3B516B" stroke-width="1"/>' +
+  '<circle cx="17" cy="17" r="5.5" fill="none" stroke="#F2F7FB" stroke-width="2.2"/>' +
+  '<circle cx="17" cy="17" r="2.2" fill="#212F41" stroke="#9EB3C6" stroke-width="1.2"/>' +
+  '<line x1="17" y1="8.5" x2="17" y2="11" stroke="#F2F7FB" stroke-width="2.4" stroke-linecap="round"/>' +
+  '<line x1="17" y1="23" x2="17" y2="25.5" stroke="#F2F7FB" stroke-width="2.4" stroke-linecap="round"/>' +
+  '<line x1="8.5" y1="17" x2="11" y2="17" stroke="#F2F7FB" stroke-width="2.4" stroke-linecap="round"/>' +
+  '<line x1="23" y1="17" x2="25.5" y2="17" stroke="#F2F7FB" stroke-width="2.4" stroke-linecap="round"/>' +
+  '<line x1="11" y1="11" x2="13" y2="13" stroke="#F2F7FB" stroke-width="2.2" stroke-linecap="round"/>' +
+  '<line x1="21" y1="21" x2="23" y2="23" stroke="#F2F7FB" stroke-width="2.2" stroke-linecap="round"/>' +
+  '<line x1="23" y1="11" x2="21" y2="13" stroke="#F2F7FB" stroke-width="2.2" stroke-linecap="round"/>' +
+  '<line x1="13" y1="21" x2="11" y2="23" stroke="#F2F7FB" stroke-width="2.2" stroke-linecap="round"/>' +
+  '</svg>'
+);
+
+/* ---- compact 10px uppercase stroke glyphs for group headers ------------- */
+
+var MICRO_GLYPHS = {
+  C: [[4,0,1,0],[1,0,0,1],[0,1,0,7],[0,7,1,8],[1,8,4,8]],
+  D: [[0,0,3,0],[3,0,4,1],[4,1,4,7],[4,7,3,8],[3,8,0,8],[0,8,0,0]],
+  E: [[0,0,4,0],[0,0,0,8],[0,4,3,4],[0,8,4,8]],
+  I: [[1,0,3,0],[2,0,2,8],[1,8,3,8]],
+  N: [[0,8,0,0],[0,0,4,8],[4,8,4,0]],
+  O: [[1,0,3,0],[3,0,4,1],[4,1,4,7],[4,7,3,8],[3,8,1,8],[1,8,0,7],[0,7,0,1],[0,1,1,0]],
+  S: [[4,1,3,0],[3,0,1,0],[1,0,0,1],[0,1,0,3],[0,3,4,5],[4,5,4,7],[4,7,3,8],[3,8,1,8],[1,8,0,7]],
+  T: [[0,0,4,0],[2,0,2,8]],
+  U: [[0,0,0,7],[0,7,1,8],[1,8,3,8],[3,8,4,7],[4,7,4,0]],
+  V: [[0,0,2,8],[2,8,4,0]]
+};
+
+function drawMicroLabel(c, text, x, y, col) {
+  var cx = x;
+  for (var i = 0; i < text.length; i++) {
+    var segs = MICRO_GLYPHS[text[i]];
+    if (segs) {
+      for (var j = 0; j < segs.length; j++) {
+        var s = segs[j];
+        c.line(cx + s[0], y + s[1], cx + s[2], y + s[3], col, 1);
+      }
+    }
+    cx += 7;
+  }
+}
+
+function drawCapsule(c, x, y, w, h, fill, border) {
+  var r = Math.floor(h / 2);
+  if (border) {
+    c.fillCircle(x + r, y + r, r, border);
+    c.fillCircle(x + w - r, y + r, r, border);
+    c.fillColor(border); c.fillRect(x + r, y, w - 2 * r, h);
+    var ir = r - 1;
+    c.fillCircle(x + r, y + r, ir, fill);
+    c.fillCircle(x + w - r, y + r, ir, fill);
+    c.fillColor(fill); c.fillRect(x + r, y + 1, w - 2 * r, h - 2);
+  } else {
+    c.fillCircle(x + r, y + r, r, fill);
+    c.fillCircle(x + w - r, y + r, r, fill);
+    c.fillColor(fill); c.fillRect(x + r, y, w - 2 * r, h);
+  }
+}
+
+function drawChevron(c, x, y, col) {
+  c.line(x, y - 4, x + 4, y, col, 2);
+  c.line(x + 4, y, x, y + 4, col, 2);
+}
 
 /* ---- page switching (ATTR_VISIBLE = 5, see header) ----------------------- */
 
@@ -182,7 +298,7 @@ function kbKey(k) {
 
 function kbRow(children) {
   return View({ style: {
-    width: '100%', height: 44, display: 'flex', flexDirection: 'row', gap: 4
+    width: '100%', height: 42, display: 'flex', flexDirection: 'row', gap: 4
   } }, children);
 }
 function kbKeyButton(k) {
@@ -190,17 +306,16 @@ function kbKeyButton(k) {
     title: function () { return keyChar(k) === 'space' ? 'space' : keyChar(k); },
     onPress: function () { kbKey(k); },
     style: {
-      flexGrow: k[2] || 2, height: 44,
+      flexGrow: k[2] || 2, height: 42,
       background: function () {
         var label = keyChar(k);
         return (label === 'DEL' || label === 'ESC' || label === 'OK' ||
                 label === 'space' || label === '#123' || label === 'ABC')
-          ? '#1B3145' : 'surface';
+          ? '#1F2C3D' : 'surface';
       }
     }
   });
 }
-/* rows are flex: every key grows by k[2] (default 1), so widths auto-fit; */
 
 var kbDisplay = Text({ text: function () {
   var title = kbTitle();
@@ -209,19 +324,18 @@ var kbDisplay = Text({ text: function () {
   if (kbTitle().indexOf('Password') === 0) {
     shown = new Array(t.length + 1).join('*');
   }
-  /* label + input must stay inside the 63-byte text attribute cap */
   var room = 60 - title.length;
   if (shown.length > room) shown = '<' + shown.slice(shown.length - room + 1);
   return title + ': ' + (shown === '' ? '|' : shown);
-}, style: { width: '100%', height: 26, textAlign: 'left' } });
+}, style: { width: '100%', height: 24, textAlign: 'left', fontSize: 14 } });
 
 var kbChildren = [kbDisplay];
 for (var r = 0; r < KB_ROWS.length; r++) {
   kbChildren.push(kbRow(KB_ROWS[r].map(kbKeyButton)));
 }
 var kbOverlay = View({ style: {
-  position: 'absolute', x: 12, y: 234, width: 456, height: 234,
-  background: '#0E1B28', borderRadius: 14,
+  position: 'absolute', x: 76, y: 174, width: 328, height: 224,
+  background: '#0D1420', borderRadius: 12, borderWidth: 1, borderColor: '#2B3E54',
   display: 'flex', flexDirection: 'column', gap: 4, padding: 8
 } }, kbChildren);
 lume.setAttr(kbOverlay, 5, 0);     /* hidden until kbShow() */
@@ -279,10 +393,6 @@ function forgetNet(item) {
 function autoConnect() {
   var last = autoSsid();
   if (!last) return;
-  /* WiFi survives app switches (driver-level association; init latches for
-   * the process lifetime), so only reconnect when the station is idle:
-   * CONNECTING/CONNECTED/GOT_IP mean nothing to do (and calling connect()
-   * again would kick a needless re-association). */
   var st = lume.net.status();
   if (typeof st === 'object' && st !== null && st.state >= 1) return;
   var list = savedNets();
@@ -509,6 +619,20 @@ function rebootNow() {
 
 /* ---- polling ------------------------------------------------------------------ */
 
+function pad2(n) { return n < 10 ? '0' + n : String(n); }
+function readClock() {
+  try {
+    var ms = lume.system.time();
+    if (typeof ms === 'number' && isFinite(ms) && ms >= 1577836800000) {
+      var d = new Date(ms);
+      return pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    }
+  } catch (e) {}
+  var now = new Date();
+  if (now.getFullYear() >= 2020) return pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+  return '--:--';
+}
+
 function pollWifi() {
   var st = lume.net.status();
   if (typeof st !== 'object' || st === null) {
@@ -528,6 +652,7 @@ function pollWifi() {
 function pollOnce() {
   pollWifi();
   refreshOta();                              /* r132: listener state at 600 ms */
+  clockText.set(readClock());
 
   if (!bleProbed) {
     bleProbed = true;
@@ -541,6 +666,7 @@ function pollOnce() {
   var mv = lume.pmic.battVoltageMv();
   var pct = lume.pmic.battPercent();
   var charge = lume.pmic.chargingStatus();
+  battPct.set(typeof pct === 'number' && pct >= 0 && pct <= 100 ? Math.round(pct) : -1);
   var batt = (pct >= 0 ? pct + '%' : '--') +
     (mv >= 0 ? ' ' + (mv / 1000).toFixed(2) + 'V' : '') +
     (charge >= 0 && charge <= 5 ? ' ' + CHARGE_STATES[charge] : '');
@@ -566,66 +692,157 @@ function stopPolling() {
 
 /* ---- shared widgets ------------------------------------------------------------ */
 
-/* Page titles are bare Texts (node budget): BACK navigation comes from the
- * prelude's global swipe-up gesture, which applies to EVERY app. */
 function titleText(text) {
-  return Text({ text: text, style: { width: '100%', height: 36, fontSize: 24, color: 'text' } });
+  return Text({ text: text, style: { width: '100%', height: 28, fontSize: 22, color: 'text', textAlign: 'center' } });
 }
 function infoRow(label, value, height) {
   return View({ style: {
-    width: '100%', height: height || 40, background: 'surface',
-    borderColor: '#22405A', borderWidth: 1, borderRadius: 10,
+    width: '100%', height: height || 36, background: 'surface',
+    borderColor: '#243548', borderWidth: 1, borderRadius: 10,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', padding: 8, scroll: 'none'
   } }, [
-    Text({ text: label, style: {} }),
-    Text({ text: value, style: {} })
+    Text({ text: label, style: { fontSize: 14, color: 'textDim' } }),
+    Text({ text: value, style: { fontSize: 14, color: 'text' } })
   ]);
 }
 function actionRow(children, height) {
   return View({ style: {
-    width: '100%', height: height || 56, display: 'flex',
+    width: '100%', height: height || 48, display: 'flex',
     flexDirection: 'row', gap: 8
   } }, children);
 }
 function bigButton(title, onPress, grow) {
   return Button({ title: title, onPress: onPress, style: {
-    flexGrow: grow || 1, height: 56, borderRadius: 10 } });
+    flexGrow: grow || 1, height: 48, borderRadius: 10 } });
 }
 
-/* ---- page: menu ------------------------------------------------------------------ */
+/* ---- page: menu (r205 round AMOLED design) ----------------------------------- */
 
-function menuHeader(label) {
-  return Text({ text: label, style: { width: '100%', height: 22, fontSize: 14, color: '#92AAB6' } });
+function menuGroupHeader(label, y) {
+  return Canvas({ width: 320, height: 12,
+    style: { position: 'absolute', x: 80, y: y, scroll: 'none' },
+    onDraw: function (c) {
+      c.fillColor('#09101A'); c.fillRect(0, 0, 320, 12);
+      drawMicroLabel(c, label, 4, 2, '#5C7794');
+    } });
 }
-function menuRow(icon, title, value, action) {
+
+function makeMenuRow(y, svgBytes, title, rightNode, isOnFn, action) {
+  var children = [];
+  var iconNode = Image({ src: svgBytes, style: { width: 34, height: 34, borderRadius: 17 } });
+  if (iconNode > 0) children.push(iconNode);
+  children.push(Text({ text: title, style: { flexGrow: 1, height: 24, fontSize: 16, color: 'text' } }));
+  children.push(rightNode);
   return View({ onPress: action, style: {
-    width: '100%', height: 56, background: 'surface', borderRadius: 12,
-    display: 'flex', flexDirection: 'row', alignItems: 'center', padding: 12, gap: 12
-  } }, [
-    Text({ text: icon, style: { width: 24, height: 24, fontSize: 20, color: 'accent', textAlign: 'center' } }),
-    Text({ text: title, style: { width: 126, height: 28, fontSize: 16, color: 'text' } }),
-    Text({ text: value, style: { flexGrow: 1, height: 24, fontSize: 14, color: '#92AAB6', textAlign: 'right' } }),
-    Text({ text: '>', style: { width: 12, height: 24, color: '#92AAB6', textAlign: 'right' } })
-  ]);
+    position: 'absolute', x: 80, y: y, width: 320, height: 52,
+    background: function () { return isOnFn && isOnFn() ? '#14292E' : '#16202E'; },
+    borderColor: function () { return isOnFn && isOnFn() ? '#34A88B' : '#233245'; },
+    borderWidth: 1, borderRadius: 12,
+    display: 'flex', flexDirection: 'row', alignItems: 'center',
+    paddingLeft: 10, paddingRight: 10, gap: 10, scroll: 'none'
+  } }, children);
 }
 
-var menuChildren = [
-  titleText('Settings'),
-  Text({ text: function () { return 'Battery  ' + battLine(); }, style: { width: '100%', height: 24, fontSize: 14, color: '#92AAB6' } }),
-  menuHeader('CONNECTIONS'),
-  menuRow('W', 'Wi-Fi', function () { return wifiLine() === 'off' ? 'Off' : 'On'; }, function () { go('wifi'); }),
-  menuRow('B', 'Bluetooth', function () { return btLine() === 'off' ? 'Off' : 'On'; }, function () { go('bt'); }),
-  menuHeader('DEVICE'),
-  menuRow('G', 'General', function () { return volume() + '% volume'; }, function () { go('general'); }),
-  Text({ text: 'Swipe up to go back', style: { width: '100%', height: 24, fontSize: 14, color: '#92AAB6' } })
-];
+function drawSwitchTrailing(c, isOn) {
+  var bg = isOn ? '#14292E' : '#16202E';
+  c.fillColor(bg); c.fillRect(0, 0, 66, 28);
+  drawCapsule(c, 2, 2, 44, 24, isOn ? '#40D8B0' : '#1F2C3D', isOn ? '#6EEAC8' : '#3A4E66');
+  var kx = isOn ? 34 : 14;
+  c.fillCircle(kx, 15, 9, isOn ? '#196C5A' : '#0B121B');
+  c.fillCircle(kx, 14, 9, '#E6EFF7');
+  c.fillCircle(kx, 13, 7, '#FFFFFF');
+  drawChevron(c, 56, 14, '#5C7794');
+}
+
+function drawVolumeTrailing(c, pct) {
+  c.fillColor('#16202E'); c.fillRect(0, 0, 118, 28);
+  drawCapsule(c, 2, 11, 52, 6, '#1F2C3D', '#32455A');
+  var fw = Math.round(50 * Math.max(0, Math.min(100, pct)) / 100);
+  if (fw > 2) {
+    c.fillColor('#40D8B0'); c.fillRect(3, 12, fw, 4);
+    c.fillCircle(3 + fw, 14, 2, '#40D8B0');
+  }
+  var label = pct + '%';
+  c.text(62, 7, label, '#9EB3C6');
+  drawChevron(c, 108, 14, '#5C7794');
+}
+
+function drawSystemTrailing(c) {
+  c.fillColor('#16202E'); c.fillRect(0, 0, 82, 28);
+  c.text(10, 7, 'System', '#9EB3C6');
+  drawChevron(c, 72, 14, '#5C7794');
+}
+
+var wifiTrailing = Canvas({ width: 66, height: 28, style: { scroll: 'none' },
+  onDraw: function (c) {
+    var s = wifiLine();
+    drawSwitchTrailing(c, s !== 'off' && s !== 'disconnected');
+  } });
+
+var btTrailing = Canvas({ width: 66, height: 28, style: { scroll: 'none' },
+  onDraw: function (c) {
+    var s = btLine();
+    drawSwitchTrailing(c, s !== 'off' && s !== 'idle');
+  } });
+
+var volTrailing = Canvas({ width: 118, height: 28, style: { scroll: 'none' },
+  onDraw: function (c) { drawVolumeTrailing(c, volume()); } });
+
+var sysTrailing = Canvas({ width: 82, height: 28, style: { scroll: 'none' },
+  onDraw: function (c) { drawSystemTrailing(c); } });
+
+var battCompCanvas = Canvas({ width: 68, height: 24,
+  style: { position: 'absolute', x: 332, y: 78, scroll: 'none' },
+  onDraw: function (c) {
+    var p = battPct();
+    var shown = p >= 0 ? p : 85;
+    c.fillColor('#09101A'); c.fillRect(0, 0, 68, 24);
+    drawCapsule(c, 0, 0, 68, 24, '#13222C', '#245852');
+    c.fillColor('#40D8B0');
+    c.line(8, 8, 20, 8, '#40D8B0', 1);
+    c.line(8, 16, 20, 16, '#40D8B0', 1);
+    c.line(8, 8, 8, 16, '#40D8B0', 1);
+    c.line(20, 8, 20, 16, '#40D8B0', 1);
+    c.fillRect(21, 10, 2, 4);
+    var fillW = Math.max(1, Math.round(9 * shown / 100));
+    c.fillRect(10, 10, fillW, 4);
+    c.text(26, 5, (p >= 0 ? p + '%' : '--%'), '#40D8B0');
+  } });
 
 var menuPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: '100%', height: '100%',
-  background: 'primary', padding: SAFE, gap: 12,
-  display: 'flex', flexDirection: 'column', scroll: 'none'
-} }, menuChildren);
+  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
+  background: '#000000', scroll: 'none'
+} }, [
+  View({ style: {
+    position: 'absolute', x: 14, y: 14, width: 452, height: 452,
+    borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
+    scroll: 'none'
+  } }),
+  View({ style: {
+    position: 'absolute', x: 80, y: 78, width: 62, height: 24,
+    background: '#16202E', borderRadius: 12, borderWidth: 1, borderColor: '#233245',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
+  } }, [
+    Text({ text: clockText, style: { fontSize: 13, color: '#9EB3C6', textAlign: 'center' } })
+  ]),
+  Text({ text: 'Settings', style: {
+    position: 'absolute', x: 150, y: 76, width: 180, height: 28,
+    fontSize: 22, color: 'text', textAlign: 'center'
+  } }),
+  battCompCanvas,
+  menuGroupHeader('CONNECTIONS', 115),
+  makeMenuRow(131, SVG_WIFI, 'Wi-Fi', wifiTrailing,
+    function () { var s = wifiLine(); return s !== 'off' && s !== 'disconnected'; },
+    function () { go('wifi'); }),
+  makeMenuRow(189, SVG_BT, 'Bluetooth', btTrailing,
+    function () { var s = btLine(); return s !== 'off' && s !== 'idle'; },
+    function () { go('bt'); }),
+  menuGroupHeader('SOUND', 250),
+  makeMenuRow(266, SVG_SOUND, 'Volume', volTrailing, null, function () { go('general'); }),
+  menuGroupHeader('DEVICE', 327),
+  makeMenuRow(343, SVG_GEAR, 'General', sysTrailing, null, function () { go('general'); })
+]);
 pageNodes.menu = menuPage;
 
 /* ---- page: wifi --------------------------------------------------------------------- */
@@ -633,20 +850,20 @@ pageNodes.menu = menuPage;
 function netRow(item) {
   var isAuto = function () { return autoSsid() === item.ssid; };
   return View({ style: {
-    width: '100%', height: 44, background: 'surface',
+    width: '100%', height: 42, background: 'surface',
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 8, gap: 6, scroll: 'none'
+    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
   }, onPress: function () { connectNet(item); } }, [
     Text({ text: function () {
       return item.ssid.slice(0, 14) + (isAuto() ? ' (auto)' : '');
-    }, style: { flexGrow: 1 } }),
+    }, style: { flexGrow: 1, fontSize: 14 } }),
     Button({ title: 'X', onPress: function () { forgetNet(item); },
-      style: { width: 36, height: 34, borderRadius: 8 } })
+      style: { width: 34, height: 32, borderRadius: 8 } })
   ]);
 }
 
 var wifiPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: '100%', height: '100%',
+  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
   background: 'primary', padding: SAFE, gap: 8,
   display: 'flex', flexDirection: 'column', scroll: 'none'
 } }, [
@@ -658,10 +875,10 @@ var wifiPage = View({ style: {
     bigButton('Add', addNetwork)
   ]),
   Text({ text: 'saved - tap to connect, X to forget',
-    style: { width: '100%', height: 20 } }),
-  List({ items: savedNets, itemHeight: 44, overscan: 1,
+    style: { width: '100%', height: 18, fontSize: 13, color: 'textDim' } }),
+  List({ items: savedNets, itemHeight: 42, overscan: 1,
     renderItem: netRow,
-    style: { width: '100%', height: 132, background: 'primary',
+    style: { width: '100%', height: 126, background: 'primary',
       scrollbar: 'auto' } })
 ]);
 pageNodes.wifi = wifiPage;
@@ -669,40 +886,39 @@ pageNodes.wifi = wifiPage;
 /* ---- page: wifi scan --------------------------------------------------------------- */
 
 function scanRow(item) {
-  /* one text per row (node budget): name + rssi + auth in a single label */
   return View({ style: {
-    width: '100%', height: 44, background: 'surface',
+    width: '100%', height: 42, background: 'surface',
     display: 'flex', flexDirection: 'row', alignItems: 'center',
-    padding: 8, scroll: 'none'
+    padding: 6, scroll: 'none'
   }, onPress: function () { connectFromScan(item); } }, [
     Text({ text: function () {
       var name = item.ssid === '' ? '(hidden)' : item.ssid.slice(0, 16);
       return name + '  ' + item.rssi + 'dBm' + (item.auth === 0 ? ' open' : '');
-    }, style: { flexGrow: 1 } })
+    }, style: { flexGrow: 1, fontSize: 14 } })
   ]);
 }
 
 var scanPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: '100%', height: '100%',
+  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
   background: 'primary', padding: SAFE, gap: 8,
   display: 'flex', flexDirection: 'column', scroll: 'none'
 } }, [
   titleText('WiFi scan'),
   infoRow('status', function () { return wifiLine(); }),
   actionRow([bigButton('Rescan', scanNow)]),
-  List({ items: scanResults, itemHeight: 44, overscan: 1,
+  List({ items: scanResults, itemHeight: 42, overscan: 1,
     renderItem: scanRow,
-    style: { width: '100%', height: 176, background: 'primary',
+    style: { width: '100%', height: 146, background: 'primary',
       scrollbar: 'auto' } }),
   Text({ text: 'Tap a network to connect',
-    style: { width: '100%', height: 20 } })
+    style: { width: '100%', height: 18, fontSize: 13, color: 'textDim' } })
 ]);
 pageNodes.scan = scanPage;
 
 /* ---- page: bluetooth ------------------------------------------------------------------ */
 
 var btPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: '100%', height: '100%',
+  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
   background: 'primary', padding: SAFE, gap: 10,
   display: 'flex', flexDirection: 'column', scroll: 'none'
 } }, [
@@ -716,72 +932,72 @@ var btPage = View({ style: {
     bigButton('Rename', renameBle)
   ]),
   Text({ text: 'Ready to connect with another device',
-    style: { width: '100%', height: 22 } })
+    style: { width: '100%', height: 22, fontSize: 13, color: 'textDim', textAlign: 'center' } })
 ]);
 pageNodes.bt = btPage;
 
 /* ---- page: general ---------------------------------------------------------------------- */
 
 var generalPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: '100%', height: '100%',
-  background: 'primary', padding: SAFE, gap: 8,
-  display: 'flex', flexDirection: 'column', scroll: 'none'
+  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
+  background: 'primary', padding: SAFE, gap: 6,
+  display: 'flex', flexDirection: 'column', scroll: 'vertical'
 } }, [
   titleText('General'),
   View({ style: {
-    width: '100%', height: 44, background: 'surface',
+    width: '100%', height: 40, background: 'surface', borderRadius: 10,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 8, gap: 8, scroll: 'none'
+    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
   } }, [
-    Text({ text: 'volume', style: {} }),
+    Text({ text: 'volume', style: { fontSize: 14 } }),
     Button({ title: '-', onPress: function () { applyVolume(volume() - 10, true); },
-      style: { width: 44, height: 34, borderRadius: 8 } }),
-    Text({ text: function () { return volume() + '%'; }, style: { width: 56, textAlign: 'center' } }),
+      style: { width: 40, height: 30, borderRadius: 8 } }),
+    Text({ text: function () { return volume() + '%'; }, style: { width: 52, textAlign: 'center', fontSize: 14 } }),
     Button({ title: '+', onPress: function () { applyVolume(volume() + 10, true); },
-      style: { width: 44, height: 34, borderRadius: 8 } })
+      style: { width: 40, height: 30, borderRadius: 8 } })
   ]),
-  infoRow('battery', function () { return battLine(); }),
+  infoRow('battery', function () { return battLine(); }, 34),
   infoRow('storage', function () {
     return storeLine() + (volNote() === '' ? '' : ' ' + volNote());
-  }),
+  }, 34),
   /* r132 OTA ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
    * The Text shows status only; the full token never enters a render path.
    * Kept BEFORE the r129 NTP row so the 3-node NTP slice stays isolated. */
   View({ style: {
-    width: '100%', height: 44, background: 'surface',
+    width: '100%', height: 40, background: 'surface', borderRadius: 10,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 8, gap: 8, scroll: 'none'
+    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
   } }, [
     Text({ text: function () {
       return otaLine() + (otaNote() === '' ? '' : ' ' + otaNote());
-    }, style: {} }),
+    }, style: { fontSize: 13 } }),
     Button({ title: 'New token', onPress: rotateOtaToken,
-      style: { width: 132, height: 34, borderRadius: 8 } })
+      style: { width: 112, height: 30, borderRadius: 8 } })
   ]),
   /* r132 OTA ROW END */
   /* r129: NTP sync row -- exactly 3 new nodes (View + Text + Button). */
   View({ style: {
-    width: '100%', height: 44, background: 'surface',
+    width: '100%', height: 40, background: 'surface', borderRadius: 10,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 8, gap: 8, scroll: 'none'
+    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
   } }, [
-    Text({ text: function () { return timeSyncLine(); }, style: {} }),
+    Text({ text: function () { return timeSyncLine(); }, style: { fontSize: 13 } }),
     Button({ title: 'Sync now', onPress: syncTimeNow,
-      style: { width: 92, height: 34, borderRadius: 8 } })
+      style: { width: 92, height: 30, borderRadius: 8 } })
   ]),
   /* r143 REBOOT ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
    * The button opens a shell.Dialog; the Text is status only and the guarded
    * note is the sole feedback when a binding is absent. */
   View({ style: {
-    width: '100%', height: 44, background: 'surface',
+    width: '100%', height: 40, background: 'surface', borderRadius: 10,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 8, gap: 8, scroll: 'none'
+    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
   } }, [
     Text({ text: function () {
       return rebootNote() === '' ? 'Restart the device' : rebootNote();
-    }, style: {} }),
+    }, style: { fontSize: 13 } }),
     Button({ title: 'Reboot', onPress: rebootNow,
-      style: { width: 132, height: 34, borderRadius: 8 } })
+      style: { width: 96, height: 30, borderRadius: 8 } })
   ]),
   /* r143 REBOOT ROW END */
   actionRow([
@@ -789,19 +1005,20 @@ var generalPage = View({ style: {
     bigButton(function () {
       return powerNote() === '' ? 'Power off' : powerNote();
     }, powerOff, 1)
-  ]),
-  Text({ text: 'Touch the screen to wake from sleep',
-    style: { width: '100%', height: 40 } })
+  ], 44)
 ]);
 pageNodes.general = generalPage;
 
 /* ---- root + lifecycle ---------------------------------------------------------------------- */
 
 var root = View({ style: {
-  width: '100%', height: '100%', background: 'primary', scroll: 'none'
+  width: '100%', height: '100%', background: 'bg', scroll: 'none'
 } }, [menuPage, wifiPage, btPage, generalPage, scanPage, kbOverlay]);
 
 showPage('menu');
+clockText.set(readClock());
+var initBatt = lume.pmic.battPercent();
+if (typeof initBatt === 'number' && initBatt >= 0 && initBatt <= 100) battPct.set(Math.round(initBatt));
 
 lume.app.onStart(function () {
   startPolling();
