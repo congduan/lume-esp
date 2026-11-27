@@ -1,0 +1,29 @@
+[tx-retry]
+  ok  : immediate write succeeds
+  ok  : fast path performs 0 drains and 0 backoff delays
+  ok  : transient TX ring stall recovers within retry budget
+  ok  : drain=true skips backoff delay; drain=false triggers backoff delay
+  ok  : recovered bytes match input verbatim
+  ok  : persistent stall fails after bounded retries
+  ok  : write attempts strictly bounded to 1 + LUME_TX_USB_MAX_RETRIES
+  ok  : each retry checks drain and backs off when still full
+  ok  : partial TCP writes advance to full message
+  ok  : reassembled partial TCP bytes match verbatim
+  ok  : fatal write error (<0) fails immediately
+  ok  : fatal error performs 0 retries
+[shot-stream]
+  ok  : happy path returns LUME_SHOT_OK
+  ok  : happy path emits 3 S64 lines, 1 SHOT OK, 0 CMD ERR
+  ok  : SHOT, S64 and SHOT OK lines use leading newline boundary
+  ok  : mid-stream TX failure returns LUME_SHOT_ERR_TX
+  ok  : failed_offset points at failed chunk (240)
+  ok  : streaming stops immediately after failed chunk (no chunk 3)
+  ok  : TX failure emits CMD ERR shot-tx
+  ok  : TX failure NEVER emits false SHOT OK
+  ok  : header TX failure returns LUME_SHOT_ERR_TX
+  ok  : header TX failure emits CMD ERR shot-tx with 0 S64 and no SHOT OK
+  ok  : transient TX stall recovers via bounded retry and emits SHOT OK
+  ok  : exhausted TX retry aborts with CMD ERR shot-tx and no SHOT OK
+  ok  : encode failure aborts with CMD ERR shot-encode and no SHOT OK
+
+SUMMARY: 25 checks, 0 failures

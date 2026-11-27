@@ -1,0 +1,60 @@
+mode: default (CONFIG_LUME_PERF_PROFILE off)
+[frames]
+  ok  : LUMC frame length is header + payload
+  ok  : command frame magic is LUMC
+  ok  : command frame carries u32le length
+  ok  : LUMC emits EV_CMD only
+  ok  : command payload is passed through verbatim
+  ok  : interleaved LUME/LUMC stream is split by magic
+  ok  : corrupt LUMC frame is rejected
+  ok  : reject reason is bad-crc
+[cmd parse]
+  ok  : STORE splits meta/src
+  ok  : STORE accepts an empty meta line
+  ok  : LAUNCH without trailing newline
+  ok  : LAUNCH with trailing newline
+  ok  : REMOVE
+  ok  : META
+  ok  : LIST
+  ok  : HOME
+  ok  : SHOT
+  ok  : SHOT with trailing newline
+  ok  : r43b VER engine-version query
+  ok  : VER with trailing newline
+  ok  : r106 FWTAG firmware-tag query
+  ok  : FWTAG with trailing newline
+  ok  : TOKEN with valid 32-hex token parses
+  ok  : TOKEN with non-hex chars rejected
+  ok  : TOKEN with short token rejected
+  ok  : TOKEN without a token rejected
+  ok  : empty payload rejected
+  ok  : unknown verb rejected
+  ok  : LAUNCH without id rejected
+  ok  : reserved .current id rejected
+  ok  : path separator in id rejected
+  ok  : overlong id rejected
+  ok  : STORE without a source line rejected
+  ok  : STORE with empty source rejected
+  ok  : STORE without meta separator rejected
+  ok  : id charset/length accept 'clock'
+  ok  : id accepts dots/underscores/dashes
+  ok  : id rejects a leading dot
+  ok  : id rejects '/'
+  ok  : id rejects empty
+  ok  : reason token for a bad id
+  ok  : reason token for an empty source
+[oom verb]
+  ok  : default: OOM absent from verb table -> CMD ERR verb
+  ok  : default: unknown-verb reason token is 'verb'
+[lume.system.reboot binding]
+  ok  : default: lume.system namespace token
+  ok  : default: reboot method token
+  ok  : default: _systemReboot native token
+  ok  : default: pre-restart ASCII log token
+  ok  : default: reboot log token is ASCII-only
+[round trip]
+  ok  : STORE frame payload survives the round trip
+  ok  : round trip yields the stored app id
+  ok  : round trip yields the exact app source
+
+52 checks, 0 failure(s)
