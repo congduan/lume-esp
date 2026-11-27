@@ -6,7 +6,9 @@ lume.theme.set({ colors: {
   primary: '#0B0F14', surface: '#161B22', accent: '#2F81F7', text: '#E6EDF3'
 }, radius: 12 });
 
-var SAFE = 40;
+/* r214: round safe square is [75,405]; 84..396 leaves a 9px breathing inset. */
+var SAFE = 84;
+var CONTENT_W = 312;
 var rows = signal([]);
 var pendingRemove = signal('');
 var status = signal('');
@@ -34,18 +36,21 @@ function askRemove(id) {
 View({ style: { x: 0, y: 0, width: 480, height: 480, background: 'primary',
   borderWidth: 0, borderRadius: 0 } });
 
-/* header: back-to-home + live status */
-View({ style: { x: SAFE, y: SAFE, width: 400, height: 44, background: '#11161D',
+/* header: back-to-home + live status. 56px tall so the HOME tap target is
+ * a full 48px; the whole header stays inside [84..396, 84..140]. */
+View({ style: { x: SAFE, y: SAFE, width: CONTENT_W, height: 56, background: '#11161D',
   borderRadius: 10, display: 'flex', flexDirection: 'row',
   justifyContent: 'space-between', alignItems: 'center',
   paddingLeft: 10, paddingRight: 10, scroll: 'none' } }, [
-  Button({ title: '< HOME', style: { width: 76, height: 30, borderRadius: 8 },
+  Button({ title: '< HOME', style: { width: 88, height: 48, borderRadius: 8 },
     onPress: function () { lume.apps.home(); } }),
   Text({ text: function () { return status(); }, style: {} })
 ]);
 
-/* app list with per-row uninstall */
-List({ style: { x: SAFE, y: 92, width: 400, height: 348, background: 'surface',
+/* app list with per-row uninstall. Windowed by shell.List: itemHeight stays
+ * 48 and overscan stays 1, so only style.height/width/x/y change; the 248px
+ * viewport ends at y=396, still inside the safe square. */
+List({ style: { x: SAFE, y: 148, width: CONTENT_W, height: 248, background: 'surface',
   borderRadius: 10, scrollbar: 'off' },
   items: rows, itemHeight: 48, overscan: 1,
   renderItem: function (e) { return View({
@@ -56,7 +61,7 @@ List({ style: { x: SAFE, y: 92, width: 400, height: 348, background: 'surface',
       } } }, [
     Text({ text: e.label, style: {} }),
     Button({ title: function () { return pendingRemove() === e.id ? 'SURE' : 'UNINSTALL'; },
-      style: { width: 92, height: 30, borderRadius: 7 },
+      style: { width: 92, height: 48, borderRadius: 7 },
       onPress: function () { askRemove(e.id); } })
   ]); }
 });
