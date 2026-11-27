@@ -1,4 +1,4 @@
-/* r95 — VOICE ASSISTANT / walkie-talkie card (legacy sync mode, pure app layer).
+/* r95 - VOICE ASSISTANT / walkie-talkie card (legacy sync mode, pure app layer).
  *
  * r108 adds a GATEWAY mode: a thin `lume.net.ws` transport (docs/voice-gateway-
  * protocol.md v1) plugs into the same vaTransport slot and streams 60 ms PCM
@@ -682,9 +682,9 @@ function vaTransportWS(prompt, done) {
         device: { model: 'lume', fw: 'r108', app: 'voice_assistant' },
         caps: { audioFormats: ['pcm_s16le_16000_2ch'], streamTranscript: true } };
       var token = vaGatewayToken();
-      if (token) hello.auth = { token: token };   /* r119 §8.2: appended field */
+      if (token) hello.auth = { token: token };   /* r119 sec 8.2: appended field */
       /* r122: opt-in multiturn reconnect asks the gateway to rebind history.
-       * Old gateways ignore the unknown field (§3) and start a fresh session. */
+       * Old gateways ignore the unknown field (sec 3) and start a fresh session. */
       if (multi && vaStreamSessionId) {
         hello.resume = vaStreamSessionId;
         lume.log('VA WS RESUME REQ');
@@ -746,26 +746,34 @@ function vaTransportWS(prompt, done) {
   });
 }
 
+/* r210: all key text, the waveform canvas and the TALK target now sit inside
+ * the 480-round safe square [75,405]. The old TALK row (y=436..476) and the
+ * full-bleed text (x=0, y=34/72/94/110/412) were clipped by the bezel.
+ * Gestures stay bound to vaRoot + vaCanvas: the canvas hot zone moved with
+ * the canvas, the root wrapper still encloses every visible target, and the
+ * harness dispatches PTT to that same root node. BLE/audio paths untouched. */
 var vaRoot = View({ style: { width: 480, height: 480, background: '#07111D', scroll: 'none' } });
-Text({ parent: vaRoot, text: 'LUME VOICE', style: { position: 'absolute', x: 0, y: 34,
-  width: 480, height: 34, fontSize: 26, color: '#F2F7FB', textAlign: 'center' } });
+Text({ parent: vaRoot, text: 'LUME VOICE', style: { position: 'absolute', x: 84, y: 76,
+  width: 312, height: 22, fontSize: 20, color: '#F2F7FB', textAlign: 'center' } });
 Text({ parent: vaRoot, text: function () { return 'MODE ' + vaModeLabel(); },
-  style: { position: 'absolute', x: 0, y: 72, width: 480, height: 24,
-    fontSize: 14, color: '#9EB3C6', textAlign: 'center' } });
+  style: { position: 'absolute', x: 84, y: 98, width: 312, height: 14,
+    fontSize: 11, color: '#9EB3C6', textAlign: 'center' } });
 /* r121: honest conversation context line (only shown in keep-alive mode). */
 Text({ parent: vaRoot, text: function () {
   if (!vaStreamMulti) return '';
   var p = vaLastReply();
   if (p.length > 16) p = p.substring(0, 16) + '..';
   return 'TURN ' + vaTurnCount() + (p ? '  PREV: ' + p : '');
-}, style: { position: 'absolute', x: 0, y: 94, width: 480, height: 16,
-  fontSize: 11, color: '#9EB3C6', textAlign: 'center' } });
-Text({ parent: vaRoot, text: vaState, style: { position: 'absolute', x: 0, y: 110,
-  width: 480, height: 58, fontSize: 40, color: '#40D8B0', textAlign: 'center' } });
+}, style: { position: 'absolute', x: 84, y: 112, width: 312, height: 12,
+  fontSize: 9, color: '#9EB3C6', textAlign: 'center' } });
+Text({ parent: vaRoot, text: vaState, style: { position: 'absolute', x: 84, y: 126,
+  width: 312, height: 38, fontSize: 28, color: '#40D8B0', textAlign: 'center' } });
 var vaCanvas = Canvas({ width: VA_CW, height: VA_CH, parent: vaRoot,
-  style: { position: 'absolute', x: 80, y: 176 }, onDraw: vaDraw });
-Text({ parent: vaRoot, text: vaAnswerText, style: { position: 'absolute', x: 40, y: 344,
-  width: 400, height: 62, fontSize: 16, color: '#F2F7FB', textAlign: 'center', longMode: 'wrap' } });
+  style: { position: 'absolute', x: 80, y: 168 }, onDraw: vaDraw });
+/* Answer text overlays the lower waveform band (the accepted r202/r209
+ * overdraw trade-off) so the 48px TALK row still clears the safe square. */
+Text({ parent: vaRoot, text: vaAnswerText, style: { position: 'absolute', x: 84, y: 288,
+  width: 312, height: 38, fontSize: 13, color: '#F2F7FB', textAlign: 'center', longMode: 'wrap' } });
 Text({ parent: vaRoot, text: function () {
   /* Read signals (not the plain vaMode var) so this binding re-renders when
    * the mode or state changes: vaModeLabel() at boot, vaState() on panstart. */
@@ -775,10 +783,10 @@ Text({ parent: vaRoot, text: function () {
                                   : 'HOLD & DRAG TO TALK - RELEASE TO SEND';
   }
   return 'TAP TALK / TAP SEND / TAP INTERRUPT';
-}, style: { position: 'absolute', x: 0, y: 412, width: 480, height: 22,
-  fontSize: 12, color: '#9EB3C6', textAlign: 'center' } });
+}, style: { position: 'absolute', x: 84, y: 384, width: 312, height: 16,
+  fontSize: 10, color: '#9EB3C6', textAlign: 'center' } });
 Button({ parent: vaRoot, title: 'TALK', onPress: vaActivate,
-  style: { position: 'absolute', x: 170, y: 436, width: 140, height: 40,
+  style: { position: 'absolute', x: 170, y: 332, width: 140, height: 48,
     background: '#1C3449', borderRadius: 999, fontSize: 18 } });
 lume.gesture.on(vaRoot, 'tap', vaActivate);
 lume.gesture.on(vaCanvas, 'tap', vaActivate);
