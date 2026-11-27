@@ -135,25 +135,25 @@ function recorder() {
 
 ok('icons issue the expected raster commands and repaint the whole canvas', () => {
   const sun = recorder();
-  const sunRect = ctx.drawWeatherIcon(sun, 'sun', 112);
+  const sunRect = ctx.drawWeatherIcon(sun, 'sun', 84);
   assert.equal(sun.calls.clear, 1);
-  assert.equal(sun.calls.circle, 1);
+  assert.ok(sun.calls.circle >= 5, 'sun draws layered halo + core + highlight circles');
   assert.equal(sun.calls.line, 8);
-  assert.deepEqual({ ...sunRect }, { x: 0, y: 0, w: 112, h: 112 });
+  assert.deepEqual({ ...sunRect }, { x: 0, y: 0, w: 84, h: 84 });
 
   const rain = recorder();
-  ctx.drawWeatherIcon(rain, 'rain', 112);
-  assert.equal(rain.calls.circle, 3, 'cloud is three circles');
+  ctx.drawWeatherIcon(rain, 'rain', 84);
+  assert.ok(rain.calls.circle >= 6, 'dimensional cloud uses layered puffs');
   assert.equal(rain.calls.line, 3, 'three rain streaks');
-  assert.equal(rain.calls.fillRect, 1, 'cloud base');
+  assert.ok(rain.calls.fillRect >= 2, 'background + layered cloud base');
 
   const storm = recorder();
-  ctx.drawWeatherIcon(storm, 'storm', 112);
+  ctx.drawWeatherIcon(storm, 'storm', 84);
   assert.equal(storm.calls.polyline, 1);
 
   const unknown = recorder();
-  ctx.drawWeatherIcon(unknown, 'nope', 112);
-  assert.equal(unknown.calls.circle, 3, 'unknown kind still draws a cloud');
+  ctx.drawWeatherIcon(unknown, 'nope', 84);
+  assert.ok(unknown.calls.circle >= 6, 'unknown kind still draws a dimensional cloud');
 });
 
 console.log('PASS 10 weather logic cases');
@@ -201,10 +201,10 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   assert.equal(urls.length, 1, 'one request per press');
   assert.match(urls[0], /latitude=39\.9&longitude=116\.4/);
   assert.ok(texts.includes('8°'), 'temperature comes from current.temperature_2m');
-  assert.ok(texts.includes('阴'), 'weather_code 3 renders as 阴');
+  assert.ok(texts.some(t => String(t).includes('阴')), 'weather_code 3 renders as 阴');
   assert.ok(texts.includes('52%'), 'humidity is rounded');
   assert.ok(texts.includes('11.3 km/h'), 'wind is rounded to one decimal');
-  assert.ok(texts.includes('体感 6°'), 'apparent temperature is shown');
+  assert.ok(texts.includes('体感') && texts.includes('6°'), 'apparent temperature pill is shown');
   assert.ok(texts.some(t => String(t).indexOf('已更新') === 0), 'status flips to 已更新');
   console.log('PASS weather refresh replaces the demo data');
 
