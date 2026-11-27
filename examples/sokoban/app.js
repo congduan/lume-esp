@@ -104,20 +104,31 @@ function logEvent(msg){lume.log('SOKO '+msg);}
 function box(x,y,w,h){return {x:Math.floor(x),y:Math.floor(y),w:w,h:h};}
 function clip(r){var x=Math.max(0,r.x),y=Math.max(0,r.y),rx=Math.min(IW,r.x+r.w),by=Math.min(IH,r.y+r.h);return rx>x&&by>y?box(x,y,rx-x,by-y):null;}
 function drawRect(ctx,color,r,a){var x=Math.max(r.x,a.x),y=Math.max(r.y,a.y),x2=Math.min(r.x+r.w,a.x+a.w),y2=Math.min(r.y+r.h,a.y+a.h);if(x2>x&&y2>y){ctx.fillColor(color);ctx.fillRect(x,y,x2-x,y2-y);}}
-function drawSprite(ctx,key,cx,cy,a){var list=SPANS[key];for(var i=0;i<list.length;i++){var s=list[i];drawRect(ctx,PAL[s[3]],box(cx+s[0]*4,cy+s[1]*4,s[2]*4,4),a);}}
+function hex565(hex){var v=parseInt(hex.slice(1),16);return ((((v>>16)&255)>>3)<<11)|((((v>>8)&255)>>2)<<5)|((v&255)>>3);}
+var SLOT={},PIXELS={},spritesUploaded=false;
+(function(){var keys=['wall','floor','goal','box','boxGoal','player'];
+  for(var i=0;i<keys.length;i++){var k=keys[i],w=32,h=32,px=new Uint16Array(w*h),list=SPANS[k];
+    for(var j=0;j<list.length;j++){var s=list[j],c=hex565(PAL[s[3]]);
+      for(var dy=0;dy<4;dy++){var yy=s[1]*4+dy;for(var dx=0;dx<s[2]*4;dx++)px[yy*w+s[0]*4+dx]=c;}
+    }
+    SLOT[k]=i+1;PIXELS[k]={w:w,h:h,px:px};
+  }
+})();
+function ensureSprites(ctx){if(spritesUploaded)return;for(var k in SLOT){var p=PIXELS[k];ctx.retainImage(SLOT[k],p.w,p.h,p.px);}spritesUploaded=true;}
+function drawSprite(ctx,key,cx,cy){ctx.drawImage(SLOT[key],Math.floor(cx),Math.floor(cy),0);}
 function paintCell(ctx,x,y,a,s){
   var px=GX+x*CELL,py=GY+y*CELL;
-  drawSprite(ctx,'floor',px,py,a);
-  if(sokoWall(s.level,x,y)){drawSprite(ctx,'wall',px,py,a);return;}
-  if(sokoGoalAt(s.level,x,y))drawSprite(ctx,'goal',px,py,a);
+  if(sokoWall(s.level,x,y)){drawSprite(ctx,'wall',px,py);return;}
+  drawSprite(ctx,'floor',px,py);
+  if(sokoGoalAt(s.level,x,y))drawSprite(ctx,'goal',px,py);
   var bi=sokoBoxAt(s,x,y);
-  if(bi>=0)drawSprite(ctx,sokoGoalAt(s.level,x,y)?'boxGoal':'box',px,py,a);
-  if(s.px===x&&s.py===y){drawSprite(ctx,'player',px,py,a);if(s.highlight>0)drawRect(ctx,PAL.N,box(px,py,CELL,3),a);}
+  if(bi>=0)drawSprite(ctx,sokoGoalAt(s.level,x,y)?'boxGoal':'box',px,py);
+  if(s.px===x&&s.py===y){drawSprite(ctx,'player',px,py);if(s.highlight>0)drawRect(ctx,PAL.N,box(px,py,CELL,3),a);}
 }
 var painted=false,perfCount=0,perfSum=0,perfMax=0;
 var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0,y:0},onDraw:function(ctx){
-  frame();var s=state;
-  var a=!painted?box(0,0,IW,IH):clip(box(GX,GY,COLS*CELL,ROWS*CELL));if(!a)return undefined;
+  frame();ensureSprites(ctx);var s=state;
+  var a=!painted?box(0,0,IW,IH):clip(box(GX,GY,s.level.w*CELL+10,s.level.h*CELL+10));if(!a)return undefined;
   ctx.fillColor(BG);ctx.fillRect(a.x,a.y,a.w,a.h);
   for(var y=0;y<s.level.h;y++)for(var x=0;x<s.level.w;x++)paintCell(ctx,x,y,a,s);
   painted=true;return [a];
@@ -147,4 +158,4 @@ function tick(){var t0=Date.now();
 }
 lume.app.onPause(function(){});lume.app.onResume(function(){frame.set(frame()+1);});
 var timer=lume.system.setInterval(tick,120);
-updateSignals();noteSig.set('');logEvent('L1 moves=0 boxes=0/'+state.level.boxCount+'; '+state.level.name+' par='+state.level.par);frame.set(frame()+1);
+updateSignals();noteSig.set('');logEvent('L1 moves=0 boxes=0/'+state.level.boxCount+'; '+state.level.name+' par='+state.level.par);

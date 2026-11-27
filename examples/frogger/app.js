@@ -137,7 +137,18 @@ function logEvent(msg){lume.log('FROGGER '+msg);}
 function box(x,y,w,h){return {x:Math.floor(x),y:Math.floor(y),w:w,h:h};}
 function clip(r){var x=Math.max(0,r.x),y=Math.max(0,r.y),rx=Math.min(IW,r.x+r.w),by=Math.min(IH,r.y+r.h);return rx>x&&by>y?box(x,y,rx-x,by-y):null;}
 function drawRect(ctx,color,r,a){var x=Math.max(r.x,a.x),y=Math.max(r.y,a.y),x2=Math.min(r.x+r.w,a.x+a.w),y2=Math.min(r.y+r.h,a.y+a.h);if(x2>x&&y2>y){ctx.fillColor(color);ctx.fillRect(x,y,x2-x,y2-y);}}
-function drawSprite(ctx,key,x,y,a){var list=SPANS[key];for(var i=0;i<list.length;i++){var s=list[i];drawRect(ctx,PAL[s[3]],box(x+s[0]*2,y+s[1]*2,s[2]*2,2),a);}}
+function hex565(hex){var v=parseInt(hex.slice(1),16);return ((((v>>16)&255)>>3)<<11)|((((v>>8)&255)>>2)<<5)|((v&255)>>3);}
+var SLOT={},PIXELS={},spritesUploaded=false;
+(function(){var keys=['frog','carR','carY','carU','truckR','truckU','log','lily'];
+  for(var i=0;i<keys.length;i++){var k=keys[i],rows=SPRITES[k],rw=rows[0].length,rh=rows.length,w=rw*2,h=rh*2,px=new Uint16Array(w*h),list=SPANS[k];
+    for(var j=0;j<list.length;j++){var s=list[j],c=hex565(PAL[s[3]]);
+      for(var dy=0;dy<2;dy++){var yy=s[1]*2+dy;for(var dx=0;dx<s[2]*2;dx++)px[yy*w+s[0]*2+dx]=c;}
+    }
+    SLOT[k]=i+1;PIXELS[k]={w:w,h:h,px:px};
+  }
+})();
+function ensureSprites(ctx){if(spritesUploaded)return;for(var k in SLOT){var p=PIXELS[k];ctx.retainImage(SLOT[k],p.w,p.h,p.px);}spritesUploaded=true;}
+function drawSprite(ctx,key,x,y,a){var ix=Math.floor(x),iy=Math.floor(y),p=PIXELS[key];if(ix+p.w<=GX||ix>=GX+COLS*CELL||iy+p.h<=0||iy>=IH)return;ctx.drawImage(SLOT[key],ix,iy,0);}
 function laneBand(row){return row===0?BAND.home:(row>=1&&row<=4?BAND.river:row===5?BAND.median:(row>=6&&row<=10?BAND.road:BAND.safe));}
 function laneRect(row){return clip(box(GX-2,GY+row*CELL-2,COLS*CELL+4,CELL+4));}
 function paintRow(ctx,row,a,s){
@@ -159,7 +170,7 @@ function paintRow(ctx,row,a,s){
 var prevFrogRow=null,prevHomes=null,painted=false;
 var dirtyPixels=0,dirtyMax=0,perfCount=0,perfSum=0,perfMax=0;
 var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0,y:0},onDraw:function(ctx){
-  frame();var s=state,rows={};
+  frame();ensureSprites(ctx);var s=state,rows={};
   if(!painted){for(var r=0;r<ROWS;r++)rows[r]=true;}
   else{
     for(var i=0;i<s.lanes.length;i++)rows[s.lanes[i].row]=true;
@@ -178,7 +189,10 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   var valid=[];for(i=0;i<ranges.length;i++){var lo=ranges[i][0],hi=ranges[i][1];
     var a=first?box(0,0,IW,IH):clip(box(GX-2,GY+lo*CELL-2,COLS*CELL+4,(hi-lo+1)*CELL+4));if(!a)continue;
     if(first){ctx.fillColor(BAND.safe);ctx.fillRect(a.x,a.y,a.w,a.h);}
-    for(var rr=lo;rr<=hi;rr++)paintRow(ctx,rr,a,s);valid.push(a);
+    for(var rr=lo;rr<=hi;rr++)paintRow(ctx,rr,a,s);
+    /* Mask left/right playfield margins so unclipped drawImage blits stay crisp. */
+    ctx.fillColor(BAND.safe);ctx.fillRect(0,a.y,GX,a.h);ctx.fillRect(GX+COLS*CELL,a.y,IW-(GX+COLS*CELL),a.h);
+    valid.push(a);
   }
   dirtyPixels=0;for(i=0;i<valid.length;i++)dirtyPixels+=valid[i].w*valid[i].h;dirtyMax=Math.max(dirtyMax,dirtyPixels);
   prevFrogRow=s.frog.row;prevHomes=s.homes.slice();painted=true;
@@ -195,7 +209,8 @@ Text({parent:root,text:function(){return noteSig()||('HOMES '+homeSig()+'/5   TA
 function updateSignals(){scoreSig.set(state.score);bestSig.set(gameSave('frogger',state.score,bestSig()));livesSig.set(state.lives);levelSig.set(state.level);homeSig.set(state.homes.filter(Boolean).length);}
 function start(){if(timer===null&&!state.over)timer=lume.system.setInterval(tick,period);}
 function stop(){if(timer!==null)lume.system.clearInterval(timer);timer=null;}
-function tick(){var t0=Date.now();var st=froggerStep(state);
+function tick(){if(state.over)return;var t0=Date.now();var st=froggerStep(state);
+  if(st==='idle')return;
   while(state.events.length)logEvent(state.events.shift());
   if(st==='dead'||st==='home')updateSignals();
   if(state.over){noteSig.set('GAME OVER - TAP TO RESTART');stop();}

@@ -237,4 +237,29 @@ function plain(v) { return JSON.parse(JSON.stringify(v)); } // vm-realm arrays -
   console.log('PASS sokoban canvas/events, dirty budget, swipe push, tap push, reset button');
 }
 
+// 11. r212 frame-budget discipline: retained sprites (6 once), <=240 ops/frame, 0 idle draws
+{
+  const draws = ms => ms.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
+  const totalOps = ms => ms.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : m[0] === 'spriteDraw' ? 1 : 0), 0);
+  const ui = runApp(fs.readFileSync('examples/sokoban/app.js', 'utf8'));
+  const bootOps = totalOps(ui.messages);
+  assert.equal(ui.messages.filter(m => m[0] === 'spriteDefine').length, 6, '6 retained sprites');
+  assert.ok(bootOps <= 240, `boot ops ${bootOps}`);
+  let from = ui.messages.length;
+  ui.ctx.applyMove(0, -1);
+  const mvSlice = ui.messages.slice(from);
+  const mvDraws = draws(mvSlice), mvOps = totalOps(mvSlice);
+  assert.ok(mvOps <= 240, `move ops ${mvOps}`);
+  from = ui.messages.length;
+  ui.ctx.tick(); // highlight clears
+  const hlOps = totalOps(ui.messages.slice(from));
+  assert.ok(hlOps <= 240, `highlight clear ops ${hlOps}`);
+  from = ui.messages.length;
+  for (let i = 0; i < 10; i++) ui.ctx.tick();
+  assert.equal(totalOps(ui.messages.slice(from)), 0, 'idle ticks emit 0 canvas ops');
+  assert.equal(ui.messages.filter(m => m[0] === 'spriteDefine').length, 6, 'sprites uploaded once');
+  console.log(`EVIDENCE sokoban boot ${bootOps} ops, move ${mvDraws} draws / ${mvOps} ops (<=240), idle 0 ops in 10 ticks, 6 spriteDefine`);
+  console.log('PASS sokoban r212 frame-budget and idle 0-draw discipline');
+}
+
 console.log('ALL SOKOBAN HARNESS CASES PASSED');
