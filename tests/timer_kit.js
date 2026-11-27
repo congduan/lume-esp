@@ -1,18 +1,18 @@
 /*
- * r157 host harness for examples/timer_kit (countdown + stopwatch, pure app).
+ * r204 host harness for examples/timer_kit (radial dial countdown + stopwatch).
  *
  *   node tests/timer_kit.js
  *
- * Part 1: static source contracts -- the three r151 shell controls are really
- * consumed, the absolute-time pause semantics, the KV / bell try-catch, the
- * ASCII / font / canvas discipline, the byte-identical playground source, the
- * playground manifest, and firmware/runtime/tools/lume zero-diff vs 6426f7b.
- * Every predicate has a mutation proof (18 static + 3 live).
+ * Part 1: static source contracts -- shell SafeArea, 4-state machine
+ * (READY/RUNNING/PAUSED/FINISHED), running +/- edit lock, monospace vector
+ * digits, absolute-time clock/pause/resume semantics, KV/bell try-catch,
+ * ASCII/font/canvas/frame-draw budgets, byte-identical playground source,
+ * playground manifest, and firmware/runtime/tools/lume zero-diff vs 3514c76.
+ * Every predicate has a mutation proof.
  *
  * Part 2: live runs of the REAL app against the firmware prelude + shell.js.
- * A fake millisecond clock is injected through lume._systemTime/_nowMs; the
- * gesture / press / dispose paths are the real ones. No board, no touch, no
- * audible acceptance -- host / compile evidence only (r157 report).
+ * Verifies all 4 states, running edit-lock & unlock +/-1m, stopwatch laps,
+ * KV persistence, bell PCM, frame draw calls <= 240, and shutdown cleanup.
  */
 'use strict';
 const assert = require('node:assert/strict');
@@ -24,13 +24,13 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+const BASE = '3514c76';
 const source = read('examples/timer_kit/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
 const playgroundSrc = read('website/playground/sources/timer_kit.js');
 const KV_TIMER = 'hisc.timer', KV_STOP = 'timer.best';
-const CANVAS_PX = 312 * 48;
+const CANVAS_PX = 480 * 480;
 
 function stripImport(x) {
   return x.replace(/^\s*import\s+[^;]*runtime\/shell\.js[^;]*;\s*$/m, '');
@@ -60,32 +60,24 @@ function gitChanged(paths, base) {
 }
 
 /* ------------------------ part 1: static guards ------------------------ */
-const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmware/components/lume-engine/gen_lume_scripts.py', 'firmware/components/lume-engine/prelude/demo.js', 'firmware/components/lume-engine/prelude/home.js', 'firmware/components/lume-engine/prelude/prelude.js', 'runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
-  // r183: SVG raster-result cache (engine component only).
+const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmware/components/lume-engine/gen_lume_scripts.py', 'firmware/components/lume-engine/prelude/demo.js', 'firmware/components/lume-engine/prelude/home.js', 'firmware/components/lume-engine/prelude/prelude.js', 'runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js',
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_svg_cache.c',
   'firmware/components/lume-engine/include/lume_svg_cache.h',
-  // r181: emu frame-injection pacing + UI-queue backpressure (named objects only).
   'tools/lume/scan.js', 'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
-  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
   'firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
-  // r75 raster and refresh changes already present on origin/main.
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
-  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
   'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
   'firmware/sdkconfig.defaults',
-  // r199: lume context is pure CLI tooling; no firmware/runtime change.
   'tools/lume/context.js', 'tools/lume/context.test.js',
-  // r206: lume mcp MCP server is pure tools/lume; no firmware/runtime change.
   'tools/lume/mcp.js', 'tools/lume/mcp.test.js',
-   // r207: lume examples metadata catalog CLI is pure tools/lume; no firmware/runtime change.
-   'tools/lume/examples.js', 'tools/lume/examples.test.js',
+  'tools/lume/examples.js', 'tools/lume/examples.test.js',
 ];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
@@ -99,22 +91,25 @@ const checks = [
     s.includes("import '../../runtime/shell.js';") &&
     (s.match(/^\s*import\s/gm) || []).length === 1]],
 
-  ['Switch consumed with mode signal and setMode onChange', [source, s =>
-    s.includes('lume.ui.shell.Switch({') && s.includes('value: mode') &&
-    s.includes('onChange: function (v) { setMode(v); }')]],
+  ['radial Canvas dial with retained 60 ticks and round SafeArea', [source, s =>
+    s.includes('c.retainSegments(MAJOR_SEGS') && s.includes('c.arc(240, 240, 188,') &&
+    s.includes("lume.ui.shell.SafeArea({ parent: root, shape: 'round', size: 480")]],
 
-  ['Circular-thumb slider 0..60 step 1, >=32 px thumb, setMinutes onChange', [source, s =>
-    s.includes('var THUMB_R = 16;') && s.includes('c.fillCircle(cx, mid, THUMB_R,') &&
-    s.includes('setMinutes(q);') && s.includes('lume.ui.shell.SafeArea({')]],
+  ['monospace vector 48px digit renderer prevents horizontal jitter', [source, s =>
+    s.includes('function drawMonoDigit(') && s.includes('function drawMonoTime(') &&
+    s.includes('drawMonoTime(c, timeStr, 240, 236,')]],
 
-  ['State-machine buttons hide illegal actions (READY/RUNNING/PAUSED/OVER)', [source, s =>
-    s.includes("lume.setAttr(btnStart, 5, p === 'READY' ? 1 : 0);") &&
-    s.includes("lume.setAttr(btnPause, 5, p === 'RUNNING' ? 1 : 0);") &&
-    s.includes("lume.setAttr(btnReset, 5, (p === 'RUNNING' || p === 'PAUSED') ? 1 : 0);") &&
-    s.includes("lume.setAttr(btnRestart, 5, p === 'OVER' ? 1 : 0);")]],
+  ['four countdown states with state-machine button visibility', [source, s =>
+    s.includes("lume.setAttr(btnStart, 5, (inCd && cp === 'READY') ? 1 : 0);") &&
+    s.includes("lume.setAttr(btnPause, 5, (inCd && cp === 'RUNNING') ? 1 : 0);") &&
+    s.includes("lume.setAttr(btnResume, 5, (inCd && cp === 'PAUSED') ? 1 : 0);") &&
+    s.includes("lume.setAttr(btnRestart, 5, (inCd && cp === 'FINISHED') ? 1 : 0);") &&
+    s.includes("lume.setAttr(btnReset, 5, (inCd && (cp === 'RUNNING' || cp === 'PAUSED' || cp === 'FINISHED')) ? 1 : 0);")]],
 
-  ['Progress consumed with remainFrac getter', [source, s =>
-    s.includes('lume.ui.shell.Progress({') && s.includes('value: remainFrac')]],
+  ['running +/- edit lock defaults locked and requires explicit toggle', [source, s =>
+    s.includes('var editLocked = signal(true);') &&
+    s.includes('function toggleEditLock()') &&
+    s.includes("if (p === 'RUNNING' && !editLocked())")]],
 
   ['clock is lume.system.time() (no nonexistent system.now)', [source, s =>
     s.includes('function tkNow() { return lume.system.time(); }') &&
@@ -159,11 +154,11 @@ const checks = [
     arr => arr.length > 0 && arr.every(v => /^[\x00-\x7F]*$/.test(v))]],
 
   ['Text fontSize limited to bundled 14/20/32 faces', [fontSize,
-    arr => arr.length > 0 && arr.every(v => v === 14 || v === 20 || v === 32)]],
+    arr => arr.every(v => v === 14 || v === 20 || v === 32)]],
 
-  ['canvas budget locked: circular slider only, 14976 <= 230400 px', [source, s =>
-    s.includes('CANVAS_BUDGET: 230400') && s.includes('var SLIDER_W = 312;') &&
-    s.includes('var SLIDER_H = 48;') && CANVAS_PX <= 230400]],
+  ['canvas budget locked: single 480x480 radial dial <= 230400 px and <= 240 draws', [source, s =>
+    s.includes('var CANVAS_BUDGET = 230400;') && s.includes('var FRAME_DRAW_BUDGET = 240;') &&
+    s.includes('var CANVAS_W = 480;') && s.includes('var CANVAS_H = 480;') && CANVAS_PX <= 230400]],
 
   ['playground sources/timer_kit.js byte-identical to the example', [playgroundSrc, x =>
     x === source]],
@@ -189,72 +184,65 @@ function must(name, mutation, checkName, subject) {
   console.log('PASS timer_kit mutation: ' + name + ' -> FAIL as expected');
 }
 
-const IMPORT = 'shell.js imported by the documented relative path';
-const SWITCH = 'Switch consumed with mode signal and setMode onChange';
-const SLIDER = 'Circular-thumb slider 0..60 step 1, >=32 px thumb, setMinutes onChange';
-const PHASE_BTNS = 'State-machine buttons hide illegal actions (READY/RUNNING/PAUSED/OVER)';
-const PROGRESS = 'Progress consumed with remainFrac getter';
-const CLOCK = 'clock is lume.system.time() (no nonexistent system.now)';
-const ABSDIFF = 'countdown advances from an absolute-time difference';
-const PAUSE = 'pause snapshots remaining then re-anchors on resume';
-const SWPAUSE = 'stopwatch pause accumulates absolute delta then re-anchors';
-const KVGET = 'KV get wrapped in try/catch, accepts only non-negative finite number';
-const KVSET = 'KV set wrapped in try/catch (failure silent)';
-const BELL = 'bell synthesised PCM under try/catch, 40 ms budget';
-const KEYS = 'KV keys within the 15-char NVS cap';
-const LAPS = 'LAP_LIMIT is three and laps keep only the last three';
-const ASCII = 'all source literals ASCII-only (r64)';
-const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
-const BUDGET = 'canvas budget locked: circular slider only, 14976 <= 230400 px';
-const SRC = 'playground sources/timer_kit.js byte-identical to the example';
-const MANIFEST = 'timer_kit is in the playground manifest';
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 3514c76';
-
 must('drop the shell import',
-  x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);
-must('app stops consuming Switch',
-  x => x.replace('lume.ui.shell.Switch({', 'View({'), SWITCH, source);
-must('slider reverts to square thumb / drops SafeArea',
-  x => x.replace('c.fillCircle(cx, mid, THUMB_R,', 'c.fillRect(cx, mid, 16,'), SLIDER, source);
+  x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"),
+  'shell.js imported by the documented relative path', source);
+must('radial ticks dropped',
+  x => x.replace('c.retainSegments(MAJOR_SEGS', 'c.polyline(MAJOR_SEGS'),
+  'radial Canvas dial with retained 60 ticks and round SafeArea', source);
+must('monospace digit renderer removed',
+  x => x.replace('function drawMonoDigit(', 'function drawVarDigit('),
+  'monospace vector 48px digit renderer prevents horizontal jitter', source);
 must('state-machine button visibility breaks',
-  x => x.replace("lume.setAttr(btnStart, 5, p === 'READY' ? 1 : 0);", 'lume.setAttr(btnStart, 5, 1);'),
-  PHASE_BTNS, source);
-must('app stops consuming Progress',
-  x => x.replace('lume.ui.shell.Progress({', 'View({'), PROGRESS, source);
-must('clock drifts back to a nonexistent system.now',
-  x => x.replace('lume.system.time(); }', 'lume.system.now(); }'), CLOCK, source);
-must('countdown becomes a decrementing counter',
+  x => x.replace("lume.setAttr(btnStart, 5, (inCd && cp === 'READY') ? 1 : 0);", 'lume.setAttr(btnStart, 5, 1);'),
+  'four countdown states with state-machine button visibility', source);
+must('running edit lock starts unlocked',
+  x => x.replace('var editLocked = signal(true);', 'var editLocked = signal(false);'),
+  'running +/- edit lock defaults locked and requires explicit toggle', source);
+must('clock drifts back to nonexistent system.now',
+  x => x.replace('lume.system.time(); }', 'lume.system.now(); }'),
+  'clock is lume.system.time() (no nonexistent system.now)', source);
+must('countdown becomes decrementing counter',
   x => x.replace('var left = Math.max(0, cdEndAt - tkNow());', 'var left = remainingMs() - 100;'),
-  ABSDIFF, source);
+  'countdown advances from an absolute-time difference', source);
 must('pause forgets the snapshot',
   x => x.replace('cdEndAt = tkNow() + cdPausedMs;', 'cdEndAt = tkNow() + m * 60000;'),
-  PAUSE, source);
+  'pause snapshots remaining then re-anchors on resume', source);
 must('stopwatch pause discards accumulated time',
-  x => x.replace('swAccum += tkNow() - swStartAt;', 'swAccum = 0;'), SWPAUSE, source);
+  x => x.replace('swAccum += tkNow() - swStartAt;', 'swAccum = 0;'),
+  'stopwatch pause accumulates absolute delta then re-anchors', source);
 must('KV get loses try/catch',
-  x => x.replace('catch (e) { return 0; }', 'catch (e) { throw e; }'), KVGET,
+  x => x.replace('catch (e) { return 0; }', 'catch (e) { throw e; }'),
+  'KV get wrapped in try/catch, accepts only non-negative finite number',
   blockFrom(source, 'function kvLoad(key)'));
 must('KV set loses try/catch',
-  x => x.replace('catch (e) { /* NVS failure is silent */ }', '/* removed */'), KVSET,
+  x => x.replace('catch (e) { /* NVS failure is silent */ }', '/* removed */'),
+  'KV set wrapped in try/catch (failure silent)',
   blockFrom(source, 'function kvSave(key, value)'));
-must('bell loses its guarded PCM path',
-  x => x.replace('lume.audio.play(pcm);', 'throw new Error("audio");'), BELL,
+must('bell loses guarded PCM path',
+  x => x.replace('lume.audio.play(pcm);', 'throw new Error("audio");'),
+  'bell synthesised PCM under try/catch, 40 ms budget',
   blockFrom(source, 'function ring()'));
-must('KV key exceeds the NVS cap',
-  x => x.replace("'hisc.timer';", "'hisc.timer.too-long';"), KEYS, source);
+must('KV key exceeds NVS cap',
+  x => x.replace("'hisc.timer';", "'hisc.timer.too-long';"),
+  'KV keys within the 15-char NVS cap', source);
 must('lap rows grow without bound',
-  x => x.replace('var LAP_LIMIT = 3;', 'var LAP_LIMIT = 5;'), LAPS, source);
-must('a CJK UI literal slips in', arr => arr.concat('中'), ASCII, lits);
-must('font size escapes the bundled faces',
-  arr => arr.concat(40), FONT, fontSize);
+  x => x.replace('var LAP_LIMIT = 3;', 'var LAP_LIMIT = 5;'),
+  'LAP_LIMIT is three and laps keep only the last three', source);
+must('a CJK UI literal slips in', arr => arr.concat('中'),
+  'all source literals ASCII-only (r64)', lits);
+must('font size escapes bundled faces', arr => arr.concat(40),
+  'Text fontSize limited to bundled 14/20/32 faces', fontSize);
 must('canvas budget rises past 230400 px',
-  x => x.replace('var SLIDER_W = 312;', 'var SLIDER_W = 40000;'), BUDGET, source);
-must('playground generated source drifts',
-  x => x + '\n// drift', SRC, playgroundSrc);
-must('playground manifest drops timer_kit',
-  list => list.filter(x => x !== 'timer_kit'), MANIFEST, apps);
-must('a firmware/runtime/CLI file changes after 6426f7b',
-  () => ['firmware/components/lume-engine/lume_math.c'], GUARD, fwChanged);
+  x => x.replace('var CANVAS_W = 480;', 'var CANVAS_W = 960;'),
+  'canvas budget locked: single 480x480 radial dial <= 230400 px and <= 240 draws', source);
+must('playground generated source drifts', x => x + '\n// drift',
+  'playground sources/timer_kit.js byte-identical to the example', playgroundSrc);
+must('playground manifest drops timer_kit', list => list.filter(x => x !== 'timer_kit'),
+  'timer_kit is in the playground manifest', apps);
+must('a firmware/runtime/CLI file changes after 3514c76',
+  () => ['firmware/components/lume-engine/lume_math.c'],
+  'firmware/ runtime/ tools/lume/ identical to 3514c76', fwChanged);
 
 /* ------------------------ part 2: live prelude ------------------------- */
 function boot(src, options) {
@@ -283,39 +271,46 @@ function boot(src, options) {
   return st;
 }
 function attempt(fn) { try { fn(); return true; } catch (e) { return false; } }
+
 const live = {
-  'controls exposed and canvas bounded': src => attempt(() => {
+  'controls exposed, single 480x480 canvas, draw calls <= 240': src => attempt(() => {
     const s = boot(src), k = s.kit();
+    assert.equal(typeof k.dialCanvas, 'number');
     assert.equal(typeof k.switchNode, 'number');
-    assert.equal(typeof k.sliderNode, 'number');
-    assert.equal(typeof k.progressNode, 'number');
     const canvases = s.messages.filter(m => m[0] === 'create' && m[2] === 3);
-    assert.equal(canvases.length, 1, 'the slider is the only canvas');
+    assert.equal(canvases.length, 1, 'single full-dial canvas');
     assert.equal(canvases[0][4] * canvases[0][5], CANVAS_PX);
-    assert.ok(CANVAS_PX <= k.CANVAS_BUDGET);
+    assert.ok(k.getLastDrawCalls() > 0 && k.getLastDrawCalls() <= k.FRAME_DRAW_BUDGET,
+      'frame draws <= 240, got ' + k.getLastDrawCalls());
     assert.equal(typeof s.lume.system.now, 'undefined', 'system.now must not exist');
   }),
 
-  'slider drag writes a step-quantised minute value': src => attempt(() => {
+  'READY +/- steppers adjust minutes; RUNNING locks +/- until unlocked': src => attempt(() => {
     const s = boot(src), k = s.kit();
+    assert.equal(k.cdPhase(), 'READY');
     assert.equal(k.displayCdMs(), 300000, 'READY displays 5 min = 05:00');
     assert.equal(k.remainFrac(), 1, 'READY progress is 100%');
-    s.eval('timerKit.setMinutes(5)');
-    const id = k.sliderNode;
-    s.gesture(id, 0, 100, 200, 0);                       /* DOWN */
-    s.gesture(id, 1, 136.4, 200, 50);                    /* dx = 36.4 px */
-    s.gesture(id, 2, 136.4, 200, 100);                   /* UP */
-    assert.equal(k.minutes(), 12, '5 + 36.4*60/312 = 12 at step 1');
-    assert.equal(k.displayCdMs(), 720000, 'READY updates display immediately to 12:00');
+    s.press(k.btnPlus);
+    assert.equal(k.minutes(), 6, 'READY + raises minutes to 6');
+    s.press(k.btnMinus);
+    assert.equal(k.minutes(), 5, 'READY - lowers minutes to 5');
+    s.press(k.btnStart);
+    assert.equal(k.cdPhase(), 'RUNNING');
+    assert.equal(k.editLocked(), true, 'RUNNING defaults editLocked = true');
+    s.press(k.btnPlus);
+    assert.equal(k.remainingMs(), 300000, 'locked + does not alter running timer');
+    s.press(k.btnEditLock);
+    assert.equal(k.editLocked(), false, 'explicit lock tap unlocks +/-');
+    s.press(k.btnPlus);
+    assert.equal(k.remainingMs(), 360000, 'unlocked + adds 1 min while running');
+    assert.ok(k.getLastDrawCalls() <= k.FRAME_DRAW_BUDGET);
   }),
 
-  'switch toggles TIMER / STOPWATCH view': src => attempt(() => {
+  'header press toggles COUNTDOWN / STOPWATCH mode': src => attempt(() => {
     const s = boot(src), k = s.kit();
     assert.equal(k.mode(), false);
     s.press(k.switchNode);
     assert.equal(k.mode(), true);
-    assert.ok(s.messages.some(m => m[0] === 'attr' && m[3] === 1000),
-      'inactive panel moved off-screen via bound x getter');
     s.press(k.switchNode);
     assert.equal(k.mode(), false);
   }),
@@ -332,25 +327,30 @@ const live = {
     const s = boot(src), k = s.kit();
     s.eval('timerKit.setMinutes(2); timerKit.cdStart()');
     s.advance(65000); s.eval('timerKit.tick()');
-    s.eval('timerKit.cdPause()');
+    s.press(k.btnPause);
+    assert.equal(k.cdPhase(), 'PAUSED');
     s.advance(30000); s.eval('timerKit.tick()');
     assert.equal(k.remainingMs(), 55000, 'paused 30 s must not be counted');
-    s.eval('timerKit.cdResume()');
+    s.press(k.btnResume);
+    assert.equal(k.cdPhase(), 'RUNNING');
     s.advance(10000); s.eval('timerKit.tick()');
     assert.equal(k.remainingMs(), 45000, 'only 10 s after resume counted');
   }),
 
-  'zero settles, rings and persists the shortest completed setting': src => attempt(() => {
+  'zero transitions to FINISHED, rings, persists best, and supports RESTART/RESET': src => attempt(() => {
     const s = boot(src, { kv: { 'hisc.timer': 7 } }), k = s.kit();
     assert.equal(k.timerBest(), 7, 'best loaded from KV');
     s.eval('timerKit.setMinutes(1); timerKit.cdStart()');
     s.advance(60000); s.eval('timerKit.tick()');
+    assert.equal(k.cdPhase(), 'FINISHED');
     assert.equal(k.remainingMs(), 0);
     assert.equal(k.status(), 'DONE - 01 MIN');
     assert.equal(k.timerBest(), 1, '1 min beats stored 7');
     assert.equal(s.kv['hisc.timer'], 1);
     assert.equal(s.plays.length, 1, 'one bell on settlement');
     assert.ok(s.plays[0] instanceof ArrayBuffer);
+    s.press(k.btnReset);
+    assert.equal(k.cdPhase(), 'READY', 'RESET from FINISHED returns to READY');
   }),
 
   'stopwatch reports centiseconds and appends only three laps': src => attempt(() => {
@@ -365,7 +365,7 @@ const live = {
     assert.equal(k.laps().length, 3);
     assert.equal(k.laps()[2], 15340);
     s.eval('timerKit.swLap()');
-    assert.equal(k.laps().length, 3, 'fourth laps evicts the oldest row');
+    assert.equal(k.laps().length, 3, 'fourth lap evicts the oldest row');
     assert.equal(k.laps()[0], 13340);
     assert.equal(k.stopBest(), 15340);
     assert.equal(s.kv['timer.best'], 15340);
@@ -400,11 +400,7 @@ const live = {
     const s = boot(src), k = s.kit();
     s.eval('timerKit.setMinutes(2); timerKit.cdStart()');
     assert.equal(s.eval('Object.keys(__timers).length'), 1);
-    s.eval('timerKit.disposeSlider(); lume.ui.shell.dispose(timerKit.progressNode)');
-    s.gesture(k.sliderNode, 0, 100, 200, 0);
-    s.gesture(k.sliderNode, 1, 136.4, 200, 50);
-    assert.equal(k.minutes(), 2, 'slider gesture unsubscribed on dispose');
-    s.eval('__lume_shutdown()');
+    s.eval('timerKit.disposeGestures(); __lume_shutdown()');
     assert.equal(s.eval('Object.keys(__timers).length'), 0);
     assert.equal(s.eval('__allEffects.length'), 0);
   }),

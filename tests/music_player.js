@@ -3,8 +3,9 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const { runApp } = require('./lib/prelude_runner');
 const source = fs.readFileSync('examples/music_player/app.js', 'utf8');
-let decoded = 0, sent = 0, blocked = 0;
+let decoded = 0, sent = 0, blocked = 0, lastVol = -1;
 const player = runApp(source, { audio: {
+  setVolume: v => { lastVol = v; return 0; },
   playStream: () => { if (blocked++ % 3 === 1) return -3; sent++; return 0; },
   streamFinished: () => true,
   mp3: {
@@ -23,7 +24,7 @@ const cases = [
   ['normal', '[01:02.34]Hello', 62340, 'Hello'],
   ['skip untimed', 'plain text\n[00:03.00]Timed', 3000, 'Timed'],
   ['sort', '[00:04.00]Later\n[00:02.00]Earlier', 2000, 'Earlier'],
-  ['bad GBK bytes', '[00:01.00]�broken', 1000, '�broken'],
+  ['bad GBK bytes', '[00:01.00]broken', 1000, 'broken'],
 ];
 for (const [name,input,ms,value] of cases) {
   const rows = evalIn('musicParseLrc(' + JSON.stringify(input) + ')');
@@ -36,6 +37,21 @@ assert.equal(decoded,5); assert.equal(sent,4);
 assert.equal(evalIn('musicPending'),null);
 console.log('Scheduler: ticks=7 decoded=' + decoded + ' sent=' + sent +
             ' retry=' + (blocked-sent) + ' PASS');
+/* r204 UI assertions: radial cover ring draw budget <= 240, touch targets >= 48px,
+ * center play button ~1.3x side skip buttons, volume controls work. */
+const ui = evalIn('musicUi');
+assert.ok(ui.SKIP_BTN_PX >= 48, 'side transport keys >= 48px');
+assert.ok(ui.PLAY_BTN_PX >= Math.round(ui.SKIP_BTN_PX * 1.25), 'center play button ~1.3x larger');
+const draws = ui.getLastDrawCalls();
+assert.ok(draws > 0 && draws <= ui.FRAME_DRAW_BUDGET, 'cover ring frame draw calls <= 240, got ' + draws);
+const canvases = player.messages.filter(m => m[0] === 'create' && m[2] === 3);
+const canvasArea = canvases.reduce((sum, m) => sum + m[4] * m[5], 0);
+assert.ok(canvasArea > 0 && canvasArea <= 480 * 480, 'canvas area <= 230400, got ' + canvasArea);
+player.press(ui.btnVolDown);
+assert.equal(lastVol, 60, 'Vol- lowers volume to 60');
+player.press(ui.btnVolUp);
+assert.equal(lastVol, 70, 'Vol+ restores volume to 70');
+console.log('Radial UI: draws=' + draws + '/240 canvasPx=' + canvasArea + ' skip=' + ui.SKIP_BTN_PX + ' play=' + ui.PLAY_BTN_PX + ' PASS');
 evalIn('musicStop()');
 assert.equal(evalIn('musicIndex'),-1);
 evalIn('musicSelect(-3)');

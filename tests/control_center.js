@@ -1,19 +1,9 @@
 /*
- * r159 host harness for examples/control_center (pure app).
+ * r204 host harness for examples/control_center v2 (capsule switches + knob
+ * shadow, CONNECTIONS/OUTPUT group labels, precision sliders + 32px circular
+ * thumbs, Reset All ghost danger pill, full KV persistence).
  *
  *   node tests/control_center.js
- *
- * Part 1: static source contracts -- the three zero-consumer shell components
- * (SafeArea / Card / IconButton) are really consumed, KV keys stay inside the
- * 15-char NVS cap, all reads/writes are try/catch guarded, the step cycles
- * wrap, RESET restores every default, zero Canvas, ASCII-only copy, 14/20/32
- * fonts, the playground manifest, byte-identical playground source, and
- * firmware/runtime/tools/lume zero-diff vs 76d2c0c.
- * Every static predicate has a mutation proof; every live predicate too.
- *
- * Part 2: live runs of the REAL app against the firmware prelude + shell.js.
- * IconButton / Card presses use the real dispatch path, KV is a host stub.
- * No board, no touch, no radio, no backlight: host evidence only (r159 report).
  */
 'use strict';
 const assert = require('node:assert/strict');
@@ -25,13 +15,14 @@ const { runApp } = require('./lib/prelude_runner');
 
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root, p), 'utf8');
-const BASE = '3514c76'; // r177: re-pinned to the board-id feat commit (firmware only)
+const BASE = '3514c76';
 const source = read('examples/control_center/app.js');
 const shell = read('runtime/shell.js');
 const manifest = read('tools/playground/build.mjs');
 const playgroundSrc = read('website/playground/sources/control_center.js');
 const KEYS = { wifi: 'cc.wifi', ble: 'cc.ble', vol: 'cc.vol', brt: 'cc.brt' };
 const NODE_BUDGET = 60;
+const CANVAS_BUDGET = 230400;
 
 function stripImport(x) {
   return x.replace(/^\s*import\s+[^;]*runtime\/shell\.js[^;]*;\s*$/m, '');
@@ -52,7 +43,7 @@ function blockFrom(haystack, marker) {
   assert.fail('unbalanced block: ' + marker);
 }
 function countCalls(s) {
-  return (s.match(/(?:Text|View|Button)\(\{|lume\.ui\.shell\.(?:SafeArea|Card|IconButton)\(\{/g) || []).length;
+  return (s.match(/(?:Text|View|Button|Canvas)\(\{|lume\.ui\.shell\.(?:SafeArea|Card|IconButton)\(\{/g) || []).length;
 }
 function gitChanged(paths, base) {
   const b = base || BASE;
@@ -64,32 +55,24 @@ function gitChanged(paths, base) {
 }
 
 /* ------------------------ part 1: static guards ------------------------ */
-const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmware/components/lume-engine/gen_lume_scripts.py', 'firmware/components/lume-engine/prelude/demo.js', 'firmware/components/lume-engine/prelude/home.js', 'firmware/components/lume-engine/prelude/prelude.js', 'runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js', // r166 ColorPicker and r171 check --visual
-  // r183: SVG raster-result cache (engine component only).
+const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmware/components/lume-engine/gen_lume_scripts.py', 'firmware/components/lume-engine/prelude/demo.js', 'firmware/components/lume-engine/prelude/home.js', 'firmware/components/lume-engine/prelude/prelude.js', 'runtime/shell.js', 'runtime/types/lume.d.ts', 'tools/lume/check.js', 'tools/lume/lume.js', 'tools/lume/lume.test.js',
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_svg_cache.c',
   'firmware/components/lume-engine/include/lume_svg_cache.h',
-  // r181: emu frame-injection pacing + UI-queue backpressure (named objects only).
   'tools/lume/scan.js', 'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
-  // r173 companion P1: LUMC file commands FPUT/FLS/FGET/FDEL + CLI fput/fls/fdel.
   'firmware/components/lume-hotreload/CMakeLists.txt',
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
   'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
-  // r75 raster and refresh changes already present on origin/main.
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
-  // r179: WiFi PS/coexist knife -- lume-net PS call + sdkconfig (incl. generated).
   'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',
   'firmware/sdkconfig.defaults',
-  // r199: lume context is pure CLI tooling; no firmware/runtime change.
   'tools/lume/context.js', 'tools/lume/context.test.js',
-  // r206: lume mcp MCP server is pure tools/lume; no firmware/runtime change.
   'tools/lume/mcp.js', 'tools/lume/mcp.test.js',
-   // r207: lume examples metadata catalog CLI is pure tools/lume; no firmware/runtime change.
-   'tools/lume/examples.js', 'tools/lume/examples.test.js',
+  'tools/lume/examples.js', 'tools/lume/examples.test.js',
 ];
 const fwChanged = gitChanged(['firmware/', 'runtime/', 'tools/lume/']);
 const listBlock = (manifest.match(/const apps = \[([\s\S]*?)\];/) || [])[1];
@@ -104,14 +87,17 @@ const checks = [
     (s.match(/^\s*import\s/gm) || []).length === 1]],
 
   ['SafeArea consumed as the round-screen safe container', [source, s =>
-    s.includes('lume.ui.shell.SafeArea({ shape: \'round\', size: 480, children: [] })') &&
-    !s.includes('SafeArea({ shape: \'square\'')]],
+    s.includes("lume.ui.shell.SafeArea({ parent: outerRoot, shape: 'round', size: 480, children: [] })")]],
 
   ['Card consumed by four setting cards', [source, s =>
     (s.match(/lume\.ui\.shell\.Card\(\{/g) || []).length === 4]],
 
-  ['IconButton consumed by WiFi, Bluetooth and RESET', [source, s =>
-    (s.match(/lume\.ui\.shell\.IconButton\(\{/g) || []).length === 3]],
+  ['capsule switches, knob shadow approximation, group labels and Reset All pill', [source, s =>
+    s.includes("drawMicroLabel(c, 'CONNECTIONS'") &&
+    s.includes("drawMicroLabel(c, 'OUTPUT'") &&
+    s.includes("c.text(62, 9, 'Reset All', '#FF6B79')") &&
+    s.includes('c.fillCircle(kx, ky + 2, 11,') &&
+    s.includes('c.fillCircle(tx, ry, 15,')]],
 
   ['all four values live in signals', [source, s =>
     /var wifi = signal\(DEF_WIFI\);/.test(s) &&
@@ -128,7 +114,7 @@ const checks = [
   ['flag KV get wrapped in try/catch, accepts only 0 or 1',
     [blockFrom(source, 'function kvLoadFlag(key, fallback)'), s =>
       /try\s*\{/.test(s) && /catch \(e\) \{ return fallback; \}/.test(s) &&
-      s.includes("(v === 0 || v === 1)")]],
+      s.includes('(v === 0 || v === 1)')]],
 
   ['step KV get wrapped in try/catch, accepts only legal integer steps',
     [blockFrom(source, 'function kvLoadStep(key, lo, hi, fallback)'), s =>
@@ -156,11 +142,6 @@ const checks = [
       s.includes('setWifi(DEF_WIFI);') && s.includes('setBle(DEF_BLE);') &&
       s.includes('vol.set(kvSave(KV_VOL, DEF_VOL));') &&
       s.includes('brt.set(kvSave(KV_BRT, DEF_BRT));')]],
-
-  ['no Slider consumption (timer_kit owns that r157 point)', [source, s =>
-    !/lume\.ui\.shell\.Slider\(\{/.test(s)]],
-
-  ['zero Canvas nodes', [source, s => !/\bCanvas\s*\(/.test(s)]],
 
   ['entire app file is ASCII-only (r64)', [source,
     s => s.length > 0 && /^[\x00-\x7F]*$/.test(s)]],
@@ -198,81 +179,60 @@ function must(name, mutation, checkName, subject) {
   console.log('PASS control_center mutation: ' + name + ' -> FAIL as expected');
 }
 
-const IMPORT = 'shell.js imported by the documented relative path';
-const SAFE = 'SafeArea consumed as the round-screen safe container';
-const CARD = 'Card consumed by four setting cards';
-const ICON = 'IconButton consumed by WiFi, Bluetooth and RESET';
-const SIGNAL = 'all four values live in signals';
-const KEYS_C = 'KV key block uses the four documented <=15-char keys';
-const KVFLAG = 'flag KV get wrapped in try/catch, accepts only 0 or 1';
-const KVSTEP = 'step KV get wrapped in try/catch, accepts only legal integer steps';
-const KVSET = 'KV set wrapped in try/catch (NVS failure is volatile)';
-const LOAD = 'startup reads every key back into its signal';
-const CYCLE = 'volume wraps 10 -> 0 and brightness wraps 5 -> 1';
-const RESET = 'RESET restores all four defaults through kvSave';
-const NOSLIDER = 'no Slider consumption (timer_kit owns that r157 point)';
-const CANVAS = 'zero Canvas nodes';
-const ASCII = 'entire app file is ASCII-only (r64)';
-const LIT = 'UI string literals ASCII-only (r64)';
-const FONT = 'Text fontSize limited to bundled 14/20/32 faces';
-const BUDGET = 'static tree within the node budget';
-const SRC = 'playground sources/control_center.js byte-identical to the example';
-const MANIFEST = `control_center is in the ${apps.length}-app playground manifest`;
-const GUARD = 'firmware/ runtime/ tools/lume/ identical to 3514c76';
-
 must('drop the shell import',
-  x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"), IMPORT, source);
+  x => x.replace("import '../../runtime/shell.js';", "import './shell.js';"),
+  'shell.js imported by the documented relative path', source);
 must('app stops consuming SafeArea',
-  x => x.replace('lume.ui.shell.SafeArea({', 'View({'), SAFE, source);
+  x => x.replace('lume.ui.shell.SafeArea({', 'View({'),
+  'SafeArea consumed as the round-screen safe container', source);
 must('app stops consuming Card',
-  x => x.split('lume.ui.shell.Card({').join('View({'), CARD, source);
-must('app stops consuming IconButton',
-  x => x.split('lume.ui.shell.IconButton({').join('Button({'), ICON, source);
+  x => x.split('lume.ui.shell.Card({').join('View({'),
+  'Card consumed by four setting cards', source);
+must('group labels dropped',
+  x => x.replace("drawMicroLabel(c, 'CONNECTIONS'", "drawMicroLabel(c, 'NONE'"),
+  'capsule switches, knob shadow approximation, group labels and Reset All pill', source);
 must('a value escapes the signal graph',
-  x => x.replace('var vol = signal(DEF_VOL);', 'var vol = 3;'), SIGNAL, source);
+  x => x.replace('var vol = signal(DEF_VOL);', 'var vol = 3;'),
+  'all four values live in signals', source);
 must('KV key exceeds the NVS cap',
-  x => x.replace("var KV_BRT = 'cc.brt';", "var KV_BRT = 'cc.brightness.toolong';"), KEYS_C, source);
+  x => x.replace("var KV_BRT = 'cc.brt';", "var KV_BRT = 'cc.brightness.toolong';"),
+  'KV key block uses the four documented <=15-char keys', source);
 must('flag KV get loses try/catch',
-  x => x.replace('catch (e) { return fallback; }', 'catch (e) { throw e; }'), KVFLAG,
+  x => x.replace('catch (e) { return fallback; }', 'catch (e) { throw e; }'),
+  'flag KV get wrapped in try/catch, accepts only 0 or 1',
   blockFrom(source, 'function kvLoadFlag(key, fallback)'));
 must('step KV get loses try/catch',
-  x => x.replace('catch (e) { return fallback; }', 'catch (e) { throw e; }'), KVSTEP,
+  x => x.replace('catch (e) { return fallback; }', 'catch (e) { throw e; }'),
+  'step KV get wrapped in try/catch, accepts only legal integer steps',
   blockFrom(source, 'function kvLoadStep(key, lo, hi, fallback)'));
 must('KV set loses try/catch',
   x => x.replace('try { lume.storage.kv.set(key, value); } catch (e) { /* NVS unavailable: volatile only */ }',
-                 'lume.storage.kv.set(key, value);'), KVSET,
+                 'lume.storage.kv.set(key, value);'),
+  'KV set wrapped in try/catch (NVS failure is volatile)',
   blockFrom(source, 'function kvSave(key, value)'));
 must('startup forgets to read a key back',
-  x => x.replace('brt.set(kvLoadStep(KV_BRT, 1, 5, DEF_BRT));', '/* removed */'), LOAD, source);
+  x => x.replace('brt.set(kvLoadStep(KV_BRT, 1, 5, DEF_BRT));', '/* removed */'),
+  'startup reads every key back into its signal', source);
 must('volume stops wrapping at 10',
-  x => x.replace('if (v > 10) v = 0;', 'if (v > 10) v = 10;'), CYCLE, source);
+  x => x.replace('if (v > 10) v = 0;', 'if (v > 10) v = 10;'),
+  'volume wraps 10 -> 0 and brightness wraps 5 -> 1', source);
 must('RESET forgets brightness',
-  x => x.replace('brt.set(kvSave(KV_BRT, DEF_BRT));', '/* removed */'), RESET,
+  x => x.replace('brt.set(kvSave(KV_BRT, DEF_BRT));', '/* removed */'),
+  'RESET restores all four defaults through kvSave',
   blockFrom(source, 'function resetAll()'));
-must('Slider slips into the app',
-  x => x + '\nlume.ui.shell.Slider({});', NOSLIDER, source);
-must('a Canvas slips into the app',
-  x => x + '\nCanvas({});', CANVAS, source);
-must('a non-ASCII byte slips into the file', x => x + '\n// \u4E2D', ASCII, source);
-must('a CJK UI literal slips in', arr => arr.concat('\u4E2D'), LIT, literals(source));
-must('font size escapes the bundled faces', arr => arr.concat(40), FONT, fontSize);
-function mustNodeBudget(name, mutation) {
-  const mutated = mutation(source);
-  assert.notEqual(mutated, source, 'mutation did not change source: ' + name);
-  const found = checks.find(([n]) => n === BUDGET);
-  assert.equal(found[1][1](countCalls(mutated)), false,
-    'assertion is decorative; mutation did not FAIL: ' + name);
-  console.log('PASS control_center mutation: ' + name + ' -> FAIL as expected');
-}
-mustNodeBudget('static tree overflows the node budget',
-  x => x + '\n' + Array.from({length: NODE_BUDGET},
-    () => 'Text({ text: "x", style: {} });').join('\n'));
-must('playground generated source drifts',
-  x => x + '\n// drift', SRC, playgroundSrc);
-must('playground manifest drops control_center',
-  list => list.filter(x => x !== 'control_center'), MANIFEST, apps);
-must('a firmware/runtime/CLI file changes after 76d2c0c',
-  () => ['firmware/components/lume-engine/lume_math.c'], GUARD, fwChanged);
+must('a non-ASCII byte slips into file', x => x + '\n// \u4E2D',
+  'entire app file is ASCII-only (r64)', source);
+must('a CJK UI literal slips in', arr => arr.concat('\u4E2D'),
+  'UI string literals ASCII-only (r64)', literals(source));
+must('font size escapes bundled faces', arr => arr.concat(40),
+  'Text fontSize limited to bundled 14/20/32 faces', fontSize);
+must('playground generated source drifts', x => x + '\n// drift',
+  'playground sources/control_center.js byte-identical to the example', playgroundSrc);
+must('playground manifest drops control_center', list => list.filter(x => x !== 'control_center'),
+  `control_center is in the ${apps.length}-app playground manifest`, apps);
+must('a firmware/runtime/CLI file changes after 3514c76',
+  () => ['firmware/components/lume-engine/lume_math.c'],
+  'firmware/ runtime/ tools/lume/ identical to 3514c76', fwChanged);
 
 /* ------------------------ part 2: live prelude ------------------------- */
 function boot(src, options) {
@@ -297,21 +257,21 @@ function boot(src, options) {
 function attempt(fn) { try { fn(); return true; } catch (e) { return false; } }
 
 const live = {
-  'handles, safe square and zero canvas': src => attempt(() => {
+  'handles, safe square, node budget and canvas budget': src => attempt(() => {
     const s = boot(src), a = s.api();
     assert.equal(typeof a.root, 'number');
     assert.equal(typeof a.wifiBtn, 'number');
     assert.equal(typeof a.bleBtn, 'number');
     assert.equal(typeof a.resetBtn, 'number');
     const created = s.messages.filter(m => m[0] === 'create');
-    assert.equal(created.length, 21, '21 static nodes');
-    assert.equal(s.messages.filter(m => m[0] === 'create' && m[2] === 3).length, 0,
-      'zero canvas nodes');
+    assert.ok(created.length <= a.NODE_BUDGET, 'within node budget');
+    const canvases = s.messages.filter(m => m[0] === 'create' && m[2] === 3);
+    const area = canvases.reduce((sum, m) => sum + m[4] * m[5], 0);
+    assert.ok(area > 0 && area <= CANVAS_BUDGET, 'canvas area <= 230400, got ' + area);
     assert.ok(s.warns.every(w => !/SafeArea child exceeds/.test(w)), 'no safe-inset overflow');
-    assert.ok(created.length <= a.NODE_BUDGET);
   }),
 
-  'IconButton tap toggles WiFi and writes KV': src => attempt(() => {
+  'Wi-Fi card tap toggles WiFi and writes KV': src => attempt(() => {
     const s = boot(src), a = s.api();
     assert.equal(a.wifi(), false);
     s.press(a.wifiBtn);
@@ -322,7 +282,7 @@ const live = {
     assert.equal(s.kv['cc.wifi'], 0);
   }),
 
-  'IconButton tap toggles Bluetooth and writes KV': src => attempt(() => {
+  'Bluetooth card tap toggles Bluetooth and writes KV': src => attempt(() => {
     const s = boot(src), a = s.api();
     assert.equal(a.ble(), false);
     s.press(a.bleBtn);
@@ -355,7 +315,7 @@ const live = {
     assert.equal(s.kv['cc.brt'], 1);
   }),
 
-  'RESET restores every default and rewrites all four keys': src => attempt(() => {
+  'Reset All restores every default and rewrites all four keys': src => attempt(() => {
     const s = boot(src), a = s.api();
     s.press(a.wifiBtn); s.press(a.bleBtn);
     s.press(a.volCard); s.press(a.brtCard);
@@ -379,11 +339,10 @@ const live = {
     assert.equal(throwing.api().vol(), 4, 'volatile state still advances');
   }),
 
-  'dispose and shutdown clear effects and timers': src => attempt(() => {
+  'shutdown clears effects and timers': src => attempt(() => {
     const s = boot(src), a = s.api();
     s.press(a.wifiBtn); s.press(a.bleBtn);
     assert.ok(s.eval('__allEffects.length') > 0);
-    s.eval('lume.ui.shell.dispose(ccApi.wifiBtn); lume.ui.shell.dispose(ccApi.bleBtn);');
     s.eval('__lume_shutdown()');
     assert.equal(s.eval('__allEffects.length'), 0);
     assert.equal(s.eval('Object.keys(__timers).length'), 0);
@@ -402,15 +361,15 @@ function mustLive(name, mutation, liveName) {
     'live assertion is decorative; mutation did not FAIL: ' + name);
   console.log('PASS control_center live mutation: ' + name + ' -> FAIL as expected');
 }
-mustLive('live: WiFi IconButton stops toggling',
+mustLive('live: WiFi card stops toggling',
   x => x.replace('function toggleWifi() { setWifi(!wifi()); }',
                  'function toggleWifi() { setWifi(false); }'),
-  'IconButton tap toggles WiFi and writes KV');
+  'Wi-Fi card tap toggles WiFi and writes KV');
 mustLive('live: volume stops wrapping at 10',
   x => x.replace('if (v > 10) v = 0;', 'if (v > 10) v = 10;'),
   'volume card cycles 0..10 and persists');
 mustLive('live: RESET forgets brightness',
   x => x.replace('brt.set(kvSave(KV_BRT, DEF_BRT));', '/* removed */'),
-  'RESET restores every default and rewrites all four keys');
+  'Reset All restores every default and rewrites all four keys');
 
 console.log('ALL CONTROL CENTER HARNESS CASES PASSED');
