@@ -1,0 +1,3 @@
+memory           non-ASCII lines: 0
+wordring         non-ASCII lines: 0
+voice_assistant  non-ASCII lines: 0
