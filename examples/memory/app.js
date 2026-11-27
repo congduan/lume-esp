@@ -1,15 +1,18 @@
-/* Memory Match — r75, r68 retro pixel dialect, original art. 4x4 = 8 pairs.
+/* Memory Match - r75, r68 retro pixel dialect, original art. 4x4 = 8 pairs.
  * Hard-edge fillRect on integer pixels (no AA); every card face is a
  * precomputed run-length span list decoded ONCE at eval and replayed every
  * frame (the mario/sokoban pattern); spanBuilds is a stable count never
  * touched by tick or onDraw. Tap to flip, matching pair stays revealed,
- * mismatch flips back after a short delay (teleport + highlight, no tween —
+ * mismatch flips back after a short delay (teleport + highlight, no tween -
  * the r68 simplification). Stock 14px Montserrat, no font swap. NVS keys cap
  * at 15 chars (lume_kv.c), so the hiscore key is 'hisc.memory' (11 chars).
- * UI text is ASCII only (firmware font has no decorative Unicode — r64). */
+ * UI text is ASCII only (firmware font has no decorative Unicode - r64). */
 
-/* ------------------- logic (host harness splits at /* GAME UI *​/) ------- */
-var IW=480, IH=480, CELL=88, GAP=8, COLS=4, ROWS=4, GX=64, GY=44;
+/* ------------------- logic (host harness splits at GAME UI marker) ------ */
+/* r210: 4x4 board + HUD + DEAL all fit the 480-round 329px safe square
+ * ([75,405]); the old CELL=88/GAP=8 board (GX=64..440, GY=44..420) and the
+ * y=424 DEAL row sat outside it and were unclickable near the bezel. */
+var IW=480, IH=480, CELL=52, GAP=4, COLS=4, ROWS=4, GX=130, GY=132;
 var BG='#141018', FACE_COL='#F2E7C9';
 var PAL={
   A:'#D94F3D', B:'#A33428', C:'#7A1F17', /* berry */
@@ -108,15 +111,19 @@ function logEvent(msg){lume.log('MEM '+msg);}
 function box(x,y,w,h){return {x:Math.floor(x),y:Math.floor(y),w:w,h:h};}
 function clip(r){var x=Math.max(0,r.x),y=Math.max(0,r.y),rx=Math.min(IW,r.x+r.w),by=Math.min(IH,r.y+r.h);return rx>x&&by>y?box(x,y,rx-x,by-y):null;}
 function drawRect(ctx,color,r,a){var x=Math.max(r.x,a.x),y=Math.max(r.y,a.y),x2=Math.min(r.x+r.w,a.x+a.w),y2=Math.min(r.y+r.h,a.x+a.h);if(x2>x&&y2>y){ctx.fillColor(color);ctx.fillRect(x,y,x2-x,y2-y);}}
-function drawSprite(ctx,key,cx,cy,a){var list=SPANS[key];for(var i=0;i<list.length;i++){var sp=list[i];drawRect(ctx,PAL[sp[3]],box(cx+sp[0]*10,cy+4+sp[1]*10,sp[2]*10,10),a);}}
+/* 8x8 face templates scaled down with the cell (r210: TS=5 @ CELL=52) so the
+ * sprite stays inside its card instead of spilling past the safe square. */
+var TS=Math.floor((CELL-8)/8);
+function drawSprite(ctx,key,cx,cy,a){var list=SPANS[key],off=Math.floor((CELL-TS*8)/2);
+  for(var i=0;i<list.length;i++){var sp=list[i];drawRect(ctx,PAL[sp[3]],box(cx+off+sp[0]*TS,cy+off+sp[1]*TS,sp[2]*TS,TS),a);}}
 
 /* Card back: parchment face + dark border + diagonal lattice, original art. */
 function drawBack(ctx,cx,cy,a){
   drawRect(ctx,PAL.U,box(cx,cy,CELL,CELL),a);
   drawRect(ctx,PAL.T,box(cx+4,cy+4,CELL-8,CELL-8),a);
   for(var i=1;i<8;i++){
-    drawRect(ctx,PAL.U,box(cx+i*11,cy+4,4,4),a);
-    drawRect(ctx,PAL.U,box(cx+4,cy+i*11,4,4),a);
+    drawRect(ctx,PAL.U,box(cx+4+i*TS,cy+4,4,4),a);
+    drawRect(ctx,PAL.U,box(cx+4,cy+4+i*TS,4,4),a);
   }
 }
 
@@ -128,7 +135,7 @@ function paintCard(ctx,c,a,s){
   if(!isOpen){drawBack(ctx,cx,cy,a);return;}
   var keys=['berry','sun','cloud','leaf','heart','star','bolt','ring'];
   drawRect(ctx,FACE_COL,box(cx,cy,CELL,CELL),a);
-  drawSprite(ctx,keys[faceIdx],cx+4,cy,a);
+  drawSprite(ctx,keys[faceIdx],cx,cy,a);
 }
 
 var painted=false,perfCount=0,perfSum=0,perfMax=0;
@@ -141,18 +148,21 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   painted=true;return [a];
 }});
 
-Text({parent:root,text:'MEMORY',style:{position:'absolute',x:8,y:6,fontSize:14,color:'#F2E7C9'}});
-Text({parent:root,text:function(){return 'MV '+movesSig()+'  PAIRS '+matchedSig()+'/8';},style:{position:'absolute',x:104,y:6,fontSize:14,color:'#D9A21B'}});
+/* r210: HUD folded from four full-bleed lines (x=8, y=6/26/46) into three
+ * lines inside the 480-round safe square ([75,405]). BEST merges into the
+ * MV/PAIRS line (no second BEST line = no redundant status). */
+Text({parent:root,text:'MEMORY',style:{position:'absolute',x:80,y:76,fontSize:14,color:'#F2E7C9'}});
+Text({parent:root,text:function(){return 'MV '+movesSig()+'  PAIRS '+matchedSig()+'/8  BEST '+(bestSig()>0?bestSig():'-');},style:{position:'absolute',x:80,y:94,fontSize:14,color:'#D9A21B'}});
 
 /* Status line: WIN shows moves + best; otherwise the hint note. */
 Text({parent:root,text:function(){
   if(wonSig())return 'CLEARED IN '+movesSig()+' MOVES! TAP DEAL';
   return noteSig()||'TAP TWO CARDS';
-},style:{position:'absolute',x:8,y:26,fontSize:14,color:'#9FD8F0'}});
-Text({parent:root,text:function(){return bestSig()>0?('BEST '+bestSig()+' MOVES'):('BEST -');},style:{position:'absolute',x:8,y:46,fontSize:14,color:'#7A8F4E'}});
+},style:{position:'absolute',x:80,y:112,fontSize:14,color:'#9FD8F0'}});
 
-function btn(title,x,fn){return Button({title:title,style:{position:'absolute',x:x,y:424,width:144,height:44,borderRadius:6,background:'#28331F',color:'#E8D46A',fontSize:14},onPress:fn});}
-btn('DEAL',184,function(){newDeal();});
+/* r210: DEAL moved from y=424..468 to y=356..404 (48px tall, in safe square). */
+function btn(title,x,fn){return Button({title:title,style:{position:'absolute',x:x,y:356,width:144,height:48,borderRadius:6,background:'#28331F',color:'#E8D46A',fontSize:14},onPress:fn});}
+btn('DEAL',168,function(){newDeal();});
 
 function newDeal(){
   state=memoryDeal(null);
