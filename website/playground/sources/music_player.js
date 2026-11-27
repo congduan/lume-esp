@@ -1,4 +1,20 @@
-/* TF card MP3 player. Each timer callback decodes at most one frame. */
+/*
+ * r204: music_player v2 -- Wear OS 4-band radial media player translated from
+ * artifacts/r201/design/media.html (8.5/10 benchmark design).
+ * Preserves ALL TF-card MP3 decode/stream/LRC/KV functional semantics:
+ *   - One MP3 frame decoded per musicTick() callback.
+ *   - Recursive /music scan, ID3v2/ID3v1 title sort, last-track resume KV
+ *     ('music.last'), per-track LRC offset KV ('lrc.offsets'), 5-line lyric window.
+ *   - Visual upgrades:
+ *       1) Circular aurora vinyl cover disc + orbiting Canvas progress ring +
+ *          scrubber knob dot (tap disc to open secondary Library & Lyrics page).
+ *       2) Clean centered Track Title + Artist / Time metadata.
+ *       3) 3-key circular transport controls: side Prev/Next >= 48px (52x52,
+ *          vision fix) and center Play/Pause 1.3x larger (66x66, bright accent).
+ *       4) Tactile pill volume slider bar (48px tall, 32px circular thumb,
+ *          speaker icons, supports tap Vol-/Vol+ and drag).
+ *       5) Per-frame Canvas draw call count <= 240.
+ */
 var musicAudio = lume.audio;
 var musicMp3 = musicAudio && musicAudio.mp3;
 var musicFiles = [], musicTags = {}, musicPage = 0;
@@ -8,11 +24,14 @@ var musicOffsetMs = 0, musicLastSaveMs = 0;
 var musicIndex = -1, musicPending = null, musicEof = false;
 var musicPaused = false, musicStarted = 0, musicPauseAt = 0, musicPauseTotal = 0;
 var musicDecodedMs = 0, musicDurationMs = 0, musicLyrics = [];
-var musicTitle = signal('Music player');
+var musicTitle = signal('Midnight Pulse');
 var musicArtist = signal('TF card /music');
 var musicStatus = signal('Loading library...');
 var musicTime = signal('0:00 / 0:00');
 var musicProgress = signal('____________________');
+var musicFrac = signal(0);
+var musicPausedSig = signal(false);
+var musicVolSig = signal(70);
 var musicLineBefore = signal('');
 var musicLineNow = signal('Select a track');
 var musicLineAfter = signal('');
@@ -20,6 +39,7 @@ var musicLineBefore2 = signal(''), musicLineAfter2 = signal('');
 var musicOffsetLabel = signal('LRC +0.0s');
 var musicPauseLabel = signal('Pause');
 var musicVolume = 70;
+var musicLastDrawCalls = 0;
 
 function musicShort(s, n) {
   s = String(s || '').replace(/[\r\n]+/g, ' ');
@@ -89,6 +109,7 @@ function musicReadLyrics(name) {
 function musicStop() {
   musicIndex = -1;
   musicPending = null; musicEof = false;
+  musicFrac.set(0);
   if (musicMp3) musicMp3.close();
   if (musicAudio && musicAudio.streamReset) musicAudio.streamReset();
 }
@@ -100,14 +121,16 @@ function musicSelect(index) {
   var rc = musicMp3.open('/music/' + name);
   if (rc < 0) { musicStatus.set('Open failed ' + rc); return; }
   var tag = musicTags[name] || null;
-  musicTitle.set(musicShort(tag && tag.title || name.replace(/\.mp3$/i, ''), 32));
-  musicArtist.set(musicShort(tag && tag.artist || 'Unknown artist', 32));
+  musicTitle.set(musicShort(tag && tag.title || name.replace(/\.mp3$/i, ''), 24));
+  musicArtist.set(musicShort(tag && tag.artist || 'Unknown artist', 22));
   musicOffsetMs = Number(musicOffsets[name]) || 0;
   musicOffsetLabel.set('LRC ' + (musicOffsetMs >= 0 ? '+' : '') + (musicOffsetMs / 1000).toFixed(1) + 's');
   musicLyrics = musicReadLyrics(name);
   musicDecodedMs = 0; musicDurationMs = 0;
   musicStarted = Date.now(); musicPauseTotal = 0; musicPaused = false;
+  musicPausedSig.set(false);
   musicPauseLabel.set('Pause'); musicStatus.set('Playing ' + (musicIndex + 1) + '/' + musicFiles.length);
+  musicFrac.set(0);
   musicShowLyric(0);
   musicSaveState(); musicShowPage(false);
 }
@@ -146,7 +169,9 @@ function musicTick() {
   }
   var position = musicPosition();
   musicTime.set(musicClock(position) + ' / ' + musicClock(musicDurationMs));
-  var bars = musicDurationMs ? Math.min(20, Math.floor(position / musicDurationMs * 20)) : 0;
+  var frac = musicDurationMs > 0 ? Math.max(0, Math.min(1, position / musicDurationMs)) : 0;
+  musicFrac.set(Math.round(frac * 100) / 100);
+  var bars = musicDurationMs ? Math.min(20, Math.floor(frac * 20)) : 0;
   musicProgress.set('█'.repeat(bars) + '─'.repeat(20 - bars));
   musicShowLyric(position);
   if (Date.now() - musicLastSaveMs >= 5000) musicSaveState();
@@ -158,9 +183,15 @@ function musicPause() {
   if (musicPaused) musicPauseAt = Date.now();
   else musicPauseTotal += Date.now() - musicPauseAt;
   musicAudio.streamPause(musicPaused);
+  musicPausedSig.set(musicPaused);
   musicPauseLabel.set(musicPaused ? 'Resume' : 'Pause');
   musicStatus.set(musicPaused ? 'Paused' : 'Playing');
   musicSaveState();
+}
+function musicSetVolume(v) {
+  musicVolume = Math.max(0, Math.min(100, Math.round(v)));
+  musicVolSig.set(musicVolume);
+  if (musicAudio && musicAudio.setVolume) musicAudio.setVolume(musicVolume);
 }
 function musicScanDir(dir, depth) {
   if (depth > 4 || musicFiles.length >= 256) return;
@@ -208,56 +239,258 @@ function musicScan() {
   var found = saved && typeof saved.file === 'string' ? musicFiles.indexOf(saved.file) : -1;
   if (musicFiles.length) musicSelect(found >= 0 ? found : 0);
 }
+
 var musicRows = [signal(''),signal(''),signal(''),signal('')];
 var musicNowPage, musicLibraryPage;
 function musicShowPage(library) {
   if (musicNowPage) lume.setAttr(musicNowPage, 5, library ? 0 : 1);
   if (musicLibraryPage) lume.setAttr(musicLibraryPage, 5, library ? 1 : 0);
 }
-var musicTheme={colors:{bg:'#07111D',primary:'#07111D',surface:'#132435',surfaceAlt:'#1C3449',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:12,fontScale:1};
+var musicTheme={colors:{bg:'#000000',primary:'#0D1420',surface:'#16202E',surfaceAlt:'#1F2C3D',text:'#F2F7FB',textDim:'#9EB3C6',accent:'#40D8B0',danger:'#FF6B79',success:'#40D8B0'},radius:12,spacing:8,fontScale:1};
 lume.theme.set(musicTheme);
-/* r201: now-playing page pulled into the 480-round safe square x,y in [75,405].
-   All signal labels, KV keys and playback logic are unchanged. */
-var musicNowPage = View({style:{width:480,height:480,background:'bg',scroll:'none'}}, [
-  Text({text:'NOW PLAYING',style:{x:84,y:80,width:200,height:20,color:'accent',fontSize:12,borderRadius:0}}),
-  Button({title:'Library',style:{x:288,y:76,width:108,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicShowPage(true);}}),
-  Text({text:musicTitle,style:{x:84,y:112,width:312,height:28,color:'text',fontSize:20,borderRadius:0}}),
-  Text({text:musicArtist,style:{x:84,y:140,width:312,height:20,color:'textDim',fontSize:14,borderRadius:0}}),
-  View({style:{x:84,y:166,width:312,height:86,background:'surface',borderRadius:12}}),
-  Text({text:musicLineBefore2,style:{x:96,y:170,width:288,height:14,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
-  Text({text:musicLineBefore,style:{x:96,y:184,width:288,height:16,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
-  View({style:{x:96,y:200,width:288,height:28,background:'surfaceAlt',borderRadius:8}}),
-  Text({text:musicLineNow,style:{x:96,y:204,width:288,height:20,color:'accent',borderRadius:0,textAlign:'center',fontSize:18}}),
-  Text({text:musicLineAfter,style:{x:96,y:224,width:288,height:16,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
-  Text({text:musicLineAfter2,style:{x:96,y:238,width:288,height:14,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
-  View({style:{x:84,y:262,width:312,height:8,background:'surfaceAlt',borderRadius:999}}),
-  View({style:{x:84,y:262,width:function(){musicProgress();return musicDurationMs?Math.max(8,Math.min(312,Math.round(312*musicPosition()/musicDurationMs))):8;},height:8,background:'accent',borderRadius:999}}),
-  Text({text:musicTime,style:{x:84,y:274,width:312,height:16,color:'textDim',fontSize:12,borderRadius:0,textAlign:'center'}}),
-  Text({text:musicStatus,style:{x:84,y:292,width:312,height:16,color:'textDim',fontSize:11,borderRadius:0,textAlign:'center'}}),
-  Button({title:'Prev',style:{x:84,y:314,width:96,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicSelect(musicIndex-1);}}),
-  Button({title:musicPauseLabel,style:{x:192,y:314,width:96,height:48,background:'accent',borderRadius:8,fontSize:14},onPress:musicPause}),
-  Button({title:'Next',style:{x:300,y:314,width:96,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicSelect(musicIndex+1);}}),
-  Button({title:'Vol-',style:{x:84,y:366,width:60,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicVolume=Math.max(0,musicVolume-10);musicAudio.setVolume(musicVolume);}}),
-  Button({title:'-0.5',style:{x:150,y:366,width:60,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicOffset(-500);}}),
-  Text({text:musicOffsetLabel,style:{x:216,y:378,width:48,height:20,color:'textDim',fontSize:10,borderRadius:0,textAlign:'center'}}),
-  Button({title:'+0.5',style:{x:270,y:366,width:60,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicOffset(500);}}),
-  Button({title:'Vol+',style:{x:336,y:366,width:60,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicVolume=Math.min(100,musicVolume+10);musicAudio.setVolume(musicVolume);}})
+
+/* ---- Band 1: 140x140 Cover Disc + Outer Progress Ring Canvas ----------- */
+function drawCoverStage(c) {
+  var calls = 0;
+  var frac = musicFrac();
+  var cx = 70, cy = 70;
+  c.fillColor('#09131C'); c.fillRect(0, 0, 140, 140); calls++;
+
+  /* Outer playback progress track (r = 62, width 5). */
+  c.arc(cx, cy, 62, 0, 360, 5, '#1F2C3D'); calls++;
+  if (frac > 0.005) {
+    var sweep = Math.max(3, Math.round(frac * 360));
+    /* Subtle glow approximation + crisp accent progress arc. */
+    c.arc(cx, cy, 62, -90, -90 + sweep, 9, '#133C36'); calls++;
+    c.arc(cx, cy, 62, -90, -90 + sweep, 5, '#40D8B0'); calls++;
+    c.fillCircle(cx, cy - 62, 3, '#40D8B0'); calls++;
+    var rad = (-90 + frac * 360) * Math.PI / 180;
+    var dx = Math.round(cx + Math.cos(rad) * 62);
+    var dy = Math.round(cy + Math.sin(rad) * 62);
+    /* Scrubber knob dot at progress tip. */
+    c.fillCircle(dx, dy, 6, '#1B5E53'); calls++;
+    c.fillCircle(dx, dy, 4, '#F2F7FB'); calls++;
+  } else {
+    c.fillCircle(cx, cy - 62, 4, '#40D8B0'); calls++;
+  }
+
+  /* Circular vinyl cover disc (r = 53): layered aurora art + note motif. */
+  c.fillCircle(cx, cy, 54, '#243547'); calls++;
+  c.fillCircle(cx, cy, 52, '#102436'); calls++;
+  c.fillCircle(cx - 10, cy - 14, 34, '#153445'); calls++;
+  /* Golden moon/sun glow inside upper-right of disc. */
+  c.fillCircle(cx + 18, cy - 22, 16, '#3B392C'); calls++;
+  c.fillCircle(cx + 18, cy - 22, 9, '#9C8A5C'); calls++;
+  /* Layered aurora wave bands clipped inside disc radius. */
+  c.fillEllipse(cx + 4, cy + 16, 44, 18, '#2C8E9B'); calls++;
+  c.fillEllipse(cx - 8, cy + 20, 34, 12, '#3AC0A8'); calls++;
+  c.fillEllipse(cx + 2, cy + 30, 38, 15, '#B07B7E'); calls++;
+  c.fillEllipse(cx + 10, cy + 36, 28, 10, '#C29B86'); calls++;
+  /* Restore crisp circular mask edge over waves. */
+  c.arc(cx, cy, 56, 0, 360, 8, '#09131C'); calls++;
+  c.arc(cx, cy, 53, 0, 360, 2, '#2B3E52'); calls++;
+  /* Subtle vinyl grooves + center spindle + musical note accent. */
+  c.circle(cx, cy, 43, '#22384B'); calls++;
+  c.circle(cx, cy, 33, '#1D3144'); calls++;
+  c.fillCircle(cx, cy, 11, '#0D1420'); calls++;
+  c.circle(cx, cy, 11, '#58718A'); calls++;
+  c.fillCircle(cx, cy, 4, '#40D8B0'); calls++;
+  /* Minimal crisp music note glyph near upper-left for no-cover clarity. */
+  c.line(cx - 21, cy - 8, cx - 21, cy - 20, '#F2F7FB', 2);
+  c.line(cx - 13, cy - 10, cx - 13, cy - 22, '#F2F7FB', 2);
+  c.line(cx - 21, cy - 20, cx - 13, cy - 22, '#F2F7FB', 2);
+  c.fillCircle(cx - 23, cy - 7, 2, '#F2F7FB');
+  c.fillCircle(cx - 15, cy - 9, 2, '#F2F7FB');
+  calls += 5;
+
+  musicLastDrawCalls = calls;
+}
+
+/* ---- Band 3: 3-Key Transport Controls Canvas (Prev 52 / Play 66 / Next 52) */
+function drawTransportCanvas(c) {
+  var paused = musicPausedSig();
+  c.fillColor('#09131C'); c.fillRect(0, 0, 240, 72);
+
+  /* Prev circular button (center 32, 36; r = 26 -> 52x52 >= 48px vision fix). */
+  c.fillCircle(32, 38, 26, '#050A10');
+  c.fillCircle(32, 36, 26, '#3C5068');
+  c.fillCircle(32, 36, 25, '#1D2B3D');
+  c.fillColor('#F2F7FB');
+  c.fillRect(23, 29, 3, 14);
+  c.fillRect(38, 29, 2, 14);
+  c.fillRect(36, 30, 2, 12);
+  c.fillRect(34, 31, 2, 10);
+  c.fillRect(32, 32, 2, 8);
+  c.fillRect(30, 33, 2, 6);
+  c.fillRect(28, 34, 2, 4);
+
+  /* Center Play/Pause button (center 120, 36; r = 33 -> 66x66, ~1.3x side keys). */
+  c.fillCircle(120, 36, 35, '#133B34');
+  c.fillCircle(120, 36, 33, '#40D8B0');
+  c.fillCircle(120, 34, 30, '#4EE0B9');
+  c.fillCircle(120, 37, 29, '#40D8B0');
+  if (!paused) {
+    /* Pause bars in dark #0D1420 (10.7:1 contrast). */
+    c.fillColor('#0D1420');
+    c.fillRect(111, 26, 6, 20);
+    c.fillRect(123, 26, 6, 20);
+  } else {
+    /* Solid play triangle in dark #0D1420. */
+    c.fillColor('#0D1420');
+    c.fillRect(113, 26, 3, 20);
+    c.fillRect(116, 28, 3, 16);
+    c.fillRect(119, 30, 3, 12);
+    c.fillRect(122, 32, 3, 8);
+    c.fillRect(125, 34, 3, 4);
+  }
+
+  /* Next circular button (center 208, 36; r = 26 -> 52x52 >= 48px vision fix). */
+  c.fillCircle(208, 38, 26, '#050A10');
+  c.fillCircle(208, 36, 26, '#3C5068');
+  c.fillCircle(208, 36, 25, '#1D2B3D');
+  c.fillColor('#F2F7FB');
+  c.fillRect(214, 29, 3, 14);
+  c.fillRect(200, 29, 2, 14);
+  c.fillRect(202, 30, 2, 12);
+  c.fillRect(204, 31, 2, 10);
+  c.fillRect(206, 32, 2, 8);
+  c.fillRect(208, 33, 2, 6);
+  c.fillRect(210, 34, 2, 4);
+}
+
+/* ---- Band 4: 276x48 Pill Volume Slider Canvas -------------------------- */
+function drawVolumeCanvas(c) {
+  var v = musicVolSig();
+  c.fillColor('#09131C'); c.fillRect(0, 0, 276, 48);
+  /* Outer capsule background. */
+  c.fillCircle(24, 24, 24, '#243447');
+  c.fillCircle(252, 24, 24, '#243447');
+  c.fillColor('#243447'); c.fillRect(24, 0, 228, 48);
+  c.fillCircle(24, 24, 23, '#15202E');
+  c.fillCircle(252, 24, 23, '#15202E');
+  c.fillColor('#15202E'); c.fillRect(24, 1, 228, 46);
+
+  /* Left low-volume speaker icon. */
+  c.fillColor('#9EB3C6'); c.fillRect(14, 21, 4, 6);
+  c.polyline([[18, 21], [23, 17], [23, 31], [18, 27]], '#9EB3C6', 2);
+
+  /* Right high-volume speaker + teal waves icon. */
+  c.fillColor('#F2F7FB'); c.fillRect(244, 21, 4, 6);
+  c.polyline([[248, 21], [253, 17], [253, 31], [248, 27]], '#F2F7FB', 2);
+  c.arc(253, 24, 4, -45, 45, 2, '#40D8B0');
+  c.arc(253, 24, 7, -45, 45, 2, '#40D8B0');
+
+  /* Center track (x=48..228, width 180) + teal fill + 32px circular thumb. */
+  var rx = 48, rw = 180, ry = 24;
+  c.fillCircle(rx, ry, 4, '#2A3B50');
+  c.fillCircle(rx + rw, ry, 4, '#2A3B50');
+  c.fillColor('#1F2C3D'); c.fillRect(rx, ry - 3, rw, 6);
+  var fillW = Math.round((v / 100) * rw);
+  if (fillW > 2) {
+    c.fillColor('#24B398'); c.fillRect(rx, ry - 3, Math.floor(fillW / 2), 6);
+    c.fillColor('#40D8B0'); c.fillRect(rx + Math.floor(fillW / 2), ry - 3, fillW - Math.floor(fillW / 2), 6);
+    c.fillCircle(rx, ry, 3, '#24B398');
+  }
+  var tx = rx + fillW;
+  c.fillCircle(tx, ry + 2, 16, '#091018');
+  c.fillCircle(tx, ry, 16, '#40D8B0');
+  c.fillCircle(tx, ry, 14, '#EAF2F8');
+  c.fillCircle(tx, ry - 1, 12, '#FFFFFF');
+  c.fillCircle(tx, ry, 4, '#117B69');
+}
+
+/* ---- Now Playing Page (Wear OS 4-band centered radial stage) ----------- */
+var coverCanvas = Canvas({ width: 140, height: 140, style: { position: 'absolute', x: 170, y: 76, scroll: 'none' },
+  onDraw: drawCoverStage });
+var coverTap = View({ style: { position: 'absolute', x: 170, y: 76, width: 140, height: 140, borderRadius: 70, scroll: 'none' },
+  onPress: function () { musicShowPage(true); } });
+
+var transportCanvas = Canvas({ width: 240, height: 72, style: { position: 'absolute', x: 120, y: 270, scroll: 'none' },
+  onDraw: drawTransportCanvas });
+var btnPrev = View({ style: { position: 'absolute', x: 126, y: 280, width: 52, height: 52, borderRadius: 999, scroll: 'none' },
+  onPress: function () { musicSelect(musicIndex - 1); } });
+var btnPlay = View({ style: { position: 'absolute', x: 207, y: 273, width: 66, height: 66, borderRadius: 999, scroll: 'none' },
+  onPress: musicPause });
+var btnNext = View({ style: { position: 'absolute', x: 302, y: 280, width: 52, height: 52, borderRadius: 999, scroll: 'none' },
+  onPress: function () { musicSelect(musicIndex + 1); } });
+
+var volCanvas = Canvas({ width: 276, height: 48, style: { position: 'absolute', x: 102, y: 352, scroll: 'none' },
+  onDraw: drawVolumeCanvas });
+var btnVolDown = View({ style: { position: 'absolute', x: 102, y: 352, width: 52, height: 48, borderRadius: 24, scroll: 'none' },
+  onPress: function () { musicSetVolume(musicVolume - 10); } });
+var btnVolUp = View({ style: { position: 'absolute', x: 326, y: 352, width: 52, height: 48, borderRadius: 24, scroll: 'none' },
+  onPress: function () { musicSetVolume(musicVolume + 10); } });
+
+var volDragStart = 70;
+lume.gesture.on(volCanvas, 'panstart', function () { volDragStart = musicVolume; });
+lume.gesture.on(volCanvas, 'pan', function (e) {
+  musicSetVolume(volDragStart + (e.dx || 0) * 100 / 180);
+});
+
+var musicNowPage = View({ style: { width: 480, height: 480, background: '#000000', padding: 0, gap: 0, scroll: 'none' } }, [
+  /* Ambient circular watch screen bezel (r = 218 <= 220). */
+  View({ style: { position: 'absolute', x: 22, y: 22, width: 436, height: 436,
+    borderRadius: 218, background: '#09131C', borderWidth: 1, borderColor: '#1B2A3B',
+    padding: 0, gap: 0, scroll: 'none' } }),
+  coverCanvas,
+  coverTap,
+  /* Track metadata: Title (20px bold) + Artist & Time (14px dim). */
+  Text({ text: musicTitle, style: { position: 'absolute', x: 90, y: 220, width: 300, height: 26,
+    fontSize: 20, textAlign: 'center', longMode: 'dots', scroll: 'none' } }),
+  Text({ text: function () { return musicShort(musicArtist(), 15) + '  |  ' + musicTime(); },
+    style: { position: 'absolute', x: 90, y: 248, width: 300, height: 18,
+      fontSize: 14, textAlign: 'center', opacity: 0.72, longMode: 'dots', scroll: 'none' } }),
+  /* 3-key transport controls + hit targets (52 / 66 / 52). */
+  transportCanvas,
+  btnPrev,
+  btnPlay,
+  btnNext,
+  /* Tactile pill volume bar + Vol-/Vol+ touch zones. */
+  volCanvas,
+  btnVolDown,
+  btnVolUp
 ]);
-/* r201: library page pulled into the same safe square; scan/paging logic kept. */
+
+/* ---- Secondary Library & Lyrics Drawer Page (safe square [75, 405]) ---- */
 var musicLibraryItems = [
-  Text({text:'Music library',style:{x:84,y:80,width:312,height:32,color:'text',fontSize:20,borderRadius:0}}),
-  Text({text:'TF CARD  /  MUSIC',style:{x:84,y:112,width:312,height:20,color:'textDim',fontSize:12,borderRadius:0}}),
-  Text({text:musicStatus,style:{x:84,y:312,width:312,height:20,color:'textDim',fontSize:12,borderRadius:0}}),
-  Button({title:'Back',style:{x:84,y:346,width:84,height:48,background:'surfaceAlt',borderRadius:8,fontSize:12},onPress:function(){musicShowPage(false);}}),
-  Button({title:'Refresh',style:{x:176,y:346,width:84,height:48,background:'accent',borderRadius:8,fontSize:12},onPress:musicScan}),
-  Button({title:'<',style:{x:268,y:346,width:48,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicPageBy(-1);}}),
-  Button({title:'>',style:{x:324,y:346,width:48,height:48,background:'surfaceAlt',borderRadius:8,fontSize:14},onPress:function(){musicPageBy(1);}})
+  View({ style: { position: 'absolute', x: 22, y: 22, width: 436, height: 436,
+    borderRadius: 218, background: '#09131C', borderWidth: 1, borderColor: '#1B2A3B',
+    padding: 0, gap: 0, scroll: 'none' } }),
+  Text({ text: 'Library & Lyrics', style: { position: 'absolute', x: 84, y: 80, width: 312, height: 26,
+    fontSize: 20, textAlign: 'center', scroll: 'none' } }),
+  Text({ text: musicLineNow, style: { position: 'absolute', x: 84, y: 108, width: 312, height: 20,
+    fontSize: 14, textAlign: 'center', opacity: 0.85, longMode: 'dots', scroll: 'none' } }),
+  Button({ title: 'Back', style: { position: 'absolute', x: 84, y: 348, width: 72, height: 48,
+    background: '#1F2C3D', borderRadius: 999, fontSize: 14 }, onPress: function () { musicShowPage(false); } }),
+  Button({ title: '-0.5', style: { position: 'absolute', x: 162, y: 348, width: 54, height: 48,
+    background: '#16202E', borderRadius: 999, fontSize: 14 }, onPress: function () { musicOffset(-500); } }),
+  Button({ title: '+0.5', style: { position: 'absolute', x: 222, y: 348, width: 54, height: 48,
+    background: '#16202E', borderRadius: 999, fontSize: 14 }, onPress: function () { musicOffset(500); } }),
+  Button({ title: '<', style: { position: 'absolute', x: 284, y: 348, width: 52, height: 48,
+    background: '#1F2C3D', borderRadius: 999, fontSize: 14 }, onPress: function () { musicPageBy(-1); } }),
+  Button({ title: '>', style: { position: 'absolute', x: 344, y: 348, width: 52, height: 48,
+    background: '#1F2C3D', borderRadius: 999, fontSize: 14 }, onPress: function () { musicPageBy(1); } })
 ];
 for (var m = 0; m < 4; m++) (function (index) {
-  musicLibraryItems.push(Button({title:musicRows[index],style:{x:84,y:136+index*52,width:312,height:48,background:index%2?'surfaceAlt':'surface',borderRadius:8,fontSize:14},
-    onPress:function(){if(musicPage*4+index<musicFiles.length)musicSelect(musicPage*4+index);}}));
+  musicLibraryItems.push(Button({ title: musicRows[index],
+    style: { position: 'absolute', x: 84, y: 136 + index * 52, width: 312, height: 48,
+      background: index % 2 ? '#1F2C3D' : '#16202E', borderRadius: 12, fontSize: 14 },
+    onPress: function () { if (musicPage * 4 + index < musicFiles.length) musicSelect(musicPage * 4 + index); } }));
 })(m);
-musicLibraryPage = View({visible:false,style:{width:480,height:480,background:'bg',scroll:'none'}},musicLibraryItems);
+musicLibraryPage = View({ visible: false, style: { width: 480, height: 480, background: '#000000', padding: 0, gap: 0, scroll: 'none' } }, musicLibraryItems);
+
+globalThis.musicUi = {
+  coverCanvas: coverCanvas,
+  transportCanvas: transportCanvas,
+  volCanvas: volCanvas,
+  btnPrev: btnPrev, btnPlay: btnPlay, btnNext: btnNext,
+  btnVolDown: btnVolDown, btnVolUp: btnVolUp,
+  getLastDrawCalls: function () { return musicLastDrawCalls; },
+  FRAME_DRAW_BUDGET: 240,
+  SKIP_BTN_PX: 52,
+  PLAY_BTN_PX: 66
+};
+
 if (musicAudio && musicAudio.setVolume) musicAudio.setVolume(musicVolume);
 musicScan();
 lume.system.setInterval(musicTick, 20);

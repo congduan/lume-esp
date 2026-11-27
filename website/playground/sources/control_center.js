@@ -1,39 +1,24 @@
 /*
- * r159: control_center -- phone-style quick settings on the r141 shell layout
- * components. Pure app layer: no firmware / runtime / tools/lume / .d.ts change.
- * r200: aligned to docs/DESIGN-TOKENS.md round-screen safe area ([75, 405]),
- * removed redundant STATE ON/OFF copy, moved RESET into a dedicated weakened
- * danger row below the cards, and unified TAP TO RAISE at the card footer.
+ * r204: control_center v2 -- translated from artifacts/r201/design/control-center.html
+ * with r201 vision fixes applied:
+ *   - Toggle cards (Wi-Fi / Bluetooth): capsule switch track + white circular
+ *     knob (ON right, OFF left) with layered-circle shadow approximation,
+ *     ON-state accent card tint, and Wi-Fi / Bluetooth vector icons.
+ *   - Group section labels: CONNECTIONS and OUTPUT (10px muted gray stroke text).
+ *   - Slider cards (Brightness / Volume): golden sun & speaker icons,
+ *     right-aligned numeric readout, gradient-stepped teal fill rail, and 32px
+ *     circular white/teal thumb with center anchor dot & layered shadow.
+ *   - Dedicated ghost-outlined danger pill: "Reset All" with circular undo arrow.
+ *   - Preserves ALL r159 functional semantics and KV keys:
+ *       cc.wifi (0/1), cc.ble (0/1), cc.vol (0..10), cc.brt (1..5),
+ *       try/catch guarded reads/writes, step wrap cycles, and resetAll().
  *
- * SHELL CONSUMPTION (first real consumer of the three zero-consumer components):
- *   - shell.SafeArea: round-screen safe container; size 480 -> 339x339 safe square.
- *   - shell.Card: four setting cards (WiFi / Bluetooth / Volume / Brightness).
- *   - shell.IconButton: WiFi toggle, Bluetooth toggle and the bottom RESET key.
- * Card / IconButton / SafeArea are View / Button wrappers: this app allocates
- * ZERO Canvas nodes. Slider is deliberately NOT used (it is timer_kit's r157
- * consumption point); volume / brightness cycle by tapping their cards.
- *
- * STATE AND PERSISTENCE:
- *   All four values are signals. Every change is written through
- *   lume.storage.kv under a <=15-char key; startup reads back with strict
- *   validation. Reads and writes are ALL try/catch guarded: when NVS is
- *   unavailable the app degrades to in-memory defaults (volatile only).
- *     cc.wifi : 0 / 1     simulated WiFi switch, default 0
- *     cc.ble  : 0 / 1     simulated Bluetooth switch, default 0
- *     cc.vol  : 0..10     volume step, default 3
- *     cc.brt  : 1..5      brightness step, default 3
- *   WiFi / Bluetooth are LOCAL SIMULATION ONLY -- lume.net / lume.ble are never
- *   called. There is no real radio control and no real backlight coupling;
- *   both stay deferred to board bring-up.
- *
- * Layout is native View / Text / Button at 480x480. Text uses only the 14/20/32
- * bridge faces and all UI copy is ASCII (r64: the firmware font has no symbol
- * glyphs). Static tree is 21 nodes, far below LUME_MAX_NODES=128.
- * Conservative global script: var / function only, one shell.js import.
+ * Pure app layer: no firmware / runtime / tools/lume change.
+ * Text nodes use only 14/20/32 faces; entire file is ASCII-only (r64).
  */
 import '../../runtime/shell.js';
 
-lume.theme.set({ colors: { bg:'#0D1420', primary:'#0D1420', surface:'#16202E',
+lume.theme.set({ colors: { bg:'#000000', primary:'#0D1420', surface:'#16202E',
   surfaceAlt:'#1F2C3D', text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0',
   danger:'#FF6B79', success:'#40D8B0' }, radius: 12, spacing: 8 });
 
@@ -77,6 +62,14 @@ function setWifi(v) { wifi.set(!!v); kvSave(KV_WIFI, wifi() ? 1 : 0); }
 function setBle(v) { ble.set(!!v); kvSave(KV_BLE, ble() ? 1 : 0); }
 function toggleWifi() { setWifi(!wifi()); }
 function toggleBle() { setBle(!ble()); }
+function setVol(v) {
+  var q = Math.max(0, Math.min(10, Math.round(v)));
+  vol.set(kvSave(KV_VOL, q));
+}
+function setBrt(v) {
+  var q = Math.max(1, Math.min(5, Math.round(v)));
+  brt.set(kvSave(KV_BRT, q));
+}
 function cycleVol() {
   var v = vol() + 1;
   if (v > 10) v = 0;
@@ -94,93 +87,235 @@ function resetAll() {
   brt.set(kvSave(KV_BRT, DEF_BRT));
 }
 
-function accent() { return lume.theme.get().colors.accent || '#40D8B0'; }
-function surfaceAlt() { return lume.theme.get().colors.surfaceAlt || '#1F2C3D'; }
 function flagLabel(v) { return v ? 'ON' : 'OFF'; }
 function flagStatus(prefix, v) { return prefix + ' ' + (v ? 'ON' : 'OFF'); }
 
-/* ---- UI: 339x339 safe square (content inset to global [80, 400]), 21 nodes ---- */
-var root = lume.ui.shell.SafeArea({ shape: 'round', size: 480, children: [] });
+/* ---- compact 10px uppercase stroke font for CONNECTIONS / OUTPUT ------- */
+var MICRO_GLYPHS = {
+  C: [[4,0,1,0],[1,0,0,1],[0,1,0,7],[0,7,1,8],[1,8,4,8]],
+  E: [[0,0,4,0],[0,0,0,8],[0,4,3,4],[0,8,4,8]],
+  I: [[1,0,3,0],[2,0,2,8],[1,8,3,8]],
+  N: [[0,8,0,0],[0,0,4,8],[4,8,4,0]],
+  O: [[1,0,3,0],[3,0,4,1],[4,1,4,7],[4,7,3,8],[3,8,1,8],[1,8,0,7],[0,7,0,1],[0,1,1,0]],
+  P: [[0,8,0,0],[0,0,3,0],[3,0,4,1],[4,1,4,3],[4,3,3,4],[3,4,0,4]],
+  S: [[4,1,3,0],[3,0,1,0],[1,0,0,1],[0,1,0,3],[0,3,4,5],[4,5,4,7],[4,7,3,8],[3,8,1,8],[1,8,0,7]],
+  T: [[0,0,4,0],[2,0,2,8]],
+  U: [[0,0,0,7],[0,7,1,8],[1,8,3,8],[3,8,4,7],[4,7,4,0]]
+};
+function drawMicroLabel(c, text, x, y, col) {
+  var cx = x;
+  for (var i = 0; i < text.length; i++) {
+    var segs = MICRO_GLYPHS[text[i]];
+    if (segs) {
+      for (var j = 0; j < segs.length; j++) {
+        var s = segs[j];
+        c.line(cx + s[0], y + s[1], cx + s[2], y + s[3], col, 1);
+      }
+    }
+    cx += 7;
+  }
+}
 
-Text({ parent: root, text: 'CONTROL CENTER',
-  style: { x: 10, y: 8, width: 320, height: 28, fontSize: 20, borderRadius: 0,
-    textAlign: 'center', color: '#F2F7FB', scroll: 'none' } });
+/* ---- Canvas render helpers --------------------------------------------- */
+function drawCapsule(c, x, y, w, h, fill, border) {
+  var r = Math.floor(h / 2);
+  if (border) {
+    c.fillCircle(x + r, y + r, r, border);
+    c.fillCircle(x + w - r, y + r, r, border);
+    c.fillColor(border); c.fillRect(x + r, y, w - 2 * r, h);
+    var ir = r - 1;
+    c.fillCircle(x + r, y + r, ir, fill);
+    c.fillCircle(x + w - r, y + r, ir, fill);
+    c.fillColor(fill); c.fillRect(x + r, y + 1, w - 2 * r, h - 2);
+  } else {
+    c.fillCircle(x + r, y + r, r, fill);
+    c.fillCircle(x + w - r, y + r, r, fill);
+    c.fillColor(fill); c.fillRect(x + r, y, w - 2 * r, h);
+  }
+}
 
-/* Four cards sit on an 8 px grid inside local [10..330] (global [80..400]).
- * WiFi / Bluetooth toggles express state directly via button color + ON/OFF
- * label (no redundant STATE line). RESET occupies a dedicated centered row
- * below the cards with a weakened danger outline. */
-var CARD_W = 156, TOP_H = 104, BOT_H = 108;
+function drawToggleCardCanvas(c, kind, isOn) {
+  var bg = isOn ? '#14292E' : '#172231';
+  c.fillColor(bg); c.fillRect(0, 0, 134, 62);
+  var iconCol = isOn ? '#40D8B0' : '#9EB3C6';
+  if (kind === 'wifi') {
+    c.arc(12, 18, 10, 225, 315, 2, iconCol);
+    c.arc(12, 18, 6, 225, 315, 2, iconCol);
+    c.fillCircle(12, 18, 2, iconCol);
+    c.text(28, 6, 'Wi-Fi', '#F2F7FB');
+  } else {
+    c.polyline([[8, 8], [16, 16], [12, 20], [12, 4], [16, 8], [8, 16]], iconCol, 2);
+    c.text(26, 6, 'Bluetooth', '#F2F7FB');
+  }
+  /* Capsule switch track (50x28) at bottom-right (x=80, y=32). */
+  var tx = 80, ty = 32;
+  drawCapsule(c, tx, ty, 50, 28, isOn ? '#40D8B0' : '#1F2C3D', isOn ? '#6EEAC8' : '#3A4E66');
+  /* White circular knob with layered-circle shadow approximation (vision fix). */
+  var kx = isOn ? (tx + 36) : (tx + 14);
+  var ky = ty + 14;
+  c.fillCircle(kx, ky + 2, 11, isOn ? '#1B6E5C' : '#0B121B');
+  c.fillCircle(kx, ky + 1, 11, isOn ? '#2A9A80' : '#121C29');
+  c.fillCircle(kx, ky, 11, '#E6EFF7');
+  c.fillCircle(kx, ky - 1, 9, '#FFFFFF');
+}
 
-var wifiBtn = lume.ui.shell.IconButton({ title: function () { return flagLabel(wifi()); }, size: 56,
-  style: { fontSize: 14,
-    background: function () { return wifi() ? '#117B69' : surfaceAlt(); },
-    borderWidth: 2,
-    borderColor: function () { return wifi() ? accent() : '#5C7794'; } },
-  onPress: function () { toggleWifi(); } });
-var bleBtn = lume.ui.shell.IconButton({ title: function () { return flagLabel(ble()); }, size: 56,
-  style: { fontSize: 14,
-    background: function () { return ble() ? '#117B69' : surfaceAlt(); },
-    borderWidth: 2,
-    borderColor: function () { return ble() ? accent() : '#5C7794'; } },
-  onPress: function () { toggleBle(); } });
+function drawSliderCardCanvas(c, kind, pct) {
+  c.fillColor('#16202E'); c.fillRect(0, 0, 296, 52);
+  if (kind === 'brt') {
+    /* Golden sun icon (#FFD78E) */
+    c.arc(9, 10, 3, 0, 360, 2, '#FFD78E');
+    c.line(9, 3, 9, 5, '#FFD78E', 2); c.line(9, 15, 9, 17, '#FFD78E', 2);
+    c.line(2, 10, 4, 10, '#FFD78E', 2); c.line(14, 10, 16, 10, '#FFD78E', 2);
+    c.line(4, 5, 6, 7, '#FFD78E', 1); c.line(12, 13, 14, 15, '#FFD78E', 1);
+    c.line(14, 5, 12, 7, '#FFD78E', 1); c.line(6, 13, 4, 15, '#FFD78E', 1);
+    c.text(24, 3, 'Brightness', '#9EB3C6');
+  } else {
+    /* Speaker + teal acoustic waves icon */
+    c.fillColor('#9EB3C6'); c.fillRect(3, 8, 4, 5);
+    c.polyline([[7, 8], [11, 4], [11, 16], [7, 13]], '#9EB3C6', 2);
+    c.arc(11, 10, 4, -45, 45, 2, '#40D8B0');
+    c.arc(11, 10, 7, -45, 45, 2, '#40D8B0');
+    c.text(24, 3, 'Volume', '#9EB3C6');
+  }
+  /* Right-aligned percentage readout. */
+  var valStr = pct + '%';
+  var valX = 294 - valStr.length * 9;
+  c.text(valX, 3, valStr, '#F2F7FB');
 
+  /* Recessed rail + stepped gradient teal fill + 32px circular thumb. */
+  var rx = 16, rw = 264, ry = 35;
+  drawCapsule(c, rx - 2, ry - 4, rw + 4, 8, '#1F2C3D', '#35485E');
+  var fillW = Math.max(0, Math.round((pct / 100) * rw));
+  var stops = ['#148A75', '#1B9F87', '#24B398', '#2FC6A6', '#38D2AC', '#40D8B0'];
+  if (fillW > 6) {
+    var segs = stops.length;
+    var sw = Math.max(1, Math.ceil(fillW / segs));
+    for (var i = 0; i < segs; i++) {
+      var sx = rx + i * sw;
+      var cw = Math.min(sw, rx + fillW - sx);
+      if (cw <= 0) break;
+      c.fillColor(stops[i]);
+      c.fillRect(sx, ry - 3, cw, 6);
+    }
+    c.fillCircle(rx, ry, 3, stops[0]);
+  }
+  /* 32px circular thumb (r=15 inside 52px canvas height) with layered shadow. */
+  var tx = rx + fillW;
+  c.fillCircle(tx, ry + 2, 15, '#091018');
+  c.fillCircle(tx, ry, 15, '#40D8B0');
+  c.fillCircle(tx, ry, 13, '#EDF4FA');
+  c.fillCircle(tx, ry - 1, 11, '#FFFFFF');
+  c.fillCircle(tx, ry, 4, '#117B69');
+}
+
+/* ---- UI: round watch bezel + SafeArea layout --------------------------- */
+var outerRoot = View({ style: { x: 0, y: 0, width: 480, height: 480,
+  padding: 0, gap: 0, background: '#000000', scroll: 'none' } });
+View({ parent: outerRoot, style: { position: 'absolute', x: 16, y: 16, width: 448, height: 448,
+  borderRadius: 224, background: '#0A111B', borderWidth: 1, borderColor: '#1B2838',
+  padding: 0, gap: 0, scroll: 'none' } });
+
+var root = lume.ui.shell.SafeArea({ parent: outerRoot, shape: 'round', size: 480, children: [] });
+
+Text({ parent: root, text: 'Control Center',
+  style: { position: 'absolute', x: 10, y: 0, width: 320, height: 26, fontSize: 20,
+    textAlign: 'center', scroll: 'none' } });
+
+/* Group 1 label: CONNECTIONS (10px muted gray, vision fix). */
+Canvas({ parent: root, width: 320, height: 12,
+  style: { position: 'absolute', x: 10, y: 28, scroll: 'none' },
+  onDraw: function (c) {
+    c.fillColor('#0A111B'); c.fillRect(0, 0, 320, 12);
+    drawMicroLabel(c, 'CONNECTIONS', 2, 2, '#6E859E');
+  } });
+
+/* Row 1: Wi-Fi and Bluetooth toggle cards (154x78 each, radius 12). */
+var wifiCanvas = Canvas({ width: 134, height: 62, style: { scroll: 'none' },
+  onDraw: function (c) { drawToggleCardCanvas(c, 'wifi', wifi()); } });
 var wifiCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { toggleWifi(); },
-  style: { x: 10, y: 44, width: CARD_W, height: TOP_H, padding: 8, gap: 8,
-    alignItems: 'center', justifyContent: 'space-between' },
-  children: [
-    Text({ text: 'WIFI', style: { height: 18, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
-    wifiBtn,
-  ] });
+  style: { position: 'absolute', x: 10, y: 42, width: 154, height: 78,
+    padding: 8, gap: 0, borderRadius: 12, borderWidth: 1,
+    background: function () { return wifi() ? '#14292E' : '#172231'; },
+    borderColor: function () { return wifi() ? '#34A88B' : '#263548'; },
+    alignItems: 'center', justifyContent: 'center' },
+  children: [wifiCanvas] });
 
+var bleCanvas = Canvas({ width: 134, height: 62, style: { scroll: 'none' },
+  onDraw: function (c) { drawToggleCardCanvas(c, 'ble', ble()); } });
 var bleCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { toggleBle(); },
-  style: { x: 174, y: 44, width: CARD_W, height: TOP_H, padding: 8, gap: 8,
-    alignItems: 'center', justifyContent: 'space-between' },
-  children: [
-    Text({ text: 'BLUETOOTH', style: { height: 18, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
-    bleBtn,
-  ] });
+  style: { position: 'absolute', x: 176, y: 42, width: 154, height: 78,
+    padding: 8, gap: 0, borderRadius: 12, borderWidth: 1,
+    background: function () { return ble() ? '#14292E' : '#172231'; },
+    borderColor: function () { return ble() ? '#34A88B' : '#263548'; },
+    alignItems: 'center', justifyContent: 'center' },
+  children: [bleCanvas] });
 
-var volCard = lume.ui.shell.Card({ parent: root,
-  onPress: function () { cycleVol(); },
-  style: { x: 10, y: 156, width: CARD_W, height: BOT_H, padding: 8, gap: 4,
-    justifyContent: 'space-between' },
-  children: [
-    Text({ text: 'VOLUME', style: { height: 16, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
-    Text({ text: function () { return 'VOL ' + vol() + '/10'; },
-      style: { height: 24, fontSize: 20, borderRadius: 0, color: '#F2F7FB', scroll: 'none' } }),
-    View({ style: { height: 8, width: 140, padding: 0, gap: 0,
-      borderRadius: 4, background: '#1F2C3D', scroll: 'none' } }, [
-      View({ style: { height: 8, width: function () { return Math.round(vol() * 14); },
-        padding: 0, gap: 0, borderRadius: 4, background: accent(), scroll: 'none' } }),
-    ]),
-    Text({ text: 'TAP TO RAISE', style: { height: 16, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
-  ] });
+/* Group 2 label: OUTPUT (10px muted gray, vision fix). */
+Canvas({ parent: root, width: 320, height: 12,
+  style: { position: 'absolute', x: 10, y: 124, scroll: 'none' },
+  onDraw: function (c) {
+    c.fillColor('#0A111B'); c.fillRect(0, 0, 320, 12);
+    drawMicroLabel(c, 'OUTPUT', 2, 2, '#6E859E');
+  } });
 
+/* Row 2: Brightness slider card (320x66). Tap cycles 1..5; pan drags directly. */
+var brtCanvas = Canvas({ width: 296, height: 52, style: { scroll: 'none' },
+  onDraw: function (c) { drawSliderCardCanvas(c, 'brt', Math.round((brt() / 5) * 100)); } });
 var brtCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { cycleBrt(); },
-  style: { x: 174, y: 156, width: CARD_W, height: BOT_H, padding: 8, gap: 4,
-    justifyContent: 'space-between' },
-  children: [
-    Text({ text: 'BRIGHTNESS', style: { height: 16, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
-    Text({ text: function () { return 'BRT ' + brt() + '/5'; },
-      style: { height: 24, fontSize: 20, borderRadius: 0, color: '#F2F7FB', scroll: 'none' } }),
-    View({ style: { height: 8, width: 140, padding: 0, gap: 0,
-      borderRadius: 4, background: '#1F2C3D', scroll: 'none' } }, [
-      View({ style: { height: 8, width: function () { return brt() * 28; },
-        padding: 0, gap: 0, borderRadius: 4, background: accent(), scroll: 'none' } }),
-    ]),
-    Text({ text: 'TAP TO RAISE', style: { height: 16, fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } }),
-  ] });
+  style: { position: 'absolute', x: 10, y: 138, width: 320, height: 66,
+    padding: 7, gap: 0, borderRadius: 12, borderWidth: 1,
+    background: '#16202E', borderColor: '#253447',
+    alignItems: 'center', justifyContent: 'center' },
+  children: [brtCanvas] });
 
-var resetBtn = lume.ui.shell.IconButton({ parent: root, title: 'RESET', size: 48,
-  style: { x: 110, y: 280, width: 120, height: 48, borderRadius: 999,
-    fontSize: 14, background: '#16202E', borderWidth: 2, borderColor: '#FF6B79' },
-  onPress: function () { resetAll(); } });
+/* Row 3: Volume slider card (320x66). Tap cycles 0..10; pan drags directly. */
+var volCanvas = Canvas({ width: 296, height: 52, style: { scroll: 'none' },
+  onDraw: function (c) { drawSliderCardCanvas(c, 'vol', vol() * 10); } });
+var volCard = lume.ui.shell.Card({ parent: root,
+  onPress: function () { cycleVol(); },
+  style: { position: 'absolute', x: 10, y: 210, width: 320, height: 66,
+    padding: 7, gap: 0, borderRadius: 12, borderWidth: 1,
+    background: '#16202E', borderColor: '#253447',
+    alignItems: 'center', justifyContent: 'center' },
+  children: [volCanvas] });
 
-/* Harness / simulator introspection surface (same convention as timer_kit). */
+/* Gesture tap + pan support on both slider canvases. */
+var brtDragStart = 3, volDragStart = 3;
+lume.gesture.on(brtCanvas, 'tap', function () { cycleBrt(); });
+lume.gesture.on(brtCanvas, 'panstart', function () { brtDragStart = brt(); });
+lume.gesture.on(brtCanvas, 'pan', function (e) {
+  setBrt(brtDragStart + (e.dx || 0) * 4 / 264);
+});
+lume.gesture.on(volCanvas, 'tap', function () { cycleVol(); });
+lume.gesture.on(volCanvas, 'panstart', function () { volDragStart = vol(); });
+lume.gesture.on(volCanvas, 'pan', function (e) {
+  setVol(volDragStart + (e.dx || 0) * 10 / 264);
+});
+
+/* Row 4: Dedicated ghost-outlined danger "Reset All" pill with circular undo arrow. */
+var resetCanvas = Canvas({ width: 164, height: 32, style: { scroll: 'none' },
+  onDraw: function (c) {
+    c.fillColor('#201118'); c.fillRect(0, 0, 164, 32);
+    /* Circular undo arrow icon at (48, 16) */
+    c.arc(48, 16, 6, -40, 235, 2, '#FF6B79');
+    c.line(41, 10, 42, 15, '#FF6B79', 2);
+    c.line(42, 15, 47, 14, '#FF6B79', 2);
+    c.text(62, 9, 'Reset All', '#FF6B79');
+  } });
+var resetBtn = View({ parent: root,
+  onPress: function () { resetAll(); },
+  style: { position: 'absolute', x: 64, y: 286, width: 212, height: 48,
+    borderRadius: 999, background: '#201118', borderWidth: 1, borderColor: '#BF4E5B',
+    padding: 0, gap: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+    scroll: 'none' } }, [resetCanvas]);
+
+/* Aliases preserve existing harness introspection handles (wifiBtn/bleBtn). */
+var wifiBtn = wifiCard;
+var bleBtn = bleCard;
+
 globalThis.ccWifi = wifi;
 globalThis.ccBle = ble;
 globalThis.ccVol = vol;
@@ -197,14 +332,14 @@ globalThis.ccApi = {
   wifi: wifi, ble: ble, vol: vol, brt: brt,
   root: root, wifiBtn: wifiBtn, bleBtn: bleBtn, resetBtn: resetBtn,
   wifiCard: wifiCard, bleCard: bleCard,
-  volCard: volCard, brtCard: brtCard, resetBtn: resetBtn,
+  volCard: volCard, brtCard: brtCard,
   toggleWifi: toggleWifi, toggleBle: toggleBle,
-  cycleVol: cycleVol, cycleBrt: cycleBrt, resetAll: resetAll,
-  setWifi: setWifi, setBle: setBle,
+  cycleVol: cycleVol, cycleBrt: cycleBrt, setVol: setVol, setBrt: setBrt,
+  resetAll: resetAll, setWifi: setWifi, setBle: setBle,
   kvLoadFlag: kvLoadFlag, kvLoadStep: kvLoadStep, kvSave: kvSave,
   flagLabel: flagLabel, flagStatus: flagStatus,
   KV_WIFI: KV_WIFI, KV_BLE: KV_BLE, KV_VOL: KV_VOL, KV_BRT: KV_BRT,
   DEF_WIFI: DEF_WIFI, DEF_BLE: DEF_BLE, DEF_VOL: DEF_VOL, DEF_BRT: DEF_BRT,
-  NODE_BUDGET: 128, STATIC_NODES: 21
+  NODE_BUDGET: 128, CANVAS_BUDGET: 230400
 };
 lume.log('CONTROL CENTER READY');
