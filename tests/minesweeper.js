@@ -299,13 +299,12 @@ function plain(v) { return JSON.parse(JSON.stringify(v)); } // vm-realm arrays -
   assert.ok(iw, 'layout constants found');
   const IW = +iw[1], IH = +iw[2], CELL = +iw[3], GAP = +iw[4], GX = +iw[5], GY = +iw[6];
   assert.equal(IW * IH, 230400, 'single full-screen canvas is the whole budget');
-  assert.equal(CELL * s.COLS + GAP * (s.COLS - 1), 398, 'grid width 10x38 + 9x2');
-  const gridR = GX + s.COLS * (CELL + GAP) - GAP;   // 41 + 400 - 2 = 439
-  const gridB = GY + s.ROWS * (CELL + GAP) - GAP;   // 64 + 400 - 2 = 462
-  assert.ok(gridR <= 480, 'grid right edge inside 480');
-  assert.ok(gridB <= 480, 'grid bottom inside 480');
-  assert.ok(gridB >= 62, 'grid top (' + GY + ') must clear the BEST text row at y=48');
-  console.log('PASS minesweeper canvas budget: 230400 px single canvas, grid in bounds');
+  assert.equal(CELL * s.COLS + GAP * (s.COLS - 1), 268, 'grid width 10x25 + 9x2');
+  const gridR = GX + s.COLS * (CELL + GAP) - GAP;   // 106 + 270 - 2 = 374
+  const gridB = GY + s.ROWS * (CELL + GAP) - GAP;   // 132 + 270 - 2 = 400
+  assert.ok(GX >= 75 && gridR <= 405, 'grid x inside round safe square [75,405]');
+  assert.ok(GY >= 132 && gridB <= 405, 'grid y clears HUD/RESTART and stays inside [75,405]');
+  console.log('PASS minesweeper canvas budget: 230400 px single canvas, grid in safe square');
 }
 
 // 15. every board is complete: 15 mines + 85 safe cells, and fully diggable
@@ -337,17 +336,17 @@ function plain(v) { return JSON.parse(JSON.stringify(v)); } // vm-realm arrays -
   assert.ok(bootOps <= 240, `boot ops ${bootOps}`);
   // single flag toggle: 1 cell dirty rect, 1 spriteDraw, 0 draw calls
   let from = ui.messages.length;
-  ui.gesture(1, 0, 41 + 10, 64 + 10, 0);
-  ui.gesture(1, 1, 41 + 10, 64 + 10, 500);
-  ui.gesture(1, 2, 41 + 10, 64 + 10, 520);
+  ui.gesture(1, 0, 106 + 10, 132 + 10, 0);
+  ui.gesture(1, 1, 106 + 10, 132 + 10, 500);
+  ui.gesture(1, 2, 106 + 10, 132 + 10, 520);
   const flagSlice = ui.messages.slice(from);
   assert.equal(draws(flagSlice), 0, 'flag toggle emits 0 draw calls');
   assert.equal(totalOps(flagSlice), 1, 'flag toggle emits 1 spriteDraw');
   assert.equal(flagSlice.filter(m => m[0] === 'invalidate').length, 1, 'flag toggle emits 1 dirty rect');
   // dig (flood fill) stays <=240 ops
   from = ui.messages.length;
-  ui.gesture(1, 0, 41 + 5 * 40 + 10, 64 + 5 * 40 + 10, 600);
-  ui.gesture(1, 2, 41 + 5 * 40 + 10, 64 + 5 * 40 + 10, 640);
+  ui.gesture(1, 0, 106 + 5 * 27 + 10, 132 + 5 * 27 + 10, 600);
+  ui.gesture(1, 2, 106 + 5 * 27 + 10, 132 + 5 * 27 + 10, 640);
   const digSlice = ui.messages.slice(from);
   const digOps = totalOps(digSlice);
   assert.ok(digOps > 0 && digOps <= 240, `dig ops ${digOps}`);

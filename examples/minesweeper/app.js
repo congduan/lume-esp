@@ -1,4 +1,4 @@
-/* Minesweeper — r76, r68 retro pixel dialect, original art. 10x10 grid, 15 mines.
+/* Minesweeper -- r76, r68 retro pixel dialect, original art. 10x10 grid, 15 mines.
  * Hard-edge fillRect on integer pixels (no AA); digits 1-8, the flag and the
  * mine are 5x7 / 7x7 pixel sprites precomputed into run-length spans decoded
  * ONCE at eval and replayed every frame (the mario/sokoban/memory pattern);
@@ -7,11 +7,11 @@
  * and its 8 neighbours. Tap digs (flood fill through zero cells, explicit
  * stack, no recursion), long-press flags. Flagged cells cannot be dug. Hitting
  * a mine reveals the board; digging every safe cell wins. Best (lowest) time
- * goes to lume.storage.kv — NVS keys cap at 15 chars (lume_kv.c), so the key
+ * goes to lume.storage.kv -- NVS keys cap at 15 chars (lume_kv.c), so the key
  * is 'hisc.mine' (9 chars). UI text is ASCII only (firmware font has no
- * decorative Unicode — r64). */
+ * decorative Unicode -- r64). */
 
-/* ------------------- logic (host harness splits at /* GAME UI *​/) ------- */
+/* ------------------- logic (host harness splits at GAME UI marker) ------- */
 var COLS=10, ROWS=10, MINES=15, CELLS=COLS*ROWS;
 var PAL={
   '1':'#5B9BC4','2':'#7A8F4E','3':'#D94F3D','4':'#7A5BC4',
@@ -22,7 +22,7 @@ var PAL={
   H:'#F2E7C9'   /* mine highlight */
 };
 
-/* 5x7 digit glyphs ('1'..'8' — ink char = its own palette key), 7x7 flag and
+/* 5x7 digit glyphs ('1'..'8' -- ink char = its own palette key), 7x7 flag and
  * mine sprites. '.' transparent. */
 var SPRITES={
   '1':['.1...','11...','.1...','.1...','.1...','.1...','11111'],
@@ -58,7 +58,7 @@ function mineNeighbors(c){
 }
 
 /* Model. mask[c]: 0 hidden, 1 revealed, 2 flagged. mines[]/counts[] are null
- * until the first dig — first tap (and its 8 neighbours) is always safe. */
+ * until the first dig -- first tap (and its 8 neighbours) is always safe. */
 function mineDeal(){
   var mask=[];
   for(var c=0;c<CELLS;c++)mask.push(0);
@@ -96,7 +96,7 @@ function minePlace(s,safeC,rnd){
 }
 
 /* Flood fill from a revealed zero cell using an explicit stack (no recursion
- * — QuickJS depth budget stays untouched). Flagged cells are never auto-
+ * -- QuickJS depth budget stays untouched). Flagged cells are never auto-
  * opened by the flood; the player keeps their flag. */
 function mineFlood(s,c0){
   var stack=[c0],opened=0;
@@ -170,7 +170,7 @@ function mineBest(){try{var n=lume.storage.kv.get('hisc.mine');
 function mineSave(t){try{lume.storage.kv.set('hisc.mine',t);}catch(e){/* volatile best still works */}return t;}
 
 /* ------------------------------ GAME UI ------------------------------ */
-var IW=480, IH=480, CELL=38, GAP=2, GX=41, GY=64;
+var IW=480, IH=480, CELL=25, GAP=2, GX=106, GY=132;
 var BG='#141018', HID='#3A4150', HID_B='#5A6273', REV='#191520', REV_B='#232A36';
 var BOOM_BG='#3A1F1F', FLAG_BG='#3A4150';
 
@@ -188,19 +188,19 @@ function tileStamp(px,key,ox,oy,scale){var list=SPANS[key];for(var i=0;i<list.le
 function makeTile(bgHex,borderHex,bw,spriteKey,ox,oy){
   var px=new Uint16Array(CELL*CELL),bg=hex565(bgHex),bd=hex565(borderHex);
   tileFill(px,0,0,CELL,CELL,bg);tileFill(px,0,0,CELL,bw,bd);tileFill(px,0,0,bw,CELL,bd);
-  if(spriteKey)tileStamp(px,spriteKey,ox,oy,4);
+  if(spriteKey)tileStamp(px,spriteKey,ox,oy,3);
   return px;
 }
 var TILE_SLOTS={hidden:1,flagged:2,rev0:3,mine:4,boom:5,rev1:6,rev2:7,rev3:8};
 var TILES={
   hidden:makeTile(HID,HID_B,2,null,0,0),
-  flagged:makeTile(FLAG_BG,HID_B,2,'flag',5,5),
+  flagged:makeTile(FLAG_BG,HID_B,2,'flag',2,2),
   rev0:makeTile(REV,REV_B,1,null,0,0),
-  mine:makeTile(REV,REV_B,1,'mine',5,5),
-  boom:makeTile(BOOM_BG,REV_B,1,'mine',5,5),
-  rev1:makeTile(REV,REV_B,1,'1',9,5),
-  rev2:makeTile(REV,REV_B,1,'2',9,5),
-  rev3:makeTile(REV,REV_B,1,'3',9,5)
+  mine:makeTile(REV,REV_B,1,'mine',2,2),
+  boom:makeTile(BOOM_BG,REV_B,1,'mine',2,2),
+  rev1:makeTile(REV,REV_B,1,'1',5,2),
+  rev2:makeTile(REV,REV_B,1,'2',5,2),
+  rev3:makeTile(REV,REV_B,1,'3',5,2)
 };
 var tilesUploaded=false,prevSnap=null;
 function ensureTiles(ctx){if(tilesUploaded)return;for(var k in TILE_SLOTS)ctx.retainImage(TILE_SLOTS[k],CELL,CELL,TILES[k]);tilesUploaded=true;}
@@ -224,7 +224,7 @@ function paintCell(ctx,c,a){
   if(n===2){ctx.drawImage(TILE_SLOTS.rev2,cx,cy,0);return;}
   if(n===3){ctx.drawImage(TILE_SLOTS.rev3,cx,cy,0);return;}
   ctx.drawImage(TILE_SLOTS.rev0,cx,cy,0);
-  drawSprite(ctx,String(n),cx+9,cy+5,4,a);
+  drawSprite(ctx,String(n),cx+5,cy+2,3,a);
 }
 
 var painted=false;
@@ -258,8 +258,9 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   return [u];
 }});
 
-/* r201: HUD + RESTART inside the 480-round safe square. The 480x480 canvas,
-   CELL/GAP/GX/GY grid math and all game logic are harness anchors and unchanged. */
+/* r201/r216: HUD + RESTART and 10x10 grid (CELL=25, GAP=2, GX=106, GY=132 ->
+   [106..374, 132..400]) all sit inside the 480-round safe square [75,405]
+   with zero HUD overlap. */
 Text({parent:root,text:'MINESWEEPER',style:{position:'absolute',x:84,y:80,width:110,fontSize:14,borderRadius:0,color:'#F2F7FB'}});
 Text({parent:root,text:function(){return hudSig()||'FLAGS '+MINES+'  TIME 000';},style:{position:'absolute',x:194,y:80,width:102,fontSize:11,borderRadius:0,color:'#9EB3C6'}});
 Text({parent:root,text:function(){
