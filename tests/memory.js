@@ -234,15 +234,17 @@ function deckFaces(st) { return st.deck.map((f) => f); }
   console.log('PASS memory spans: 8 faces decoded, palette refs all valid');
 }
 
-// 11. canvas budget: 480x480 single canvas = exactly the 230,400 px cap
+// 11. canvas budget: 480x480 single canvas = exactly the 230,400 px cap.
+// r210 safe-area anchors: the board and the DEAL row must both fit the
+// 480-round 329px safe square [75,405], not merely the 480px full screen.
 {
   assert.equal(s.IW * s.IH, 230400, 'single full-screen canvas is the whole budget');
-  assert.equal(s.CELL, 88); assert.equal(s.GAP, 8);
-  const gridW = s.GX + s.COLS * (s.CELL + s.GAP) - s.GAP; // 64 + 4*96 - 8 = 440
-  const gridH = s.GY + s.ROWS * (s.CELL + s.GAP) - s.GAP; // 44 + 4*96 - 8 = 420
-  assert.ok(gridW <= 480, 'grid right edge inside 480');
-  assert.ok(gridH <= 424, 'grid bottom (' + gridH + ') must not overlap the button row (y=424)');
-  console.log('PASS memory canvas budget: 230400 px single canvas, grid in bounds');
+  assert.equal(s.CELL, 52); assert.equal(s.GAP, 4);
+  const gridW = s.GX + s.COLS * (s.CELL + s.GAP) - s.GAP; // 130 + 4*56 - 4 = 350
+  const gridH = s.GY + s.ROWS * (s.CELL + s.GAP) - s.GAP; // 132 + 4*56 - 4 = 352
+  assert.ok(gridW <= 405, 'grid right edge (' + gridW + ') inside safe square x<=405');
+  assert.ok(gridH <= 356, 'grid bottom (' + gridH + ') must clear the DEAL row (y=356)');
+  console.log('PASS memory canvas budget: 230400 px single canvas, grid in safe square');
 }
 
 // 12. every dealt board is fully solvable (trivially true by construction: 8 pairs)
