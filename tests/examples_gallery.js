@@ -20,10 +20,10 @@ function galleryRegion(doc) {
   return doc.slice(i, j + END.length);
 }
 const region = galleryRegion(html);
-const cards = region.match(/<article class="example-card card reveal">/g) || [];
-const blocks = [...region.matchAll(/<article class="example-card card reveal">([\s\S]*?)<\/article>/g)]
+const cards = region.match(/<article class="example-card card reveal"(?=[ >])/g) || [];
+const blocks = [...region.matchAll(/<article class="example-card card reveal"[^>]*>([\s\S]*?)<\/article>/g)]
   .map(m => m[1]);
-const ids = blocks.map(b => (b.match(/<pre><code>examples\/([a-z0-9_]+)\/app\.js<\/code><\/pre>/) || [])[1]);
+const ids = blocks.map(b => (b.match(/<code>examples\/([a-z0-9_]+)\/app\.js<\/code>/) || [])[1]);
 const apps = readManifest();
 
 const metaBlock = (read('website/playground/page.js').match(/const examples = \[([\s\S]*?)\];/) || [])[1];
@@ -38,8 +38,8 @@ const HW = /\bTF\b|TF卡|\bIMU\b|\bPMIC\b|\bADC\d*\b|microphone|walkie-talkie|\b
 const STUB = /\bstub\b|no audio|sample data|模拟|无音频/i;
 const needsHardware = e => !STUB.test(e.descEn) && !STUB.test(e.descZh) &&
   (HW.test(e.descEn) || HW.test(e.descZh));
-const BADGE_HTML = '<span class="pill" data-en="Board hardware may be required" ' +
-  'data-zh="可能需要板载外设">Board hardware may be required</span>';
+const BADGE_HTML = '<span class="pill status-warn" title="Board hardware may be required" ' +
+  'data-en="Board hardware" data-zh="需板载外设">Board hardware</span>';
 
 function cardMetaOk(block, app) {
   const e = meta.get(app);
