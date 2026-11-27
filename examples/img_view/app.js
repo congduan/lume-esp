@@ -6,35 +6,17 @@
  *  bilinear sampling. The HUD shows the active factor, sampling mode, source
  *  to destination dimensions and the scale() return code.
  *
- *  FIXTURE SOURCE: SRC below is a SYNTHETIC 24x24 RGB565 pattern generated at
- *  authoring time by a throwaway script -- NOT a photograph or a device
- *  capture. It intentionally mixes a horizontal red/blue gradient, a vertical
- *  green gradient, a hard black/white checkerboard (edges) and a solid cyan
- *  block with a red diagonal stripe, so both nearest and bilinear sampling are
- *  easy to eyeball. It is embedded as a plain JS array literal; no decoder or
- *  filesystem access is involved.
- *
  *  RETURN-CODE DISCIPLINE: scale() returns 0 on success and a NEGATIVE code on
- *  failure (-1 bad argument/type/mode, -2 invalid dimensions/too-short view/
- *  overlap, -3 reserved/unreachable). Every failure is discriminated
- *  NUMERICALLY with `rc < 0` and rendered as ASCII "ERR <code>"; zero is
- *  SUCCESS and is never rendered as an error. No truthy-number test.
- *
- *  ZERO-COPY / BUFFER: SRC is the source view and DST is one preallocated
- *  192x192 Uint16Array. Each render scales into `DST.subarray(0, dw*dh)`; the
- *  native binding uses the views directly (no backing-store copy) and honours
- *  subarray offsets. The largest grid (192x192) fits the single DST allocation.
+ *  failure. Every failure is discriminated NUMERICALLY with `rc < 0` and
+ *  rendered as ASCII "ERR <code>"; zero is SUCCESS and never rendered as error.
  *
  *  NODE BUDGET: the firmware node table is LUME_MAX_NODES = 128 slots. This
- *  app builds ONE static tree of 10 nodes and creates nothing at runtime:
- *    root View (1) + header View + Text (2) + Canvas (1) +
- *    HUD View + 2 Texts (3) + controls View + 2 Buttons (3).
- *  No lists, no dynamic views; the sprite slot is redefined in place.
+ *  app builds ONE static tree of 10 nodes inside the [76, 404] round AMOLED
+ *  safe square (root + dial bezel + header Text + status pill View & Text +
+ *  framed viewport Canvas + HUD Text + control row + 2 Buttons) and creates
+ *  nothing at runtime.
  *
- *  ASCII-only UI copy (r64). Plain global var/function script, no imports.
- *  Host harness tests/img_view.js runs this app through the firmware prelude
- *  and checks the scaled pixels against an INDEPENDENT JS reference; the
- *  firmware binding itself is exercised by the native build, not on the host.
+ *  ASCII-only UI copy (r64). Plain global var/function script.
  *  Real-device acceptance (panel output, touch feel) stays deferred.
  */
 var SW = 24, SH = 24;
@@ -91,7 +73,7 @@ var SRC = new Uint16Array([
   2047,2047,2047,2047,2047,2047,2047,2047,2047,2047,2047,63488
 ]);
 var DST = new Uint16Array(MAXD * MAXD);
-var CW = 200, CH = 200;
+var CW = 204, CH = 204;
 var imgscale = lume.imgscale;
 var idx = 0;
 var mode = 'nearest';
@@ -101,15 +83,13 @@ var modeSignal = signal('nearest');
 var hudDisplay = signal(''), statusDisplay = signal('');
 
 var theme = { colors: {
-  bg:'#07111D', primary:'#07111D', surface:'#132435', surfaceAlt:'#1C3449',
-  text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0', danger:'#FF6B79', success:'#40D8B0'
-}, radius:12, spacing:12, fontScale:1 };
+  bg: '#000000', primary: '#09101A', surface: '#16202E', surfaceAlt: '#1F2C3D',
+  text: '#F2F7FB', textDim: '#9EB3C6', accent: '#40D8B0', danger: '#FF6B79', success: '#40D8B0'
+}, radius: 12, spacing: 12, fontScale: 1 };
 lume.theme.set(theme);
 
 var last = { rc: 0, mode: mode, factor: FACTORS[0], sw: SW, sh: SH, dw: 0, dh: 0, dst: DST };
 
-/* One scale() call: view the source at the active factor/mode, scale straight
- * into the matching slice of DST (no copy), and remember the result. */
 function compute() {
   var f = FACTORS[idx], m = mode;
   var dw = SW * f, dh = SH * f;
@@ -119,10 +99,8 @@ function compute() {
   return last;
 }
 
-/* Numeric return-code rendering: only a NEGATIVE rc is an error. */
 function statusText(rc) { return rc < 0 ? 'ERR ' + rc : 'OK'; }
 
-/* Recompute and publish the HUD. Exposed for the host harness. */
 function apply() {
   var r = compute();
   hudDisplay.set('X' + r.factor + ' ' + r.mode + ' ' + r.sw + 'x' + r.sh + ' -> ' + r.dw + 'x' + r.dh);
@@ -142,41 +120,75 @@ function toggleMode() {
   return apply();
 }
 
-/* Snapshot of the last scale for host assertions (dst copied to a plain array). */
 function state() {
-  return { rc: last.rc, mode: last.mode, factor: last.factor, sw: last.sw, sh: last.sh,
-    dw: last.dw, dh: last.dh, pixels: Array.prototype.slice.call(last.dst) };
+  return {
+    rc: last.rc, mode: last.mode, factor: last.factor, sw: last.sw, sh: last.sh,
+    dw: last.dw, dh: last.dh, pixels: Array.prototype.slice.call(last.dst)
+  };
 }
 
-var root = View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',
-  display:'flex',flexDirection:'column',justifyContent:'space-between',padding:20,gap:10}},[
-  View({style:{width:'100%',height:44,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:'Image Scale',style:{fontSize:24,color:'text'}})
+var root = View({ style: { width: '100%', height: '100%', background: '#000000', scroll: 'none' } }, [
+  View({ style: {
+    position: 'absolute', x: 14, y: 14, width: 452, height: 452,
+    borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
+    scroll: 'none'
+  } }),
+  Text({ text: 'Image Scale', style: {
+    position: 'absolute', x: 80, y: 78, width: 220, height: 28,
+    fontSize: 20, color: '#F2F7FB'
+  } }),
+  View({ style: {
+    position: 'absolute', x: 320, y: 78, width: 80, height: 24,
+    background: '#122A2B', borderColor: '#2E7D6B', borderWidth: 1, borderRadius: 12,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
+  } }, [
+    Text({ text: statusDisplay, style: {
+      fontSize: 12, textAlign: 'center',
+      color: function () { return statusDisplay() === 'OK' ? '#40D8B0' : '#FF6B79'; }
+    } })
   ]),
-  View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:hudDisplay,style:{fontSize:16,color:'text'}}),
-    Text({text:statusDisplay,style:{fontSize:14,color:'accent'}})
-  ]),
-  View({style:{width:'100%',height:60,display:'flex',flexDirection:'row',
-    alignItems:'center',justifyContent:'space-between',padding:0,gap:12}},[
-    Button({title:'NEXT',style:{width:120,height:48,borderRadius:999,background:'surface'},onPress:nextScale}),
-    Button({title:'MODE',style:{width:120,height:48,borderRadius:999,background:'surface'},onPress:toggleMode})
+  Text({ text: hudDisplay, style: {
+    position: 'absolute', x: 80, y: 322, width: 320, height: 22,
+    fontSize: 13, color: '#9EB3C6', textAlign: 'center'
+  } }),
+  View({ style: {
+    position: 'absolute', x: 80, y: 350, width: 320, height: 48,
+    display: 'flex', flexDirection: 'row', gap: 10, scroll: 'none'
+  } }, [
+    Button({ title: 'NEXT', onPress: nextScale, style: {
+      flexGrow: 1, height: 48, borderRadius: 12,
+      background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
+      color: '#F2F7FB', fontSize: 14
+    } }),
+    Button({ title: 'MODE', onPress: toggleMode, style: {
+      flexGrow: 1, height: 48, borderRadius: 12,
+      background: '#16202E', borderColor: '#233245', borderWidth: 1,
+      color: '#F2F7FB', fontSize: 14
+    } })
   ])
 ]);
 
-Canvas({ parent: root, width: CW, height: CH,
-  style:{position:'absolute',x:140,y:80}, onDraw: function (ctx) {
-  scaleIndex(); modeSignal();                 /* subscribe to both switches */
-  var r = compute();                          /* scale() runs on every redraw */
-  ctx.fillColor('#07111D');
-  ctx.fillRect(0, 0, CW, CH);
-  if (r.rc < 0) {
-    ctx.fillColor('#FF6B79');
-    ctx.fillRect(0, 0, CW, 8);
-  } else {
-    ctx.retainImage(1, r.dw, r.dh, r.dst);
-    ctx.drawImage(1, Math.floor((CW - r.dw) / 2), Math.floor((CH - r.dh) / 2));
+Canvas({
+  parent: root, width: CW, height: CH,
+  style: { position: 'absolute', x: 138, y: 112, scroll: 'none' },
+  onDraw: function (ctx) {
+    scaleIndex(); modeSignal();
+    var r = compute();
+    ctx.fillColor('#2E7D6B'); ctx.fillRect(0, 0, CW, CH);
+    ctx.fillColor('#0B121C'); ctx.fillRect(1, 1, CW - 2, CH - 2);
+    /* Subtle crosshair framing guides */
+    ctx.line(6, 6, 18, 6, '#233245', 1); ctx.line(6, 6, 6, 18, '#233245', 1);
+    ctx.line(CW - 18, 6, CW - 6, 6, '#233245', 1); ctx.line(CW - 6, 6, CW - 6, 18, '#233245', 1);
+    ctx.line(6, CH - 6, 18, CH - 6, '#233245', 1); ctx.line(6, CH - 18, 6, CH - 6, '#233245', 1);
+    ctx.line(CW - 18, CH - 6, CW - 6, CH - 6, '#233245', 1); ctx.line(CW - 6, CH - 18, CW - 6, CH - 6, '#233245', 1);
+    if (r.rc < 0) {
+      ctx.fillColor('#FF6B79');
+      ctx.fillRect(2, 2, CW - 4, 8);
+    } else {
+      ctx.retainImage(1, r.dw, r.dh, r.dst);
+      ctx.drawImage(1, Math.floor((CW - r.dw) / 2), Math.floor((CH - r.dh) / 2));
+    }
   }
-} });
+});
 
 apply();

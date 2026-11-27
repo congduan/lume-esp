@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — ADC Voltmeter (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    --bg-0: #000000;
+    --bg-1: #0D1420;
+    --bg-2: #16202E;
+    --bg-3: #1F2C3D;
+    --text-hi: #F2F7FB;
+    --text-mid: #9EB3C6;
+    --text-low: #5C7794;
+    --accent: #40D8B0;
+    --accent-deep: #117B69;
+    --warn: #FFD78E;
+    --border-subtle: rgba(242, 247, 251, 0.08);
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", -apple-system, sans-serif;
+    --font-mono: "DejaVu Sans Mono", "Liberation Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  html, body {
+    width: 480px; height: 480px; background: var(--bg-0); overflow: hidden;
+    font-family: var(--font-sans); color: var(--text-hi); user-select: none;
+  }
+  .watch-screen {
+    position: relative; width: 480px; height: 480px;
+    border-radius: 50%; overflow: hidden;
+    background: radial-gradient(circle at 50% 22%, rgba(18, 44, 52, 0.65) 0%, #09101A 54%, #000000 88%);
+    box-shadow: inset 0 0 0 1.5px rgba(158, 179, 198, 0.18);
+  }
+  .bezel-ring {
+    position: absolute; inset: 14px; border-radius: 50%;
+    border: 1px solid rgba(158, 179, 198, 0.12); pointer-events: none;
+  }
+  .safe-area {
+    position: absolute; left: 75px; top: 75px;
+    width: 330px; height: 330px; padding: 0 5px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .header {
+    height: 30px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .page-title { font-size: 20px; font-weight: 700; letter-spacing: -0.02em; }
+  .badges { display: flex; gap: 6px; }
+  .pill {
+    height: 22px; padding: 0 8px; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums;
+  }
+  .pill.rate { background: var(--bg-2); border: 1px solid var(--border-subtle); color: var(--text-mid); }
+  .pill.ok { background: rgba(64, 216, 176, 0.15); border: 1px solid rgba(64, 216, 176, 0.4); color: var(--accent); }
+  /* Hero Readout */
+  .hero-panel {
+    width: 320px; padding: 14px 16px 12px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #162435 0%, #101A28 100%);
+    border: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .reading-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .big-val {
+    font-family: var(--font-mono);
+    font-size: 46px; font-weight: 700; letter-spacing: -0.03em;
+    color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .unit-col {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 3px;
+  }
+  .unit-tag { font-size: 16px; font-weight: 700; color: var(--text-hi); }
+  .range-tag { font-size: 11px; color: var(--text-mid); font-variant-numeric: tabular-nums; }
+  .raw-strip {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-top: 8px; border-top: 1px solid rgba(158, 179, 198, 0.12);
+    font-size: 13px; color: var(--text-mid); font-variant-numeric: tabular-nums;
+  }
+  .raw-strip strong { font-family: var(--font-mono); color: var(--text-hi); font-size: 14px; }
+  /* Sparkline Card */
+  .spark-card {
+    width: 320px; height: 98px; padding: 8px 12px;
+    border-radius: 12px;
+    background: #0F1926;
+    border: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .spark-head {
+    display: flex; justify-content: space-between; font-size: 11px;
+    font-weight: 700; letter-spacing: 0.08em; color: var(--text-low);
+  }
+  .spark-svg { width: 296px; height: 54px; display: block; }
+  .bar-rail {
+    width: 100%; height: 6px; border-radius: 999px;
+    background: var(--bg-3); overflow: hidden;
+  }
+  .bar-fill {
+    width: 50%; height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  }
+  /* Controls */
+  .controls { width: 320px; height: 48px; display: flex; gap: 8px; }
+  .ctrl-btn {
+    flex: 1; height: 48px; border-radius: 12px;
+    background: linear-gradient(180deg, #1B2738 0%, var(--bg-2) 100%);
+    border: 1px solid rgba(158, 179, 198, 0.18);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 14px;
+  }
+  .ctrl-k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: var(--text-low); }
+  .ctrl-v { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text-hi); }
+</style>
+</head>
+<body>
+<div class="watch-screen" role="application" aria-label="ADC Voltmeter">
+  <div class="bezel-ring"></div>
+  <main class="safe-area">
+    <header class="header">
+      <h1 class="page-title">ADC Voltmeter</h1>
+      <div class="badges">
+        <span class="pill rate">4 Hz</span>
+        <span class="pill ok">CFG OK</span>
+      </div>
+    </header>
+
+    <section class="hero-panel">
+      <div class="reading-row">
+        <div class="big-val">1650</div>
+        <div class="unit-col">
+          <span class="unit-tag">mV</span>
+          <span class="range-tag">0 - 3300 mV</span>
+        </div>
+      </div>
+      <div class="raw-strip">
+        <span>RAW 12-BIT</span>
+        <strong>2048 / 4095</strong>
+      </div>
+    </section>
+
+    <section class="spark-card">
+      <div class="spark-head">
+        <span>TREND · ADC1</span>
+        <span>50% FS</span>
+      </div>
+      <svg class="spark-svg" viewBox="0 0 296 54" fill="none">
+        <defs>
+          <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#40D8B0" stop-opacity="0.32"/>
+            <stop offset="100%" stop-color="#40D8B0" stop-opacity="0.0"/>
+          </linearGradient>
+        </defs>
+        <line x1="0" y1="13" x2="296" y2="13" stroke="#1F2C3D" stroke-dasharray="3 4"/>
+        <line x1="0" y1="27" x2="296" y2="27" stroke="#1F2C3D" stroke-dasharray="3 4"/>
+        <line x1="0" y1="41" x2="296" y2="41" stroke="#1F2C3D" stroke-dasharray="3 4"/>
+        <path d="M0 32 L24 30 L48 34 L72 28 L96 25 L120 29 L144 26 L168 23 L192 27 L216 24 L240 26 L264 25 L288 27 L288 54 L0 54 Z" fill="url(#sg)"/>
+        <polyline points="0,32 24,30 48,34 72,28 96,25 120,29 144,26 168,23 192,27 216,24 240,26 264,25 288,27" stroke="#40D8B0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="288" cy="27" r="4" fill="#40D8B0"/>
+        <circle cx="288" cy="27" r="7" fill="#40D8B0" fill-opacity="0.22"/>
+      </svg>
+      <div class="bar-rail"><div class="bar-fill"></div></div>
+    </section>
+
+    <footer class="controls">
+      <div class="ctrl-btn" role="button">
+        <span class="ctrl-k">PIN</span>
+        <span class="ctrl-v">GPIO 3</span>
+      </div>
+      <div class="ctrl-btn" role="button">
+        <span class="ctrl-k">ATTEN</span>
+        <span class="ctrl-v">ATT 0</span>
+      </div>
+    </footer>
+  </main>
+</div>
+</body>
+</html>

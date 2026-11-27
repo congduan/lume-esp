@@ -1,21 +1,22 @@
-/** 图片画廊。r126 起改为 Sd-first：TF 卡挂载后从 Sd 的
- * /gallery/photo.jpg、/gallery/icon.png、/gallery/alpha.png 读图；未挂载或
- * 单张读取失败（-2/-3 或抛错）逐图回退既有 Fs（LittleFS）路径。三张文件均需
- * 小于 readBinary 的 64 KiB 单次读取上限。HUD 显示 Sd.statvfs() 的容量/剩余；
- * 返回负数错误码时显示 NO CARD。
- * r85: 卡片图片先经 lume.image.decode(bytes,96,96) 解码并一步缩成缩略图，
- * 再走 Canvas.retainImage/drawImage 展示；解码不可用时回退既有 Image 直显路径。
- * 无卡时仍显示内嵌 1×1 红色 PNG，验证字节到 Image 链路。
+/** Image gallery (r126 Sd-first, r206 round AMOLED 2x2 grid + inspector).
  *
- * 每张图各自包 try/catch：某张卡图读不到只丢那一张，不拖垮整个 eval；最外层
- * 再包一层兜底，native 抛错只打日志并显示一行错误文本，不让 eval 失败回退启动器。 */
+ *  Reads /gallery/photo.jpg, /gallery/icon.png, /gallery/alpha.png from Sd first
+ *  when mounted, falling back per-image to LittleFS (Fs). Uses lume.image.decode
+ *  (96x96 thumbnail -> Canvas retainImage/drawImage) with Image fallback. Keeps
+ *  the embedded 1x1 red PNG probe so bytes->Image is always verified even with
+ *  no card. HUD shows Sd.statvfs() MB or NO CARD on negative error codes.
+ */
+lume.theme.set({ colors: {
+  bg: '#000000', primary: '#09101A', surface: '#16202E', surfaceAlt: '#1F2C3D',
+  text: '#F2F7FB', textDim: '#9EB3C6', accent: '#40D8B0', danger: '#FF6B79'
+}, radius: 12, spacing: 12 });
+
 lume.system.log('gallery: eval start');
 lume.system.log('gallery: typeof Fs=' + (typeof Fs) +
   ' storage.Fs=' + (typeof lume.storage.Fs) +
   ' NODE_VIEW=' + (typeof NODE_VIEW) +
   ' signal=' + (typeof signal));
 
-/* Sd 防御式解析：无此 API（理论不可能）时 sdReady=false，读图/HUD 走原路径。 */
 var sd = (lume.storage && lume.storage.Sd) || null;
 var sdReady = !!(sd && typeof sd.mounted === 'function' &&
   typeof sd.readBinary === 'function' && sd.mounted() === true);
@@ -23,8 +24,6 @@ lume.system.log('gallery: Sd mounted=' + sdReady);
 
 var galleryStatus = 'no images';
 
-/* Sd-first 读取：挂载卡上优先 Sd.readBinary；非 ArrayBuffer（错误码 -2 IO /
- * -3 无卡）或抛错都回退 Fs.readBinary（现行为）。返回 null 表示两边都读不到。 */
 function readImageBytes(path) {
   if (sdReady) {
     try {
@@ -45,18 +44,18 @@ function readImageBytes(path) {
 }
 
 function thumbnailTile(thumb) {
-  /* 每个 Canvas 有独立的 1..8 精灵槽，缩略像素只上传一次；onDraw 重入时
-   * 只回放 drawImage，避免每帧重复 retainImage 拷贝 PSRAM。 */
   var uploaded = false;
   return Canvas({
     width: 96,
-    height: 96,
+    height: 76,
+    style: { scroll: 'none' },
     onDraw: function (ctx) {
       if (!uploaded) {
         ctx.retainImage(1, thumb.width, thumb.height, thumb.pixels);
         uploaded = true;
       }
-      ctx.drawImage(1, 0, 0);
+      ctx.fillColor('#0B121C'); ctx.fillRect(0, 0, 96, 76);
+      ctx.drawImage(1, Math.floor((96 - thumb.width) / 2), Math.floor((76 - thumb.height) / 2));
     }
   });
 }
@@ -66,31 +65,29 @@ function buildTiles() {
   var redPng = new Uint8Array([137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,0,1,0,0,0,1,8,6,0,0,0,31,21,196,137,0,0,0,13,73,68,65,84,120,156,99,248,207,192,240,31,0,5,0,1,255,137,153,61,29,0,0,0,0,73,69,78,68,174,66,96,130]).buffer;
   lume.system.log('gallery: embedded png ' + redPng.byteLength + ' bytes');
 
-  /* Image() 可能返回 -1（无效/解码失败）。children 里出现 -1 会让 View() 的
-   * setAttr 抛异常并让整个 eval 失败，所以只收集有效节点。 */
-  var head = Image({src: redPng, style: {width: 80, height: 80}});
+  var head = Image({ src: redPng, style: { width: 64, height: 64, borderRadius: 8 } });
   lume.system.log('gallery: head id ' + head);
-  if (head > 0) tiles.push(head);
+  if (head > 0) tiles.push({ node: head, name: 'probe.png', meta: '1x1 PNG' });
 
   var canDecode = typeof lume.image.decode === 'function';
   lume.system.log('gallery: image.decode ' + (canDecode ? 'available' : 'missing'));
   var paths = ['/gallery/photo.jpg', '/gallery/icon.png', '/gallery/alpha.png'];
   for (var i = 0; i < paths.length; i++) {
-    /* 逐图 try/catch：一张卡图读不到或解码抛错只丢那一张，不影响其余图。 */
     try {
       var bytes = readImageBytes(paths[i]);
       if (!bytes) continue;
-      var thumb = canDecode ? lume.image.decode(bytes, 96, 96) : -2;
+      var fname = paths[i].slice(paths[i].lastIndexOf('/') + 1);
+      var thumb = canDecode ? lume.image.decode(bytes, 96, 76) : -2;
       if (thumb && typeof thumb === 'object' &&
           Object.prototype.toString.call(thumb.pixels) === '[object Uint16Array]' &&
           thumb.pixels.length === thumb.width * thumb.height) {
         lume.system.log('gallery: thumbnail ' + paths[i] + ' ' + thumb.width + 'x' + thumb.height);
         var tile = thumbnailTile(thumb);
-        if (tile > 0) tiles.push(tile);
+        if (tile > 0) tiles.push({ node: tile, name: fname, meta: thumb.width + 'x' + thumb.height });
       } else {
         lume.system.log('gallery: decode failed ' + paths[i] + ' rc=' + thumb + ', fall back to Image');
-        var direct = Image({src: bytes, style: {width: 128, height: 128}});
-        if (direct > 0) tiles.push(direct);
+        var direct = Image({ src: bytes, style: { width: 72, height: 72, borderRadius: 8 } });
+        if (direct > 0) tiles.push({ node: direct, name: fname, meta: 'IMAGE' });
       }
     } catch (e) {
       lume.system.log('gallery: image ' + paths[i] + ' skipped: ' + e);
@@ -99,9 +96,6 @@ function buildTiles() {
   return tiles;
 }
 
-/* HUD 卡信息：statvfs() 成功返回 {total,free}，失败返回负数错误码（-2 IO /
- * -3 无卡）。number 是错误码不是容量，必须用 typeof === 'object' 判别。
- * 字节用 Math.floor 取整到 MB（截断口径，见 KNOWN-SIMPLIFICATIONS r126 节）。 */
 function cardInfoText() {
   if (!sd || typeof sd.statvfs !== 'function') return '';
   try {
@@ -122,25 +116,104 @@ function main() {
   try {
     var tiles = buildTiles();
     galleryStatus = tiles.length + ' image(s)';
-    var content = [Text({text: tiles.length ? 'Preview' : 'No images decoded',
-      style: {width: '100%', height: 28, textAlign: 'center', color: '#A9C1CD'}})];
-    for (var i = 0; i < tiles.length; i++) content.push(tiles[i]);
-    var header = [
-      Text({text: 'Image gallery', style: {width: '100%', height: 32, fontSize: 24, color: '#F0F7FA'}}),
-      Text({text: galleryStatus + ' available', style: {width: '100%', height: 24, fontSize: 14, color: '#A9C1CD'}})
-    ];
+    var activeIdx = signal(0);
     var card = cardInfoText();
-    if (card) header.push(Text({text: card,
-      style: {width: '100%', height: 24, fontSize: 14, color: '#A9C1CD'}}));
-    header.push(View({style: {width: '100%', height: 296, padding: 16, gap: 12,
-      background: '#102431', borderRadius: 12, display: 'flex',
-      flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center',
-      justifyContent: 'center', scroll: 'none'}}, content));
-    View({style: {width: '100%', height: '100%', padding: 24, gap: 12,
-      background: '#081420', display: 'flex', flexDirection: 'column', scroll: 'none'}}, header);
+
+    /* Build 2x2 grid cards strictly inside [76, 404] safe square */
+    var gridCards = [];
+    for (var i = 0; i < 4; i++) {
+      (function (slot) {
+        var entry = slot < tiles.length ? tiles[slot] : null;
+        var col = slot % 2;
+        var row = Math.floor(slot / 2);
+        var cx = 4 + col * 165;
+        var cy = 38 + row * 120;
+        if (entry) {
+          gridCards.push(View({
+            onPress: function () { activeIdx.set(slot); },
+            style: {
+              position: 'absolute', x: cx, y: cy, width: 155, height: 112,
+              background: function () { return activeIdx() === slot ? '#14292E' : '#16202E'; },
+              borderColor: function () { return activeIdx() === slot ? '#34A88B' : '#233245'; },
+              borderWidth: 1, borderRadius: 12, padding: 6,
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'space-between', scroll: 'none'
+            }
+          }, [
+            entry.node,
+            Text({ text: entry.name + '  ' + entry.meta, style: {
+              width: 140, height: 18, fontSize: 11, color: '#9EB3C6', textAlign: 'center'
+            } })
+          ]));
+        } else {
+          gridCards.push(View({
+            style: {
+              position: 'absolute', x: cx, y: cy, width: 155, height: 112,
+              background: '#101824', borderColor: '#1E2C3E', borderWidth: 1, borderRadius: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
+            }
+          }, [
+            Text({ text: 'Empty slot', style: { fontSize: 12, color: '#5C7794', textAlign: 'center' } })
+          ]));
+        }
+      })(i);
+    }
+
+    var safeChildren = [
+      Text({ text: 'Gallery', style: {
+        position: 'absolute', x: 4, y: 2, width: 140, height: 28,
+        fontSize: 21, color: '#F2F7FB'
+      } }),
+      View({ style: {
+        position: 'absolute', x: 152, y: 4, width: 172, height: 24,
+        background: '#122A2B', borderColor: '#2E7D6B', borderWidth: 1, borderRadius: 12,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
+      } }, [
+        Text({
+          text: card ? card : (galleryStatus + ' ready'),
+          style: { fontSize: 11, color: '#40D8B0', textAlign: 'center', longMode: 'dots' }
+        })
+      ])
+    ];
+    for (var j = 0; j < gridCards.length; j++) safeChildren.push(gridCards[j]);
+
+    safeChildren.push(View({ style: {
+      position: 'absolute', x: 4, y: 280, width: 320, height: 44,
+      background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
+      display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingLeft: 10, paddingRight: 10, scroll: 'none'
+    } }, [
+      Button({ title: '<', onPress: function () {
+        if (tiles.length > 0) activeIdx.set((activeIdx() + tiles.length - 1) % tiles.length);
+      }, style: {
+        width: 48, height: 34, borderRadius: 9, background: '#1F2C3D', color: '#F2F7FB', fontSize: 14
+      } }),
+      Text({ text: function () {
+        if (!tiles.length) return 'No images decoded';
+        var cur = tiles[activeIdx()];
+        return (activeIdx() + 1) + '/' + tiles.length + '  ' + cur.name;
+      }, style: { flexGrow: 1, fontSize: 13, color: '#F2F7FB', textAlign: 'center' } }),
+      Button({ title: '>', onPress: function () {
+        if (tiles.length > 0) activeIdx.set((activeIdx() + 1) % tiles.length);
+      }, style: {
+        width: 48, height: 34, borderRadius: 9, background: '#1F2C3D', color: '#F2F7FB', fontSize: 14
+      } })
+    ]));
+
+    View({ style: { width: '100%', height: '100%', background: '#000000', scroll: 'none' } }, [
+      View({ style: {
+        position: 'absolute', x: 14, y: 14, width: 452, height: 452,
+        borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
+        scroll: 'none'
+      } }),
+      View({ style: {
+        position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+        background: '#09101A', scroll: 'none'
+      } }, safeChildren)
+    ]);
   } catch (e) {
     lume.system.log('gallery fatal: ' + e);
-    Text({text: String(e).slice(0, 45), style: {x: 40, y: 220, width: 400, height: 40}});
+    Text({ text: String(e).slice(0, 45), style: { x: 80, y: 220, width: 320, height: 40 } });
   }
 }
 

@@ -210,6 +210,8 @@ globalThis.__r163Rotate = rotateOtaToken;
 globalThis.__r163Reboot = rebootNow;
 globalThis.__r163OtaNote = otaNote;
 globalThis.__r163RebootNote = rebootNote;
+globalThis.__r206Go = go;
+globalThis.__r206Page = page;
 `;
 function live(source) {
   const bundled = buildSync({
@@ -310,5 +312,15 @@ const badMsgs = openDialog(badRun, '__r163Rotate');
 badRun.press(dialogPressIds(badMsgs).cancel);
 assert.ok(badCalls > 0, 'live Cancel assertion is decorative; mutation did not FAIL');
 console.log('PASS settings_dialog live mutation: Cancel with onPress -> FAIL as expected');
+
+// r206: static tree stays within LUME_MAX_NODES=128 and all 5 pages switch cleanly
+const freshRun = live(app);
+const staticNodes = freshRun.messages.filter(m => m[0] === 'create').length;
+assert.ok(staticNodes <= 128, 'settings static nodes exceeded 128: ' + staticNodes);
+for (const [name, idx] of [['wifi', 1], ['bt', 2], ['general', 3], ['scan', 4], ['menu', 0]]) {
+  freshRun.ctx.__r206Go(name);
+  assert.equal(freshRun.ctx.__r206Page(), idx, 'page switch to ' + name);
+}
+console.log('PASS settings_dialog r206: 5-page navigation + static nodes=' + staticNodes + ' (<=128)');
 
 console.log('ALL SETTINGS DIALOG HARNESS CASES PASSED');

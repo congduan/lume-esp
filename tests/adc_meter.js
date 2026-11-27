@@ -136,6 +136,19 @@ check('out-of-range raw 4096 is rejected, so the normal-render proof FAILS', () 
   assert.equal(normalRawRender(bad.texts), false, '4096 must fail the render predicate');
 });
 
+check('r206 frame draw-call budget: full 16-sample sparkline refresh <= 240 draw calls', () => {
+  const p = probe();
+  let maxCalls = 0;
+  for (let i = 0; i < 20; i++) {
+    const start = p.ui.messages.length;
+    p.c.refresh();
+    const draws = p.ui.messages.slice(start).filter(m => m[0] === 'draw').length;
+    if (draws > maxCalls) maxCalls = draws;
+  }
+  assert.ok(maxCalls > 0 && maxCalls <= 240, 'expected 1..240 draw calls/frame, got ' + maxCalls);
+  console.log('  adc_meter max draw calls/refresh=' + maxCalls + ' (budget <=240)');
+});
+
 // ---- static source / repo invariants -------------------------------------
 check('all UI string literals ASCII-only (r64)', () => assert.ok(asciiOnly(source)));
 check('numeric < 0 error discrimination present, no truthy if(r)/if(m)', () =>

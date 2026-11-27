@@ -9,28 +9,19 @@
  *  RETURN-CODE DISCIPLINE: sha256 / hmacSha256 / aesCtr return 0 on success
  *  and a NEGATIVE code on failure; crc32 returns an UNSIGNED u32 value, or -1
  *  for a bad argument. All failures are tested numerically (v < 0), never by
- *  truthiness. -3 is the host / browser stub's "unsupported" answer and is
+ *  truthiness. -3 is the host / browser stub unsupported answer and is
  *  rendered as ASCII "UNSUPPORTED" rather than swallowed as an exception;
- *  every other negative code renders as "ERR <code>". A CRC of 0xFFFFFFFF is
- *  reported as 4294967295 (a positive number), NOT as an error -- only a
- *  negative return is an error, which keeps the u32 contract intact.
+ *  every other negative code renders as "ERR <code>".
  *
- *  HEX TRUNCATION: a full SHA-256 / HMAC is 32 bytes = 64 hex characters,
- *  wider than a 480 px row at a readable font size. Each digest is rendered
- *  as its FIRST 16 bytes (32 hex chars) followed by "..." -- enough to eyeball
- *  a change without overflowing. The host harness compares this against the
- *  real node:crypto digest prefix, so truncation cannot hide a wrong value.
+ *  HEX TRUNCATION: each 32-byte digest renders its FIRST 16 bytes (32 hex chars)
+ *  followed by "...".
  *
  *  NODE BUDGET: the firmware node table is LUME_MAX_NODES = 128 slots. This
- *  app builds ONE static tree of 18 nodes and creates nothing at runtime:
- *    root View (1) + header View + 1 Text (2) + payload View + value Text +
- *    Button (3) + digest View + 2 Texts (2) + token View + 2 Texts (2) +
- *    CRC View + 2 Texts (2) + AES View + 2 Texts (2).
- *  No lists, no dynamic views, so the table stays far under the hard limit.
+ *  app builds ONE static tree of 19 nodes inside the [76, 404] round AMOLED
+ *  safe square (root + dial bezel + safeBox + header Text + NEXT Button +
+ *  payload card + 4 grouped diagnostic cards) and creates nothing at runtime.
  *
- *  ASCII-only UI copy (r64). Host harness tests/crypto_check.js runs this app
- *  against REAL node:crypto primitives injected via options.crypto; the
- *  firmware path uses ESP-IDF mbedTLS and is not exercised on the host.
+ *  ASCII-only UI copy (r64). Plain global var/function script.
  *  Real-device acceptance (mbedTLS on target, touch feel) stays deferred.
  */
 var PAYLOADS = [
@@ -46,22 +37,20 @@ var crypto = lume.crypto;
 var idx = 0;
 
 var theme = { colors: {
-  bg:'#07111D', primary:'#07111D', surface:'#132435', surfaceAlt:'#1C3449',
-  text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0', danger:'#FF6B79', success:'#40D8B0'
-}, radius:12, spacing:12, fontScale:1 };
+  bg: '#000000', primary: '#09101A', surface: '#16202E', surfaceAlt: '#1F2C3D',
+  text: '#F2F7FB', textDim: '#9EB3C6', accent: '#40D8B0', danger: '#FF6B79', success: '#40D8B0'
+}, radius: 12, spacing: 12, fontScale: 1 };
 lume.theme.set(theme);
 
 var payloadDisplay = signal(''), shaDisplay = signal(''), tokenDisplay = signal('');
 var crcDisplay = signal(''), aesDisplay = signal('');
 
-/* ASCII bytes from a short built-in string (all payloads are ASCII). */
 function bytesOf(str) {
   var out = new Uint8Array(str.length);
   for (var i = 0; i < str.length; i++) out[i] = str.charCodeAt(i) & 0xff;
   return out;
 }
 
-/* Lower-case hex of at most n leading bytes. */
 function hexOf(view, n) {
   var s = '';
   for (var i = 0; i < n && i < view.length; i++) {
@@ -71,11 +60,8 @@ function hexOf(view, n) {
   return s;
 }
 
-/* Numeric error discrimination: -3 is the host stub's UNSUPPORTED, any other
- * negative code is a concrete ERR <code>. 0 and positives are not errors. */
 function errText(code) { return code === -3 ? 'UNSUPPORTED' : 'ERR ' + code; }
 
-/* First 16 bytes of a 32-byte digest as hex + "..." (see truncation note). */
 function digestText(data) {
   var out = new Uint8Array(32);
   var rc = crypto.sha256(data, out);
@@ -90,8 +76,6 @@ function tokenText(data) {
   return hexOf(out, 16) + '...';
 }
 
-/* CRC-32 is a u32: chain the two halves to exercise the seed argument. Only
- * a NEGATIVE return is an error; 4294967295 is a perfectly valid value. */
 function crcText(data) {
   var half = data.length >> 1;
   var c1 = crypto.crc32(data.subarray(0, half));
@@ -101,7 +85,6 @@ function crcText(data) {
   return String(c2 >>> 0);
 }
 
-/* CTR is symmetric: encrypt then decrypt the same view and compare bytes. */
 function aesText(data) {
   var enc = new Uint8Array(data.length);
   var rc = crypto.aesCtr(AES_KEY, AES_IV, data, enc);
@@ -117,8 +100,6 @@ function aesText(data) {
   return (ok ? 'OK' : 'MISMATCH') + (cipherHex ? ' ' + cipherHex : '');
 }
 
-/* Recompute all four readouts for the active payload and publish them. The
- * returned state object is handy for the host harness. */
 function measure() {
   var data = bytesOf(PAYLOADS[idx]);
   var state = {
@@ -143,31 +124,57 @@ function cyclePayload() {
   return measure();
 }
 
-View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',
-  display:'flex',flexDirection:'column',justifyContent:'space-between',padding:20,gap:12}},[
-  View({style:{width:'100%',height:44,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:'Crypto Check',style:{fontSize:24,color:'text'}})
-  ]),
-  View({style:{width:'100%',height:60,display:'flex',flexDirection:'row',
-    alignItems:'center',justifyContent:'space-between',padding:0,gap:12}},[
-    Text({text:payloadDisplay,style:{fontSize:16,color:'text'}}),
-    Button({title:'NEXT',style:{width:110,height:48,borderRadius:999,background:'surface'},onPress:cyclePayload})
-  ]),
-  View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:'SHA256',style:{fontSize:13,color:'textDim'}}),
-    Text({text:shaDisplay,style:{fontSize:14,color:'text'}})
-  ]),
-  View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:'HMAC-SHA256',style:{fontSize:13,color:'textDim'}}),
-    Text({text:tokenDisplay,style:{fontSize:14,color:'text'}})
-  ]),
-  View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:'CRC32 (u32)',style:{fontSize:13,color:'textDim'}}),
-    Text({text:crcDisplay,style:{fontSize:16,color:'accent'}})
-  ]),
-  View({style:{width:'100%',height:76,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:'AES-CTR LOOPBACK',style:{fontSize:13,color:'textDim'}}),
-    Text({text:aesDisplay,style:{fontSize:14,color:'success'}})
+function diagCard(y, h, label, sig, colFn) {
+  return View({ style: {
+    position: 'absolute', x: 4, y: y, width: 320, height: h,
+    background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
+    paddingLeft: 12, paddingRight: 12, paddingTop: 6, paddingBottom: 6,
+    display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, scroll: 'none'
+  } }, [
+    Text({ text: label, style: { fontSize: 11, color: '#5C7794' } }),
+    Text({ text: sig, style: { fontSize: 13, color: colFn, longMode: 'dots' } })
+  ]);
+}
+
+function valColor(sig, okCol) {
+  return function () {
+    var s = sig();
+    if (s === 'UNSUPPORTED') return '#FFD78E';
+    if (s.indexOf('ERR') === 0 || s.indexOf('MISMATCH') === 0) return '#FF6B79';
+    return okCol;
+  };
+}
+
+View({ style: { width: '100%', height: '100%', background: '#000000', scroll: 'none' } }, [
+  View({ style: {
+    position: 'absolute', x: 14, y: 14, width: 452, height: 452,
+    borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
+    scroll: 'none'
+  } }),
+  View({ style: {
+    position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+    background: '#09101A', scroll: 'none'
+  } }, [
+    Text({ text: 'Crypto Check', style: {
+      position: 'absolute', x: 4, y: 4, width: 204, height: 28,
+      fontSize: 20, color: '#F2F7FB'
+    } }),
+    Button({ title: 'NEXT', onPress: cyclePayload, style: {
+      position: 'absolute', x: 224, y: 0, width: 100, height: 36,
+      borderRadius: 18, background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
+      color: '#F2F7FB', fontSize: 13
+    } }),
+    View({ style: {
+      position: 'absolute', x: 4, y: 42, width: 320, height: 34,
+      background: '#12262B', borderColor: '#2E7D6B', borderWidth: 1, borderRadius: 10,
+      paddingLeft: 12, paddingRight: 12, display: 'flex', alignItems: 'center', scroll: 'none'
+    } }, [
+      Text({ text: payloadDisplay, style: { fontSize: 13, color: '#40D8B0' } })
+    ]),
+    diagCard(82, 54, 'SHA-256 DIGEST', shaDisplay, valColor(shaDisplay, '#F2F7FB')),
+    diagCard(142, 54, 'HMAC-SHA256 TOKEN', tokenDisplay, valColor(tokenDisplay, '#F2F7FB')),
+    diagCard(202, 54, 'CRC-32 (U32)', crcDisplay, valColor(crcDisplay, '#40D8B0')),
+    diagCard(262, 60, 'AES-128-CTR LOOPBACK', aesDisplay, valColor(aesDisplay, '#40D8B0'))
   ])
 ]);
 

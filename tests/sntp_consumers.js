@@ -108,17 +108,17 @@ const checks = [
     [settingsSyncRow, s => /Text\(\{ text: function \(\) \{ return timeSyncLine\(\); \}/.test(s)]],
   ['settings sync row adds at most 3 nodes (View + Text + Button)',
     [settingsSyncRow, s => (s.match(/\b(?:View|Text|Button)\s*\(/g) || []).length === 3]],
-  ['settings status copy covers NTP OK / NOT SYNCED / SYNC FAILED / NO WIFI',
-    [settings, s => ['TIME SYNC: NTP OK', 'TIME SYNC: NOT SYNCED',
-                     'TIME SYNC: SYNC FAILED', 'TIME SYNC: NO WIFI']
+  ['settings status copy covers SYNCED / OFFLINE / FAILED / NO WIFI',
+    [settings, s => ['Time  SYNCED', 'Time  OFFLINE',
+                     'Time  FAILED', 'Time  NO WIFI']
                       .every(t => s.includes("'" + t + "'"))]],
   ['settings syncTimeNow gates on GOT_IP before calling setTimeNtp()',
     [settingsSyncHelpers, s => s.includes('st.state !== lume.net.GOT_IP') &&
                                s.includes('var r = sys.setTimeNtp();')]],
   ['settings maps setTimeNtp 0 / -2 / -3 to the status strings',
-    [settingsSyncHelpers, s => s.includes("if (r === 0) timeSyncLine.set('TIME SYNC: NTP OK');") &&
-                               s.includes("else if (r === -2) timeSyncLine.set('TIME SYNC: SYNC FAILED');") &&
-                               s.includes("else if (r === -3) timeSyncLine.set('TIME SYNC: NO WIFI');")]],
+    [settingsSyncHelpers, s => s.includes("if (r === 0) timeSyncLine.set('Time  SYNCED');") &&
+                               s.includes("else if (r === -2) timeSyncLine.set('Time  FAILED');") &&
+                               s.includes("else if (r === -3) timeSyncLine.set('Time  NO WIFI');")]],
   ['settings status heuristic reads both lume.system.time() and Date.now()',
     [settingsSyncHelpers, s => s.includes('lume.system.time()') && s.includes('Date.now()')]],
 
@@ -178,9 +178,9 @@ must('settings adds a fourth node to the sync row',
   s => s.replace("    Button({ title: 'Sync now', onPress: syncTimeNow,",
                  "    Text({ text: 'extra', style: {} }),\n    Button({ title: 'Sync now', onPress: syncTimeNow,"),
   'settings sync row adds at most 3 nodes (View + Text + Button)', settingsSyncRow);
-must('settings drops the SYNC FAILED copy',
-  s => s.replace("'TIME SYNC: SYNC FAILED'", "'TIME SYNC: FAIL'"),
-  'settings status copy covers NTP OK / NOT SYNCED / SYNC FAILED / NO WIFI', settings);
+must('settings drops the FAILED copy',
+  s => s.replace("'Time  FAILED'", "'Time  FAIL'"),
+  'settings status copy covers SYNCED / OFFLINE / FAILED / NO WIFI', settings);
 must('settings drops the GOT_IP gate',
   s => s.replace('st.state !== lume.net.GOT_IP', 'false'),
   'settings syncTimeNow gates on GOT_IP before calling setTimeNtp()', settingsSyncHelpers);
