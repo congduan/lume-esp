@@ -23,9 +23,11 @@ var WORD_LEN = 5, ROWS = 6;
 /* r210: grid + ring band + button row stacked inside the 480-round safe
  * square ([75,405]). Old layout had DEL/ENTER/NEW at y=4 (unclickable) and
  * left no gap between the 56..328 grid and the 352..428 ring band. */
-var CELL = 32, GAP = 2, GX = 156, GY = 116;
-var RING_CY = 338, RING_RX = 150, RING_RY = 12;
-var BAND_TOP = 323, BAND_BOT = 353, ROTL_X = 150, ROTR_X = 330;
+var CELL = 29, GAP = 2, GX = 163, GY = 116;
+var RING_CY = 328, RING_RX = 150, RING_RY = 18;
+/* 48px-tall tap band: the ring is interactive too (red line 3), not just the
+ * button row. BAND 304..352, buttons 356..404 -> no overlap. */
+var BAND_TOP = 304, BAND_BOT = 352, ROTL_X = 150, ROTR_X = 330;
 
 var ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 var KV_STREAK = 'wr.streak', KV_BEST = 'wr.best';   /* 9 / 7 chars, both < 15 */
@@ -299,7 +301,7 @@ function paintGrid(ctx, a) {
       drawRect(ctx, edge, box(cx, cy, 2, CELL), a);
       drawRect(ctx, edge, box(cx, cy + CELL - 2, CELL, 2), a);
       drawRect(ctx, edge, box(cx + CELL - 2, cy, 2, CELL), a);
-      if (ch) drawGlyph(ctx, ch.toUpperCase(), cx + 8, cy + 5, 3, COL.INK, a);
+      if (ch) drawGlyph(ctx, ch.toUpperCase(), cx + 7, cy + 4, 3, COL.INK, a);
     }
   }
 }
