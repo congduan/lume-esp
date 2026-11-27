@@ -349,13 +349,14 @@ declare namespace lume.ui.shell {
     onChange?: (value: number) => void;
     /** Track width in px (default screen width - 48); height in px (40..128, default 40). */
     width?: number; height?: number;
-    /** Default false: square fillRect thumb (pre-r203 rendering). true draws a
-     * round Canvas.fillCircle thumb with an integer radius of floor(knobDiameter/2)
-     * (diameter >= 32 px); the gesture target stays the whole Canvas. */
+    /** Default true (r220): draws a round Canvas.fillCircle thumb with an
+     * integer radius of floor(knobDiameter/2) (diameter >= 32 px); the gesture
+     * target stays the whole Canvas. Pass false for the legacy square fillRect
+     * thumb (pre-r203 rendering). */
     roundThumb?: boolean;
     /** Round thumb diameter in px (32..min(height,64), default 36). Floored to
      * an even pixel diameter because Canvas.fillCircle takes an integer radius.
-     * Ignored unless roundThumb is true. */
+     * Ignored when roundThumb is false. */
     knobDiameter?: number;
     x?: number; y?: number;
   }

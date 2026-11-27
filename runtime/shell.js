@@ -453,10 +453,11 @@
     var value = p.value === undefined ? min : p.value;
     if (typeof value !== 'function' && (typeof value !== 'number' || !isFinite(value)))
       throw new TypeError('lume: Slider value must be a number or a signal function');
-    /* r203: opt-in round thumb. The default false path keeps the pre-r203
-     * fillRect draw stream byte-for-byte; knobDiameter is floored to an integer
-     * radius because the prelude Canvas.fillCircle takes an integer radius. */
-    var roundThumb = p.roundThumb === undefined ? false : p.roundThumb;
+    /* r220: round thumb is the default (graduated from r203 opt-in); pass
+     * roundThumb:false for the legacy square fillRect draw stream.
+     * knobDiameter is floored to an integer radius because the prelude
+     * Canvas.fillCircle takes an integer radius. */
+    var roundThumb = p.roundThumb === undefined ? true : p.roundThumb;
     if (typeof roundThumb !== 'boolean')
       throw new TypeError('lume: Slider roundThumb must be a boolean');
     var maxKnob = Math.min(height, 64), knobDiameter = 36;
