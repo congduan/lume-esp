@@ -24,18 +24,18 @@ var root = View({ style: { x: 0, y: 0, width: 480, height: 480,
   background: 'primary', scroll: 'none' } });
 
 Text({ parent: root, text: 'SPARKLINE DEMO',
-  style: { x: 24, y: 20, width: 432, height: 36, fontSize: 24,
+  style: { x: 84, y: 88, width: 312, height: 24, fontSize: 20,
     color: '#F2F7FB', scroll: 'none' } });
 Text({ parent: root, text: 'shell.Sparkline / Canvas mini charts',
-  style: { x: 24, y: 58, width: 432, height: 22, fontSize: 12,
+  style: { x: 84, y: 112, width: 312, height: 16, fontSize: 11,
     color: '#9EB3C6', scroll: 'none' } });
 
 /* Static: three series with independent colours; series takes precedence. */
 Text({ parent: root, text: 'STATIC / 3 SERIES',
-  style: { x: 24, y: 92, width: 432, height: 20, fontSize: 13,
+  style: { x: 84, y: 134, width: 312, height: 16, fontSize: 11,
     color: '#9EB3C6', scroll: 'none' } });
-var staticSpark = lume.ui.shell.Sparkline({ parent: root, x: 24, y: 116,
-  width: 432, height: 88, showDots: false, strokeWidth: 2,
+var staticSpark = lume.ui.shell.Sparkline({ parent: root, x: 84, y: 152,
+  width: 312, height: 44, showDots: false, strokeWidth: 2,
   series: [
     { data: [12, 18, 15, 24, 20, 28], color: '#40D8B0' },
     { data: [30, 22, 26, 14, 19, 11], color: '#5AA9E6' },
@@ -45,21 +45,21 @@ var staticSpark = lume.ui.shell.Sparkline({ parent: root, x: 24, y: 116,
 /* Live: a getter is passed as `data`; the owned onDraw effect repaints on
  * every set(). The timer keeps a fixed-width window. */
 Text({ parent: root, text: 'LIVE / TIMER PUSH 300MS',
-  style: { x: 24, y: 216, width: 300, height: 20, fontSize: 13,
+  style: { x: 84, y: 200, width: 200, height: 16, fontSize: 11,
     color: '#9EB3C6', scroll: 'none' } });
 Text({ parent: root, text: function () { return 'N=' + liveData().length; },
-  style: { x: 332, y: 216, width: 124, height: 20, fontSize: 13,
+  style: { x: 296, y: 200, width: 100, height: 16, fontSize: 11,
     color: '#40D8B0', textAlign: 'right', scroll: 'none' } });
-var liveSpark = lume.ui.shell.Sparkline({ parent: root, x: 24, y: 240,
-  width: 432, height: 88, data: liveData, strokeWidth: 3, showLast: true });
+var liveSpark = lume.ui.shell.Sparkline({ parent: root, x: 84, y: 218,
+  width: 312, height: 44, data: liveData, strokeWidth: 3, showLast: true });
 
 /* Filled: explicit domain plus fillArea uses theme surfaceAlt (no alpha in
  * RGB565); showLast marks the newest sample. */
 Text({ parent: root, text: 'FILLED / MIN 0 MAX 100',
-  style: { x: 24, y: 340, width: 432, height: 20, fontSize: 13,
+  style: { x: 84, y: 266, width: 312, height: 16, fontSize: 11,
     color: '#9EB3C6', scroll: 'none' } });
-var filledSpark = lume.ui.shell.Sparkline({ parent: root, x: 24, y: 364,
-  width: 432, height: 72, data: [20, 45, 30, 70, 55, 80, 65],
+var filledSpark = lume.ui.shell.Sparkline({ parent: root, x: 84, y: 284,
+  width: 312, height: 40, data: [20, 45, 30, 70, 55, 80, 65],
   min: 0, max: 100, fillArea: true, showLast: true,
   color: '#FF6B79', strokeWidth: 2 });
 
@@ -73,11 +73,11 @@ var timer = lume.system.setInterval(function () {
 lume.app.onPause(function () { lume.system.clearInterval(timer); });
 
 Button({ parent: root, title: function () { return paused() ? 'RESUME' : 'PAUSE'; },
-  style: { x: 24, y: 444, width: 120, height: 30, borderRadius: 8,
+  style: { x: 84, y: 340, width: 96, height: 48, borderRadius: 8,
     background: '#1C3449' },
   onPress: function () { paused.set(!paused()); } });
 Text({ parent: root, text: 'Lume shell.Sparkline / pure JS',
-  style: { x: 156, y: 444, width: 300, height: 30, fontSize: 12,
+  style: { x: 192, y: 348, width: 204, height: 32, fontSize: 11,
     color: '#9EB3C6', scroll: 'none' } });
 
 globalThis.sparklineDemo = {
