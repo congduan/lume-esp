@@ -1,0 +1,101 @@
+PASS page loads without JavaScript errors
+  Counter: 15 nodes
+PASS counter has nonempty screen DOM
+  Snake: 5 nodes
+PASS games_snake has nonempty screen DOM
+  2048: 37 nodes
+PASS games_2048 has nonempty screen DOM
+  border-radius: 36px
+PASS rounded square device frame
+PASS editor compiles default and changed source, then reports syntax errors
+  share hash: 116 chars
+PASS hash restores editor source and share copies reloadable URL
+PASS oversized source keeps existing share hash
+PASS counter button updates count without errors
+  DEMO badge + tap -> LISTEN
+PASS voice_assistant degrades to DEMO without audio/network and is tappable
+PASS snake screen tap and swipe do not throw
+  B is for Ball
+  C is for Cat
+  D is for Dog
+  E is for Egg
+  F is for Fish
+  glyph background: rgba(0, 0, 0, 0); canvas node: 2
+PASS abc123 clears placeholder and redraws on five taps
+  mobile tap: B is for Ball
+PASS abc123 mobile touchscreen advances card
+  counter: 15 nodes
+  clock: 4 nodes
+  clock_round: 11 nodes
+  dashboard_round: 2 nodes
+  games_snake: 5 nodes
+  games_2048: 37 nodes
+  games_breakout: 41 nodes
+  mario: 6 nodes
+  calculator: 28 nodes
+  weather: 52 nodes
+  music_player: 26 nodes
+  storybook: 21 nodes
+  ipod_music: 17 nodes
+  dashboard: 27 nodes
+  gravity_ball: 2 nodes
+  typewriter: 5 nodes
+  heart_curve: 11 nodes
+  speedometer: 16 nodes
+  power_demo: 11 nodes
+  watchface: 44 nodes
+  games_tetris: 11 nodes
+  game_of_life: 6 nodes
+  pet: 9 nodes
+  async_demo: 3 nodes
+  piano: 60 nodes
+  compass: 8 nodes
+  skyfire: 4 nodes
+  skycombat: 2 nodes
+  luna: 2 nodes
+  invaders: 5 nodes
+  frogger: 5 nodes
+  abc123: 4 nodes
+  sokoban: 9 nodes
+  lcd_dual: 7 nodes
+  memory: 7 nodes
+  minesweeper: 7 nodes
+  golf: 7 nodes
+  scroller: 9 nodes
+  raycast: 6 nodes
+  fishtank: 2 nodes
+  particles: 7 nodes
+  plasma: 2 nodes
+  voice_assistant: 9 nodes
+  spectrum_music: 4 nodes
+  ble_uart: 28 nodes
+  spectrum: 6 nodes
+  svg_icon: 2 nodes
+  gestures: 22 nodes
+  aurora_clock: 10 nodes
+  flapdot: 6 nodes
+  wordring: 8 nodes
+  image_gallery: 19 nodes
+  files: 25 nodes
+  adc_meter: 18 nodes
+  crypto_check: 19 nodes
+  archive_view: 17 nodes
+  img_view: 10 nodes
+  vec_demo: 9 nodes
+  settings: 118 nodes
+  hr_monitor: 21 nodes
+  keyboard_demo: 39 nodes
+  wordle: 39 nodes
+  controls_demo: 15 nodes
+  timer_kit: 19 nodes
+  control_center: 16 nodes
+  launcher_grid: 50 nodes
+  minigolf: 10 nodes
+  color_demo: 8 nodes
+  mochi: 7 nodes
+  shell_demo: 14 nodes
+  sparkline_demo: 12 nodes
+  app_manager: 6 nodes
+  imu_poll: 20 nodes
+  fitness: 6 nodes
+PASS all examples load without runtime errors
