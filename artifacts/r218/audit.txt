@@ -1,0 +1,80 @@
+# Lume r218 Full-Manifest Round-Screen Safe-Area Audit (74/74 apps)
+# Baseline: origin/main 253aa83 | Screen: 480x480 R=240 center=(240,240) | Safe square: [75,405] | Touch>=48x48 | Card r<=12
+# Summary: COMPLIANT=38 COMPLIANT_IN_R240=8 EXEMPT=14 FIXED_R218=10 DEFERRED=4 (Total=74)
+
+APP               STATUS              B_MAXR A_MAXR B_O240 A_O240  T<48  R>12  NOTES
+------------------------------------------------------------------------------------------------------------------------
+counter           FIXED_R218           299.9  230.5      8      0     0     0  Was Rmax=299.9 (title, Dark/Light buttons, card r=20, Add one button, footer OUT_R240); fitted into [76..404], r=12, 48px buttons.
+clock             DEFERRED             267.7  267.7      2      2     0     0  OUT_R240 (Rmax=267.7, digital time/date below 300x300 dial at y=370..418). Deferred: legacy square clock counterpart to round clock_round (r205); guarded by tests/sntp_consumers.js.
+clock_round       EXEMPT               178.5  178.5      0      0     0     0  Registered exemption (r205): cardinal dial numerals on axes Rmax=178.5 << 240.
+dashboard_round   COMPLIANT                0      0      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+games_snake       COMPLIANT              200    200      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+games_2048        COMPLIANT_IN_R240    204.8  204.8      0      0     0     0  IN_R240 (Rmax=204.8); hint Text bottom at y=406 (1px past 405 safe square); board & HUD IN_SAFE (r201).
+games_breakout    COMPLIANT            224.9  224.9      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+games_tetris      COMPLIANT            229.1  229.1      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+mario             EXEMPT               297.6  297.6      1      1     0     0  Registered exemption: full-bleed 480x352 world canvas (tests/games.js); HUD & 3x 100x48 buttons IN_SAFE.
+game_of_life      COMPLIANT            224.9  224.9      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+pet               COMPLIANT            224.9  224.9      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+calculator        FIXED_R218           305.5  231.9      8      0     0     0  Was Rmax=305.5 (display r=14 + 6 keypad buttons OUT_R240); fitted display (312x34, r=12) + 5x48px keypad rows into [76..404]; ASCII comment cleaned.
+weather           COMPLIANT            226.3  226.3      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+music_player      COMPLIANT            211.3  211.3      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+dashboard         EXEMPT               339.4  339.4      2      2     0     0  Closed in r216: all tabs (98x48 y=352..400), GAUGE cards, SYSTEM/TRACE lines & text IN_SAFE; drawGauge canvas text sits behind opaque GAUGE backdrop.
+gravity_ball      EXEMPT                   0      0      0      0     0     0  Ambient 480x480 physics ball canvas, no HUD/interaction (same class as fishtank).
+typewriter        COMPLIANT_IN_R240    196.2  196.2      0      0     0     0  IN_R240 (Rmax=196.2); centered text strip at x=48, y=199..280, well inside circular glass.
+heart_curve       FIXED_R218           305.5  231.9      5      0     0     0  Was Rmax=305.5 (title, card r=20, Sparkline [64..464], Next sample button OUT_R240); fitted into [76..404], r=12, explicit Sparkline x=12,y=62.
+speedometer       EXEMPT               278.6  278.6      1      1     0     0  Radial dial canvas (432x344) draws semicircular arc/ticks at R=158 << 240 (same class as compass); all HUD/TRIP card IN_SAFE [84..396,80..400].
+power_demo        FIXED_R218           305.5  231.9      5      0     0     0  Was Rmax=305.5 (title, card r=20, Keep awake button, footer OUT_R240); fitted into [76..404], r=12, 48px button.
+luna              FIXED_R218               0      0      0      0     0     0  Was Rmax=302.7 (canvas HUD at (30,22)/(30,444) + details card y=437 + non-ASCII middot); moved HUD & details card into [88..392,80..400], ASCII-clean.
+watchface         DEFERRED             328.1  328.1      2      2     0     0  OUT_R240 (Rmax=328.1, SYNCING at (8,8) + 5 square faces). Deferred: tests/watchface.js locks canvasPixels=228544, retained-path node IDs 10/14, and localized Chinese/degree literals (23 deg / -- deg); clock_round & aurora_clock serve as dedicated round watchfaces.
+async_demo        COMPLIANT_IN_R240    223.5  223.5      0      0     0     0  IN_R240 (Rmax=223.5); minimal Promise demo with 104x64 button at x=24, y=233..297, touch>=48x48.
+piano             DEFERRED             258.2  258.2      6      6     0     0  OUT_R240 (Rmax=258.2, outer white keys C/B at x=2..36/444..478). Deferred: HUD & 4 control buttons (72x48) are IN_SAFE; 14 white keys (476px) are hard-locked by tests/piano.js (WHITE_W*14===476) and shrinking to 330px yields unplayable 23px keys.
+compass           EXEMPT               257.4  257.4      1      1     0     0  Registered exemption (r205): 360x360 radial dial canvas draws ticks at R=162 << 240; HUD & 120x48 MODE button IN_SAFE.
+invaders          COMPLIANT            223.5  223.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+frogger           COMPLIANT            223.5  223.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+abc123            COMPLIANT_IN_R240    237.9  237.9      0      0     0     0  IN_R240 (Rmax=237.9); 320x320 flashcard Img at [80..400,64..384]; tap coords verified by verify.mjs.
+sokoban           COMPLIANT            224.9  224.9      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+lcd_dual          COMPLIANT            223.5  223.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+memory            COMPLIANT            229.1  229.1      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+minesweeper       COMPLIANT            224.9  224.9      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+golf              EXEMPT               339.4  339.4      1      1     0     0  Registered exemption: full-bleed 480x420 course canvas (tests/golf.js); HUD IN_SAFE.
+scroller          EXEMPT               302.4  302.4      1      1     0     0  Full-bleed 480x352 side-scroller world canvas (same class as mario); HUD [84..396,76..132] & 48px buttons IN_SAFE.
+raycast           COMPLIANT            223.5  223.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+fishtank          EXEMPT                   0      0      0      0     0     0  Registered exemption: pure ambient 480x480 aquarium canvas, no HUD/interaction.
+particles         COMPLIANT            223.5  223.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+voice_assistant   COMPLIANT            226.3  226.3      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+spectrum_music    COMPLIANT            223.5  223.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+plasma            COMPLIANT_IN_R240        0      0      0      0     0     0  IN_R240 (Rmax=231.1); ambient 480x480 lava canvas with centered title PLASMA at (202,12) & theme label at y=29.
+skyfire           COMPLIANT            223.5  223.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+skycombat         COMPLIANT                0      0      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+aurora_clock      EXEMPT               206.2  206.2      0      0     0     0  Registered exemption (r205): hidden harness anchor Text behind opaque 480x480 canvas; visible sprite/date/pills IN_SAFE.
+flapdot           EXEMPT               339.4  339.4      1      1     0     0  Full-bleed 480x400 playfield canvas (tests/flapdot.js); HUD [84..396,80..124] IN_SAFE.
+wordring          EXEMPT               339.4  339.4      1      1     0     0  Full-bleed 480x430 radial word-wheel canvas (tests/wordring.js); HUD & 3x 48px buttons [104..376,356..404] IN_SAFE.
+image_gallery     COMPLIANT            231.9  231.9      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+files             COMPLIANT            231.9  231.9      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+adc_meter         COMPLIANT            231.9  231.9      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+crypto_check      COMPLIANT            231.9  231.9      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+archive_view      COMPLIANT            231.9  231.9      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+img_view          COMPLIANT            227.7  227.7      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+vec_demo          FIXED_R218           311.1  231.9      2      0     0     0  Was Rmax=311.1 (title (20,20) + NEXT button [20..140,406..454] + Canvas overlap); moved into [76..404] with 9-node budget & S=240 preserved.
+settings          COMPLIANT            231.9  231.9      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+hr_monitor        COMPLIANT            229.1  229.1      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+keyboard_demo     EXEMPT               298.1  298.1      1      1    26     0  Closed in r217: 29/29 keys keyHeight=48 IN_R240 & IN_R233 (worstR=231.2); 44px letter-key width mathematically proven exempt (docs/r217-report.md).
+wordle            EXEMPT               300.3  300.3      1      1    26     0  Closed in r217: 29/29 keys keyHeight=48 IN_R240 (worstR=236.3); 44px letter-key width mathematically proven exempt (docs/r217-report.md).
+controls_demo     COMPLIANT            227.7  227.7      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+timer_kit         COMPLIANT            176.5  176.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+control_center    COMPLIANT_IN_R240    233.5  233.5      0      0     0     0  IN_R240 (Rmax=233.5); shell.SafeArea(round,480) uses inset=70 so title starts at y=70; visually verified PASS in r200.
+launcher_grid     COMPLIANT_IN_R240    232.1  232.1      0      0     0     0  IN_R240 (Rmax=232.1); shell.SafeArea(round,480) uses inset=70 so EDIT button starts at y=70; visually verified PASS in r200.
+minigolf          COMPLIANT            223.5  223.5      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.
+ipod_music        COMPLIANT            229.1  229.1      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+color_demo        COMPLIANT            230.5  230.5      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+ble_uart          FIXED_R218           327.3  231.9     13      0     0     0  Was Rmax=327.3 (13 OUT_R240 incl. Ping/Stop/Advertise buttons + off-screen y=496 footer); moved into [76..404], 48px buttons, Stop danger-isolated.
+spectrum          COMPLIANT_IN_R240    227.8  227.8      0      0     0     0  IN_R240 (Rmax=227.8); 400x200 FFT canvas centered horizontally [40..440,149..349]; all HUD text IN_SAFE [84..396,80..404].
+svg_icon          COMPLIANT             56.6   56.6      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+gestures          FIXED_R218           282.8  231.9      8      0     0     0  Was Rmax=282.8 (padding 40, 4 cards r=14, status bar r=14 OUT_R240); fitted into [76..404], r=12; ASCII comment cleaned.
+storybook         COMPLIANT            227.7  227.7      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+mochi             FIXED_R218           339.4  339.4      2      1     0     0  Was Rmax=325.3 ("01 / 10" badge clipped at (384,8)); moved badge to [312..396,80..100] IN_SAFE. 480x400 ambient face canvas retained.
+shell_demo        DEFERRED             305.5  305.5      5      5     0     0  OUT_R240 (Rmax=305.5, StatusBar defaults to shape:square [24..456,24..80]; EdgeNavigation strips at x=0..24/456..480 by design). Deferred: round StatusBar uses SafeArea inset=70 (Rmax=240.4), requiring a shell.js component-level decision if tightened to 75.
+sparkline_demo    COMPLIANT            217.8  217.8      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+app_manager       COMPLIANT            220.6  220.6      0      0     0     0  Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.
+imu_poll          FIXED_R218           305.5  231.9      6      0     0     0  Was Rmax=305.5 (title, X/Z cards, Poll now button, footer OUT_R240); fitted 3x104px axis cards + motion bar + 48px button into [76..404].
+fitness           COMPLIANT            153.2  153.2      0      0     0     0  Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.

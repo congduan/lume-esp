@@ -1,0 +1,8 @@
+lume check examples/vec_demo
+
+[PASS] bundle   2809 bytes (19 ms)
+[SKIP] eval     --no-emu
+[SKIP] layout   requires emulator screenshot (--no-emu)
+[SKIP] perf     profile disabled
+
+RESULT: PASS (4 steps, 0 failed; exit 0)

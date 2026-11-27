@@ -1,0 +1,4441 @@
+{
+  "round": "r218",
+  "baseline": "origin/main 253aa83",
+  "generatedAt": "2026-11-27T17:15:53.297Z",
+  "manifestCount": 74,
+  "auditedCount": 74,
+  "criteria": {
+    "screen": "480x480 circle center=(240,240) R=240",
+    "safeSquare": [
+      75,
+      405
+    ],
+    "minTouch": "48x48",
+    "maxCardRadius": 12
+  },
+  "summary": {
+    "COMPLIANT": 38,
+    "COMPLIANT_IN_R240": 8,
+    "EXEMPT": 14,
+    "FIXED_R218": 10,
+    "DEFERRED": 4
+  },
+  "apps": [
+    {
+      "name": "counter",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=299.9 (title, Dark/Light buttons, card r=20, Add one button, footer OUT_R240); fitted into [76..404], r=12, 48px buttons.",
+      "before": {
+        "nodeCount": 15,
+        "interactiveCount": 3,
+        "worstContentR": 299.9,
+        "outR240Count": 8,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 1,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 15,
+        "interactiveCount": 3,
+        "worstContentR": 230.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "clock",
+      "status": "DEFERRED",
+      "reason": "OUT_R240 (Rmax=267.7, digital time/date below 300x300 dial at y=370..418). Deferred: legacy square clock counterpart to round clock_round (r205); guarded by tests/sntp_consumers.js.",
+      "before": {
+        "nodeCount": 4,
+        "interactiveCount": 0,
+        "worstContentR": 267.7,
+        "outR240Count": 2,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 5
+      },
+      "after": {
+        "nodeCount": 4,
+        "interactiveCount": 0,
+        "worstContentR": 267.7,
+        "outR240Count": 2,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 5
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 2,
+          "kind": "Text",
+          "w": 400,
+          "h": 20,
+          "abs": [
+            40,
+            370,
+            440,
+            390
+          ],
+          "rMax": 250,
+          "press": false,
+          "text": "01:15:51",
+          "inScroll": false
+        },
+        {
+          "id": 3,
+          "kind": "Text",
+          "w": 400,
+          "h": 20,
+          "abs": [
+            40,
+            398,
+            440,
+            418
+          ],
+          "rMax": 267.7,
+          "press": false,
+          "text": "Sat Nov 28 2026",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [
+        {
+          "id": 1,
+          "kind": "Canvas",
+          "w": 300,
+          "h": 300,
+          "abs": [
+            90,
+            62,
+            390,
+            362
+          ],
+          "rMax": 232.8,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "clock_round",
+      "status": "EXEMPT",
+      "reason": "Registered exemption (r205): cardinal dial numerals on axes Rmax=178.5 << 240.",
+      "before": {
+        "nodeCount": 11,
+        "interactiveCount": 0,
+        "worstContentR": 178.5,
+        "outR240Count": 0,
+        "outSafeCount": 4,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 11,
+        "interactiveCount": 0,
+        "worstContentR": 178.5,
+        "outR240Count": 0,
+        "outSafeCount": 4,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 3,
+          "kind": "Text",
+          "w": 48,
+          "h": 26,
+          "abs": [
+            216,
+            74,
+            264,
+            100
+          ],
+          "rMax": 167.7,
+          "press": false,
+          "text": "12",
+          "inScroll": false
+        },
+        {
+          "id": 4,
+          "kind": "Text",
+          "w": 44,
+          "h": 26,
+          "abs": [
+            374,
+            228,
+            418,
+            254
+          ],
+          "rMax": 178.5,
+          "press": false,
+          "text": "3",
+          "inScroll": false
+        },
+        {
+          "id": 5,
+          "kind": "Text",
+          "w": 48,
+          "h": 26,
+          "abs": [
+            216,
+            382,
+            264,
+            408
+          ],
+          "rMax": 169.7,
+          "press": false,
+          "text": "6",
+          "inScroll": false
+        },
+        {
+          "id": 6,
+          "kind": "Text",
+          "w": 44,
+          "h": 26,
+          "abs": [
+            62,
+            228,
+            106,
+            254
+          ],
+          "rMax": 178.5,
+          "press": false,
+          "text": "9",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "dashboard_round",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "games_snake",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 5,
+        "interactiveCount": 0,
+        "worstContentR": 200,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "after": {
+        "nodeCount": 5,
+        "interactiveCount": 0,
+        "worstContentR": 200,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "games_2048",
+      "status": "COMPLIANT_IN_R240",
+      "reason": "IN_R240 (Rmax=204.8); hint Text bottom at y=406 (1px past 405 safe square); board & HUD IN_SAFE (r201).",
+      "before": {
+        "nodeCount": 37,
+        "interactiveCount": 0,
+        "worstContentR": 204.8,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 37,
+        "interactiveCount": 0,
+        "worstContentR": 204.8,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 4,
+          "kind": "Text",
+          "w": 240,
+          "h": 18,
+          "abs": [
+            120,
+            388,
+            360,
+            406
+          ],
+          "rMax": 204.8,
+          "press": false,
+          "text": "Swipe to merge",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "games_breakout",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 41,
+        "interactiveCount": 0,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 41,
+        "interactiveCount": 0,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "games_tetris",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 11,
+        "interactiveCount": 0,
+        "worstContentR": 229.1,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 11,
+        "interactiveCount": 0,
+        "worstContentR": 229.1,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "mario",
+      "status": "EXEMPT",
+      "reason": "Registered exemption: full-bleed 480x352 world canvas (tests/games.js); HUD & 3x 100x48 buttons IN_SAFE.",
+      "before": {
+        "nodeCount": 6,
+        "interactiveCount": 3,
+        "worstContentR": 297.6,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 6,
+        "interactiveCount": 3,
+        "worstContentR": 297.6,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 2,
+          "kind": "Canvas",
+          "w": 480,
+          "h": 352,
+          "abs": [
+            0,
+            64,
+            480,
+            416
+          ],
+          "rMax": 297.6,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "game_of_life",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 6,
+        "interactiveCount": 1,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "after": {
+        "nodeCount": 6,
+        "interactiveCount": 1,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "pet",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 9,
+        "interactiveCount": 1,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "after": {
+        "nodeCount": 9,
+        "interactiveCount": 1,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "calculator",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=305.5 (display r=14 + 6 keypad buttons OUT_R240); fitted display (312x34, r=12) + 5x48px keypad rows into [76..404]; ASCII comment cleaned.",
+      "before": {
+        "nodeCount": 28,
+        "interactiveCount": 18,
+        "worstContentR": 305.5,
+        "outR240Count": 8,
+        "outSafeCount": 4,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 1,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "after": {
+        "nodeCount": 28,
+        "interactiveCount": 18,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "weather",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 52,
+        "interactiveCount": 1,
+        "worstContentR": 226.3,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 72
+      },
+      "after": {
+        "nodeCount": 52,
+        "interactiveCount": 1,
+        "worstContentR": 226.3,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 72
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "music_player",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 26,
+        "interactiveCount": 6,
+        "worstContentR": 211.3,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "after": {
+        "nodeCount": 26,
+        "interactiveCount": 6,
+        "worstContentR": 211.3,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "dashboard",
+      "status": "EXEMPT",
+      "reason": "Closed in r216: all tabs (98x48 y=352..400), GAUGE cards, SYSTEM/TRACE lines & text IN_SAFE; drawGauge canvas text sits behind opaque GAUGE backdrop.",
+      "before": {
+        "nodeCount": 27,
+        "interactiveCount": 3,
+        "worstContentR": 339.4,
+        "outR240Count": 2,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 3,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 27,
+        "interactiveCount": 3,
+        "worstContentR": 339.4,
+        "outR240Count": 2,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 3,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 2,
+          "kind": "Canvas",
+          "w": 400,
+          "h": 360,
+          "abs": [
+            40,
+            40,
+            440,
+            400
+          ],
+          "rMax": 282.8,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 4,
+          "kind": "View",
+          "w": 480,
+          "h": 348,
+          "abs": [
+            0,
+            0,
+            480,
+            348
+          ],
+          "rMax": 339.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [
+        {
+          "id": 27,
+          "kind": "View",
+          "w": 64,
+          "h": 3,
+          "abs": [
+            208,
+            467,
+            272,
+            470
+          ],
+          "rMax": 232.2,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": [
+        {
+          "canvasId": 2,
+          "label": "BATTERY",
+          "abs": [
+            56,
+            48,
+            112,
+            49
+          ],
+          "rMax": 265.9,
+          "inSafe": false,
+          "inR240": false,
+          "inR233": false
+        },
+        {
+          "canvasId": 2,
+          "label": "ACCEL",
+          "abs": [
+            56,
+            322,
+            96,
+            323
+          ],
+          "rMax": 201.9,
+          "inSafe": false,
+          "inR240": true,
+          "inR233": true
+        },
+        {
+          "canvasId": 2,
+          "label": "X 0.00",
+          "abs": [
+            56,
+            356,
+            104,
+            357
+          ],
+          "rMax": 218,
+          "inSafe": false,
+          "inR240": true,
+          "inR233": true
+        }
+      ]
+    },
+    {
+      "name": "gravity_ball",
+      "status": "EXEMPT",
+      "reason": "Ambient 480x480 physics ball canvas, no HUD/interaction (same class as fishtank).",
+      "before": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 6
+      },
+      "after": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 6
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "typewriter",
+      "status": "COMPLIANT_IN_R240",
+      "reason": "IN_R240 (Rmax=196.2); centered text strip at x=48, y=199..280, well inside circular glass.",
+      "before": {
+        "nodeCount": 5,
+        "interactiveCount": 0,
+        "worstContentR": 196.2,
+        "outR240Count": 0,
+        "outSafeCount": 3,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 11
+      },
+      "after": {
+        "nodeCount": 5,
+        "interactiveCount": 0,
+        "worstContentR": 196.2,
+        "outR240Count": 0,
+        "outSafeCount": 3,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 11
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 1,
+          "kind": "Text",
+          "w": 72,
+          "h": 17,
+          "abs": [
+            48,
+            199.5,
+            120,
+            216.5
+          ],
+          "rMax": 196.2,
+          "press": false,
+          "text": "TYPEWRITER",
+          "inScroll": false
+        },
+        {
+          "id": 2,
+          "kind": "Text",
+          "w": 11,
+          "h": 25,
+          "abs": [
+            48,
+            228.5,
+            59,
+            253.5
+          ],
+          "rMax": 192.5,
+          "press": false,
+          "text": "|",
+          "inScroll": false
+        },
+        {
+          "id": 3,
+          "kind": "Text",
+          "w": 73,
+          "h": 15,
+          "abs": [
+            48,
+            265.5,
+            121,
+            280.5
+          ],
+          "rMax": 196.2,
+          "press": false,
+          "text": "tap to skip",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "heart_curve",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=305.5 (title, card r=20, Sparkline [64..464], Next sample button OUT_R240); fitted into [76..404], r=12, explicit Sparkline x=12,y=62.",
+      "before": {
+        "nodeCount": 11,
+        "interactiveCount": 1,
+        "worstContentR": 305.5,
+        "outR240Count": 5,
+        "outSafeCount": 2,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 1,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 11,
+        "interactiveCount": 1,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "speedometer",
+      "status": "EXEMPT",
+      "reason": "Radial dial canvas (432x344) draws semicircular arc/ticks at R=158 << 240 (same class as compass); all HUD/TRIP card IN_SAFE [84..396,80..400].",
+      "before": {
+        "nodeCount": 16,
+        "interactiveCount": 0,
+        "worstContentR": 278.6,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "after": {
+        "nodeCount": 16,
+        "interactiveCount": 0,
+        "worstContentR": 278.6,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 1,
+          "kind": "Canvas",
+          "w": 432,
+          "h": 344,
+          "abs": [
+            24,
+            64,
+            456,
+            408
+          ],
+          "rMax": 278.6,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "power_demo",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=305.5 (title, card r=20, Keep awake button, footer OUT_R240); fitted into [76..404], r=12, 48px button.",
+      "before": {
+        "nodeCount": 11,
+        "interactiveCount": 1,
+        "worstContentR": 305.5,
+        "outR240Count": 5,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 1,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 11,
+        "interactiveCount": 1,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "luna",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=302.7 (canvas HUD at (30,22)/(30,444) + details card y=437 + non-ASCII middot); moved HUD & details card into [88..392,80..400], ASCII-clean.",
+      "before": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 2,
+        "nonAsciiLines": 2
+      },
+      "after": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "watchface",
+      "status": "DEFERRED",
+      "reason": "OUT_R240 (Rmax=328.1, SYNCING at (8,8) + 5 square faces). Deferred: tests/watchface.js locks canvasPixels=228544, retained-path node IDs 10/14, and localized Chinese/degree literals (23 deg / -- deg); clock_round & aurora_clock serve as dedicated round watchfaces.",
+      "before": {
+        "nodeCount": 44,
+        "interactiveCount": 0,
+        "worstContentR": 328.1,
+        "outR240Count": 2,
+        "outSafeCount": 2,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 13
+      },
+      "after": {
+        "nodeCount": 44,
+        "interactiveCount": 0,
+        "worstContentR": 328.1,
+        "outR240Count": 2,
+        "outSafeCount": 2,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 13
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 3,
+          "kind": "Text",
+          "w": 280,
+          "h": 24,
+          "abs": [
+            32,
+            40,
+            312,
+            64
+          ],
+          "rMax": 288.6,
+          "press": false,
+          "text": "LUME / DIGITAL",
+          "inScroll": false
+        },
+        {
+          "id": 44,
+          "kind": "Text",
+          "w": 140,
+          "h": 22,
+          "abs": [
+            8,
+            8,
+            148,
+            30
+          ],
+          "rMax": 328.1,
+          "press": false,
+          "text": "SYNCING",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [
+        {
+          "id": 4,
+          "kind": "Text",
+          "w": 416,
+          "h": 70,
+          "abs": [
+            32,
+            160,
+            448,
+            230
+          ],
+          "rMax": 222.9,
+          "press": false,
+          "text": "01:15",
+          "inScroll": false
+        },
+        {
+          "id": 5,
+          "kind": "Text",
+          "w": 416,
+          "h": 36,
+          "abs": [
+            32,
+            246,
+            448,
+            282
+          ],
+          "rMax": 212.2,
+          "press": false,
+          "text": "11月28日  周六",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "async_demo",
+      "status": "COMPLIANT_IN_R240",
+      "reason": "IN_R240 (Rmax=223.5); minimal Promise demo with 104x64 button at x=24, y=233..297, touch>=48x48.",
+      "before": {
+        "nodeCount": 3,
+        "interactiveCount": 1,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 2,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 3,
+        "interactiveCount": 1,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 2,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 1,
+          "kind": "Text",
+          "w": 78,
+          "h": 35,
+          "abs": [
+            24,
+            182.5,
+            102,
+            217.5
+          ],
+          "rMax": 223.5,
+          "press": false,
+          "text": "Ready",
+          "inScroll": false
+        },
+        {
+          "id": 2,
+          "kind": "Btn",
+          "w": 104,
+          "h": 64,
+          "abs": [
+            24,
+            233.5,
+            128,
+            297.5
+          ],
+          "rMax": 223.5,
+          "press": true,
+          "text": "Run async",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "piano",
+      "status": "DEFERRED",
+      "reason": "OUT_R240 (Rmax=258.2, outer white keys C/B at x=2..36/444..478). Deferred: HUD & 4 control buttons (72x48) are IN_SAFE; 14 white keys (476px) are hard-locked by tests/piano.js (WHITE_W*14===476) and shrinking to 330px yields unplayable 23px keys.",
+      "before": {
+        "nodeCount": 60,
+        "interactiveCount": 4,
+        "worstContentR": 258.2,
+        "outR240Count": 6,
+        "outSafeCount": 12,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 2
+      },
+      "after": {
+        "nodeCount": 60,
+        "interactiveCount": 4,
+        "worstContentR": 258.2,
+        "outR240Count": 6,
+        "outSafeCount": 12,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 2
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 2,
+          "kind": "View",
+          "w": 34,
+          "h": 190,
+          "abs": [
+            2,
+            150,
+            36,
+            340
+          ],
+          "rMax": 258.2,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 3,
+          "kind": "View",
+          "w": 20,
+          "h": 22,
+          "abs": [
+            9,
+            310,
+            29,
+            332
+          ],
+          "rMax": 248.6,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 4,
+          "kind": "Text",
+          "w": 20,
+          "h": 18,
+          "abs": [
+            9,
+            312,
+            29,
+            330
+          ],
+          "rMax": 247.9,
+          "press": false,
+          "text": "C",
+          "inScroll": false
+        },
+        {
+          "id": 41,
+          "kind": "View",
+          "w": 34,
+          "h": 190,
+          "abs": [
+            444,
+            150,
+            478,
+            340
+          ],
+          "rMax": 258.2,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 42,
+          "kind": "View",
+          "w": 20,
+          "h": 22,
+          "abs": [
+            451,
+            310,
+            471,
+            332
+          ],
+          "rMax": 248.6,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 43,
+          "kind": "Text",
+          "w": 20,
+          "h": 18,
+          "abs": [
+            451,
+            312,
+            471,
+            330
+          ],
+          "rMax": 247.9,
+          "press": false,
+          "text": "B",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [
+        {
+          "id": 5,
+          "kind": "View",
+          "w": 34,
+          "h": 190,
+          "abs": [
+            36,
+            150,
+            70,
+            340
+          ],
+          "rMax": 227.2,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 6,
+          "kind": "View",
+          "w": 20,
+          "h": 22,
+          "abs": [
+            43,
+            310,
+            63,
+            332
+          ],
+          "rMax": 217.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 7,
+          "kind": "Text",
+          "w": 20,
+          "h": 18,
+          "abs": [
+            43,
+            312,
+            63,
+            330
+          ],
+          "rMax": 216.6,
+          "press": false,
+          "text": "D",
+          "inScroll": false
+        },
+        {
+          "id": 8,
+          "kind": "View",
+          "w": 34,
+          "h": 190,
+          "abs": [
+            70,
+            150,
+            104,
+            340
+          ],
+          "rMax": 197.2,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 35,
+          "kind": "View",
+          "w": 34,
+          "h": 190,
+          "abs": [
+            376,
+            150,
+            410,
+            340
+          ],
+          "rMax": 197.2,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 38,
+          "kind": "View",
+          "w": 34,
+          "h": 190,
+          "abs": [
+            410,
+            150,
+            444,
+            340
+          ],
+          "rMax": 227.2,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 39,
+          "kind": "View",
+          "w": 20,
+          "h": 22,
+          "abs": [
+            417,
+            310,
+            437,
+            332
+          ],
+          "rMax": 217.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 40,
+          "kind": "Text",
+          "w": 20,
+          "h": 18,
+          "abs": [
+            417,
+            312,
+            437,
+            330
+          ],
+          "rMax": 216.6,
+          "press": false,
+          "text": "A",
+          "inScroll": false
+        },
+        {
+          "id": 44,
+          "kind": "View",
+          "w": 22,
+          "h": 116,
+          "abs": [
+            25,
+            150,
+            47,
+            266
+          ],
+          "rMax": 233.1,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 45,
+          "kind": "View",
+          "w": 22,
+          "h": 116,
+          "abs": [
+            59,
+            150,
+            81,
+            266
+          ],
+          "rMax": 202.1,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 52,
+          "kind": "View",
+          "w": 22,
+          "h": 116,
+          "abs": [
+            399,
+            150,
+            421,
+            266
+          ],
+          "rMax": 202.1,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 53,
+          "kind": "View",
+          "w": 22,
+          "h": 116,
+          "abs": [
+            433,
+            150,
+            455,
+            266
+          ],
+          "rMax": 233.1,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "compass",
+      "status": "EXEMPT",
+      "reason": "Registered exemption (r205): 360x360 radial dial canvas draws ticks at R=162 << 240; HUD & 120x48 MODE button IN_SAFE.",
+      "before": {
+        "nodeCount": 8,
+        "interactiveCount": 1,
+        "worstContentR": 257.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "after": {
+        "nodeCount": 8,
+        "interactiveCount": 1,
+        "worstContentR": 257.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 1,
+          "kind": "Canvas",
+          "w": 360,
+          "h": 360,
+          "abs": [
+            60,
+            64,
+            420,
+            424
+          ],
+          "rMax": 257.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "invaders",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 5,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 5,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "frogger",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 5,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 5,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "abc123",
+      "status": "COMPLIANT_IN_R240",
+      "reason": "IN_R240 (Rmax=237.9); 320x320 flashcard Img at [80..400,64..384]; tap coords verified by verify.mjs.",
+      "before": {
+        "nodeCount": 4,
+        "interactiveCount": 0,
+        "worstContentR": 237.9,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "after": {
+        "nodeCount": 4,
+        "interactiveCount": 0,
+        "worstContentR": 237.9,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 2,
+          "kind": "Img",
+          "w": 320,
+          "h": 320,
+          "abs": [
+            80,
+            64,
+            400,
+            384
+          ],
+          "rMax": 237.9,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "sokoban",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 9,
+        "interactiveCount": 3,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 2
+      },
+      "after": {
+        "nodeCount": 9,
+        "interactiveCount": 3,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 2
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "lcd_dual",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 7,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "after": {
+        "nodeCount": 7,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "memory",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 6,
+        "interactiveCount": 1,
+        "worstContentR": 229.1,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 6,
+        "interactiveCount": 1,
+        "worstContentR": 229.1,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "minesweeper",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 7,
+        "interactiveCount": 1,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 7,
+        "interactiveCount": 1,
+        "worstContentR": 224.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "golf",
+      "status": "EXEMPT",
+      "reason": "Registered exemption: full-bleed 480x420 course canvas (tests/golf.js); HUD IN_SAFE.",
+      "before": {
+        "nodeCount": 7,
+        "interactiveCount": 0,
+        "worstContentR": 339.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 6
+      },
+      "after": {
+        "nodeCount": 7,
+        "interactiveCount": 0,
+        "worstContentR": 339.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 6
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 2,
+          "kind": "Canvas",
+          "w": 480,
+          "h": 420,
+          "abs": [
+            0,
+            60,
+            480,
+            480
+          ],
+          "rMax": 339.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "scroller",
+      "status": "EXEMPT",
+      "reason": "Full-bleed 480x352 side-scroller world canvas (same class as mario); HUD [84..396,76..132] & 48px buttons IN_SAFE.",
+      "before": {
+        "nodeCount": 9,
+        "interactiveCount": 2,
+        "worstContentR": 302.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 9,
+        "interactiveCount": 2,
+        "worstContentR": 302.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 2,
+          "kind": "Canvas",
+          "w": 480,
+          "h": 352,
+          "abs": [
+            0,
+            56,
+            480,
+            408
+          ],
+          "rMax": 302.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "raycast",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 6,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 6,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "fishtank",
+      "status": "EXEMPT",
+      "reason": "Registered exemption: pure ambient 480x480 aquarium canvas, no HUD/interaction.",
+      "before": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "after": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "particles",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 7,
+        "interactiveCount": 2,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 7,
+        "interactiveCount": 2,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "voice_assistant",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 9,
+        "interactiveCount": 1,
+        "worstContentR": 226.3,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 9,
+        "interactiveCount": 1,
+        "worstContentR": 226.3,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "spectrum_music",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 4,
+        "interactiveCount": 2,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 4,
+        "interactiveCount": 2,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "plasma",
+      "status": "COMPLIANT_IN_R240",
+      "reason": "IN_R240 (Rmax=231.1); ambient 480x480 lava canvas with centered title PLASMA at (202,12) & theme label at y=29.",
+      "before": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 2,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 2,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": [
+        {
+          "canvasId": 2,
+          "label": "PLASMA",
+          "abs": [
+            202,
+            12,
+            250,
+            13
+          ],
+          "rMax": 231.1,
+          "inSafe": false,
+          "inR240": true,
+          "inR233": true
+        },
+        {
+          "canvasId": 2,
+          "label": "LAVA",
+          "abs": [
+            224,
+            29,
+            256,
+            30
+          ],
+          "rMax": 211.6,
+          "inSafe": false,
+          "inR240": true,
+          "inR233": true
+        }
+      ]
+    },
+    {
+      "name": "skyfire",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 4,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 4,
+        "interactiveCount": 0,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "skycombat",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 0,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "aurora_clock",
+      "status": "EXEMPT",
+      "reason": "Registered exemption (r205): hidden harness anchor Text behind opaque 480x480 canvas; visible sprite/date/pills IN_SAFE.",
+      "before": {
+        "nodeCount": 10,
+        "interactiveCount": 0,
+        "worstContentR": 206.2,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 10,
+        "interactiveCount": 0,
+        "worstContentR": 206.2,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 2,
+          "kind": "Text",
+          "w": 380,
+          "h": 88,
+          "abs": [
+            50,
+            196,
+            430,
+            284
+          ],
+          "rMax": 195,
+          "press": false,
+          "text": "01:15",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "flapdot",
+      "status": "EXEMPT",
+      "reason": "Full-bleed 480x400 playfield canvas (tests/flapdot.js); HUD [84..396,80..124] IN_SAFE.",
+      "before": {
+        "nodeCount": 6,
+        "interactiveCount": 0,
+        "worstContentR": 339.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "after": {
+        "nodeCount": 6,
+        "interactiveCount": 0,
+        "worstContentR": 339.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 3
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 2,
+          "kind": "Canvas",
+          "w": 480,
+          "h": 400,
+          "abs": [
+            0,
+            80,
+            480,
+            480
+          ],
+          "rMax": 339.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "wordring",
+      "status": "EXEMPT",
+      "reason": "Full-bleed 480x430 radial word-wheel canvas (tests/wordring.js); HUD & 3x 48px buttons [104..376,356..404] IN_SAFE.",
+      "before": {
+        "nodeCount": 8,
+        "interactiveCount": 3,
+        "worstContentR": 339.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 8,
+        "interactiveCount": 3,
+        "worstContentR": 339.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 2,
+          "kind": "Canvas",
+          "w": 480,
+          "h": 430,
+          "abs": [
+            0,
+            0,
+            480,
+            430
+          ],
+          "rMax": 339.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "image_gallery",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 18,
+        "interactiveCount": 2,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 18,
+        "interactiveCount": 2,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "files",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 33,
+        "interactiveCount": 8,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 33,
+        "interactiveCount": 8,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "adc_meter",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 18,
+        "interactiveCount": 2,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 18,
+        "interactiveCount": 2,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "crypto_check",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 19,
+        "interactiveCount": 1,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 19,
+        "interactiveCount": 1,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "archive_view",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 17,
+        "interactiveCount": 1,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 17,
+        "interactiveCount": 1,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "img_view",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 10,
+        "interactiveCount": 2,
+        "worstContentR": 227.7,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 10,
+        "interactiveCount": 2,
+        "worstContentR": 227.7,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "vec_demo",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=311.1 (title (20,20) + NEXT button [20..140,406..454] + Canvas overlap); moved into [76..404] with 9-node budget & S=240 preserved.",
+      "before": {
+        "nodeCount": 9,
+        "interactiveCount": 1,
+        "worstContentR": 311.1,
+        "outR240Count": 2,
+        "outSafeCount": 2,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 9,
+        "interactiveCount": 1,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "settings",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 118,
+        "interactiveCount": 4,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 118,
+        "interactiveCount": 4,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "hr_monitor",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 21,
+        "interactiveCount": 1,
+        "worstContentR": 229.1,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 21,
+        "interactiveCount": 1,
+        "worstContentR": 229.1,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "keyboard_demo",
+      "status": "EXEMPT",
+      "reason": "Closed in r217: 29/29 keys keyHeight=48 IN_R240 & IN_R233 (worstR=231.2); 44px letter-key width mathematically proven exempt (docs/r217-report.md).",
+      "before": {
+        "nodeCount": 39,
+        "interactiveCount": 29,
+        "worstContentR": 298.1,
+        "outR240Count": 1,
+        "outSafeCount": 9,
+        "touchUnder48Count": 26,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 39,
+        "interactiveCount": 29,
+        "worstContentR": 298.1,
+        "outR240Count": 1,
+        "outSafeCount": 9,
+        "touchUnder48Count": 26,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [
+        {
+          "id": 8,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            11,
+            224,
+            55,
+            272
+          ],
+          "rMax": 231.2,
+          "text": "Q"
+        },
+        {
+          "id": 9,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            57,
+            224,
+            101,
+            272
+          ],
+          "rMax": 185.8,
+          "text": "W"
+        },
+        {
+          "id": 10,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            103,
+            224,
+            147,
+            272
+          ],
+          "rMax": 140.7,
+          "text": "E"
+        },
+        {
+          "id": 11,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            149,
+            224,
+            193,
+            272
+          ],
+          "rMax": 96.5,
+          "text": "R"
+        },
+        {
+          "id": 12,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            195,
+            224,
+            239,
+            272
+          ],
+          "rMax": 55.2,
+          "text": "T"
+        },
+        {
+          "id": 13,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            241,
+            224,
+            285,
+            272
+          ],
+          "rMax": 55.2,
+          "text": "Y"
+        },
+        {
+          "id": 14,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            287,
+            224,
+            331,
+            272
+          ],
+          "rMax": 96.5,
+          "text": "U"
+        },
+        {
+          "id": 15,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            333,
+            224,
+            377,
+            272
+          ],
+          "rMax": 140.7,
+          "text": "I"
+        },
+        {
+          "id": 16,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            379,
+            224,
+            423,
+            272
+          ],
+          "rMax": 185.8,
+          "text": "O"
+        },
+        {
+          "id": 17,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            425,
+            224,
+            469,
+            272
+          ],
+          "rMax": 231.2,
+          "text": "P"
+        },
+        {
+          "id": 19,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            34,
+            274,
+            78,
+            322
+          ],
+          "rMax": 221.7,
+          "text": "A"
+        },
+        {
+          "id": 20,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            80,
+            274,
+            124,
+            322
+          ],
+          "rMax": 179.8,
+          "text": "S"
+        },
+        {
+          "id": 21,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            126,
+            274,
+            170,
+            322
+          ],
+          "rMax": 140.4,
+          "text": "D"
+        },
+        {
+          "id": 22,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            172,
+            274,
+            216,
+            322
+          ],
+          "rMax": 106.5,
+          "text": "F"
+        },
+        {
+          "id": 23,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            218,
+            274,
+            262,
+            322
+          ],
+          "rMax": 84.9,
+          "text": "G"
+        },
+        {
+          "id": 24,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            264,
+            274,
+            308,
+            322
+          ],
+          "rMax": 106.5,
+          "text": "H"
+        },
+        {
+          "id": 25,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            310,
+            274,
+            354,
+            322
+          ],
+          "rMax": 140.4,
+          "text": "J"
+        },
+        {
+          "id": 26,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            356,
+            274,
+            400,
+            322
+          ],
+          "rMax": 179.8,
+          "text": "K"
+        },
+        {
+          "id": 27,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            402,
+            274,
+            446,
+            322
+          ],
+          "rMax": 221.7,
+          "text": "L"
+        },
+        {
+          "id": 29,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            80,
+            324,
+            124,
+            372
+          ],
+          "rMax": 207.4,
+          "text": "Z"
+        },
+        {
+          "id": 30,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            126,
+            324,
+            170,
+            372
+          ],
+          "rMax": 174.4,
+          "text": "X"
+        },
+        {
+          "id": 31,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            172,
+            324,
+            216,
+            372
+          ],
+          "rMax": 148.5,
+          "text": "C"
+        },
+        {
+          "id": 32,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            218,
+            324,
+            262,
+            372
+          ],
+          "rMax": 133.8,
+          "text": "V"
+        },
+        {
+          "id": 33,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            264,
+            324,
+            308,
+            372
+          ],
+          "rMax": 148.5,
+          "text": "B"
+        },
+        {
+          "id": 34,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            310,
+            324,
+            354,
+            372
+          ],
+          "rMax": 174.4,
+          "text": "N"
+        },
+        {
+          "id": 35,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            356,
+            324,
+            400,
+            372
+          ],
+          "rMax": 207.4,
+          "text": "M"
+        }
+      ],
+      "outR240Nodes": [
+        {
+          "id": 6,
+          "kind": "View",
+          "w": 466,
+          "h": 206,
+          "abs": [
+            7,
+            220,
+            473,
+            426
+          ],
+          "rMax": 298.1,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [
+        {
+          "id": 8,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            11,
+            224,
+            55,
+            272
+          ],
+          "rMax": 231.2,
+          "press": true,
+          "text": "Q",
+          "inScroll": false
+        },
+        {
+          "id": 9,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            57,
+            224,
+            101,
+            272
+          ],
+          "rMax": 185.8,
+          "press": true,
+          "text": "W",
+          "inScroll": false
+        },
+        {
+          "id": 16,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            379,
+            224,
+            423,
+            272
+          ],
+          "rMax": 185.8,
+          "press": true,
+          "text": "O",
+          "inScroll": false
+        },
+        {
+          "id": 17,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            425,
+            224,
+            469,
+            272
+          ],
+          "rMax": 231.2,
+          "press": true,
+          "text": "P",
+          "inScroll": false
+        },
+        {
+          "id": 19,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            34,
+            274,
+            78,
+            322
+          ],
+          "rMax": 221.7,
+          "press": true,
+          "text": "A",
+          "inScroll": false
+        },
+        {
+          "id": 27,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            402,
+            274,
+            446,
+            322
+          ],
+          "rMax": 221.7,
+          "press": true,
+          "text": "L",
+          "inScroll": false
+        },
+        {
+          "id": 37,
+          "kind": "Btn",
+          "w": 136,
+          "h": 48,
+          "abs": [
+            104,
+            374,
+            240,
+            422
+          ],
+          "rMax": 227.2,
+          "press": true,
+          "text": "SPACE",
+          "inScroll": false
+        },
+        {
+          "id": 38,
+          "kind": "Btn",
+          "w": 66,
+          "h": 48,
+          "abs": [
+            242,
+            374,
+            308,
+            422
+          ],
+          "rMax": 194.3,
+          "press": true,
+          "text": "BKSP",
+          "inScroll": false
+        },
+        {
+          "id": 39,
+          "kind": "Btn",
+          "w": 66,
+          "h": 48,
+          "abs": [
+            310,
+            374,
+            376,
+            422
+          ],
+          "rMax": 227.2,
+          "press": true,
+          "text": "ENTER",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "wordle",
+      "status": "EXEMPT",
+      "reason": "Closed in r217: 29/29 keys keyHeight=48 IN_R240 (worstR=236.3); 44px letter-key width mathematically proven exempt (docs/r217-report.md).",
+      "before": {
+        "nodeCount": 39,
+        "interactiveCount": 30,
+        "worstContentR": 300.3,
+        "outR240Count": 1,
+        "outSafeCount": 9,
+        "touchUnder48Count": 26,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 39,
+        "interactiveCount": 30,
+        "worstContentR": 300.3,
+        "outR240Count": 1,
+        "outSafeCount": 9,
+        "touchUnder48Count": 26,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [
+        {
+          "id": 8,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            20,
+            244,
+            64,
+            292
+          ],
+          "rMax": 226.1,
+          "text": "Q"
+        },
+        {
+          "id": 9,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            64,
+            244,
+            108,
+            292
+          ],
+          "rMax": 183.5,
+          "text": "W"
+        },
+        {
+          "id": 10,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            108,
+            244,
+            152,
+            292
+          ],
+          "rMax": 141.9,
+          "text": "E"
+        },
+        {
+          "id": 11,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            152,
+            244,
+            196,
+            292
+          ],
+          "rMax": 102.2,
+          "text": "R"
+        },
+        {
+          "id": 12,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            196,
+            244,
+            240,
+            292
+          ],
+          "rMax": 68.1,
+          "text": "T"
+        },
+        {
+          "id": 13,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            240,
+            244,
+            284,
+            292
+          ],
+          "rMax": 68.1,
+          "text": "Y"
+        },
+        {
+          "id": 14,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            284,
+            244,
+            328,
+            292
+          ],
+          "rMax": 102.2,
+          "text": "U"
+        },
+        {
+          "id": 15,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            328,
+            244,
+            372,
+            292
+          ],
+          "rMax": 141.9,
+          "text": "I"
+        },
+        {
+          "id": 16,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            372,
+            244,
+            416,
+            292
+          ],
+          "rMax": 183.5,
+          "text": "O"
+        },
+        {
+          "id": 17,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            416,
+            244,
+            460,
+            292
+          ],
+          "rMax": 226.1,
+          "text": "P"
+        },
+        {
+          "id": 19,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            42,
+            292,
+            86,
+            340
+          ],
+          "rMax": 221.8,
+          "text": "A"
+        },
+        {
+          "id": 20,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            86,
+            292,
+            130,
+            340
+          ],
+          "rMax": 183.6,
+          "text": "S"
+        },
+        {
+          "id": 21,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            130,
+            292,
+            174,
+            340
+          ],
+          "rMax": 148.7,
+          "text": "D"
+        },
+        {
+          "id": 22,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            174,
+            292,
+            218,
+            340
+          ],
+          "rMax": 119.8,
+          "text": "F"
+        },
+        {
+          "id": 23,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            218,
+            292,
+            262,
+            340
+          ],
+          "rMax": 102.4,
+          "text": "G"
+        },
+        {
+          "id": 24,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            262,
+            292,
+            306,
+            340
+          ],
+          "rMax": 119.8,
+          "text": "H"
+        },
+        {
+          "id": 25,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            306,
+            292,
+            350,
+            340
+          ],
+          "rMax": 148.7,
+          "text": "J"
+        },
+        {
+          "id": 26,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            350,
+            292,
+            394,
+            340
+          ],
+          "rMax": 183.6,
+          "text": "K"
+        },
+        {
+          "id": 27,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            394,
+            292,
+            438,
+            340
+          ],
+          "rMax": 221.8,
+          "text": "L"
+        },
+        {
+          "id": 29,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            86,
+            340,
+            130,
+            388
+          ],
+          "rMax": 213.6,
+          "text": "Z"
+        },
+        {
+          "id": 30,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            130,
+            340,
+            174,
+            388
+          ],
+          "rMax": 184.4,
+          "text": "X"
+        },
+        {
+          "id": 31,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            174,
+            340,
+            218,
+            388
+          ],
+          "rMax": 162,
+          "text": "C"
+        },
+        {
+          "id": 32,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            218,
+            340,
+            262,
+            388
+          ],
+          "rMax": 149.6,
+          "text": "V"
+        },
+        {
+          "id": 33,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            262,
+            340,
+            306,
+            388
+          ],
+          "rMax": 162,
+          "text": "B"
+        },
+        {
+          "id": 34,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            306,
+            340,
+            350,
+            388
+          ],
+          "rMax": 184.4,
+          "text": "N"
+        },
+        {
+          "id": 35,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            350,
+            340,
+            394,
+            388
+          ],
+          "rMax": 213.6,
+          "text": "M"
+        }
+      ],
+      "outR240Nodes": [
+        {
+          "id": 6,
+          "kind": "View",
+          "w": 448,
+          "h": 200,
+          "abs": [
+            16,
+            240,
+            464,
+            440
+          ],
+          "rMax": 300.3,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [
+        {
+          "id": 8,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            20,
+            244,
+            64,
+            292
+          ],
+          "rMax": 226.1,
+          "press": true,
+          "text": "Q",
+          "inScroll": false
+        },
+        {
+          "id": 9,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            64,
+            244,
+            108,
+            292
+          ],
+          "rMax": 183.5,
+          "press": true,
+          "text": "W",
+          "inScroll": false
+        },
+        {
+          "id": 16,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            372,
+            244,
+            416,
+            292
+          ],
+          "rMax": 183.5,
+          "press": true,
+          "text": "O",
+          "inScroll": false
+        },
+        {
+          "id": 17,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            416,
+            244,
+            460,
+            292
+          ],
+          "rMax": 226.1,
+          "press": true,
+          "text": "P",
+          "inScroll": false
+        },
+        {
+          "id": 19,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            42,
+            292,
+            86,
+            340
+          ],
+          "rMax": 221.8,
+          "press": true,
+          "text": "A",
+          "inScroll": false
+        },
+        {
+          "id": 27,
+          "kind": "Btn",
+          "w": 44,
+          "h": 48,
+          "abs": [
+            394,
+            292,
+            438,
+            340
+          ],
+          "rMax": 221.8,
+          "press": true,
+          "text": "L",
+          "inScroll": false
+        },
+        {
+          "id": 37,
+          "kind": "Btn",
+          "w": 132,
+          "h": 48,
+          "abs": [
+            108,
+            388,
+            240,
+            436
+          ],
+          "rMax": 236.3,
+          "press": true,
+          "text": "SPACE",
+          "inScroll": false
+        },
+        {
+          "id": 38,
+          "kind": "Btn",
+          "w": 66,
+          "h": 48,
+          "abs": [
+            240,
+            388,
+            306,
+            436
+          ],
+          "rMax": 206.8,
+          "press": true,
+          "text": "BKSP",
+          "inScroll": false
+        },
+        {
+          "id": 39,
+          "kind": "Btn",
+          "w": 66,
+          "h": 48,
+          "abs": [
+            306,
+            388,
+            372,
+            436
+          ],
+          "rMax": 236.3,
+          "press": true,
+          "text": "ENTER",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "controls_demo",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 15,
+        "interactiveCount": 1,
+        "worstContentR": 227.7,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 15,
+        "interactiveCount": 1,
+        "worstContentR": 227.7,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "timer_kit",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 19,
+        "interactiveCount": 4,
+        "worstContentR": 176.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 19,
+        "interactiveCount": 4,
+        "worstContentR": 176.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "control_center",
+      "status": "COMPLIANT_IN_R240",
+      "reason": "IN_R240 (Rmax=233.5); shell.SafeArea(round,480) uses inset=70 so title starts at y=70; visually verified PASS in r200.",
+      "before": {
+        "nodeCount": 16,
+        "interactiveCount": 5,
+        "worstContentR": 233.5,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 16,
+        "interactiveCount": 5,
+        "worstContentR": 233.5,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 4,
+          "kind": "Text",
+          "w": 320,
+          "h": 26,
+          "abs": [
+            80,
+            70,
+            400,
+            96
+          ],
+          "rMax": 233.5,
+          "press": false,
+          "text": "Control Center",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "launcher_grid",
+      "status": "COMPLIANT_IN_R240",
+      "reason": "IN_R240 (Rmax=232.1); shell.SafeArea(round,480) uses inset=70 so EDIT button starts at y=70; visually verified PASS in r200.",
+      "before": {
+        "nodeCount": 50,
+        "interactiveCount": 13,
+        "worstContentR": 232.1,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 50,
+        "interactiveCount": 13,
+        "worstContentR": 232.1,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 7,
+          "kind": "View",
+          "w": 64,
+          "h": 48,
+          "abs": [
+            334,
+            70,
+            398,
+            118
+          ],
+          "rMax": 232.1,
+          "press": true,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "minigolf",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 10,
+        "interactiveCount": 4,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 10,
+        "interactiveCount": 4,
+        "worstContentR": 223.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "ipod_music",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 17,
+        "interactiveCount": 0,
+        "worstContentR": 229.1,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 17,
+        "interactiveCount": 0,
+        "worstContentR": 229.1,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "color_demo",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 8,
+        "interactiveCount": 0,
+        "worstContentR": 230.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 8,
+        "interactiveCount": 0,
+        "worstContentR": 230.5,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "ble_uart",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=327.3 (13 OUT_R240 incl. Ping/Stop/Advertise buttons + off-screen y=496 footer); moved into [76..404], 48px buttons, Stop danger-isolated.",
+      "before": {
+        "nodeCount": 28,
+        "interactiveCount": 3,
+        "worstContentR": 327.3,
+        "outR240Count": 13,
+        "outSafeCount": 10,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 28,
+        "interactiveCount": 3,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "spectrum",
+      "status": "COMPLIANT_IN_R240",
+      "reason": "IN_R240 (Rmax=227.8); 400x200 FFT canvas centered horizontally [40..440,149..349]; all HUD text IN_SAFE [84..396,80..404].",
+      "before": {
+        "nodeCount": 6,
+        "interactiveCount": 0,
+        "worstContentR": 227.8,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 6,
+        "interactiveCount": 0,
+        "worstContentR": 227.8,
+        "outR240Count": 0,
+        "outSafeCount": 1,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [
+        {
+          "id": 1,
+          "kind": "Canvas",
+          "w": 400,
+          "h": 200,
+          "abs": [
+            40,
+            149,
+            440,
+            349
+          ],
+          "rMax": 227.8,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "svg_icon",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 56.6,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 2,
+        "interactiveCount": 0,
+        "worstContentR": 56.6,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "gestures",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=282.8 (padding 40, 4 cards r=14, status bar r=14 OUT_R240); fitted into [76..404], r=12; ASCII comment cleaned.",
+      "before": {
+        "nodeCount": 22,
+        "interactiveCount": 0,
+        "worstContentR": 282.8,
+        "outR240Count": 8,
+        "outSafeCount": 5,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 5,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 1
+      },
+      "after": {
+        "nodeCount": 22,
+        "interactiveCount": 0,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "storybook",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 21,
+        "interactiveCount": 2,
+        "worstContentR": 227.7,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 21,
+        "interactiveCount": 2,
+        "worstContentR": 227.7,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "mochi",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=325.3 (\"01 / 10\" badge clipped at (384,8)); moved badge to [312..396,80..100] IN_SAFE. 480x400 ambient face canvas retained.",
+      "before": {
+        "nodeCount": 7,
+        "interactiveCount": 2,
+        "worstContentR": 339.4,
+        "outR240Count": 2,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 7,
+        "interactiveCount": 2,
+        "worstContentR": 339.4,
+        "outR240Count": 1,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 1,
+          "kind": "Canvas",
+          "w": 480,
+          "h": 400,
+          "abs": [
+            0,
+            0,
+            480,
+            400
+          ],
+          "rMax": 339.4,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "shell_demo",
+      "status": "DEFERRED",
+      "reason": "OUT_R240 (Rmax=305.5, StatusBar defaults to shape:square [24..456,24..80]; EdgeNavigation strips at x=0..24/456..480 by design). Deferred: round StatusBar uses SafeArea inset=70 (Rmax=240.4), requiring a shell.js component-level decision if tightened to 75.",
+      "before": {
+        "nodeCount": 14,
+        "interactiveCount": 3,
+        "worstContentR": 305.5,
+        "outR240Count": 5,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 14,
+        "interactiveCount": 3,
+        "worstContentR": 305.5,
+        "outR240Count": 5,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [
+        {
+          "id": 7,
+          "kind": "Text",
+          "w": 88,
+          "h": 20,
+          "abs": [
+            24,
+            42,
+            112,
+            62
+          ],
+          "rMax": 293,
+          "press": false,
+          "text": "Shell demo",
+          "inScroll": false
+        },
+        {
+          "id": 8,
+          "kind": "Text",
+          "w": 53,
+          "h": 20,
+          "abs": [
+            403,
+            42,
+            456,
+            62
+          ],
+          "rMax": 293,
+          "press": false,
+          "text": "page 1",
+          "inScroll": false
+        },
+        {
+          "id": 9,
+          "kind": "View",
+          "w": 432,
+          "h": 56,
+          "abs": [
+            24,
+            24,
+            456,
+            80
+          ],
+          "rMax": 305.5,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 12,
+          "kind": "Canvas",
+          "w": 24,
+          "h": 64,
+          "abs": [
+            0,
+            208,
+            24,
+            272
+          ],
+          "rMax": 242.1,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        },
+        {
+          "id": 14,
+          "kind": "Canvas",
+          "w": 24,
+          "h": 64,
+          "abs": [
+            456,
+            208,
+            480,
+            272
+          ],
+          "rMax": 242.1,
+          "press": false,
+          "text": "",
+          "inScroll": false
+        }
+      ],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "sparkline_demo",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 12,
+        "interactiveCount": 1,
+        "worstContentR": 217.8,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 12,
+        "interactiveCount": 1,
+        "worstContentR": 217.8,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "app_manager",
+      "status": "COMPLIANT",
+      "reason": "Clean: all visible nodes & interactive controls strictly IN_SAFE [75,405], touch>=48x48, card radius<=12.",
+      "before": {
+        "nodeCount": 6,
+        "interactiveCount": 1,
+        "worstContentR": 220.6,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 6,
+        "interactiveCount": 1,
+        "worstContentR": 220.6,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "imu_poll",
+      "status": "FIXED_R218",
+      "reason": "Was Rmax=305.5 (title, X/Z cards, Poll now button, footer OUT_R240); fitted 3x104px axis cards + motion bar + 48px button into [76..404].",
+      "before": {
+        "nodeCount": 20,
+        "interactiveCount": 1,
+        "worstContentR": 305.5,
+        "outR240Count": 6,
+        "outSafeCount": 4,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 20,
+        "interactiveCount": 1,
+        "worstContentR": 231.9,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    },
+    {
+      "name": "fitness",
+      "status": "COMPLIANT",
+      "reason": "Clean: HUD/controls strictly IN_SAFE [75,405] & touch>=48x48 on full-bleed canvas.",
+      "before": {
+        "nodeCount": 6,
+        "interactiveCount": 3,
+        "worstContentR": 153.2,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "after": {
+        "nodeCount": 6,
+        "interactiveCount": 3,
+        "worstContentR": 153.2,
+        "outR240Count": 0,
+        "outSafeCount": 0,
+        "touchUnder48Count": 0,
+        "badRadiusCount": 0,
+        "canvasTextIssueCount": 0,
+        "nonAsciiLines": 0
+      },
+      "touchUnder48": [],
+      "outR240Nodes": [],
+      "outSafeNodes": [],
+      "badRadiusCards": [],
+      "canvasTextIssues": []
+    }
+  ]
+}
