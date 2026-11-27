@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — Launcher (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    /* Primitive Tokens — docs/DESIGN-TOKENS.md §1 */
+    --bg-0: #000000;
+    --bg-1: #0D1420;
+    --bg-2: #16202E;
+    --bg-3: #1F2C3D;
+    --text-hi: #F2F7FB;
+    --text-mid: #9EB3C6;
+    --text-low: #5C7794;
+    --accent: #40D8B0;
+    --accent-deep: #117B69;
+    --danger: #FF6B79;
+    --warn: #FFD78E;
+    --info: #5B9DF7;
+
+    /* Typography — 1 level (fs-hud 14px), weight & color carry hierarchy */
+    --fs-hud: 14px;
+
+    /* Spacing & Radii */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --radius-pill: 999px;
+
+    /* Extended Badge Surface Tints (derived from primitive tokens) */
+    --tint-accent-top: #183B37;
+    --tint-accent-bot: #0D2322;
+    --tint-info-top: #172B47;
+    --tint-info-bot: #0E1B30;
+    --tint-warn-top: #382E1B;
+    --tint-warn-bot: #211B11;
+    --tint-danger-top: #3B1C25;
+    --tint-danger-bot: #241118;
+    --tint-neutral-top: #253347;
+    --tint-neutral-bot: #16202E;
+
+    --border-subtle: rgba(242, 247, 251, 0.11);
+    --shadow-icon: 0 6px 14px rgba(0, 0, 0, 0.58), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html, body {
+    width: 480px;
+    height: 480px;
+    background: var(--bg-0);
+    overflow: hidden;
+    font-family: var(--font-sans);
+    color: var(--text-hi);
+    user-select: none;
+  }
+
+  .watch-screen {
+    position: relative;
+    width: 480px;
+    height: 480px;
+    border-radius: 50%;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 48%, #0E1624 0%, #070C14 56%, #000000 84%);
+    box-shadow: inset 0 0 0 1.5px rgba(158, 179, 198, 0.14);
+  }
+
+  /* Subtle decorative radial halo inside r <= 216px */
+  .bezel-ring {
+    position: absolute;
+    inset: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(158, 179, 198, 0.08);
+    pointer-events: none;
+  }
+
+  /* Inscribed safe square: x,y in [75, 405] (330x330) */
+  .safe-area {
+    position: absolute;
+    left: 75px;
+    top: 75px;
+    width: 330px;
+    height: 330px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 8px 4px;
+  }
+
+  .top-bar {
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .clock-time {
+    font-size: var(--fs-hud);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-mid);
+    line-height: 1;
+  }
+
+  /* 3 columns x 4 rows inside 312 x 278px */
+  .app-grid {
+    width: 312px;
+    display: grid;
+    grid-template-columns: repeat(3, 96px);
+    grid-template-rows: repeat(4, 65px);
+    column-gap: 12px;
+    row-gap: 4px;
+    justify-items: center;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+
+  .app-tile {
+    width: 96px;
+    height: 65px;
+    border: none;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    border-radius: 12px;
+    color: var(--text-hi);
+    font-family: var(--font-sans);
+    font-size: var(--fs-hud);
+    transition: transform 110ms ease, background 150ms ease;
+  }
+
+  .app-tile:hover {
+    background: rgba(242, 247, 251, 0.05);
+  }
+
+  .app-tile:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .app-tile:active {
+    transform: scale(0.92);
+  }
+
+  .app-tile:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .app-tile:active .icon-disc {
+    filter: brightness(1.18);
+  }
+
+  /* Circular icon badge: 48x48px (>= 48px touch standard) */
+  .icon-disc {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-icon);
+    transition: transform 120ms ease, border-color 150ms ease, filter 120ms ease;
+  }
+
+  .icon-disc.tone-accent {
+    background: linear-gradient(155deg, var(--tint-accent-top) 0%, var(--tint-accent-bot) 100%);
+    border-color: rgba(64, 216, 176, 0.38);
+    color: var(--accent);
+  }
+
+  .icon-disc.tone-info {
+    background: linear-gradient(155deg, var(--tint-info-top) 0%, var(--tint-info-bot) 100%);
+    border-color: rgba(91, 157, 247, 0.36);
+    color: var(--info);
+  }
+
+  .icon-disc.tone-warn {
+    background: linear-gradient(155deg, var(--tint-warn-top) 0%, var(--tint-warn-bot) 100%);
+    border-color: rgba(255, 215, 142, 0.36);
+    color: var(--warn);
+  }
+
+  .icon-disc.tone-danger {
+    background: linear-gradient(155deg, var(--tint-danger-top) 0%, var(--tint-danger-bot) 100%);
+    border-color: rgba(255, 107, 121, 0.38);
+    color: var(--danger);
+  }
+
+  .icon-disc.tone-neutral {
+    background: linear-gradient(155deg, var(--tint-neutral-top) 0%, var(--tint-neutral-bot) 100%);
+    border-color: rgba(158, 179, 198, 0.28);
+    color: var(--text-hi);
+  }
+
+  .app-label {
+    font-size: var(--fs-hud);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: 0.01em;
+    color: #D2E0EC;
+    max-width: 92px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-tile:hover .app-label,
+  .app-tile.is-selected .app-label {
+    color: var(--text-hi);
+  }
+
+  /* Page dots indicator inside safe area bottom */
+  .page-dots {
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-pill);
+    background: var(--text-low);
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    transition: width 180ms ease, background 180ms ease;
+  }
+
+  .dot.is-active {
+    width: 18px;
+    background: var(--accent);
+    box-shadow: 0 0 8px rgba(64, 216, 176, 0.55);
+  }
+</style>
+</head>
+<body>
+  <main class="watch-screen" aria-label="App Launcher">
+    <div class="bezel-ring" aria-hidden="true"></div>
+
+    <section class="safe-area">
+      <header class="top-bar">
+        <span class="clock-time">10:09</span>
+      </header>
+
+      <div class="app-grid" role="grid" aria-label="Applications">
+        <!-- 1. Clock -->
+        <button class="app-tile" type="button" data-app="clock">
+          <span class="icon-disc tone-warn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.9" />
+              <path d="M12 7.2V12L15.4 13.8" stroke="#F2F7FB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <circle cx="12" cy="12" r="1.4" fill="currentColor" />
+            </svg>
+          </span>
+          <span class="app-label">Clock</span>
+        </button>
+
+        <!-- 2. Timer -->
+        <button class="app-tile" type="button" data-app="timer">
+          <span class="icon-disc tone-accent">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M9.5 3.2H14.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+              <path d="M12 3.2V5.5" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+              <circle cx="12" cy="13.5" r="7.5" stroke="currentColor" stroke-width="1.9" />
+              <path d="M12 13.5L15.6 10.2" stroke="#F2F7FB" stroke-width="2" stroke-linecap="round" />
+              <path d="M17.2 7.8L18.7 6.3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="app-label">Timer</span>
+        </button>
+
+        <!-- 3. Weather -->
+        <button class="app-tile" type="button" data-app="weather">
+          <span class="icon-disc tone-info">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="15.5" cy="8.5" r="3.2" fill="#FFD78E" />
+              <path d="M7.5 18H16.6C18.5 18 20 16.5 20 14.7C20 13 18.7 11.6 17 11.4C16.5 9.1 14.5 7.5 12.1 7.5C9.4 7.5 7.2 9.6 7.1 12.2C5.3 12.5 4 14 4 15.8C4 17 5.5 18 7.5 18Z" fill="currentColor" fill-opacity="0.28" stroke="#F2F7FB" stroke-width="1.7" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="app-label">Weather</span>
+        </button>
+
+        <!-- 4. Music -->
+        <button class="app-tile" type="button" data-app="music">
+          <span class="icon-disc tone-danger">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M9.5 16.5V6.6L18.5 5V14.8" stroke="#F2F7FB" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M9.5 10L18.5 8.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              <circle cx="7.2" cy="17.2" r="2.3" fill="currentColor" />
+              <circle cx="16.2" cy="15.5" r="2.3" fill="currentColor" />
+            </svg>
+          </span>
+          <span class="app-label">Music</span>
+        </button>
+
+        <!-- 5. Fitness -->
+        <button class="app-tile" type="button" data-app="fitness">
+          <span class="icon-disc tone-accent">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8.4" stroke="#40D8B0" stroke-width="2" stroke-dasharray="42 12" stroke-linecap="round" transform="rotate(-90 12 12)" />
+              <circle cx="12" cy="12" r="5.5" stroke="#FFD78E" stroke-width="2" stroke-dasharray="25 10" stroke-linecap="round" transform="rotate(-90 12 12)" />
+              <circle cx="12" cy="12" r="2.7" stroke="#FF6B79" stroke-width="2" stroke-dasharray="12 6" stroke-linecap="round" transform="rotate(-90 12 12)" />
+            </svg>
+          </span>
+          <span class="app-label">Fitness</span>
+        </button>
+
+        <!-- 6. Heart Rate -->
+        <button class="app-tile" type="button" data-app="heart">
+          <span class="icon-disc tone-danger">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M12 19.6C12 19.6 4.5 14.9 4.5 9.6C4.5 7.1 6.4 5.2 8.7 5.2C10.2 5.2 11.4 6 12 7.2C12.6 6 13.8 5.2 15.3 5.2C17.6 5.2 19.5 7.1 19.5 9.6C19.5 14.9 12 19.6 12 19.6Z" fill="currentColor" fill-opacity="0.25" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+              <path d="M6.8 12H9.6L11 9.5L13 14.3L14.4 12H17.2" stroke="#F2F7FB" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+          </span>
+          <span class="app-label">Heart</span>
+        </button>
+
+        <!-- 7. Camera -->
+        <button class="app-tile" type="button" data-app="camera">
+          <span class="icon-disc tone-neutral">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M4.5 9.2C4.5 8.1 5.4 7.2 6.5 7.2H8.2L9.4 5.4H14.6L15.8 7.2H17.5C18.6 7.2 19.5 8.1 19.5 9.2V16.8C19.5 17.9 18.6 18.8 17.5 18.8H6.5C5.4 18.8 4.5 17.9 4.5 16.8V9.2Z" stroke="#F2F7FB" stroke-width="1.8" stroke-linejoin="round" />
+              <circle cx="12" cy="13" r="3.2" stroke="#9EB3C6" stroke-width="1.8" />
+              <circle cx="16.6" cy="9.8" r="0.9" fill="#40D8B0" />
+            </svg>
+          </span>
+          <span class="app-label">Camera</span>
+        </button>
+
+        <!-- 8. Compass -->
+        <button class="app-tile" type="button" data-app="compass">
+          <span class="icon-disc tone-info">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8" />
+              <polygon points="15.8,8.2 13.4,13.4 10.6,10.6" fill="#FF6B79" />
+              <polygon points="8.2,15.8 10.6,10.6 13.4,13.4" fill="#F2F7FB" />
+            </svg>
+          </span>
+          <span class="app-label">Compass</span>
+        </button>
+
+        <!-- 9. Messages -->
+        <button class="app-tile" type="button" data-app="messages">
+          <span class="icon-disc tone-accent">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M5 7.5C5 6.1 6.1 5 7.5 5H16.5C17.9 5 19 6.1 19 7.5V13.8C19 15.2 17.9 16.3 16.5 16.3H10.4L6.4 19.2V16.3C5.6 16 5 15 5 13.8V7.5Z" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+              <circle cx="9.2" cy="10.7" r="1.1" fill="#F2F7FB" />
+              <circle cx="12" cy="10.7" r="1.1" fill="#F2F7FB" />
+              <circle cx="14.8" cy="10.7" r="1.1" fill="#F2F7FB" />
+            </svg>
+          </span>
+          <span class="app-label">Chat</span>
+        </button>
+
+        <!-- 10. Control Center -->
+        <button class="app-tile" type="button" data-app="control">
+          <span class="icon-disc tone-neutral">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <path d="M5.5 8.5H18.5" stroke="#9EB3C6" stroke-width="2" stroke-linecap="round" />
+              <circle cx="14.5" cy="8.5" r="2.4" fill="#40D8B0" stroke="#0D1420" stroke-width="1.2" />
+              <path d="M5.5 15.5H18.5" stroke="#9EB3C6" stroke-width="2" stroke-linecap="round" />
+              <circle cx="9.5" cy="15.5" r="2.4" fill="#F2F7FB" stroke="#0D1420" stroke-width="1.2" />
+            </svg>
+          </span>
+          <span class="app-label">Control</span>
+        </button>
+
+        <!-- 11. Alarm -->
+        <button class="app-tile" type="button" data-app="alarm">
+          <span class="icon-disc tone-warn">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="13" r="6.8" stroke="currentColor" stroke-width="1.8" />
+              <path d="M5.2 6.8L7.6 4.8M18.8 6.8L16.4 4.8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              <path d="M12 9.4V13L14.5 14.5" stroke="#F2F7FB" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M7.5 18.6L6.2 20M16.5 18.6L17.8 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="app-label">Alarm</span>
+        </button>
+
+        <!-- 12. Settings -->
+        <button class="app-tile" type="button" data-app="settings">
+          <span class="icon-disc tone-neutral">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="3" stroke="#F2F7FB" stroke-width="1.9" />
+              <path d="M12 4.2V6.1M12 17.9V19.8M4.2 12H6.1M17.9 12H19.8M6.5 6.5L7.9 7.9M16.1 16.1L17.5 17.5M17.5 6.5L16.1 7.9M7.9 16.1L6.5 17.5" stroke="#9EB3C6" stroke-width="2" stroke-linecap="round" />
+              <circle cx="12" cy="12" r="6.1" stroke="#F2F7FB" stroke-width="1.5" stroke-opacity="0.7" />
+            </svg>
+          </span>
+          <span class="app-label">Settings</span>
+        </button>
+      </div>
+
+      <nav class="page-dots" aria-label="Launcher pages">
+        <button class="dot is-active" type="button" aria-label="Page 1" aria-current="page"></button>
+        <button class="dot" type="button" aria-label="Page 2"></button>
+        <button class="dot" type="button" aria-label="Page 3"></button>
+      </nav>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const dots = Array.from(document.querySelectorAll('.dot'));
+      dots.forEach((dot, idx) => {
+        dot.addEventListener('click', () => {
+          dots.forEach((d, i) => {
+            d.classList.toggle('is-active', i === idx);
+            if (i === idx) d.setAttribute('aria-current', 'page');
+            else d.removeAttribute('aria-current');
+          });
+        });
+      });
+
+      const tiles = Array.from(document.querySelectorAll('.app-tile'));
+      tiles.forEach((tile) => {
+        tile.addEventListener('click', () => {
+          tiles.forEach(t => t.classList.remove('is-selected'));
+          tile.classList.add('is-selected');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

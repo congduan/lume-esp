@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — Timer (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    /* Primitive Tokens — docs/DESIGN-TOKENS.md §1 */
+    --bg-0: #000000;
+    --bg-1: #0D1420;
+    --bg-2: #16202E;
+    --bg-3: #1F2C3D;
+    --text-hi: #F2F7FB;
+    --text-mid: #9EB3C6;
+    --text-low: #5C7794;
+    --accent: #40D8B0;
+    --accent-deep: #117B69;
+    --danger: #FF6B79;
+    --warn: #FFD78E;
+    --info: #5B9DF7;
+
+    /* Typography Scale — docs/DESIGN-TOKENS.md §1.2 (<= 3 levels on screen) */
+    --fs-hud: 14px;
+    --fs-label: 16px;
+    --fs-display: 48px;
+
+    /* Spacing (8px grid) & Radii */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --radius-sm: 8px;
+    --radius-card: 12px;
+    --radius-pill: 999px;
+
+    /* Extended Surface & Elevation Tokens (documented in r201-design-notes.md) */
+    --border-subtle: rgba(242, 247, 251, 0.09);
+    --border-strong: rgba(158, 179, 198, 0.22);
+    --accent-soft: rgba(64, 216, 176, 0.14);
+    --accent-border: rgba(64, 216, 176, 0.38);
+    --danger-soft: rgba(255, 107, 121, 0.12);
+    --danger-border: rgba(255, 107, 121, 0.55);
+    --shadow-accent: 0 8px 24px rgba(64, 216, 176, 0.28);
+    --shadow-btn: 0 4px 14px rgba(0, 0, 0, 0.48);
+
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html, body {
+    width: 480px;
+    height: 480px;
+    background: var(--bg-0);
+    overflow: hidden;
+    font-family: var(--font-sans);
+    color: var(--text-hi);
+    user-select: none;
+  }
+
+  .watch-screen {
+    position: relative;
+    width: 480px;
+    height: 480px;
+    border-radius: 50%;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(17, 123, 105, 0.16) 0%, rgba(13, 20, 32, 0.72) 44%, #000000 76%);
+    box-shadow: inset 0 0 0 1.5px rgba(158, 179, 198, 0.14);
+  }
+
+  /* Decorative outer instrument dial (r <= 216px < 220px redline) */
+  .dial-svg {
+    position: absolute;
+    inset: 0;
+    width: 480px;
+    height: 480px;
+    pointer-events: none;
+  }
+
+  .progress-arc {
+    transition: stroke-dashoffset 220ms cubic-bezier(0.22, 1, 0.36, 1), stroke 220ms ease;
+  }
+
+  /* Inscribed round-screen safe area: x,y in [75, 405] (330x330) */
+  .safe-area {
+    position: absolute;
+    left: 75px;
+    top: 75px;
+    width: 330px;
+    height: 330px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 8px 14px;
+  }
+
+  /* Top header label inside safe zone */
+  .header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    height: 20px;
+    justify-content: center;
+  }
+
+  .eyebrow {
+    font-size: var(--fs-hud);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-mid);
+    line-height: 1;
+  }
+
+  /* Center focus group: status badge + 48px hero display (equator-aligned at y=240) + +/- steppers */
+  .center-cluster {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    border-radius: var(--radius-pill);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-border);
+    font-size: var(--fs-hud);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    line-height: 1;
+    transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+  }
+
+  .status-pill[data-state="PAUSED"] {
+    background: rgba(255, 215, 142, 0.14);
+    border-color: rgba(255, 215, 142, 0.42);
+    color: var(--warn);
+  }
+
+  .status-pill[data-state="OVER"] {
+    background: var(--danger-soft);
+    border-color: var(--danger-border);
+    color: var(--danger);
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  .time-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 312px;
+    height: 64px;
+  }
+
+  .time-display {
+    flex: 1;
+    text-align: center;
+    font-size: var(--fs-display);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-hi);
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.65);
+  }
+
+  /* Tactile 48x48 circular +/- minute steppers (only enabled in READY) */
+  .step-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: linear-gradient(180deg, #243347 0%, #192434 100%);
+    color: var(--text-hi);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-btn), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    transition: transform 110ms ease, background 150ms ease, border-color 150ms ease, opacity 180ms ease;
+  }
+
+  .step-btn:hover:not(:disabled) {
+    border-color: var(--accent-border);
+    background: linear-gradient(180deg, #2A3C54 0%, #1E2C40 100%);
+  }
+
+  .step-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .step-btn:active:not(:disabled) {
+    transform: scale(0.93);
+    background: var(--bg-2);
+    border-color: var(--accent);
+  }
+
+  .step-btn:disabled {
+    opacity: 0.28;
+    cursor: default;
+    box-shadow: none;
+  }
+
+  .step-btn.is-hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .preset-caption {
+    font-size: var(--fs-hud);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text-mid);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  /* Bottom action bar — state-machine driven (DESIGN-TOKENS §3.1) */
+  .actions {
+    width: 100%;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-5); /* 24px separation between primary/secondary and danger RESET */
+  }
+
+  .btn {
+    height: 54px;
+    min-width: 120px;
+    padding: 0 24px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-sans);
+    font-size: var(--fs-label);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: transform 110ms ease, background 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+  }
+
+  .btn:focus-visible {
+    outline: 2px solid var(--text-hi);
+    outline-offset: 2px;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  .btn:disabled {
+    background: var(--bg-3);
+    color: var(--text-low);
+    border-color: var(--border-subtle);
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  /* Primary: accent bg + bg-1 dark ink (10.7:1 contrast, WCAG AAA) */
+  .btn-primary {
+    min-width: 184px;
+    background: linear-gradient(180deg, #52E4BE 0%, #40D8B0 55%, #2FC49D 100%);
+    color: var(--bg-1);
+    box-shadow: var(--shadow-accent), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: linear-gradient(180deg, #62ECC8 0%, #48DFB8 100%);
+    box-shadow: 0 10px 28px rgba(64, 216, 176, 0.38);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    background: var(--accent-deep);
+    color: var(--text-hi);
+    box-shadow: 0 2px 10px rgba(17, 123, 105, 0.35);
+  }
+
+  /* Secondary: bg-3 + text-hi */
+  .btn-secondary {
+    min-width: 126px;
+    background: linear-gradient(180deg, #243347 0%, #1B2738 100%);
+    color: var(--text-hi);
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-btn), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    border-color: var(--text-mid);
+  }
+
+  .btn-secondary:active:not(:disabled) {
+    background: var(--bg-2);
+  }
+
+  /* Danger: isolated RESET button */
+  .btn-danger {
+    min-width: 126px;
+    background: var(--danger-soft);
+    color: var(--danger);
+    border-color: var(--danger-border);
+    box-shadow: var(--shadow-btn);
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    background: rgba(255, 107, 121, 0.2);
+    border-color: var(--danger);
+  }
+
+  .btn-danger:active:not(:disabled) {
+    background: var(--danger);
+    color: var(--bg-1);
+  }
+
+  .btn.hidden {
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <main class="watch-screen" aria-label="Timer">
+    <!-- Outer radial ticks + SVG remaining progress ring (decorative, r <= 212px <= 220px) -->
+    <svg class="dial-svg" viewBox="0 0 480 480" aria-hidden="true">
+      <defs>
+        <filter id="arcGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="4" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#64ECC7" />
+          <stop offset="55%" stop-color="#40D8B0" />
+          <stop offset="100%" stop-color="#1FB591" />
+        </linearGradient>
+      </defs>
+
+      <!-- Subtle precision 60-tick dial ring -->
+      <g id="dialTicks"></g>
+
+      <!-- Recessed progress ring track (r = 188) -->
+      <circle cx="240" cy="240" r="188" fill="none" stroke="#16202E" stroke-width="14" />
+      <circle cx="240" cy="240" r="188" fill="none" stroke="#1F2C3D" stroke-width="10" />
+
+      <!-- Active remaining progress arc (100% in READY state, starts at 12 o'clock) -->
+      <circle
+        id="progressArc"
+        class="progress-arc"
+        cx="240"
+        cy="240"
+        r="188"
+        fill="none"
+        stroke="url(#ringGrad)"
+        stroke-width="10"
+        stroke-linecap="round"
+        stroke-dasharray="1181.24"
+        stroke-dashoffset="0"
+        transform="rotate(-90 240 240)"
+        filter="url(#arcGlow)"
+      />
+
+      <!-- 12 o'clock crown marker dot -->
+      <circle id="arcCapDot" cx="240" cy="52" r="4.5" fill="#F2F7FB" filter="url(#arcGlow)" />
+    </svg>
+
+    <!-- All interactive controls & key text strictly within [75, 405] -->
+    <section class="safe-area">
+      <header class="header">
+        <span class="eyebrow">COUNTDOWN</span>
+      </header>
+
+      <div class="center-cluster">
+        <div id="statusPill" class="status-pill" data-state="READY">
+          <span class="status-dot"></span>
+          <span id="statusText">READY</span>
+        </div>
+
+        <div class="time-row">
+          <button id="btnMinus" class="step-btn" type="button" aria-label="Decrease 1 minute">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M4.5 10H15.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+            </svg>
+          </button>
+
+          <div id="timeDisplay" class="time-display">05:00</div>
+
+          <button id="btnPlus" class="step-btn" type="button" aria-label="Increase 1 minute">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 4.5V15.5M4.5 10H15.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div id="presetCaption" class="preset-caption">05 MIN PRESET</div>
+      </div>
+
+      <!-- State-machine driven action bar: READY shows ONLY START -->
+      <div class="actions" role="group" aria-label="Timer controls">
+        <button id="btnStart" class="btn btn-primary" type="button">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M4 2.8C4 2.15 4.71 1.75 5.26 2.09L13.4 7.29C13.9 7.61 13.9 8.39 13.4 8.71L5.26 13.91C4.71 14.25 4 13.85 4 13.2V2.8Z" />
+          </svg>
+          START
+        </button>
+
+        <button id="btnPause" class="btn btn-secondary hidden" type="button">PAUSE</button>
+        <button id="btnResume" class="btn btn-primary hidden" type="button">RESUME</button>
+        <button id="btnReset" class="btn btn-danger hidden" type="button">RESET</button>
+        <button id="btnRestart" class="btn btn-primary hidden" type="button">RESTART</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      const CIRC = 2 * Math.PI * 188;
+      const ticksG = document.getElementById('dialTicks');
+      for (let i = 0; i < 60; i++) {
+        const major = i % 5 === 0;
+        const rad = ((i * 6) - 90) * Math.PI / 180;
+        const r1 = major ? 204 : 207;
+        const r2 = 213;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', (240 + Math.cos(rad) * r1).toFixed(1));
+        line.setAttribute('y1', (240 + Math.sin(rad) * r1).toFixed(1));
+        line.setAttribute('x2', (240 + Math.cos(rad) * r2).toFixed(1));
+        line.setAttribute('y2', (240 + Math.sin(rad) * r2).toFixed(1));
+        line.setAttribute('stroke', major ? '#5C7794' : 'rgba(92, 119, 148, 0.35)');
+        line.setAttribute('stroke-width', major ? '2' : '1.2');
+        line.setAttribute('stroke-linecap', 'round');
+        ticksG.appendChild(line);
+      }
+
+      let presetMin = 5;
+      let phase = 'READY';
+      let remainingMs = presetMin * 60000;
+      let totalMs = presetMin * 60000;
+      let endAt = 0;
+      let timerId = null;
+
+      const arc = document.getElementById('progressArc');
+      const capDot = document.getElementById('arcCapDot');
+      const timeEl = document.getElementById('timeDisplay');
+      const pillEl = document.getElementById('statusPill');
+      const statusEl = document.getElementById('statusText');
+      const captionEl = document.getElementById('presetCaption');
+      const btnMinus = document.getElementById('btnMinus');
+      const btnPlus = document.getElementById('btnPlus');
+      const btnStart = document.getElementById('btnStart');
+      const btnPause = document.getElementById('btnPause');
+      const btnResume = document.getElementById('btnResume');
+      const btnReset = document.getElementById('btnReset');
+      const btnRestart = document.getElementById('btnRestart');
+
+      function pad2(n) { return (n < 10 ? '0' : '') + n; }
+      function fmt(ms) {
+        const s = Math.ceil(ms / 1000);
+        return pad2(Math.floor(s / 60)) + ':' + pad2(s % 60);
+      }
+
+      function render() {
+        const frac = phase === 'READY' ? 1 : (totalMs > 0 ? Math.max(0, Math.min(1, remainingMs / totalMs)) : 0);
+        arc.style.strokeDasharray = CIRC.toFixed(2);
+        arc.style.strokeDashoffset = (CIRC * (1 - frac)).toFixed(2);
+        const angle = (-90 + frac * 360) * Math.PI / 180;
+        capDot.setAttribute('cx', (240 + Math.cos(angle) * 188).toFixed(1));
+        capDot.setAttribute('cy', (240 + Math.sin(angle) * 188).toFixed(1));
+        capDot.style.opacity = frac > 0.01 ? '1' : '0';
+
+        timeEl.textContent = fmt(phase === 'READY' ? presetMin * 60000 : remainingMs);
+        pillEl.setAttribute('data-state', phase);
+        statusEl.textContent = phase;
+        captionEl.textContent = phase === 'READY'
+          ? pad2(presetMin) + ' MIN PRESET'
+          : (phase === 'OVER' ? 'COMPLETED' : Math.round(frac * 100) + '% REMAINING');
+
+        btnMinus.classList.toggle('is-hidden', phase !== 'READY');
+        btnPlus.classList.toggle('is-hidden', phase !== 'READY');
+        btnMinus.disabled = presetMin <= 1;
+        btnPlus.disabled = presetMin >= 60;
+
+        btnStart.classList.toggle('hidden', phase !== 'READY');
+        btnPause.classList.toggle('hidden', phase !== 'RUNNING');
+        btnResume.classList.toggle('hidden', phase !== 'PAUSED');
+        btnReset.classList.toggle('hidden', !(phase === 'RUNNING' || phase === 'PAUSED'));
+        btnRestart.classList.toggle('hidden', phase !== 'OVER');
+      }
+
+      function tick() {
+        if (phase !== 'RUNNING') return;
+        remainingMs = Math.max(0, endAt - Date.now());
+        if (remainingMs === 0) {
+          clearInterval(timerId); timerId = null;
+          phase = 'OVER';
+        }
+        render();
+      }
+
+      btnMinus.onclick = () => { if (phase === 'READY' && presetMin > 1) { presetMin--; render(); } };
+      btnPlus.onclick = () => { if (phase === 'READY' && presetMin < 60) { presetMin++; render(); } };
+      btnStart.onclick = btnRestart.onclick = () => {
+        totalMs = presetMin * 60000;
+        remainingMs = totalMs;
+        endAt = Date.now() + totalMs;
+        phase = 'RUNNING';
+        clearInterval(timerId);
+        timerId = setInterval(tick, 100);
+        render();
+      };
+      btnPause.onclick = () => {
+        remainingMs = Math.max(0, endAt - Date.now());
+        clearInterval(timerId); timerId = null;
+        phase = 'PAUSED';
+        render();
+      };
+      btnResume.onclick = () => {
+        endAt = Date.now() + remainingMs;
+        phase = 'RUNNING';
+        timerId = setInterval(tick, 100);
+        render();
+      };
+      btnReset.onclick = () => {
+        clearInterval(timerId); timerId = null;
+        phase = 'READY';
+        remainingMs = presetMin * 60000;
+        render();
+      };
+
+      render();
+    })();
+  </script>
+</body>
+</html>
