@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import net from 'node:net';
+import { EventEmitter } from 'node:events';
 import { createHmac } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -24,6 +25,7 @@ test('file chunk command keeps raw bytes and app frames unchanged', () => {
 import { queryFirmwareTag } from './fwtag.js';
 import { parseQjsVersion, qjsVersion, assertEngineVersion, queryEngineVersion, compileBytecode, localQjsc } from './bytecode.js';
 import { openOta, otaMac, otaAuthResponse, OTA_PORT_DEFAULT } from './ota.js';
+import { attachPort, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_DELAY_MS, DEFAULT_MAX_RETRIES, RESYNC_PREAMBLE } from './transport.js';
 import { decodeShot, bmpFromRgb565 } from './shot.js';
 import { check, render, parsePerf } from './check.js';
 import { extractLumeCatalog, namespaceMembers, levenshtein, findUnknownMembers, suggest, parseEvalError } from './check_suggest.js';
@@ -756,4 +758,189 @@ test('CLI token command validates the 32-hex token before opening a port', async
   await assert.rejects(
     execFileAsync(process.execPath, [cli, 'token', 'abc']),
     err => /token needs 32 hex characters/.test(err.stderr));
+});
+
+/* ---- r222 USB CDC transport chunking, pacing and bounded retry (mock port) ---- */
+
+function makeMockSerialPort(onWrite) {
+  const port = new EventEmitter();
+  port.isOpen = true;
+  port.writes = [];
+  port.timestamps = [];
+  port.drains = 0;
+  port.write = (buf, cb) => {
+    const copy = Buffer.from(buf);
+    port.writes.push(copy);
+    port.timestamps.push(Date.now());
+    if (cb) queueMicrotask(() => cb(null));
+    if (onWrite) onWrite(copy, port);
+  };
+  port.drain = cb => {
+    port.drains++;
+    if (cb) queueMicrotask(() => cb(null));
+  };
+  port.close = cb => {
+    port.isOpen = false;
+    port.emit('close');
+    if (cb) queueMicrotask(() => cb(null));
+  };
+  port.reply = text => queueMicrotask(() => port.emit('data', Buffer.from(text, 'utf8')));
+  return port;
+}
+
+test('r222 transport: writes large frames in <= chunkSize chunks with pacing', async () => {
+  assert.equal(DEFAULT_CHUNK_SIZE, 256);
+  assert.equal(DEFAULT_CHUNK_DELAY_MS, 4);
+  assert.equal(DEFAULT_MAX_RETRIES, 2);
+  assert.equal(RESYNC_PREAMBLE.length, 12);
+
+  const payload = 'x'.repeat(1000);
+  const expected = frame(payload); // 1012 bytes -> 4 chunks: 256, 256, 256, 244
+  let rx = Buffer.alloc(0);
+  const port = makeMockSerialPort((chunk, p) => {
+    rx = Buffer.concat([rx, chunk]);
+    if (rx.length === expected.length) p.reply(`RELOAD OK ${payload.length}\n`);
+  });
+  const dev = attachPort(port, '/dev/mock0', { chunkSize: 256, chunkDelayMs: 5, resyncDelayMs: 0 });
+  const got = await dev.push(payload);
+  assert.equal(got, payload.length);
+  assert.deepEqual(port.writes.map(c => c.length), [256, 256, 256, 244]);
+  assert.equal(port.drains, 4);
+  assert.ok(rx.equals(expected), 'reassembled bytes match frame() verbatim');
+  // 3 inter-chunk gaps of 5 ms -> total span should be >= 10 ms (allow timer jitter).
+  const span = port.timestamps[port.timestamps.length - 1] - port.timestamps[0];
+  assert.ok(span >= 10, `expected inter-chunk pacing >= 10 ms, got ${span} ms`);
+  await dev.close();
+});
+
+test('r222 transport: push retries after RELOAD ERR bad-crc with RESYNC_PREAMBLE', async () => {
+  const payload = 'var ok = 1;';
+  const expected = frame(payload);
+  let rx = Buffer.alloc(0);
+  let attempt = 0;
+  let sawPreamble = false;
+  const port = makeMockSerialPort((chunk, p) => {
+    // Detect the 12-byte 0xFF resync preamble sent between Attempt 1 and Attempt 2
+    // and emit a realistic RELOAD ERR bad-magic (which transport must absorb).
+    if (chunk.equals(RESYNC_PREAMBLE)) {
+      sawPreamble = true;
+      p.reply('RELOAD ERR bad-magic\n');
+      return;
+    }
+    rx = Buffer.concat([rx, chunk]);
+    if (rx.length === expected.length) {
+      assert.ok(rx.equals(expected));
+      rx = Buffer.alloc(0);
+      attempt++;
+      if (attempt === 1) p.reply('RELOAD ERR bad-crc\n');
+      else p.reply(`RELOAD OK ${payload.length}\n`);
+    }
+  });
+  const dev = attachPort(port, '/dev/mock1', {
+    chunkSize: 8, chunkDelayMs: 0, maxRetries: 2, resyncDelayMs: 10,
+  });
+  const got = await dev.push(payload);
+  assert.equal(got, payload.length);
+  assert.equal(attempt, 2);
+  assert.equal(sawPreamble, true, 'RESYNC_PREAMBLE sent before retry');
+  await dev.close();
+});
+
+test('r222 transport: LUMC STORE retries immediately on RELOAD ERR bad-crc', async () => {
+  const cmdText = storeCommand('demo', { label: 'Demo' }, 'View({});');
+  const expected = cmdFrame(cmdText);
+  let rx = Buffer.alloc(0);
+  let attempt = 0;
+  let preambles = 0;
+  const port = makeMockSerialPort((chunk, p) => {
+    if (chunk.equals(RESYNC_PREAMBLE)) { preambles++; return; }
+    rx = Buffer.concat([rx, chunk]);
+    if (rx.length === expected.length) {
+      rx = Buffer.alloc(0);
+      attempt++;
+      if (attempt === 1) p.reply('RELOAD ERR bad-crc\n');
+      else p.reply('CMD OK store demo 9\n');
+    }
+  });
+  const dev = attachPort(port, '/dev/mock2', {
+    chunkSize: 16, chunkDelayMs: 0, maxRetries: 2, resyncDelayMs: 0, ackTimeoutMs: 500,
+  });
+  const reply = await dev.command(cmdText);
+  assert.equal(reply.verb, 'store');
+  assert.equal(reply.arg, 'demo');
+  assert.equal(attempt, 2);
+  assert.equal(preambles, 1);
+  await dev.close();
+});
+
+test('r222 transport: LAUNCH retries on ACK timeout and firmware RELOAD ERR timeout', async () => {
+  const expected = cmdFrame(simpleCommand('LAUNCH', 'clock'));
+  let rx = Buffer.alloc(0);
+  let attempt = 0;
+  let preambles = 0;
+  const port = makeMockSerialPort((chunk, p) => {
+    if (chunk.equals(RESYNC_PREAMBLE)) { preambles++; return; }
+    rx = Buffer.concat([rx, chunk]);
+    if (rx.length === expected.length) {
+      rx = Buffer.alloc(0);
+      attempt++;
+      // Attempt 1: silent drop -> host ACK timeout.
+      // Attempt 2: firmware RX idle timeout reply -> RELOAD ERR timeout.
+      // Attempt 3: succeeds.
+      if (attempt === 2) p.reply('RELOAD ERR timeout\n');
+      else if (attempt === 3) p.reply('RELOAD OK 42\n');
+    }
+  });
+  const dev = attachPort(port, '/dev/mock3', {
+    chunkSize: 256, chunkDelayMs: 0, maxRetries: 2, resyncDelayMs: 0, ackTimeoutMs: 40,
+  });
+  const got = await dev.commandReload(simpleCommand('LAUNCH', 'clock'));
+  assert.equal(got, 42);
+  assert.equal(attempt, 3);
+  assert.equal(preambles, 2);
+  await dev.close();
+});
+
+test('r222 transport: bounded retries exhaust cleanly and non-retryable errors fail fast', async () => {
+  // 1. Exhaustion: 1 initial + 2 retries = 3 attempts, then rejects with bad-crc.
+  let attempts = 0;
+  let preambles = 0;
+  const port1 = makeMockSerialPort((chunk, p) => {
+    if (chunk.equals(RESYNC_PREAMBLE)) { preambles++; return; }
+    attempts++;
+    p.reply('RELOAD ERR bad-crc\n');
+  });
+  const dev1 = attachPort(port1, '/dev/mock4', {
+    chunkSize: 256, chunkDelayMs: 0, maxRetries: 2, resyncDelayMs: 0,
+  });
+  await assert.rejects(dev1.push('var a=1;'), /device rejected: bad-crc/);
+  assert.equal(attempts, 3);
+  assert.equal(preambles, 2);
+  await dev1.close();
+
+  // 2. Non-retryable eval-failed: must NOT retry (1 attempt, 0 preambles).
+  let evalAttempts = 0;
+  let evalPreambles = 0;
+  const port2 = makeMockSerialPort((chunk, p) => {
+    if (chunk.equals(RESYNC_PREAMBLE)) { evalPreambles++; return; }
+    evalAttempts++;
+    p.reply('RELOAD ERR eval-failed\n');
+  });
+  const dev2 = attachPort(port2, '/dev/mock5', {
+    chunkSize: 256, chunkDelayMs: 0, maxRetries: 2, resyncDelayMs: 0,
+  });
+  await assert.rejects(dev2.push('throw 1;'), /device rejected: eval-failed/);
+  assert.equal(evalAttempts, 1);
+  assert.equal(evalPreambles, 0);
+  await dev2.close();
+
+  // 3. REPL timeout must NOT retry (expression might have side effects).
+  let replAttempts = 0;
+  const port3 = makeMockSerialPort(() => { replAttempts++; });
+  const dev3 = attachPort(port3, '/dev/mock6', {
+    chunkSize: 256, chunkDelayMs: 0, maxRetries: 2, resyncDelayMs: 0, ackTimeoutMs: 30,
+  });
+  await assert.rejects(dev3.repl('sideEffect()'), /did not ACK repl/);
+  assert.equal(replAttempts, 1);
+  await dev3.close();
 });

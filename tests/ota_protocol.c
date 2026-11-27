@@ -93,8 +93,80 @@ static void rec_event(lume_frame_ev_t ev, const uint8_t *payload, size_t len,
     }
 }
 static void rec_reset(rec_t *r) { memset(r, 0, sizeof(*r)); }
-static void *host_alloc(size_t n) { return malloc(n); }
-static void  host_free(void *p)  { free(p); }
+static size_t g_alloc_count;
+static size_t g_free_count;
+static void *host_alloc(size_t n) { g_alloc_count++; return malloc(n); }
+static void  host_free(void *p)  { if (p != NULL) { g_free_count++; free(p); } }
+
+/* ---- section 8: r222 byte-drop / insertion / bit-flip fuzz helpers ---- */
+static uint32_t fuzz_next(uint32_t *state)
+{
+    uint32_t x = *state;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    *state = x;
+    return x;
+}
+
+typedef struct {
+    const uint8_t *known_payloads[4];
+    size_t         known_lens[4];
+    lume_frame_ev_t known_evs[4];
+    int            known_count;
+    int            valid_delivered;
+    int            bad_delivered;
+    int            sentinel_hits;
+    int            err_count;
+    const uint8_t *sentinel_payload;
+    size_t         sentinel_len;
+    lume_frame_ev_t sentinel_ev;
+} fuzz_rec_t;
+
+static void fuzz_event(lume_frame_ev_t ev, const uint8_t *payload, size_t len,
+                       const char *reason, void *user)
+{
+    (void)reason;
+    fuzz_rec_t *fr = (fuzz_rec_t *)user;
+    if (ev == LUME_FRAME_EV_ERR) {
+        fr->err_count++;
+        return;
+    }
+    if (ev == LUME_FRAME_EV_BACK || ev == LUME_FRAME_EV_PAUSE ||
+        ev == LUME_FRAME_EV_RESUME) {
+        return;
+    }
+    /* Every delivered data/cmd/bytecode/repl frame MUST match a known valid
+     * frame byte-for-byte; CRC-32 must never pass a corrupted payload. */
+    bool matched = false;
+    for (int i = 0; i < fr->known_count; i++) {
+        if (ev == fr->known_evs[i] && len == fr->known_lens[i] &&
+            payload != NULL && memcmp(payload, fr->known_payloads[i], len) == 0) {
+            matched = true;
+            break;
+        }
+    }
+    if (matched) {
+        fr->valid_delivered++;
+        if (ev == fr->sentinel_ev && len == fr->sentinel_len &&
+            payload != NULL && memcmp(payload, fr->sentinel_payload, len) == 0) {
+            fr->sentinel_hits++;
+        }
+    } else {
+        fr->bad_delivered++;
+    }
+}
+
+static size_t encode_kind(uint8_t *out, size_t cap, int kind,
+                          const uint8_t *payload, size_t len)
+{
+    switch (kind) {
+    case 0: return lume_frame_encode(out, cap, payload, len);
+    case 1: return lume_frame_encode_cmd(out, cap, payload, len);
+    case 2: return lume_frame_encode_bytecode(out, cap, payload, len);
+    default: return lume_frame_encode_repl(out, cap, payload, len);
+    }
+}
 
 static void parser_init(lume_frame_parser_t *p, rec_t *r)
 {
@@ -360,6 +432,283 @@ int main(void)
           "WiFi UP + no token -> FALSE");
     CHECK(lume_ota_can_serve(true, true) == true,
           "WiFi UP (GOT_IP) + token ready -> TRUE (auto-start)");
+
+    /* ---- 8. r222 stream fuzz: drop/insert/flip -> resync, never pass bad CRC ---- */
+    printf("[8] r222 byte-drop / insert / bit-flip fuzz + resync recovery\n");
+    {
+        /* Four valid frames covering all four magics, including payloads that
+         * contain embedded magic strings ("LUME"/"LUMC") to stress resync. */
+        static const uint8_t pay_data[] =
+            "var app=1;/* embedded LUME LUMC LUMB LUMR magic noise */app+1;";
+        static const uint8_t pay_cmd[] = "LAUNCH\tspeedometer";
+        static uint8_t pay_bc[320];
+        static const uint8_t pay_repl[] = "lume.sys.heap()";
+        for (size_t i = 0; i < sizeof(pay_bc); i++) {
+            pay_bc[i] = (uint8_t)((i * 37u + 13u) & 0xffu);
+        }
+        memcpy(pay_bc + 40, "LUME", 4);
+        memcpy(pay_bc + 180, "LUMC", 4);
+
+        const uint8_t *pays[4] = { pay_data, pay_cmd, pay_bc, pay_repl };
+        const size_t plens[4] = {
+            sizeof(pay_data) - 1, sizeof(pay_cmd) - 1,
+            sizeof(pay_bc), sizeof(pay_repl) - 1
+        };
+        const lume_frame_ev_t pevs[4] = {
+            LUME_FRAME_EV_DATA, LUME_FRAME_EV_CMD,
+            LUME_FRAME_EV_BYTECODE, LUME_FRAME_EV_REPL
+        };
+        uint8_t enc_frames[4][512];
+        size_t  enc_lens[4];
+        for (int k = 0; k < 4; k++) {
+            enc_lens[k] = encode_kind(enc_frames[k], sizeof(enc_frames[k]),
+                                      k, pays[k], plens[k]);
+        }
+        uint8_t resync_pad[12];
+        memset(resync_pad, 0xff, sizeof(resync_pad));
+
+        uint32_t rng = 0x222cafe1u;
+        int total_bad_delivered = 0;
+        int flip_recovered = 0, drop_recovered = 0, insert_recovered = 0;
+        int stream_recovered = 0;
+        const int N_FLIP = 200, N_DROP = 200, N_INS = 200, N_STREAM = 100;
+        size_t alloc_before = g_alloc_count;
+        size_t free_before = g_free_count;
+
+        /* 8a. Random bit/byte flips inside header/payload -> bad frame never
+         * accepted; resync recovers the following valid sentinel frame. */
+        for (int t = 0; t < N_FLIP; t++) {
+            int k_bad = (int)(fuzz_next(&rng) % 4u);
+            int k_ok  = (int)(fuzz_next(&rng) % 4u);
+            uint8_t mutated[512];
+            size_t mlen = enc_lens[k_bad];
+            memcpy(mutated, enc_frames[k_bad], mlen);
+            /* Corrupt 1..6 bytes in payload or CRC/magic (avoid creating a huge
+             * random length in bytes 4..7 that would swallow the sentinel). */
+            int flips = 1 + (int)(fuzz_next(&rng) % 6u);
+            for (int f = 0; f < flips; f++) {
+                size_t pos = fuzz_next(&rng) % mlen;
+                if (pos >= 4 && pos < 8) pos = 8 + (pos - 4);
+                mutated[pos] ^= (uint8_t)(1u + (fuzz_next(&rng) % 255u));
+            }
+            fuzz_rec_t fr;
+            memset(&fr, 0, sizeof(fr));
+            for (int k = 0; k < 4; k++) {
+                fr.known_payloads[k] = pays[k];
+                fr.known_lens[k] = plens[k];
+                fr.known_evs[k] = pevs[k];
+            }
+            fr.known_count = 4;
+            fr.sentinel_payload = pays[k_ok];
+            fr.sentinel_len = plens[k_ok];
+            fr.sentinel_ev = pevs[k_ok];
+
+            lume_frame_parser_t fp;
+            lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+            feed_all(&fp, mutated, mlen);
+            feed_all(&fp, resync_pad, sizeof(resync_pad));
+            feed_all(&fp, enc_frames[k_ok], enc_lens[k_ok]);
+            if (fp.payload != NULL) host_free(fp.payload);
+            total_bad_delivered += fr.bad_delivered;
+            if (fr.sentinel_hits >= 1 && fr.bad_delivered == 0) flip_recovered++;
+        }
+
+        /* 8b. Burst byte drops (1..64 bytes, simulating USJ RX ring overflow)
+         * followed by enough resync padding to flush ST_BODY + valid sentinel. */
+        for (int t = 0; t < N_DROP; t++) {
+            int k_bad = 2; /* 320 B payload so 1..64 B burst drops fit cleanly */
+            int k_ok  = (int)(fuzz_next(&rng) % 4u);
+            size_t flen = enc_lens[k_bad];
+            size_t drop_n = 1u + (fuzz_next(&rng) % 64u);
+            size_t drop_at = fuzz_next(&rng) % (flen - drop_n);
+            uint8_t dropped[512];
+            memcpy(dropped, enc_frames[k_bad], drop_at);
+            memcpy(dropped + drop_at, enc_frames[k_bad] + drop_at + drop_n,
+                   flen - drop_at - drop_n);
+            size_t dlen = flen - drop_n;
+
+            fuzz_rec_t fr;
+            memset(&fr, 0, sizeof(fr));
+            for (int k = 0; k < 4; k++) {
+                fr.known_payloads[k] = pays[k];
+                fr.known_lens[k] = plens[k];
+                fr.known_evs[k] = pevs[k];
+            }
+            fr.known_count = 4;
+            fr.sentinel_payload = pays[k_ok];
+            fr.sentinel_len = plens[k_ok];
+            fr.sentinel_ev = pevs[k_ok];
+
+            lume_frame_parser_t fp;
+            lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+            feed_all(&fp, dropped, dlen);
+            /* Flush any remaining bytes if parser entered ST_BODY with intact
+             * header length (drop_at >= 12), or reset if header length itself
+             * was corrupted into an arbitrary huge length (like usb_rx_task
+             * idle timeout does on a stalled header). */
+            if (fp.state == LUME_FRAME_ST_BODY && fp.payload_len > flen) {
+                if (fp.payload != NULL) host_free(fp.payload);
+                lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+            } else {
+                uint8_t flush[80];
+                memset(flush, 0xff, sizeof(flush));
+                feed_all(&fp, flush, drop_n + 12u);
+            }
+            feed_all(&fp, enc_frames[k_ok], enc_lens[k_ok]);
+            if (fp.payload != NULL) host_free(fp.payload);
+            total_bad_delivered += fr.bad_delivered;
+            if (fr.sentinel_hits >= 1 && fr.bad_delivered == 0) drop_recovered++;
+        }
+
+        /* 8c. Random byte insertion (1..32 bytes) inside a frame -> bad-crc
+         * or bad-magic -> resync recovers following valid sentinel frame. */
+        for (int t = 0; t < N_INS; t++) {
+            int k_bad = (int)(fuzz_next(&rng) % 4u);
+            int k_ok  = (int)(fuzz_next(&rng) % 4u);
+            size_t flen = enc_lens[k_bad];
+            size_t ins_n = 1u + (fuzz_next(&rng) % 32u);
+            size_t ins_at = fuzz_next(&rng) % (flen + 1u);
+            uint8_t bloated[600];
+            memcpy(bloated, enc_frames[k_bad], ins_at);
+            for (size_t i = 0; i < ins_n; i++) {
+                bloated[ins_at + i] = (uint8_t)(fuzz_next(&rng) & 0xffu);
+            }
+            memcpy(bloated + ins_at + ins_n, enc_frames[k_bad] + ins_at,
+                   flen - ins_at);
+
+            fuzz_rec_t fr;
+            memset(&fr, 0, sizeof(fr));
+            for (int k = 0; k < 4; k++) {
+                fr.known_payloads[k] = pays[k];
+                fr.known_lens[k] = plens[k];
+                fr.known_evs[k] = pevs[k];
+            }
+            fr.known_count = 4;
+            fr.sentinel_payload = pays[k_ok];
+            fr.sentinel_len = plens[k_ok];
+            fr.sentinel_ev = pevs[k_ok];
+
+            lume_frame_parser_t fp;
+            lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+            feed_all(&fp, bloated, flen + ins_n);
+            if (fp.state == LUME_FRAME_ST_BODY && fp.payload_len > flen) {
+                if (fp.payload != NULL) host_free(fp.payload);
+                lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+            }
+            feed_all(&fp, resync_pad, sizeof(resync_pad));
+            feed_all(&fp, enc_frames[k_ok], enc_lens[k_ok]);
+            if (fp.payload != NULL) host_free(fp.payload);
+            total_bad_delivered += fr.bad_delivered;
+            if (fr.sentinel_hits >= 1 && fr.bad_delivered == 0) insert_recovered++;
+        }
+
+        /* 8d. Multi-frame chaotic streams: interleaved valid frames, random
+         * noise bursts, corrupted frames, and idle-timeout resets. */
+        for (int s = 0; s < N_STREAM; s++) {
+            int k_ok = s % 4;
+            fuzz_rec_t fr;
+            memset(&fr, 0, sizeof(fr));
+            for (int k = 0; k < 4; k++) {
+                fr.known_payloads[k] = pays[k];
+                fr.known_lens[k] = plens[k];
+                fr.known_evs[k] = pevs[k];
+            }
+            fr.known_count = 4;
+            fr.sentinel_payload = pays[k_ok];
+            fr.sentinel_len = plens[k_ok];
+            fr.sentinel_ev = pevs[k_ok];
+
+            lume_frame_parser_t fp;
+            lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+            for (int step = 0; step < 6; step++) {
+                uint32_t mode = fuzz_next(&rng) % 3u;
+                if (mode == 0) {
+                    /* Random garbage bytes (1..48 B) */
+                    size_t gn = 1u + (fuzz_next(&rng) % 48u);
+                    for (size_t i = 0; i < gn; i++) {
+                        lume_frame_parser_feed(&fp, (uint8_t)(fuzz_next(&rng) & 0xffu));
+                    }
+                } else if (mode == 1) {
+                    /* Truncated frame (simulate lost tail) */
+                    int kf = (int)(fuzz_next(&rng) % 4u);
+                    size_t cut = 1u + (fuzz_next(&rng) % (enc_lens[kf] - 1u));
+                    feed_all(&fp, enc_frames[kf], cut);
+                } else {
+                    /* Corrupted payload frame */
+                    int kf = (int)(fuzz_next(&rng) % 4u);
+                    uint8_t tmp[512];
+                    memcpy(tmp, enc_frames[kf], enc_lens[kf]);
+                    tmp[12 + (fuzz_next(&rng) % plens[kf])] ^= 0x5au;
+                    feed_all(&fp, tmp, enc_lens[kf]);
+                }
+            }
+            /* Simulate usb_rx_task idle timeout reset if mid-frame, then
+             * send resync preamble + final valid sentinel frame. */
+            if (fp.state == LUME_FRAME_ST_HDR || fp.state == LUME_FRAME_ST_BODY ||
+                (fp.state == LUME_FRAME_ST_MAGIC && fp.magic_n > 0)) {
+                if (fp.payload != NULL) host_free(fp.payload);
+                lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+            }
+            feed_all(&fp, resync_pad, sizeof(resync_pad));
+            feed_all(&fp, enc_frames[k_ok], enc_lens[k_ok]);
+            if (fp.payload != NULL) host_free(fp.payload);
+            total_bad_delivered += fr.bad_delivered;
+            if (fr.sentinel_hits >= 1 && fr.bad_delivered == 0) stream_recovered++;
+        }
+
+        /* 8e. Explicit idle-timeout recovery test (mirrors usb_rx_task). */
+        int idle_ok = 0;
+        {
+            fuzz_rec_t fr;
+            memset(&fr, 0, sizeof(fr));
+            for (int k = 0; k < 4; k++) {
+                fr.known_payloads[k] = pays[k];
+                fr.known_lens[k] = plens[k];
+                fr.known_evs[k] = pevs[k];
+            }
+            fr.known_count = 4;
+            fr.sentinel_payload = pays[1];
+            fr.sentinel_len = plens[1];
+            fr.sentinel_ev = pevs[1];
+
+            lume_frame_parser_t fp;
+            lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+            /* Feed 320 B frame minus last 64 B -> parser stalls in ST_BODY. */
+            feed_all(&fp, enc_frames[2], enc_lens[2] - 64u);
+            if (fp.state == LUME_FRAME_ST_BODY && fp.payload != NULL &&
+                fp.payload_n == plens[2] - 64u) {
+                host_free(fp.payload);
+                lume_frame_parser_init(&fp, host_alloc, host_free, fuzz_event, &fr);
+                feed_all(&fp, enc_frames[1], enc_lens[1]);
+                if (fr.sentinel_hits == 1 && fr.bad_delivered == 0 && fr.err_count == 0) {
+                    idle_ok = 1;
+                }
+            } else if (fp.payload != NULL) {
+                host_free(fp.payload);
+            }
+        }
+
+        size_t alloc_delta = g_alloc_count - alloc_before;
+        size_t free_delta  = g_free_count - free_before;
+        printf("  fuzz stats (seed=0x222cafe1): flip=%d/%d drop=%d/%d ins=%d/%d stream=%d/%d bad_delivered=%d allocs=%u frees=%u\n",
+               flip_recovered, N_FLIP, drop_recovered, N_DROP,
+               insert_recovered, N_INS, stream_recovered, N_STREAM,
+               total_bad_delivered, (unsigned)alloc_delta, (unsigned)free_delta);
+        CHECK(total_bad_delivered == 0,
+              "fuzz: CRC layer NEVER delivers a corrupted payload across 700 trials");
+        CHECK(flip_recovered == N_FLIP,
+              "fuzz: 200/200 bit-flip trials resync and deliver subsequent valid frame");
+        CHECK(drop_recovered == N_DROP,
+              "fuzz: 200/200 1..64B burst byte-drop trials resync and deliver valid frame");
+        CHECK(insert_recovered == N_INS,
+              "fuzz: 200/200 1..32B byte-insertion trials resync and deliver valid frame");
+        CHECK(stream_recovered == N_STREAM,
+              "fuzz: 100/100 chaotic multi-frame streams recover final valid frame");
+        CHECK(idle_ok == 1,
+              "idle-timeout reset frees stalled ST_BODY buffer and delivers next frame");
+        CHECK(alloc_delta == free_delta && alloc_delta > 0,
+              "fuzz: zero payload buffer leaks (alloc_count == free_count)");
+    }
 
     printf("\n%d checks, %d failures -> %s\n", g_checks, g_fail,
            g_fail ? "FAIL" : "PASS");
