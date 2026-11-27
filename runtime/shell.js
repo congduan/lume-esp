@@ -320,16 +320,18 @@
     if (typeof keySize !== 'number' || !isFinite(keySize) || Math.floor(keySize) !== keySize ||
         keySize < 40 || keySize > 128)
       throw new RangeError('lume: Keyboard keySize must be 40..128 pixels');
-    /* r203: BKSP / ENTER carry 4-5 character labels in a 40px cap. The default
-     * ratio 1 (and keyHeight = keySize) reproduces the r148 geometry exactly;
-     * both knobs are opt-in so existing apps render byte-for-byte unchanged. */
+    /* r203/r217: BKSP / ENTER carry 4-5 character labels, scaled by opt-in
+     * controlKeyRatio (1..3, default 1). r217 raises the keyHeight floor and
+     * default from 40 to 48 px (Math.max(48, keySize)) to meet the 48 px
+     * vertical touch target while keeping keySize >= 40 for 10-col QWERTY
+     * inside a 480 px round display (10*48=480 exceeds R<=240 at any height). */
     var controlRatio = p.controlKeyRatio === undefined ? 1 : p.controlKeyRatio;
     if (typeof controlRatio !== 'number' || !isFinite(controlRatio) || controlRatio < 1 || controlRatio > 3)
       throw new RangeError('lume: Keyboard controlKeyRatio must be 1..3');
-    var keyHeight = p.keyHeight === undefined ? keySize : p.keyHeight;
+    var keyHeight = p.keyHeight === undefined ? Math.max(48, keySize) : p.keyHeight;
     if (typeof keyHeight !== 'number' || !isFinite(keyHeight) || Math.floor(keyHeight) !== keyHeight ||
-        keyHeight < 40 || keyHeight > 128)
-      throw new RangeError('lume: Keyboard keyHeight must be 40..128 pixels');
+        keyHeight < 48 || keyHeight > 128)
+      throw new RangeError('lume: Keyboard keyHeight must be 48..128 pixels');
     var pad = 4;
     var height = 4 * keyHeight + 3 * gap + 2 * pad;
     var style = { x: p.x === undefined ? Math.floor((screen.w - width) / 2) : p.x,
@@ -347,8 +349,8 @@
       children.forEach(function (child) { child(id); });
       return id;
     }
-    /* SPACE already spans four keys; only the two short control caps need the
-     * extra width. Math.round keeps ratio 1 exactly equal to keyWidth. */
+    /* SPACE already spans three keys (r217 tapered bottom row for 48 px key
+     * height on a round screen); only BKSP / ENTER scale by controlRatio. */
     function controlWidth(label, keyWidth) {
       return (label === 'BKSP' || label === 'ENTER') ? Math.round(keyWidth * controlRatio) : keyWidth;
     }
@@ -381,7 +383,7 @@
           letterBackground(ch));
       }));
     });
-    var spaceWidth = 4 * keySize + 3 * gap;
+    var spaceWidth = 3 * keySize + 2 * gap;
     row([
       key('SPACE', spaceWidth, function () { if (p.onKey) p.onKey(' '); }),
       key('BKSP', keySize, function () { if (p.onBackspace) p.onBackspace(); }, color('danger', '#FF6B79')),

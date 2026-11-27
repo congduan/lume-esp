@@ -259,15 +259,18 @@ declare namespace lume.ui.shell {
     width?: number;
     /** Gap between keys, derived from theme.spacing and clamped to fit 40 px keys. */
     gap?: number;
-    /** Key side in px (40..128); defaults to the largest size that fits the row. */
+    /** Key width in px (40..128); defaults to the largest size that fits the
+     * 10-column top row. On a 480 px round screen, 44 px is the widest integer
+     * key width that keeps all four 48 px-tall rows comfortably inside R<=240
+     * (10 * 48 = 480 exceeds R=240 at any non-zero height). */
     keySize?: number;
-    /** BKSP / ENTER width multiplier (1..3, default 1). 1 keeps the r148
-     * 40 px cap; e.g. 1.8 makes both control keys 72 px on a 40 px keySize,
-     * which keeps their labels readable inside a round safe area. Letter and
-     * SPACE widths are untouched. */
+    /** BKSP / ENTER width multiplier (1..3, default 1). E.g. 1.5 makes both
+     * control keys 66 px on a 44 px keySize, keeping their labels readable and
+     * >=48x48 inside the tapered bottom row. Letter and SPACE widths are untouched. */
     controlKeyRatio?: number;
-    /** Key height in px (40..128, default keySize). Decouples the 40 px touch
-     * height from the letter width; the root height tracks this value. */
+    /** Key height in px (48..128, default Math.max(48, keySize)). Enforces the
+     * 48 px vertical touch target floor across all four rows; root height tracks
+     * 4 * keyHeight + 3 * gap + 2 * pad. */
     keyHeight?: number;
     /** Optional per-key tint map, or a signal getter returning one. A getter
      * makes each letter key re-resolve its own background on publish (only that
