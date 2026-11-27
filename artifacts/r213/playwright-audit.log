@@ -1,0 +1,11 @@
+[desktop-dark-unscrolled] index: overflow=false hiddenReveals=0 localImgs=12 brokenLocal=0
+[desktop-dark-unscrolled] examples: overflow=false hiddenReveals=0 localImgs=39 brokenLocal=0
+[desktop-dark-unscrolled] guide: overflow=false hiddenReveals=0 localImgs=0 brokenLocal=0
+[desktop-dark-unscrolled] faq: overflow=false hiddenReveals=0 localImgs=0 brokenLocal=0
+[hero-geometry] h1Lines=2 h1Height=103px btnYs=[402,402,402] sameRow=true
+[i18n-zh] h1="屏幕由你定义，\n固件无需反复烧录。"
+[examples-interactive] all=74 / 74 shot=39 / 74 hw=12 / 74 copyAfterClick=Copied
+[mobile-375] index: docOverflow=false navScrollW=343 navClientW=343
+[mobile-375] examples: docOverflow=false navScrollW=343 navClientW=343
+[no-js] totalReveals=26 invisible=0 capsOpacity=["1","1","1"]
+ALL PLAYWRIGHT AUDITS PASSED
