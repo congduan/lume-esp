@@ -1,0 +1,217 @@
+=== tests/canvas_mapping.js ===
+PASS canvas create dimensions and fixed wire kind
+PASS drawing command order and final invalidate
+PASS r48 native arc emits one LUME_DRAW_ARC (opcode 5) with normalised args
+PASS r48 native arc rounds fractional degrees and rejects bad angles
+PASS optional dirty rectangles preserve local coordinates
+PASS signal change redraws once; equal value stays idle
+PASS canvas is adopted into flex layout flow at fixed size
+PASS dimensions/coordinates/color/text/point bounds reject
+PASS injected 390x390 screen governs canvas size, budget and draw bounds
+PASS counter example retains count and theme behavior
+SAMPLE messages (first 12): [["create",1,0],["attr",1,0,"taps: 0"],["create",0,0],["attr",2,1,2377581],["attr",2,16,100],["attr",2,3,120],["attr",2,7,1],["attr",2,8,2],["attr",2,9,2],["attr",2,11,6],["attr",2,12,12],["attr",2,15,255]]
+SAMPLE totals: {"create":7,"attr":41,"press":3}
+PASS 33 contiguous lines split at 32
+CANVAS 240 points: old=239 messages / 27724 queue bytes; new=8 messages / 928 queue bytes + 3824 payload bytes
+PASS 240-point polyline uses eight batches
+CANVAS retained path: 2 segments uploaded once, 2 draws / 1 upload
+PASS retained path uploads geometry once and replays from C
+PASS retainSegments uploads independent segments
+PASS retained sprite uploads pixels once and replays from C
+PASS sprite argument validation matches the native contract
+PASS sprite slot redefinition re-uploads (animation frame swap)
+PASS r221 singleBuffer: false/omitted preserves exact 4-arg create and 2x budget
+PASS r221 singleBuffer: true emits create flag 1 and halves PSRAM pool cost (1x)
+PASS r221 singleBuffer: runApp stream, injected screen, validation and dispose refund
+PASS r221 singleBuffer: C engine and bridge wire work==front and 1x budget
+=== tests/watchface.js ===
+PASS watchface five-page swipe cycle
+PASS watchface canvas budget 228544/230400 px; modular uses zero canvas
+PASS watchface weather updates only its own complication text
+PASS watchface weather WiFi-down fallback --°
+PASS watchface six native AA arcs; dirty area 46656 px
+PASS watchface progress clamps 0..100
+PASS watchface retained-path static contract (ticks + 3 bg rings)
+PASS watchface retained paths defined once, replayed on every redraw
+PASS watchface retained-path mutation guards (ticks, rings)
+=== tests/control_center.js ===
+PASS control_center static: shell.js imported by the documented relative path
+PASS control_center static: SafeArea consumed as the round-screen safe container
+PASS control_center static: Card consumed by four setting cards
+PASS control_center static: capsule switches, knob shadow approximation, group labels and Reset All pill
+PASS control_center static: all four values live in signals
+PASS control_center static: KV key block uses the four documented <=15-char keys
+PASS control_center static: flag KV get wrapped in try/catch, accepts only 0 or 1
+PASS control_center static: step KV get wrapped in try/catch, accepts only legal integer steps
+PASS control_center static: KV set wrapped in try/catch (NVS failure is volatile)
+PASS control_center static: startup reads every key back into its signal
+PASS control_center static: volume wraps 10 -> 0 and brightness wraps 5 -> 1
+PASS control_center static: RESET restores all four defaults through kvSave
+PASS control_center static: entire app file is ASCII-only (r64)
+PASS control_center static: UI string literals ASCII-only (r64)
+PASS control_center static: Text fontSize limited to bundled 14/20/32 faces
+PASS control_center static: static tree within the node budget
+PASS control_center static: playground sources/control_center.js byte-identical to the example
+PASS control_center static: control_center is in the 74-app playground manifest
+PASS control_center static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS control_center mutation: drop the shell import -> FAIL as expected
+PASS control_center mutation: app stops consuming SafeArea -> FAIL as expected
+PASS control_center mutation: app stops consuming Card -> FAIL as expected
+PASS control_center mutation: group labels dropped -> FAIL as expected
+PASS control_center mutation: a value escapes the signal graph -> FAIL as expected
+PASS control_center mutation: KV key exceeds the NVS cap -> FAIL as expected
+PASS control_center mutation: flag KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: step KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: KV set loses try/catch -> FAIL as expected
+PASS control_center mutation: startup forgets to read a key back -> FAIL as expected
+PASS control_center mutation: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center mutation: RESET forgets brightness -> FAIL as expected
+PASS control_center mutation: a non-ASCII byte slips into file -> FAIL as expected
+PASS control_center mutation: a CJK UI literal slips in -> FAIL as expected
+PASS control_center mutation: font size escapes bundled faces -> FAIL as expected
+PASS control_center mutation: playground generated source drifts -> FAIL as expected
+PASS control_center mutation: playground manifest drops control_center -> FAIL as expected
+PASS control_center mutation: a firmware/runtime/CLI file changes after 3514c76 -> FAIL as expected
+PASS control_center live: handles, safe square, node budget and canvas budget
+PASS control_center live: Wi-Fi card tap toggles WiFi and writes KV
+PASS control_center live: Bluetooth card tap toggles Bluetooth and writes KV
+PASS control_center live: volume card cycles 0..10 and persists
+PASS control_center live: brightness card cycles 1..5 and persists
+PASS control_center live: Reset All restores every default and rewrites all four keys
+PASS control_center live: KV load rejects illegal values and a throwing NVS degrades
+PASS control_center live: shutdown clears effects and timers
+PASS control_center live mutation: live: WiFi card stops toggling -> FAIL as expected
+PASS control_center live mutation: live: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center live mutation: live: RESET forgets brightness -> FAIL as expected
+ALL CONTROL CENTER HARNESS CASES PASSED
+=== tests/controls_demo.js ===
+PASS controls_demo: all three components registered on lume.ui.shell
+PASS controls_demo: controlled mode: value read at event time, onChange is the only output
+PASS controls_demo: 40 px touch floor enforced on Switch and Slider heights
+PASS controls_demo: every node registered for cleanup, dispose idempotent
+PASS controls_demo: gesture unsubscribers run on Slider dispose
+PASS controls_demo: Progress updates only fill width ATTR_WIDTH via a bound numeric style
+PASS controls_demo: app wires all three values through signals (controlled consumers)
+PASS controls_demo: all UI string literals ASCII-only (r64)
+PASS controls_demo: playground sources/controls_demo.js byte-identical to example
+PASS controls_demo: controls_demo is in the playground manifest
+PASS controls_demo: firmware/ and runtime/ identical to the r176 feat commit
+PASS controls_demo: firmware/ identical to the r176 feat commit except r173 companion P1
+PASS controls_demo: prelude lume_scripts.c unchanged since 3514c76
+PASS controls_demo live: three components return nodes and are callable from the app
+PASS controls_demo live: Switch press routes onChange(!value) through the signal
+PASS controls_demo live: Slider pan maps dx back into range and quantises to step
+PASS controls_demo live: Slider clamps to [min,max] on an over-range drag
+PASS controls_demo live: Slider onChange fires once per changed step, not per pan frame
+PASS controls_demo live: Progress clamps value and updates fill ATTR_WIDTH only
+PASS controls_demo live: signals drive native re-render (Switch bg attr, Slider canvas draw)
+PASS controls_demo live: dispose removes every node once; second call is a no-op
+PASS controls_demo live: dispose unsubscribes gestures: no onChange after teardown
+PASS controls_demo live: uncontrolled use proves the component holds no state
+PASS controls_demo mutation: drop the Progress registration -> FAIL as expected
+PASS controls_demo mutation: drop the Switch onChange dispatch -> FAIL as expected
+PASS controls_demo mutation: lower the touch floor on one component -> FAIL as expected
+PASS controls_demo mutation: drop the Canvas cleanup registration -> FAIL as expected
+PASS controls_demo mutation: drop the gesture unsubscriber call -> FAIL as expected
+PASS controls_demo mutation: make Progress re-create its fill on every value change -> FAIL as expected
+PASS controls_demo mutation: app stops forwarding slider changes -> FAIL as expected
+PASS controls_demo mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS controls_demo mutation: playground generated source drifts from the example -> FAIL as expected
+PASS controls_demo mutation: playground manifest drops controls_demo -> FAIL as expected
+PASS controls_demo mutation: a runtime file changes after the feat commit -> FAIL as expected
+PASS controls_demo mutation: a firmware file changes vs the r176 feat commit -> FAIL as expected
+PASS controls_demo mutation: the prelude changes vs 3514c76 -> FAIL as expected
+ALL CONTROLS DEMO HARNESS CASES PASSED
+=== tests/ota_consumers.js ===
+PASS ota_consumers: OTA helper reads lume.ota.status() locally
+PASS ota_consumers: number return discriminated via typeof === object, ASCII err code
+PASS ota_consumers: four flags + port rendered; .token / [token] never read in either app
+PASS ota_consumers: OTA row is exactly View + Text + Button (3 nodes)
+PASS ota_consumers: row Text shows only status; New-token opens a Dialog
+PASS ota_consumers: setToken sits in the danger Rotate onPress of a Dialog
+PASS ota_consumers: Dialog guard degrades to an ASCII note; no 3 s arm timer remains
+PASS ota_consumers: replacement token is 32 lowercase hex chars from Math.random
+PASS ota_consumers: setToken failure renders ASCII code; success refreshes status
+PASS ota_consumers: 600 ms poll refreshes OTA status
+PASS ota_consumers: header registers Math.random as NOT cryptographically secure
+PASS ota_consumers: dashboard SYSTEM reads status() with typeof === object discrimination
+PASS ota_consumers: dashboard publishes OTA row with 9 separators inside safe area
+PASS ota_consumers: dashboard OTA line never reads token
+PASS ota_consumers: playground sources/dashboard.js byte-identical to example
+PASS ota_consumers: dashboard is in the playground manifest
+PASS ota_consumers: all UI string literals ASCII-only (r64)
+PASS ota_consumers: firmware/ runtime/ CLI tooling identical to 674684a
+PASS ota_consumers mutation: drop the lume.ota.status() read -> FAIL as expected
+PASS ota_consumers mutation: truthy test replaces typeof === object discrimination -> FAIL as expected
+PASS ota_consumers mutation: render the full token straight into the status text -> FAIL as expected
+PASS ota_consumers mutation: drop the OTA row Text -> FAIL as expected
+PASS ota_consumers mutation: New-token button no longer opens a Dialog -> FAIL as expected
+PASS ota_consumers mutation: danger Rotate button downgraded -> FAIL as expected
+PASS ota_consumers mutation: Dialog guard hardened (no ASCII fallback) -> FAIL as expected
+PASS ota_consumers mutation: token length shrinks from 32 to 16 hex chars -> FAIL as expected
+PASS ota_consumers mutation: setToken failure loses its ASCII return code -> FAIL as expected
+PASS ota_consumers mutation: poll no longer refreshes OTA status -> FAIL as expected
+PASS ota_consumers mutation: header drops the non-CSPRNG registration -> FAIL as expected
+PASS ota_consumers mutation: dashboard truthy test replaces typeof === object -> FAIL as expected
+PASS ota_consumers mutation: dashboard separators revert to 8 -> FAIL as expected
+PASS ota_consumers mutation: dashboard renders the full token on canvas -> FAIL as expected
+PASS ota_consumers mutation: playground generated source drifts from the example -> FAIL as expected
+PASS ota_consumers mutation: playground manifest drops dashboard -> FAIL as expected
+PASS ota_consumers mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS ota_consumers mutation: a firmware file changes vs d85e69a -> FAIL as expected
+ALL OTA CONSUMERS HARNESS CASES PASSED
+=== tests/wordle.js ===
+PASS wordle UI strings ASCII-only (r64)
+PASS wordle dictionary 300 unique five-letter ASCII words, all self-green
+PASS wordle 26 five-by-seven glyphs decoded to valid spans
+PASS wordle verdict green/yellow/grey, inputs immutable
+PASS wordle repeated letters: two-pass count, no over-awarding
+PASS wordle new game defaults + KV load + event
+PASS wordle letter input: lowercase, full/space/ignore guards, backspace
+PASS wordle submit guards: short / non-dictionary / duplicate
+PASS wordle win: verdict all green, streak + best persisted
+PASS wordle loss: 6 tries, streak reset, board fully locked
+PASS wordle streak transitions: best is the longest run
+PASS wordle letter marks: highest feedback priority G > Y > X
+PASS wordle KV keys <= 15 chars, storage failures non-fatal
+PASS wordle canvas budget 40960/230400 px, grid in bounds
+PASS wordle r165 wdDayIndex + deterministic daily pick (no random path)
+PASS wordle r165 streak gap: 2+ days since last win breaks the run
+EVIDENCE wordle idle 0 paints/tick; first paint 302 calls on 320x128 canvas
+PASS wordle prelude boot: paint + HUD + 4 keyboard rows / 29 keys
+PASS wordle keyboard injection: onKey -> state, BKSP, SPACE ignored, ENTER submit
+PASS wordle feedback colors reach draw stream after a submitted guess
+PASS wordle NEW button resets board after win
+PASS wordle shell.dispose removes 33 nodes once
+PASS wordle ~60 s smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+PASS wordle ~60 s smoke: bounded state, draws and invalidates in canvas
+PASS wordle r165 live: same clock same word, +1 day new word, DAY #N in HUD
+PASS wordle static: Keyboard registered on lume.ui.shell
+PASS wordle static: app wires onKey/onBackspace/onSubmit into game logic
+PASS wordle static: Keyboard geometry: 44 px key, gap 0, x 16, y 240
+PASS wordle static: keyStates consume wdLetterMarks (r153 tint replaces the letter bar)
+PASS wordle static: native nodes carry QWERTY + SPACE/BKSP/ENTER
+PASS wordle static: all UI string literals ASCII-only (r64)
+PASS wordle static: playground sources/wordle.js byte-identical to example
+PASS wordle static: wordle is in the playground manifest
+PASS wordle static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS wordle static: prelude lume_scripts.c unchanged since 3514c76
+PASS wordle static: r165 wdDayIndex derives the ordinal from lume.system.time()
+PASS wordle static: r165 wdPick is deterministic day % WORDS.length, no random path
+PASS wordle static: r165 KV_DAY key fits the 15-char NVS cap
+PASS wordle static: r165 HUD renders DAY #N
+PASS wordle mutation: drop shell.Keyboard registration -> FAIL as expected
+PASS wordle mutation: app stops forwarding onKey -> FAIL as expected
+PASS wordle mutation: shrink the keyboard touch target -> FAIL as expected
+PASS wordle mutation: keyStates drop feedback marks -> FAIL as expected
+PASS wordle mutation: a key label drifts from QWERTY -> FAIL as expected
+PASS wordle mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS wordle mutation: playground generated source drifts from the example -> FAIL as expected
+PASS wordle mutation: playground manifest drops wordle -> FAIL as expected
+PASS wordle mutation: a firmware/runtime/CLI file changes after the feat commit -> FAIL as expected
+PASS wordle mutation: the prelude changes vs 3514c76 -> FAIL as expected
+PASS wordle mutation: wdPick falls back to random pick -> FAIL as expected
+PASS wordle mutation: wdDayIndex ignores the wall clock -> FAIL as expected
+PASS wordle mutation: KV_DAY grows past the NVS cap -> FAIL as expected
+PASS wordle mutation: HUD drops the DAY #N label -> FAIL as expected
+ALL WORDLE HARNESS CASES PASSED

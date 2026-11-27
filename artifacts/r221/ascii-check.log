@@ -1,0 +1,6 @@
+firmware/components/lume-ui-bridge/lume_ui_bridge.c: non-ASCII=6
+firmware/components/lume-engine/lume_engine.c: non-ASCII=5
+firmware/components/lume-engine/prelude/prelude.js: non-ASCII=2
+runtime/types/lume.d.ts: non-ASCII=12
+tests/canvas_mapping.js: non-ASCII=1
+tests/lib/prelude_runner.js: non-ASCII=1
