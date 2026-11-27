@@ -39,8 +39,11 @@ Text({ parent: root, text: 'ASCII QWERTY / BKSP deletes / ENTER submits',
   style: { x: 84, y: 188, width: 312, height: 32, fontSize: 12,
     color: '#9EB3C6', textAlign: 'center', borderRadius: 0, scroll: 'none' } });
 
+/* r217: 466 px wide centered (x=7..473, inner 458), 44x48 keys with 2 px gap
+ * (46x50 pitch) and controlKeyRatio 1.5 (BKSP/ENTER 66x48, SPACE 136x48).
+ * Monotonic QWERTY taper keeps all 29 keys inside R<=233 (worstR 231.2). */
 var keyboard = lume.ui.shell.Keyboard({
-  parent: root,
+  parent: root, width: 466, keySize: 44, gap: 2, x: 7, y: 220, controlKeyRatio: 1.5,
   onKey: function (ch) { typed.set(typed() + ch); },
   onBackspace: function () { typed.set(typed().slice(0, -1)); },
   onSubmit: function () { submitted.set(typed()); typed.set(''); },
