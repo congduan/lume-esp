@@ -20,9 +20,12 @@
  * Full budget is one framebuffer 480x480 = 230,400 px. */
 var IW = 480, IH = 430;
 var WORD_LEN = 5, ROWS = 6;
-var CELL = 42, GAP = 5, GX = 125, GY = 56;
-var RING_CY = 388, RING_RX = 176, RING_RY = 30;
-var BAND_TOP = 352, BAND_BOT = 428, ROTL_X = 150, ROTR_X = 330;
+/* r210: grid + ring band + button row stacked inside the 480-round safe
+ * square ([75,405]). Old layout had DEL/ENTER/NEW at y=4 (unclickable) and
+ * left no gap between the 56..328 grid and the 352..428 ring band. */
+var CELL = 32, GAP = 2, GX = 156, GY = 116;
+var RING_CY = 338, RING_RX = 150, RING_RY = 12;
+var BAND_TOP = 323, BAND_BOT = 353, ROTL_X = 150, ROTR_X = 330;
 
 var ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 var KV_STREAK = 'wr.streak', KV_BEST = 'wr.best';   /* 9 / 7 chars, both < 15 */
@@ -296,7 +299,7 @@ function paintGrid(ctx, a) {
       drawRect(ctx, edge, box(cx, cy, 2, CELL), a);
       drawRect(ctx, edge, box(cx, cy + CELL - 2, CELL, 2), a);
       drawRect(ctx, edge, box(cx + CELL - 2, cy, 2, CELL), a);
-      if (ch) drawGlyph(ctx, ch.toUpperCase(), cx + 13, cy + 10, 3, COL.INK, a);
+      if (ch) drawGlyph(ctx, ch.toUpperCase(), cx + 8, cy + 5, 3, COL.INK, a);
     }
   }
 }
@@ -318,8 +321,9 @@ function paintRing(ctx, a) {
     }
   }
   drawGlyph(ctx, ALPHABET.charAt(state.sel), 230, RING_CY - 14, 4, COL.SEL, a);
-  drawGlyph(ctx, '<', 36, RING_CY - 3, 2, COL.PEND_B, a);
-  drawGlyph(ctx, '>', 430, RING_CY - 3, 2, COL.PEND_B, a);
+  /* r210: rotate hints pulled in from x=36/430 to the safe square x [75,405]. */
+  drawGlyph(ctx, '<', 78, RING_CY - 3, 2, COL.PEND_B, a);
+  drawGlyph(ctx, '>', 394, RING_CY - 3, 2, COL.PEND_B, a);
 }
 
 var painted = false;
@@ -334,13 +338,16 @@ var canvas = Canvas({ parent: root, width: IW, height: IH, style: { position: 'a
   return [a];
 }});
 
-Text({ parent: root, text: 'WORD RING', style: { position: 'absolute', x: 8, y: 6, fontSize: 14, color: '#F2F4F8' } });
-Text({ parent: root, text: function () { return hudSig(); }, style: { position: 'absolute', x: 8, y: 26, fontSize: 14, color: '#F2CE45' } });
+/* r210: HUD moved from the full-bleed top-left corner (x=8, y=6/26/46) into
+ * the safe square. It draws after the canvas and overlays the top of the
+ * canvas band - the accepted r202/r209 trade-off (frogger/invaders pattern). */
+Text({ parent: root, text: 'WORD RING', style: { position: 'absolute', x: 84, y: 76, width: 120, fontSize: 14, color: '#F2F4F8' } });
+Text({ parent: root, text: function () { return hudSig(); }, style: { position: 'absolute', x: 210, y: 76, width: 186, fontSize: 14, color: '#F2CE45', textAlign: 'right' } });
 Text({ parent: root, text: function () {
   if (state.status === 'win') return 'WIN IN ' + state.attempt + ' TRIES - TAP NEW';
   if (state.status === 'lose') return 'LOST - ' + state.answer.toUpperCase() + ' - TAP NEW';
   return noteSig() || 'TAP A LETTER - OK TO PLACE';
-}, style: { position: 'absolute', x: 8, y: 46, fontSize: 14, color: '#9FD8F0' } });
+}, style: { position: 'absolute', x: 84, y: 94, width: 312, fontSize: 13, color: '#9FD8F0' } });
 
 function updateHud() {
   hudSig.set('TRY ' + Math.min(state.attempt + 1, ROWS) + '/' + ROWS +
@@ -348,11 +355,14 @@ function updateHud() {
 }
 function flush() { while (state.events.length) logEvent(state.events.shift()); updateHud(); }
 
-Button({ title: 'DEL', style: { position: 'absolute', x: 236, y: 4, width: 70, height: 32, borderRadius: 6, background: '#28331F', color: '#E8D46A', fontSize: 14 }, onPress: function () {
+/* r210: button row moved from y=4 (top bezel, unclickable) to y=356..404.
+ * 48px tall targets, centred within the safe square x [75,405]; DEL danger-
+ * tinted versus ENTER/NEW primary, separated by a 16px gutter. */
+Button({ title: 'DEL', style: { position: 'absolute', x: 104, y: 356, width: 72, height: 48, borderRadius: 6, background: '#3A2A1F', color: '#F2CE45', fontSize: 14 }, onPress: function () {
   if (wrBackspace(state) !== 'done') { noteSig.set('TAP A LETTER - OK TO PLACE'); frame.set(frame() + 1); }
   flush();
 }});
-Button({ title: 'ENTER', style: { position: 'absolute', x: 312, y: 4, width: 84, height: 32, borderRadius: 6, background: '#28331F', color: '#E8D46A', fontSize: 14 }, onPress: function () {
+Button({ title: 'ENTER', style: { position: 'absolute', x: 192, y: 356, width: 96, height: 48, borderRadius: 6, background: '#28331F', color: '#E8D46A', fontSize: 14 }, onPress: function () {
   var r = wrSubmit(state);
   if (r === 'short') noteSig.set('NEED 5 LETTERS');
   else if (r === 'duplicate') noteSig.set('ALREADY TRIED');
@@ -360,7 +370,7 @@ Button({ title: 'ENTER', style: { position: 'absolute', x: 312, y: 4, width: 84,
   frame.set(frame() + 1);
   flush();
 }});
-Button({ title: 'NEW', style: { position: 'absolute', x: 402, y: 4, width: 70, height: 32, borderRadius: 6, background: '#3A2A1F', color: '#F2CE45', fontSize: 14 }, onPress: function () {
+Button({ title: 'NEW', style: { position: 'absolute', x: 304, y: 356, width: 72, height: 48, borderRadius: 6, background: '#28331F', color: '#E8D46A', fontSize: 14 }, onPress: function () {
   state = wrNewGame(null, null);
   noteSig.set('TAP A LETTER - OK TO PLACE');
   painted = false;
