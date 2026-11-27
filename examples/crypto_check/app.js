@@ -156,25 +156,25 @@ View({ style: { width: '100%', height: '100%', background: '#000000', scroll: 'n
     background: '#09101A', scroll: 'none'
   } }, [
     Text({ text: 'Crypto Check', style: {
-      position: 'absolute', x: 4, y: 4, width: 204, height: 28,
+      position: 'absolute', x: 4, y: 10, width: 204, height: 28,
       fontSize: 20, color: '#F2F7FB'
     } }),
     Button({ title: 'NEXT', onPress: cyclePayload, style: {
-      position: 'absolute', x: 224, y: 0, width: 100, height: 36,
-      borderRadius: 18, background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
+      position: 'absolute', x: 224, y: 0, width: 100, height: 48,
+      borderRadius: 12, background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
       color: '#F2F7FB', fontSize: 13
     } }),
     View({ style: {
-      position: 'absolute', x: 4, y: 42, width: 320, height: 34,
+      position: 'absolute', x: 4, y: 54, width: 320, height: 30,
       background: '#12262B', borderColor: '#2E7D6B', borderWidth: 1, borderRadius: 10,
       paddingLeft: 12, paddingRight: 12, display: 'flex', alignItems: 'center', scroll: 'none'
     } }, [
       Text({ text: payloadDisplay, style: { fontSize: 13, color: '#40D8B0' } })
     ]),
-    diagCard(82, 54, 'SHA-256 DIGEST', shaDisplay, valColor(shaDisplay, '#F2F7FB')),
-    diagCard(142, 54, 'HMAC-SHA256 TOKEN', tokenDisplay, valColor(tokenDisplay, '#F2F7FB')),
-    diagCard(202, 54, 'CRC-32 (U32)', crcDisplay, valColor(crcDisplay, '#40D8B0')),
-    diagCard(262, 60, 'AES-128-CTR LOOPBACK', aesDisplay, valColor(aesDisplay, '#40D8B0'))
+    diagCard(90, 54, 'SHA-256 DIGEST', shaDisplay, valColor(shaDisplay, '#F2F7FB')),
+    diagCard(150, 54, 'HMAC-SHA256 TOKEN', tokenDisplay, valColor(tokenDisplay, '#F2F7FB')),
+    diagCard(210, 54, 'CRC-32 (U32)', crcDisplay, valColor(crcDisplay, '#40D8B0')),
+    diagCard(270, 54, 'AES-128-CTR LOOPBACK', aesDisplay, valColor(aesDisplay, '#40D8B0'))
   ])
 ]);
 
