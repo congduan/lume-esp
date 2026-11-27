@@ -1,0 +1,18 @@
+PASS minesweeper deal: fresh board, mines pending first tap
+PASS minesweeper neighbors: corner=3 edge=5 interior=8, in bounds
+PASS minesweeper placement: 15 mines, first-tap 3x3 safe, counts correct (10 boards)
+PASS minesweeper first tap: always digs, placement deterministic under seed
+PASS minesweeper flood: zero region opens, boundary counts stay closed
+PASS minesweeper flood vs flags: flagged cells are not auto-opened
+PASS minesweeper flag: toggle + guards on revealed/out-of-range
+PASS minesweeper dig-vs-flag: flag blocks the dig, unflag re-opens
+PASS minesweeper boom: round over, mines revealed, hit cell marked
+PASS minesweeper win: 85 safe cells, WIN event, best time saved
+PASS minesweeper best: worse keeps / lower overwrites / equal keeps
+PASS minesweeper tick: clock runs only between start and end
+PASS minesweeper spans: 10 sprites decoded, palette refs all valid
+PASS minesweeper canvas budget: 230400 px single canvas, grid in safe square
+PASS minesweeper solvability: 20 random boards all diggable to a win
+EVIDENCE minesweeper boot 101 ops, flag 1 op, dig 42 ops (<=240), idle 0 ops in 10 ticks, 8 spriteDefine
+PASS minesweeper r212 frame-budget and idle 0-draw discipline
+ALL tests/minesweeper.js PASS

@@ -1,0 +1,13 @@
+PASS frogger four-direction hop + boundary clamp
+PASS frogger vehicle collision
+PASS frogger log carry displacement
+PASS frogger water death
+PASS frogger home fill + level up
+PASS frogger difficulty speed-up
+PASS frogger high-score KV + graceful failure
+PASS frogger sprite spans precomputed once, stable across ticks
+PASS frogger game over restart
+PASS frogger canvas/events + tap-direction hops
+EVIDENCE frogger active max 16 draws / 49 total ops (<=240), over 0 ops in 10 ticks, 8 spriteDefine
+PASS frogger r212 frame-budget and idle 0-draw discipline
+ALL FROGGER HARNESS CASES PASSED

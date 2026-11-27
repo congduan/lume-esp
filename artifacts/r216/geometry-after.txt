@@ -1,0 +1,99 @@
+=== DASHBOARD ===
+node 1 (View, p=0): x=0 y=0 w=480 h=480 abs=[0..480,0..480] r=0 Rmax=339.4 OUT_SAFE OUT_R240 text=""
+node 2 (Canvas, p=0): x=40 y=40 w=400 h=360 abs=[40..440,40..400] r=0 Rmax=282.8 OUT_SAFE OUT_R240 text=""
+node 3 (Arc, p=0): x=78 y=98 w=148 h=148 abs=[78..226,98..246] r=0 [HIDDEN] Rmax=215.4 IN_SAFE IN_R240 text=""
+node 4 (View, p=0): x=0 y=0 w=480 h=348 abs=[0..480,0..348] r=12 Rmax=339.4 OUT_SAFE OUT_R240 text=""
+node 5 (Text, p=8): x=undefined y=undefined w=0 h=0 abs=[84..84,112..112] r=undefined text="BATTERY"
+node 6 (Text, p=8): x=undefined y=undefined w=0 h=0 abs=[84..84,112..112] r=undefined text="0%"
+node 7 (Text, p=8): x=undefined y=undefined w=0 h=0 abs=[84..84,112..112] r=undefined text="Charge level"
+node 8 (View, p=0): x=84 y=112 w=150 h=98 abs=[84..234,112..210] r=12 Rmax=201.8 IN_SAFE IN_R240 text=""
+node 9 (Text, p=12): x=undefined y=undefined w=0 h=0 abs=[246..246,112..112] r=undefined text="TEMPERATURE"
+node 10 (Text, p=12): x=undefined y=undefined w=0 h=0 abs=[246..246,112..112] r=undefined text="--"
+node 11 (Text, p=12): x=undefined y=undefined w=0 h=0 abs=[246..246,112..112] r=undefined text="Board sensor"
+node 12 (View, p=0): x=246 y=112 w=150 h=98 abs=[246..396,112..210] r=12 Rmax=201.8 IN_SAFE IN_R240 text=""
+node 13 (Text, p=16): x=undefined y=undefined w=0 h=0 abs=[84..84,222..222] r=undefined text="USB POWER"
+node 14 (Text, p=16): x=undefined y=undefined w=0 h=0 abs=[84..84,222..222] r=undefined text="--"
+node 15 (Text, p=16): x=undefined y=undefined w=0 h=0 abs=[84..84,222..222] r=undefined text="VBUS input"
+node 16 (View, p=0): x=84 y=222 w=150 h=98 abs=[84..234,222..320] r=12 Rmax=175.3 IN_SAFE IN_R240 text=""
+node 17 (Text, p=20): x=undefined y=undefined w=0 h=0 abs=[246..246,222..222] r=undefined text="UPTIME"
+node 18 (Text, p=20): x=undefined y=undefined w=0 h=0 abs=[246..246,222..222] r=undefined text="0s"
+node 19 (Text, p=20): x=undefined y=undefined w=0 h=0 abs=[246..246,222..222] r=undefined text="Since start"
+node 20 (View, p=0): x=246 y=222 w=150 h=98 abs=[246..396,222..320] r=12 Rmax=175.3 IN_SAFE IN_R240 text=""
+node 21 (Text, p=0): x=84 y=78 w=312 h=28 abs=[84..396,78..106] r=undefined Rmax=224.9 IN_SAFE IN_R240 text="LUME HUB"
+node 22 (Text, p=0): x=84 y=326 w=312 h=20 abs=[84..396,326..346] r=undefined Rmax=188.6 IN_SAFE IN_R240 text="--  /  accelerometer live"
+node 23 (Btn, p=0): x=84 y=352 w=98 h=48 abs=[84..182,352..400] r=10 [PRESS] Rmax=223.5 IN_SAFE IN_R240 text="GAUGE"
+node 24 (Btn, p=0): x=191 y=352 w=98 h=48 abs=[191..289,352..400] r=10 [PRESS] Rmax=167.3 IN_SAFE IN_R240 text="TRACE"
+node 25 (Btn, p=0): x=298 y=352 w=98 h=48 abs=[298..396,352..400] r=10 [PRESS] Rmax=223.5 IN_SAFE IN_R240 text="SYSTEM"
+node 26 (Canvas, p=0): x=84 y=100 w=312 h=180 abs=[84..396,100..280] r=undefined [HIDDEN] Rmax=209.6 IN_SAFE IN_R240 text=""
+node 27 (View, p=0): x=undefined y=undefined w=64 h=3 abs=[0..64,0..3] r=2 Rmax=339.4 OUT_SAFE OUT_R240 text=""
+  [canvas] local=[0..400, 0..360] screen=[40..440, 40..400]
+  [SYSTEM systemStaticLines] count=9
+    sep[0]: local=(44,81)-(356,81) screen=[84..396, y=121] Rmax=196.2 IN_SAFE IN_R240
+    sep[1]: local=(44,105)-(356,105) screen=[84..396, y=145] Rmax=182.6 IN_SAFE IN_R240
+    sep[2]: local=(44,129)-(356,129) screen=[84..396, y=169] Rmax=171.4 IN_SAFE IN_R240
+    sep[3]: local=(44,153)-(356,153) screen=[84..396, y=193] Rmax=162.9 IN_SAFE IN_R240
+    sep[4]: local=(44,177)-(356,177) screen=[84..396, y=217] Rmax=157.7 IN_SAFE IN_R240
+    sep[5]: local=(44,201)-(356,201) screen=[84..396, y=241] Rmax=156 IN_SAFE IN_R240
+    sep[6]: local=(44,225)-(356,225) screen=[84..396, y=265] Rmax=158 IN_SAFE IN_R240
+    sep[7]: local=(44,249)-(356,249) screen=[84..396, y=289] Rmax=163.5 IN_SAFE IN_R240
+    sep[8]: local=(44,273)-(356,273) screen=[84..396, y=313] Rmax=172.2 IN_SAFE IN_R240
+  [SYSTEM drawSystem] texts=22 (info rows=10)
+    text("SYSTEM"): local=(44,38) screen=(84,78) estBox=[84..132,78..92] Rmax=224.9 IN_SAFE IN_R240
+    text("runtime inventory"): local=(156,38) screen=(196,78) estBox=[196..332,78..92] Rmax=186.3 IN_SAFE IN_R240
+    text("SOC"): local=(44,62) screen=(84,102) estBox=[84..108,102..116] Rmax=208.3 IN_SAFE IN_R240
+    text("ESP32-S3"): local=(168,62) screen=(208,102) estBox=[208..272,102..116] Rmax=141.7 IN_SAFE IN_R240
+    text("FLASH"): local=(44,86) screen=(84,126) estBox=[84..124,126..140] Rmax=193.2 IN_SAFE IN_R240
+    text("16 MB"): local=(168,86) screen=(208,126) estBox=[208..248,126..140] Rmax=118.4 IN_SAFE IN_R240
+    text("PSRAM"): local=(44,110) screen=(84,150) estBox=[84..124,150..164] Rmax=180.1 IN_SAFE IN_R240
+    text("8 MB"): local=(168,110) screen=(208,150) estBox=[208..240,150..164] Rmax=95.5 IN_SAFE IN_R240
+    text("WIFI"): local=(44,134) screen=(84,174) estBox=[84..116,174..188] Rmax=169.4 IN_SAFE IN_R240
+    text("idle"): local=(168,134) screen=(208,174) estBox=[208..240,174..188] Rmax=73.3 IN_SAFE IN_R240
+    text("IP"): local=(44,158) screen=(84,198) estBox=[84..100,198..212] Rmax=161.6 IN_SAFE IN_R240
+    text("--"): local=(168,158) screen=(208,198) estBox=[208..224,198..212] Rmax=52.8 IN_SAFE IN_R240
+    text("BLE"): local=(44,182) screen=(84,222) estBox=[84..108,222..236] Rmax=157 IN_SAFE IN_R240
+    text("adv"): local=(168,182) screen=(208,222) estBox=[208..232,222..236] Rmax=36.7 IN_SAFE IN_R240
+    text("STORAGE"): local=(44,206) screen=(84,246) estBox=[84..140,246..260] Rmax=157.3 IN_SAFE IN_R240
+    text("fs ok 0 kv"): local=(168,206) screen=(208,246) estBox=[208..288,246..260] Rmax=52 IN_SAFE IN_R240
+    text("TEMP"): local=(44,230) screen=(84,270) estBox=[84..116,270..284] Rmax=162.1 IN_SAFE IN_R240
+    text("40.7 C"): local=(168,230) screen=(208,270) estBox=[208..256,270..284] Rmax=54.4 IN_SAFE IN_R240
+    text("UPTIME"): local=(44,254) screen=(84,294) estBox=[84..132,294..308] Rmax=170.2 IN_SAFE IN_R240
+    text("0s"): local=(168,254) screen=(208,294) estBox=[208..224,294..308] Rmax=75.2 IN_SAFE IN_R240
+    text("OTA"): local=(44,278) screen=(84,318) estBox=[84..108,318..332] Rmax=181.1 IN_SAFE IN_R240
+    text("ota off"): local=(168,278) screen=(208,318) estBox=[208..264,318..332] Rmax=97.4 IN_SAFE IN_R240
+  [TRACE grid] screen=[84..396, 100..280] Rmax=209.6 IN_SAFE IN_R240
+    traceText("ACCEL TRACE"): local=(44,40) screen=(84,80) estBox=[84..172,80..94] Rmax=223.5 IN_SAFE IN_R240
+    traceText("5 Hz / +-10"): local=(260,40) screen=(300,80) estBox=[300..388,80..94] Rmax=218 IN_SAFE IN_R240
+    traceText("X 0.00"): local=(44,248) screen=(84,288) estBox=[84..132,288..302] Rmax=167.9 IN_SAFE IN_R240
+    traceText("Y 0.00"): local=(148,248) screen=(188,288) estBox=[188..236,288..302] Rmax=80.9 IN_SAFE IN_R240
+    traceText("Z 0.00"): local=(252,248) screen=(292,288) estBox=[292..340,288..302] Rmax=117.7 IN_SAFE IN_R240
+    traceText("samples 1 / 24"): local=(44,270) screen=(84,310) estBox=[84..196,310..324] Rmax=177.2 IN_SAFE IN_R240
+    traceText("swipe left / right to change page"): local=(44,290) screen=(84,330) estBox=[84..348,330..344] Rmax=187.5 IN_SAFE IN_R240
+=== INVADERS ===
+node 1 (View, p=0): x=undefined y=undefined w=480 h=480 abs=[0..480,0..480] r=undefined Rmax=339.4 OUT_SAFE OUT_R240 text=""
+node 2 (Canvas, p=1): x=0 y=0 w=480 h=480 abs=[0..480,0..480] r=undefined Rmax=339.4 OUT_SAFE OUT_R240 text=""
+node 3 (Text, p=1): x=84 y=80 w=0 h=0 abs=[84..84,80..80] r=0 text="INVADERS"
+node 4 (Text, p=1): x=224 y=80 w=172 h=0 abs=[224..396,80..80] r=0 Rmax=223.5 IN_SAFE IN_R240 text="S 0  HI 0  L 3  W1"
+node 5 (Text, p=1): x=84 y=104 w=312 h=0 abs=[84..396,104..104] r=0 Rmax=207 IN_SAFE IN_R240 text="PAN MOVE   TAP FIRE   SWIPE UP PAUSE"
+  [playfield] COLS=11 ROWS=5 CELL_W=26 CELL_H=26 FORM=(98,142) GROUND_Y=396 CANNON_Y=372 CANNON=32x24
+  [init formation] [98..382, 142..262] Rmax=172.5 IN_SAFE IN_R240
+  [horizontal travel] formation x=[80..400] cannon x=[80..400]
+  [vertical bounds] UFO y=124..134, CANNON y=372..396, GROUND y=396..398
+  [playfield bbox] [80..400, 124..398] Rmax=224.9 IN_SAFE IN_R240
+=== FROGGER ===
+node 1 (View, p=0): x=undefined y=undefined w=480 h=480 abs=[0..480,0..480] r=undefined Rmax=339.4 OUT_SAFE OUT_R240 text=""
+node 2 (Canvas, p=1): x=0 y=0 w=480 h=480 abs=[0..480,0..480] r=undefined Rmax=339.4 OUT_SAFE OUT_R240 text=""
+node 3 (Text, p=1): x=84 y=80 w=0 h=0 abs=[84..84,80..80] r=0 text="FROGGER"
+node 4 (Text, p=1): x=224 y=80 w=172 h=0 abs=[224..396,80..80] r=0 Rmax=223.5 IN_SAFE IN_R240 text="S 0  HI 0  L 3  LV 1"
+node 5 (Text, p=1): x=84 y=104 w=312 h=0 abs=[84..396,104..104] r=0 Rmax=207 IN_SAFE IN_R240 text="HOMES 0/5   TAP AROUND FROG TO HOP"
+  [grid] COLS=13 ROWS=13 CELL=21 GX=104 GY=124 bbox=[104..377, 124..397] Rmax=208.4 IN_SAFE IN_R240
+  [frog start(12,6)] [232..248, 378..394] Rmax=154.2 IN_SAFE IN_R240
+  [frog corners] TL=[106..122,126..142] BR=[358..374,378..394]
+=== MINESWEEPER ===
+node 1 (View, p=0): x=undefined y=undefined w=480 h=480 abs=[0..480,0..480] r=undefined Rmax=339.4 OUT_SAFE OUT_R240 text=""
+node 2 (Canvas, p=1): x=0 y=0 w=480 h=480 abs=[0..480,0..480] r=undefined Rmax=339.4 OUT_SAFE OUT_R240 text=""
+node 3 (Text, p=1): x=84 y=80 w=110 h=0 abs=[84..194,80..80] r=0 Rmax=223.5 IN_SAFE IN_R240 text="MINESWEEPER"
+node 4 (Text, p=1): x=194 y=80 w=102 h=0 abs=[194..296,80..80] r=0 Rmax=169.5 IN_SAFE IN_R240 text="FLAGS 15  TIME 000"
+node 5 (Text, p=1): x=84 y=100 w=312 h=0 abs=[84..396,100..100] r=0 Rmax=209.6 IN_SAFE IN_R240 text="TAP TO DIG - HOLD TO FLAG"
+node 6 (Text, p=1): x=84 y=116 w=200 h=0 abs=[84..284,116..116] r=0 Rmax=199.3 IN_SAFE IN_R240 text="BEST -"
+node 7 (Btn, p=0): x=304 y=78 w=92 h=48 abs=[304..396,78..126] r=8 [PRESS] Rmax=224.9 IN_SAFE IN_R240 text="RESTART"
+  [grid] COLS=10 ROWS=10 CELL=25 GAP=2 GX=106 GY=132 bbox=[106..374, 132..400] Rmax=208.7 IN_SAFE IN_R240
