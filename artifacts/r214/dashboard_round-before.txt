@@ -1,0 +1,3 @@
+PASS dashboard_round SIM prelude, 81 calls/frame (<=240)
+PASS dashboard_round IMU prelude, 88 calls/frame (<=240)
+PASS dashboard_round relative heading, 360-deg cardinals, and linear level mapping

@@ -1,4 +1,4 @@
-/** LUME HUB — canvas-first demo, pure JS on the existing API (no firmware
+/** LUME HUB -- canvas-first demo, pure JS on the existing API (no firmware
  * change). One 400x360 Canvas renders three pages; the TRACE page overlays a
  * signal-backed shell.Sparkline for the 3-axis strip. Three buttons and a
  * swipe gesture switch between them.
@@ -60,7 +60,9 @@ function arc(ctx, cx, cy, r, startDeg, endDeg, color, width, step) {
  * canvas_line() raster, so the picture is unchanged. */
 function gaugeStaticLines() { return [[16, 268, W - 16, 268]]; }
 function traceStaticLines() {
-  var segs = [], x0 = 44, y0 = 44, width = 340, height = 200;
+  /* r214: the grid backs the shell.Sparkline overlay; keep it aligned and
+   * inside the safe square (canvas-local 44..356 -> screen 84..396). */
+  var segs = [], x0 = 44, y0 = 44, width = 312, height = 200;
   for (var g = 0; g <= 4; g++) {
     var gy = Math.round(y0 + height * g / 4);
     segs.push([x0, gy, x0 + width, gy]);
@@ -153,22 +155,25 @@ var battArc = Arc({
 });
 
 /* Native metric cards make the landing page readable at arm's length.
- * The existing canvas still renders TRACE and SYSTEM without changing navigation. */
+ * The existing canvas still renders TRACE and SYSTEM without changing navigation.
+ * r214: cards, title and status line all sit in the round safe square [75,405].
+ * Two 150px columns with a 12px gutter clear the 8px gap minimum; 84..396
+ * leaves a 9px inset inside the safe square on both edges. */
 var gaugeCards=[View({style:{x:0,y:0,width:480,height:396,background:'bg',scroll:'none'}})];
 function metricCard(x,y,label,value,unit){
-  var id=View({style:{x:x,y:y,width:204,height:129,background:'surface',borderRadius:12,padding:16,
+  var id=View({style:{x:x,y:y,width:150,height:114,background:'surface',borderRadius:12,padding:16,
     display:'flex',flexDirection:'column',justifyContent:'space-between',gap:8,scroll:'none'}},[
-    Text({text:label,style:{fontSize:13,color:'textDim'}}),
+    Text({text:label,style:{fontSize:14,color:'textDim'}}),
     Text({text:value,style:{fontSize:24,color:'text'}}),
-    Text({text:unit,style:{fontSize:11,color:'textDim'}})
+    Text({text:unit,style:{fontSize:14,color:'textDim'}})
   ]);gaugeCards.push(id);
 }
-metricCard(24,80,'BATTERY',function(){return Math.round(view().pct)+'%';},'Charge level');
-metricCard(252,80,'TEMPERATURE',function(){return view().temp;},'Board sensor');
-metricCard(24,220,'USB POWER',function(){return view().vbus;},'VBUS input');
-metricCard(252,220,'UPTIME',function(){return view().uptime;},'Since start');
-gaugeCards.push(Text({text:'LUME HUB',style:{x:24,y:24,width:300,height:32,fontSize:24,color:'text'}}));
-gaugeCards.push(Text({text:function(){return view().charge+'  /  accelerometer live';},style:{x:24,y:364,width:432,height:20,fontSize:13,color:'textDim'}}));
+metricCard(84,124,'BATTERY',function(){return Math.round(view().pct)+'%';},'Charge level');
+metricCard(246,124,'TEMPERATURE',function(){return view().temp;},'Board sensor');
+metricCard(84,250,'USB POWER',function(){return view().vbus;},'VBUS input');
+metricCard(246,250,'UPTIME',function(){return view().uptime;},'Since start');
+gaugeCards.push(Text({text:'LUME HUB',style:{x:84,y:84,width:312,height:32,fontSize:24,color:'text'}}));
+gaugeCards.push(Text({text:function(){return view().charge+'  /  accelerometer live';},style:{x:84,y:376,width:312,height:20,fontSize:14,color:'textDim'}}));
 lume.setAttr(battArc,5,0);
 
 function drawGauge(ctx, v) {
@@ -396,10 +401,12 @@ tab(320, 2, 'SYSTEM');
 /* r194: the TRACE strip is now a shell.Sparkline overlay. The signal stays
  * with the caller -- each series getter reads view().trace inside the
  * component's onDraw, so publish() repaints it. The old canvas mapping was
- * mid - clamp(sample * 9, -100, 100) inside a 340x200 box at (44,44); the
+ * mid - clamp(sample * 9, -100, 100) inside a 340x200 box at canvas-local
+ * (44,44); r214 places the overlay in SCREEN coords (84,84) 312x200 so it
+ * lands inside the safe square and lines up with the retained grid. The
  * explicit domain and showLast keep that scale and the per-axis end markers.
  * Created last so it layers above the canvas grid; go() hides it off page 1. */
-var traceSpark = lume.ui.shell.Sparkline({ x: 44, y: 44, width: 340, height: 200,
+var traceSpark = lume.ui.shell.Sparkline({ x: 84, y: 84, width: 312, height: 200,
   min: -100, max: 100, strokeWidth: 2, showLast: true,
   series: [
     { data: function () { return view().trace.map(function (t) { return t[0] * 9; }); }, color: C_RED },

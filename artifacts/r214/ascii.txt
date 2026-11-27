@@ -1,0 +1,2 @@
+grep -cPn ASCII examples/dashboard/app.js = 0
+grep -cPn ASCII examples/app_manager/app.js = 0
