@@ -1,0 +1,2 @@
+grep -cPn '[^\x00-\x7F]' examples/mochi/app.js = 0
+grep -cPn '[^\x00-\x7F]' examples/sparkline_demo/app.js = 0
