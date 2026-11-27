@@ -1,0 +1,6 @@
+Slider(default, h=48, val=50): thumb=fillCircle(cx=160,cy=24,r=18,d=36) draws=[["draw",1,0,0,0,0,0,0,1],["draw",1,1,0,22,320,4,1848393,1],["draw",1,1,0,22,160,4,4249776,1],["draw",1,6,160,24,18,0,15923195,1]]
+Slider(roundThumb:true, h=48, val=50): thumb=fillCircle(cx=160,cy=24,r=18,d=36) draws=[["draw",1,0,0,0,0,0,0,1],["draw",1,1,0,22,320,4,1848393,1],["draw",1,1,0,22,160,4,4249776,1],["draw",1,6,160,24,18,0,15923195,1]]
+Slider(roundThumb:false, h=48, val=50): thumb=fillRect(x=148,y=12,w=24,h=24) draws=[["draw",1,0,0,0,0,0,0,1],["draw",1,1,0,22,320,4,1848393,1],["draw",1,1,0,22,172,4,4249776,1],["draw",1,1,148,12,24,24,15923195,1]]
+Slider(default, h=48, knobDiameter=40): thumb=fillCircle(cx=160,cy=24,r=20,d=40) draws=[["draw",1,0,0,0,0,0,0,1],["draw",1,1,0,22,320,4,1848393,1],["draw",1,1,0,22,160,4,4249776,1],["draw",1,6,160,24,20,0,15923195,1]]
+Slider(default min h=40, val=50): thumb=fillCircle(cx=160,cy=20,r=18,d=36) draws=[["draw",1,0,0,0,0,0,0,1],["draw",1,1,0,18,320,4,1848393,1],["draw",1,1,0,18,160,4,4249776,1],["draw",1,6,160,20,18,0,15923195,1]]
+controls_demo brightSlider (node 10): thumb=fillCircle(cx=160,cy=24,r=18,d=36) draws=[["draw",10,0,0,0,0,0,0,1],["draw",10,1,0,22,320,4,2042941,1],["draw",10,1,0,22,160,4,4249776,1],["draw",10,6,160,24,18,0,15923195,1]]

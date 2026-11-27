@@ -1,0 +1,8 @@
+# Lume r218 Full-Manifest Geometry Audit (1/74 apps)
+# Screen: 480x480 circle center=(240,240) R=240; Safe square=[75,405]; Touch>=48x48; Card radius<=12
+
+APP                  NODES BTNS  MAX_R OUT240 OUTSAF  T<48  R>12  CTXT  NASC  FLAGS
+----------------------------------------------------------------------------------------------------
+controls_demo           15    1  227.7      0      0     0     0     0     0  CLEAN
+
+=== DETAILED FINDINGS (non-clean apps) ===

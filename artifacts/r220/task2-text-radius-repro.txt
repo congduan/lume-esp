@@ -1,0 +1,6 @@
+IDs: {"v1":1,"t1":2,"t2":3,"t3":4,"c1":5}
+v1 (node 1): radius_attrs=[["attr",1,12,12],["attr",1,12,20]] scroll_attrs=[["attr",1,20,0]]
+t1 (node 2): radius_attrs=[] scroll_attrs=[["attr",2,20,0]]
+t2 (node 3): radius_attrs=[] scroll_attrs=[]
+t3 (node 4): radius_attrs=[["attr",4,12,5]] scroll_attrs=[["attr",4,20,0]]
+c1 (node 5): radius_attrs=[] scroll_attrs=[["attr",5,20,0]]

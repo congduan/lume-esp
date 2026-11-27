@@ -1,0 +1,15 @@
+node  1 View   parent= 0 size=480x480 abs=[0..480,0..480] Rmax=339.4 IN_SAFE=false r=12
+node  2 View   parent= 1 size=339x339 abs=[70..409,70..409] Rmax=240.4 IN_SAFE=false r=12
+node  3 Text   parent= 2 size=320x28  abs=[80..400,78..106] Rmax=227.7 IN_SAFE=true text="CONTROLS DEMO"
+node  4 Text   parent= 2 size=320x18  abs=[80..400,106..124] Rmax=208.7 IN_SAFE=true text="Switch / Slider / Progress"
+node  5 View   parent= 2 size=268x48  abs=[80..348,136..184] Rmax=190.8 IN_SAFE=true r=12
+node  6 View   parent= 5 size=68x40   abs=[80..148,140..180] Rmax=188.7 IN_SAFE=true r=20
+node  7 View   parent= 5 size=40x40   abs=[104..144,140..180] Rmax=168.8 IN_SAFE=true r=20
+node  8 Text   parent= 5 size=188x48  abs=[160..348,136..184] Rmax=149.9 IN_SAFE=true text="Sound FX"
+node  9 Text   parent= 2 size=320x22  abs=[80..400,198..220] Rmax=165.4 IN_SAFE=true r=0 text="Brightness 50"
+node 10 Canvas parent= 2 size=320x48  abs=[80..400,224..272] Rmax=163.2 IN_SAFE=true
+node 11 Text   parent= 2 size=320x22  abs=[80..400,288..310] Rmax=174.6 IN_SAFE=true r=0 text="Battery 20%"
+node 12 View   parent= 2 size=320x12  abs=[80..400,336..348] Rmax=193.0 IN_SAFE=true r=6
+node 13 View   parent=12 size=64x12   abs=[80..144,336..348] Rmax=193.0 IN_SAFE=true r=6
+node 14 Text   parent= 2 size=320x20  abs=[80..400,312..332] Rmax=184.6 IN_SAFE=true text="CHARGING"
+node 15 Text   parent= 2 size=320x20  abs=[80..400,368..388] Rmax=218.0 IN_SAFE=true text="DRAG SLIDER | TAP SWITCH"
