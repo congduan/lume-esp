@@ -29,20 +29,27 @@ function speedPolar(radius, degree) {
   return [Math.round(DIAL_CX + radius * Math.cos(a)), Math.round(DIAL_CY + radius * Math.sin(a))];
 }
 function speedAngle(kmH) { return 135 + kmH * 270 / 260; }
-/* r48: the dial arcs (background track + three colour bands) are one native
- * ctx.arc call each — exact annulus geometry, AA edges and round caps rendered
- * in C, so the dial no longer samples ~276 polyline segments in JS. Angles are
- * the same speedAngle() degrees; the needle and ticks still use line/circle. */
-function speedArc(ctx, from, to, radius, color, width) {
-  ctx.arc(DIAL_CX, DIAL_CY, radius, from, to, width, color);
+/* r224 (rendering backlog #3): the three colour bands are three stacked native
+ * LVGL Arc widgets. lv_draw_sw_arc() masks the stroke INWARD from the widget
+ * radius (area_in = bbox - width), so a 320px widget (radius 160) with thickness
+ * 5 lands the band on r=156..160, the exact ring the old ctx.arc(r=158, width=5)
+ * rasterised. ATTR_ARC_TRACK only recolours the background ring (it cannot hide
+ * it), so track is set to the dial background colour to make the unused ring
+ * invisible against the canvas. value=100 keeps each band a static range
+ * marker over the speedAngle() domain; the needle remains speed-driven. */
+function speedBand(from, to, color) {
+  return Arc({
+    style: {
+      position: 'absolute',
+      x: 24 + DIAL_CX - 160, y: 64 + DIAL_CY - 160,
+      width: 320, height: 320, borderRadius: 0, background: color
+    },
+    start: from, end: to, thickness: 5, track: DIAL_BG, value: 100
+  });
 }
 /* One-off layer: everything that does not depend on the needle position. */
 function speedDialLayer(ctx) {
   ctx.fillColor(DIAL_BG); ctx.fillRect(0, 0, DIAL_W, DIAL_H);
-  speedArc(ctx, 135, 405, 158, '#264454', 4);
-  speedArc(ctx, 135, speedAngle(120), 158, '#53E1C4', 5);
-  speedArc(ctx, speedAngle(120), speedAngle(200), 158, '#F8C461', 5);
-  speedArc(ctx, speedAngle(200), 405, 158, '#FF667B', 5);
   for (var v = 0; v <= 260; v += 10) {
     var major = v % 20 === 0;
     var p = speedPolar(major ? 139 : 145, speedAngle(v)), q = speedPolar(152, speedAngle(v));
@@ -130,6 +137,9 @@ function speedTick() {
    physics stay unchanged. Canvas is created first so the HUD Texts stack above it. */
 var speedChildren = [
   Canvas({ width: DIAL_W, height: DIAL_H, style: { position: 'absolute', x: 24, y: 64 }, onDraw: speedDraw }),
+  speedBand(135, Math.round(speedAngle(120)), '#53E1C4'),
+  speedBand(Math.round(speedAngle(120)), Math.round(speedAngle(200)), '#F8C461'),
+  speedBand(Math.round(speedAngle(200)), 45, '#FF667B'),
   Text({ text: 'LUME DRIVE', style: { position: 'absolute', x: 84, y: 80, width: 200, height: 24, borderRadius: 0, color: 'textDim', fontSize: 14 } }),
   Text({ text: function () { var d = speedClock(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }, style: { position: 'absolute', x: 296, y: 80, width: 100, height: 24, textAlign: 'right', borderRadius: 0, color: 'textDim', fontSize: 14 } })
 ];
