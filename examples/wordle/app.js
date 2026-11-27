@@ -363,13 +363,12 @@ Button({ parent: root, title: 'NEW', style: { position: 'absolute', x: 336, y: 7
   borderWidth: 1, borderColor: '#FFD78E', color: '#F2F7FB', fontSize: 14, scroll: 'none' },
   onPress: newRound });
 
-/* r148/r200 shell keyboard: 400 px width centered (x=40..440), keySize 40,
- * gap 0, y=240. Natural QWERTY taper keeps all 4 rows >=28 px inside the 466 px
- * circular bezel. r203 widens BKSP/ENTER to 72 px (controlKeyRatio 1.8): bottom
- * row spans x=88..392, y=364..404 <= 405, so the labels are no longer cramped
- * while every key stays inside the round safe area. */
+/* r148/r200/r217 shell keyboard: 448 px width centered (x=16..464, inner 440),
+ * keySize 44, keyHeight 48 (r217 floor/default), gap 0, y=240, controlKeyRatio
+ * 1.5 (BKSP/ENTER 66x48, SPACE 132x48). Monotonic QWERTY taper (440/396/308/264)
+ * keeps all 29 keys inside R<=240 (worstR 236.3 on row 3, rows 0..2 <=226.1). */
 var keyboard = lume.ui.shell.Keyboard({
-  parent: root, width: 400, keySize: 40, gap: 0, x: 40, y: 240, controlKeyRatio: 1.8,
+  parent: root, width: 448, keySize: 44, gap: 0, x: 16, y: 240, controlKeyRatio: 1.5,
   style: { background: '#0D1420', borderRadius: 12 },
   keyStates: keyStatesSig,
   onKey: function (ch) {
