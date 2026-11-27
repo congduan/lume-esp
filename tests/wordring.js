@@ -251,17 +251,20 @@ function setWord(st, word) {
   console.log('PASS wordring KV: keys <= 15 chars, storage failures non-fatal');
 }
 
-// 12. canvas budget + geometry (single canvas leaves a native HUD band)
+// 12. canvas budget + geometry (single canvas leaves a native HUD band).
+// r210: grid, ring band and button row must stack inside the 480-round
+// safe square [75,405] with no overlap; anchors retargeted, semantics tightened.
 {
   assert.equal(s.IW * s.IH, 206400, '480x430 canvas');
   assert.ok(s.IW * s.IH < 230400, 'canvas under the 230400 px full-frame budget');
-  const gridRight = s.GX + 5 * (s.CELL + s.GAP) - s.GAP; // 125 + 230 - 5 = 350
-  const gridBottom = s.GY + 6 * (s.CELL + s.GAP) - s.GAP; // 56 + 277 - 5 = 328
-  assert.ok(gridRight <= s.IW, 'grid right edge inside canvas');
-  assert.ok(gridBottom < s.BAND_TOP, 'grid bottom clears the ring band');
-  assert.ok(s.BAND_BOT <= s.IH, 'ring band inside canvas');
+  const gridRight = s.GX + 5 * (s.CELL + s.GAP) - s.GAP; // 156 + 5*34 - 2 = 324
+  const gridBottom = s.GY + 6 * (s.CELL + s.GAP) - s.GAP; // 116 + 6*34 - 2 = 318
+  assert.ok(gridRight <= 405, 'grid right edge (' + gridRight + ') inside safe square x<=405');
+  assert.ok(gridBottom < s.BAND_TOP, 'grid bottom (' + gridBottom + ') clears the ring band');
+  assert.ok(s.BAND_BOT <= 405, 'ring band bottom (' + s.BAND_BOT + ') inside safe square');
+  assert.ok(s.BAND_BOT < 356, 'ring band clears the button row (y=356)');
   assert.ok(s.IW * (s.IH - (s.GY - 4)) <= 230400, 'dirty rect within budget');
-  console.log('PASS wordring canvas budget: 206400/230400 px, grid and ring in bounds');
+  console.log('PASS wordring canvas budget: 206400/230400 px, grid/ring/buttons in safe square');
 }
 
 /* ---- device render path: real prelude, real draw/gesture stream --------- */
@@ -273,10 +276,10 @@ function tapLetter(ch) {
   const target = s.ALPHABET.indexOf(ch.toUpperCase());
   let cur = ui.ctx.state.sel;
   const forward = (target - cur + 26) % 26;
-  if (forward <= 13) { for (let i = 0; i < forward; i++) tap(400, 388); }
-  else { for (let i = 0; i < 26 - forward; i++) tap(80, 388); }
+  if (forward <= 13) { for (let i = 0; i < forward; i++) tap(390, 338); }
+  else { for (let i = 0; i < 26 - forward; i++) tap(90, 338); }
   assert.equal(ui.ctx.state.sel, target, 'ring rotated to ' + ch);
-  tap(240, 388);
+  tap(240, 338);
 }
 
 // 13. boot through the real prelude: full first paint, HUD, draw stream
@@ -303,9 +306,9 @@ function tapLetter(ch) {
 // 14. pure-tap path: left/right rotate, centre confirms, DEL/ENTER/NEW buttons
 {
   assert.equal(ui.ctx.state.sel, 0);
-  tap(80, 388); assert.equal(ui.ctx.state.sel, 25, 'left arc rotates back to Z');
-  tap(400, 388); assert.equal(ui.ctx.state.sel, 0, 'right arc rotates on to A');
-  tap(240, 388); assert.equal(ui.ctx.state.current, 'a', 'centre places letter');
+  tap(90, 338); assert.equal(ui.ctx.state.sel, 25, 'left arc rotates back to Z');
+  tap(390, 338); assert.equal(ui.ctx.state.sel, 0, 'right arc rotates on to A');
+  tap(240, 338); assert.equal(ui.ctx.state.current, 'a', 'centre places letter');
   ui.press(6); assert.equal(ui.ctx.state.current, '', 'DEL clears the slot');
   const answer = ui.ctx.state.answer;
   for (const ch of answer) tapLetter(ch);
@@ -327,9 +330,9 @@ function tapLetter(ch) {
   for (let t = 0; t < 1800; t++) {          /* 1800 ticks x 33 ms = ~59.4 s */
     if (t % 15 === 0) {                     /* one tap every ~0.5 s */
       const r = Math.random();
-      if (r < 0.15) tap(80, 388);
-      else if (r < 0.30) tap(400, 388);
-      else tap(240, 388);
+      if (r < 0.15) tap(90, 338);
+      else if (r < 0.30) tap(390, 338);
+      else tap(240, 338);
       taps++;
     }
     if (t % 45 === 0 && t > 0) { ui.press(7); submits++; }
