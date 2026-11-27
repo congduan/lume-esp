@@ -201,3 +201,78 @@ pass('sprite slot redefinition re-uploads (animation frame swap)', () => {
   assert.strictEqual(defs.length, 2, 're-define re-uploads into the same slot');
   assert.strictEqual(h.calls.filter(x => x[0] === 'spriteDraw').length, 1);
 });
+
+/* r221: per-canvas singleBuffer opt-in (roadmap rendering-backlog #7).
+ * Host layer tests the exact embedded prelude (validation, createNode flags,
+ * 1x vs 2x PSRAM pool accounting, dispose refund) plus C bridge/engine wiring
+ * invariants; actual PSRAM/LVGL work==front runtime execution is verified via
+ * firmware build and deferred to board bring-up. */
+pass('r221 singleBuffer: false/omitted preserves exact 4-arg create and 2x budget', () => {
+  const hDef = harness('Canvas({width:120,height:80,onDraw:function(c){c.clear();}})');
+  const hFalse = harness('Canvas({width:120,height:80,singleBuffer:false,onDraw:function(c){c.clear();}})');
+  assert.deepStrictEqual(hDef.calls[0], ['create', 3, 0, 120, 80]);
+  assert.deepStrictEqual(hFalse.calls[0], ['create', 3, 0, 120, 80]);
+  assert.throws(() => harness('Canvas({width:480,height:480,singleBuffer:false,onDraw:function(){}});Canvas({width:1,height:1,singleBuffer:true,onDraw:function(){}})'),
+                /budget exceeded/);
+});
+
+pass('r221 singleBuffer: true emits create flag 1 and halves PSRAM pool cost (1x)', () => {
+  const h = harness('Canvas({width:480,height:480,singleBuffer:true,onDraw:function(c){c.clear();}});Canvas({width:480,height:480,singleBuffer:true,onDraw:function(c){c.clear();}})');
+  const creates = h.calls.filter(x => x[0] === 'create');
+  assert.deepStrictEqual(creates, [
+    ['create', 3, 0, 480, 480, 1],
+    ['create', 3, 0, 480, 480, 1],
+  ]);
+  /* Two 480x480 singleBuffer canvases fill the 921,600 B pool; a 3rd 1x1 rejects. */
+  assert.throws(() => harness('Canvas({width:480,height:480,singleBuffer:true,onDraw:function(){}});Canvas({width:480,height:480,singleBuffer:true,onDraw:function(){}});Canvas({width:1,height:1,singleBuffer:true,onDraw:function(){}})'),
+                /budget exceeded/);
+  /* Mixed pool: one 480x240 double-buffered (460,800 B) + one 480x480 singleBuffer (460,800 B) fits. */
+  const mix = harness('Canvas({width:480,height:240,onDraw:function(){}});Canvas({width:480,height:480,singleBuffer:true,onDraw:function(){}})');
+  assert.deepStrictEqual(mix.calls.filter(x => x[0] === 'create'), [
+    ['create', 3, 0, 480, 240],
+    ['create', 3, 0, 480, 480, 1],
+  ]);
+  assert.throws(() => harness('Canvas({width:480,height:240,onDraw:function(){}});Canvas({width:480,height:480,singleBuffer:true,onDraw:function(){}});Canvas({width:1,height:1,singleBuffer:true,onDraw:function(){}})'),
+                /budget exceeded/);
+});
+
+pass('r221 singleBuffer: runApp stream, injected screen, validation and dispose refund', () => {
+  const r = runApp('var a=Canvas({width:390,height:390,singleBuffer:true,onDraw:function(c){c.clear();return {x:0,y:0,w:10,h:10};}});var b=Canvas({width:390,height:390,singleBuffer:true,onDraw:function(c){c.clear();}});', {screen: {w: 390, h: 390}});
+  const creates = r.messages.filter(x => x[0] === 'create');
+  assert.deepStrictEqual(creates, [
+    ['create', 1, 3, 0, 390, 390, 1],
+    ['create', 2, 3, 0, 390, 390, 1],
+  ]);
+  assert.deepStrictEqual(r.messages.filter(x => x[0] === 'invalidate'), [
+    ['invalidate', 1, 0, 0, 10, 10],
+    ['invalidate', 2],
+  ]);
+  /* Disposing one 390x390 single-buffer canvas frees 1x (304,200 B): enough for
+   * another 390x390 singleBuffer, NOT enough for a 390x390 double-buffered one. */
+  r.removed(1);
+  assert.throws(() => vm.runInContext('Canvas({width:390,height:390,onDraw:function(){}})', r.ctx), /budget exceeded/);
+  vm.runInContext('Canvas({width:390,height:390,singleBuffer:true,onDraw:function(){}})', r.ctx);
+  /* Non-boolean singleBuffer rejects cleanly. */
+  for (const bad of ['1', "'true'", 'null', '{}']) {
+    assert.throws(() => harness(`Canvas({width:16,height:16,singleBuffer:${bad},onDraw:function(){}})`),
+                  /singleBuffer must be a boolean/, bad);
+  }
+});
+
+pass('r221 singleBuffer: C engine and bridge wire work==front and 1x budget', () => {
+  const eng = fs.readFileSync('firmware/components/lume-engine/lume_engine.c', 'utf8');
+  const br = fs.readFileSync('firmware/components/lume-ui-bridge/lume_ui_bridge.c', 'utf8');
+  assert.ok(eng.includes('if (argc >= 5 && !JS_IsUndefined(argv[4]))') &&
+            eng.includes('m.value = canvas_flags;'),
+            'lume_engine.c forwards optional 5th createNode arg to LUME_OP_CREATE m.value');
+  assert.ok(br.includes('bool single_buf = (m->value & 1) != 0;') &&
+            br.includes('size_t copies = single_buf ? 1u : 2u;') &&
+            br.includes('bytes > (CANVAS_BUDGET - s_canvas_bytes) / copies') &&
+            br.includes('if (!single_buf)') &&
+            br.includes('s_canvas_work[m->node_id] = work ? work : pixels;') &&
+            br.includes('s_canvas_bytes += bytes * (work ? 2u : 1u);'),
+            'lume_ui_bridge.c skips work alloc (work==front) and accounts 1x bytes when single_buf');
+  assert.ok(br.includes('if (work != front)') &&
+            br.includes('bool split = s_canvas_work[id] != NULL && s_canvas_work[id] != s_canvas_pixels[id];'),
+            'canvas_publish and release_dead_canvases guard swap/copy/free on work != front');
+});

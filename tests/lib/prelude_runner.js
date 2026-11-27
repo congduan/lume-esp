@@ -30,9 +30,10 @@ const demo = extract('lume_demo_js');
 // Historical app guard harnesses compare the prelude with 3514c76. The C
 // container changed in r186, so compare the extracted JS bytes instead.
 // r204: re-pinned after the sanctioned Text/Canvas/Image radius fix.
+// r221: re-pinned after the sanctioned Canvas singleBuffer opt-in.
 function preludeChangesSince3514c76() {
   const hash = createHash('sha256').update(fs.readFileSync(path.join(scriptDir, 'prelude.js'))).digest('hex');
-  return hash === '268c3acf94116179b7716a5d58d415818d3adbcbb6fcd3b706197d2f863d5ccc'
+  return hash === 'd18f0b0d364ac2b0571cf90c77ecb247b8d2d3f47bff0c11335be3df6b3a090e'
     ? [] : ['firmware/components/lume-engine/prelude/prelude.js'];
 }
 
@@ -271,7 +272,7 @@ function runApp(script, options = {}) {
       status: () => ({ running: false, wifiReady: false, tokenReady: false, hmac: true, port: 8765, token: '' }),
       setToken: () => -3,
     },
-    createNode: (kind, parent = 0, width = 0, height = 0) => { const id = ++nextId; emit('create', id, kind, parent, width, height); return id; },
+    createNode: (kind, parent = 0, width = 0, height = 0, flags = 0) => { const id = ++nextId; if (flags) emit('create', id, kind, parent, width, height, flags); else emit('create', id, kind, parent, width, height); return id; },
     setAttr: (id, attr, value) => emit('attr', id, attr, value),
     removeChild: id => emit('remove', id),
     setPressEvent: id => emit('press', id),
