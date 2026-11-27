@@ -86,10 +86,13 @@ static const char *OTA_TAG = "lume-ota";
 #define OTA_IO_TIMEOUT_S   5
 #define OTA_RECV_CHUNK     512
 #define OTA_BACKLOG        1
-#define USB_RX_STACK       8192
-#define USB_RX_CHUNK       128
-#define USJ_RX_BUFFER      1024   /* driver requires > 64 */
-#define USJ_TX_BUFFER      512
+#define USB_RX_STACK            8192
+#define USB_RX_PRIO             6     /* > lume-lvgl/lume-js (5) to drain USJ RX ring */
+#define USB_RX_CHUNK            256
+#define USB_RX_READ_MS          20
+#define USB_RX_FRAME_TIMEOUT_MS 1000  /* abort stalled mid-frame RX and free staging */
+#define USJ_RX_BUFFER           4096  /* driver requires > 64; 4 KiB absorbs USB bursts */
+#define USJ_TX_BUFFER           512
 
 #define PENDING_MAX        16     /* bounded outstanding reloads */
 
@@ -791,15 +794,43 @@ static void on_frame_event(lume_frame_ev_t ev, const uint8_t *payload,
 /* ================================================================== */
 static lume_frame_parser_t s_usb_parser;
 
+static bool usb_parser_mid_frame(const lume_frame_parser_t *p)
+{
+    return p->state == LUME_FRAME_ST_HDR ||
+           p->state == LUME_FRAME_ST_BODY ||
+           (p->state == LUME_FRAME_ST_MAGIC && p->magic_n > 0);
+}
+
 static void usb_rx_task(void *arg)
 {
     (void)arg;
     uint8_t chunk[USB_RX_CHUNK];
+    TickType_t last_rx = 0;
     for (;;) {
         int n = usb_serial_jtag_read_bytes(chunk, sizeof(chunk),
-                                           pdMS_TO_TICKS(20));
-        for (int i = 0; i < n; i++) {
-            lume_frame_parser_feed(&s_usb_parser, chunk[i]);
+                                           pdMS_TO_TICKS(USB_RX_READ_MS));
+        if (n > 0) {
+            last_rx = xTaskGetTickCount();
+            for (int i = 0; i < n; i++) {
+                lume_frame_parser_feed(&s_usb_parser, chunk[i]);
+            }
+        } else if (usb_parser_mid_frame(&s_usb_parser) &&
+                   (TickType_t)(xTaskGetTickCount() - last_rx) >=
+                       pdMS_TO_TICKS(USB_RX_FRAME_TIMEOUT_MS)) {
+            /* Lost bytes mid-frame strand the length-counted parser in ST_BODY
+             * or ST_HDR with no frame timeout in lume_frame.c. Release any
+             * staged PSRAM buffer, reset to ST_MAGIC, and notify the host so
+             * it can resync and retry instead of waiting 15 s for ACK timeout. */
+            size_t stalled_len = s_usb_parser.payload_len;
+            ESP_LOGW(TAG, "USB RX frame idle timeout (state=%d got=%u/%u); reset",
+                     (int)s_usb_parser.state, (unsigned)s_usb_parser.payload_n,
+                     (unsigned)stalled_len);
+            if (s_usb_parser.payload != NULL) {
+                psram_free(s_usb_parser.payload);
+            }
+            lume_frame_parser_init(&s_usb_parser, psram_alloc, psram_free,
+                                   on_frame_event, &s_usb_sink);
+            reply_line(s_usb_sink, false, stalled_len, "timeout");
         }
     }
 }
@@ -825,7 +856,7 @@ static void usb_start(void)
     usb_serial_jtag_vfs_use_driver();
 
     BaseType_t ok = xTaskCreate(usb_rx_task, "lume-hotreload-rx",
-                                USB_RX_STACK, NULL, 4, NULL);
+                                USB_RX_STACK, NULL, USB_RX_PRIO, NULL);
     if (ok != pdPASS) {
         ESP_LOGE(TAG, "usb rx task create failed (%d)", (int)ok);
         return;
