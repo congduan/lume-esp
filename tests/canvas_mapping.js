@@ -259,6 +259,44 @@ pass('r221 singleBuffer: runApp stream, injected screen, validation and dispose 
   }
 });
 
+/* r221 review fix: Codex P-with-fixes — the refund test above only exercised a
+ * single-buffer-only pool. Pin mixed 1x/2x accounting on the executable host
+ * side: exact refund for each buffer grade and repeat-removal idempotency.
+ * (work == front allocation/publish/release execution is C-bridge runtime and
+ * stays deferred to board bring-up; the C wiring anchors stay asserted above.) */
+pass('r221 singleBuffer: mixed-pool refund is exact and repeat removal is a no-op', () => {
+  const app = 'var a=Canvas({width:480,height:480,singleBuffer:true,onDraw:function(){}});'
+            + 'var b=Canvas({width:480,height:240,onDraw:function(){}});';
+  const r = runApp(app, {screen: {w: 480, h: 480}});
+  /* Pool 480*480*4 = 921,600 B: a=460,800 (1x) + b=460,800 (2x) → pool exactly
+   * full. Removing b refunds exactly 460,800, so a full-size 1x canvas (460,800)
+   * then fits and fills the pool again — a 2x-grade (over-)refund would too, so
+   * the next step pins the exactness: with the pool exactly full, even a 1x1
+   * canvas must throw. */
+  r.removed(2);
+  vm.runInContext('Canvas({width:480,height:480,singleBuffer:true,onDraw:function(){}})', r.ctx);
+  /* Repeating removal of the same id must not refund again: any further canvas
+   * must still throw on the exactly-full pool. */
+  r.removed(2);
+  assert.throws(() => vm.runInContext('Canvas({width:1,height:1,onDraw:function(){}})', r.ctx),
+                /budget exceeded/);
+});
+
+pass('r221 singleBuffer: removing the 1x member of a mixed pool frees exactly 1x', () => {
+  const app = 'var a=Canvas({width:480,height:480,singleBuffer:true,onDraw:function(){}});'
+            + 'var b=Canvas({width:480,height:240,onDraw:function(){}});';
+  const r = runApp(app, {screen: {w: 480, h: 480}});
+  r.removed(1);
+  /* Exactly 460,800 (b 2x) stays held → 460,800 free: a full 2x canvas (921,600)
+   * does NOT fit — a 2x-grade refund (921,600 free) would let it through —
+   * while a full 1x canvas fits exactly. */
+  assert.throws(() => vm.runInContext('Canvas({width:480,height:480,onDraw:function(){}})', r.ctx),
+                /budget exceeded/);
+  vm.runInContext('Canvas({width:480,height:480,singleBuffer:true,onDraw:function(){}})', r.ctx);
+  assert.throws(() => vm.runInContext('Canvas({width:1,height:1,onDraw:function(){}})', r.ctx),
+                /budget exceeded/);
+});
+
 pass('r221 singleBuffer: C engine and bridge wire work==front and 1x budget', () => {
   const eng = fs.readFileSync('firmware/components/lume-engine/lume_engine.c', 'utf8');
   const br = fs.readFileSync('firmware/components/lume-ui-bridge/lume_ui_bridge.c', 'utf8');

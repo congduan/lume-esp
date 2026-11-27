@@ -103,3 +103,12 @@
   5. `chore(artifacts): record r221 regressions, ABI check, and firmware build/size`
   6. `docs(r221): add Canvas singleBuffer opt-in report`
 - **零越界**：未修改任何 `examples/*`、vendored（`quickjs-ng/`、`lvgl/`）、`lume_ui_bridge.h` 或 `lume_scripts.c`；未 push；git 身份使用 repo 级 `congduan`。
+
+---
+
+## 6. Codex review 与必修（主控收口）
+
+- **Codex review**（`codex exec --sandbox danger-full-access`，只读）：**P-with-fixes**。核心正确性全部确认：无 double-free / 漏 publish 路径（release 对共享缓冲只释放一次，publish 两种模式都触发 invalidate），prelude 1×/2× 记账与 C 桥 RGB565 预算一致，零越界（无 vendored/examples/lume_scripts.c 改动）。
+- **唯一必修点**：宿主侧对混合 1×/2× 池的可执行覆盖不足（原有 refund 断言只测单 1× 池；`work==front` 的 C 运行时执行物理上只能真机验证，维持 deferred 口径）。
+- **必修落地**（主控接管）：`tests/canvas_mapping.js` 新增 2 条混合池可执行断言——(1) 移除 2× 成员后退款精确 460,800 B（满池后 1×1 也拒绝）且重复 removed 同 id 不再退账；(2) 移除 1× 成员后仅余 2× 占用（全尺寸 2× canvas 拒绝、全尺寸 1× 恰好放下），双向排除 2× 级误退账。
+- **复测**：`tests/canvas_mapping.js` 全 PASS（含 2 条新增）；全量回归 `artifacts/r221/review-fix-regression.log`：**total=111 fail=0**。
