@@ -60,9 +60,10 @@ function arc(ctx, cx, cy, r, startDeg, endDeg, color, width, step) {
  * canvas_line() raster, so the picture is unchanged. */
 function gaugeStaticLines() { return [[16, 268, W - 16, 268]]; }
 function traceStaticLines() {
-  /* r214: the grid backs the shell.Sparkline overlay; keep it aligned and
-   * inside the safe square (canvas-local 44..356 -> screen 84..396). */
-  var segs = [], x0 = 44, y0 = 44, width = 312, height = 200;
+  /* r214/r216: the grid backs the shell.Sparkline overlay; keep it aligned and
+   * inside the safe square (canvas-local 44..356, 60..240 -> screen 84..396,
+   * 100..280), clearing the TRACE header and bottom tab bar at y=352..400. */
+  var segs = [], x0 = 44, y0 = 60, width = 312, height = 180;
   for (var g = 0; g <= 4; g++) {
     var gy = Math.round(y0 + height * g / 4);
     segs.push([x0, gy, x0 + width, gy]);
@@ -75,9 +76,11 @@ function traceStaticLines() {
 }
 function systemStaticLines() {
   /* readSlow() always publishes ten info rows (r132: one more for OTA), so
-   * nine separators at fixed y positions. Row 9 lands at y=332, inside H=360. */
+   * nine separators at fixed y positions. r216: inset to safe-square x=44..W-44
+   * (screen 84..396) and 24 px row pitch so row 9 lands at local y=278
+   * (screen 318..332), clearing the safe-square tab bar at screen y=352..400. */
   var segs = [];
-  for (var i = 0; i < 9; i++) segs.push([16, 82 + i * 30, W - 16, 82 + i * 30]);
+  for (var i = 0; i < 9; i++) segs.push([44, 81 + i * 24, W - 44, 81 + i * 24]);
   return segs;
 }
 var STATIC_LINES = [gaugeStaticLines(), traceStaticLines(), systemStaticLines()];
@@ -156,24 +159,25 @@ var battArc = Arc({
 
 /* Native metric cards make the landing page readable at arm's length.
  * The existing canvas still renders TRACE and SYSTEM without changing navigation.
- * r214: cards, title and status line all sit in the round safe square [75,405].
- * Two 150px columns with a 12px gutter clear the 8px gap minimum; 84..396
- * leaves a 9px inset inside the safe square on both edges. */
-var gaugeCards=[View({style:{x:0,y:0,width:480,height:396,background:'bg',scroll:'none'}})];
+ * r214/r216: cards, title and status line all sit in the round safe square
+ * [75,405] above the safe-square tab bar (y=352..400). Two 150px columns with
+ * a 12px gutter clear the 8px gap minimum; 84..396 leaves a 9px inset inside
+ * the safe square on both edges. */
+var gaugeCards=[View({style:{x:0,y:0,width:480,height:348,background:'bg',scroll:'none'}})];
 function metricCard(x,y,label,value,unit){
-  var id=View({style:{x:x,y:y,width:150,height:114,background:'surface',borderRadius:12,padding:16,
-    display:'flex',flexDirection:'column',justifyContent:'space-between',gap:8,scroll:'none'}},[
+  var id=View({style:{x:x,y:y,width:150,height:98,background:'surface',borderRadius:12,padding:12,
+    display:'flex',flexDirection:'column',justifyContent:'space-between',gap:4,scroll:'none'}},[
     Text({text:label,style:{fontSize:14,color:'textDim'}}),
     Text({text:value,style:{fontSize:24,color:'text'}}),
     Text({text:unit,style:{fontSize:14,color:'textDim'}})
   ]);gaugeCards.push(id);
 }
-metricCard(84,124,'BATTERY',function(){return Math.round(view().pct)+'%';},'Charge level');
-metricCard(246,124,'TEMPERATURE',function(){return view().temp;},'Board sensor');
-metricCard(84,250,'USB POWER',function(){return view().vbus;},'VBUS input');
-metricCard(246,250,'UPTIME',function(){return view().uptime;},'Since start');
-gaugeCards.push(Text({text:'LUME HUB',style:{x:84,y:84,width:312,height:32,fontSize:24,color:'text'}}));
-gaugeCards.push(Text({text:function(){return view().charge+'  /  accelerometer live';},style:{x:84,y:376,width:312,height:20,fontSize:14,color:'textDim'}}));
+metricCard(84,112,'BATTERY',function(){return Math.round(view().pct)+'%';},'Charge level');
+metricCard(246,112,'TEMPERATURE',function(){return view().temp;},'Board sensor');
+metricCard(84,222,'USB POWER',function(){return view().vbus;},'VBUS input');
+metricCard(246,222,'UPTIME',function(){return view().uptime;},'Since start');
+gaugeCards.push(Text({text:'LUME HUB',style:{x:84,y:78,width:312,height:28,fontSize:24,color:'text'}}));
+gaugeCards.push(Text({text:function(){return view().charge+'  /  accelerometer live';},style:{x:84,y:326,width:312,height:20,fontSize:14,color:'textDim'}}));
 lume.setAttr(battArc,5,0);
 
 function drawGauge(ctx, v) {
@@ -214,30 +218,30 @@ function drawGauge(ctx, v) {
 
 function drawTrace(ctx, v) {
   var data = v.trace;
-  ctx.text(16, 8, 'ACCEL TRACE', C_DIM, 14);
-  ctx.text(300, 8, '5 Hz / +-10', hubTheme.colors.surfaceAlt, 14);
+  ctx.text(44, 40, 'ACCEL TRACE', C_DIM, 14);
+  ctx.text(260, 40, '5 Hz / +-10', hubTheme.colors.surfaceAlt, 14);
 
   /* r194: the 5+5 hairline grid stays a retained path on this canvas; the
    * live polylines moved to a shell.Sparkline overlay whose series getters
    * read view().trace inside its own onDraw. Only the legend and the sample
    * count remain dynamic on this canvas. */
 
-  /* legend with live values */
-  ctx.text(16, 268, 'X ' + v.ax.toFixed(2), C_RED, 14);
-  ctx.text(120, 268, 'Y ' + v.ay.toFixed(2), C_GREEN, 14);
-  ctx.text(224, 268, 'Z ' + v.az.toFixed(2), C_BLUE, 14);
-  ctx.text(16, 300, 'samples ' + data.length + ' / ' + TRACE_POINTS, C_DIM, 14);
-  ctx.text(16, 330, 'swipe left / right to change page', hubTheme.colors.surfaceAlt, 14);
+  /* legend with live values (r216: inset to safe square above y=352 tabs) */
+  ctx.text(44, 248, 'X ' + v.ax.toFixed(2), C_RED, 14);
+  ctx.text(148, 248, 'Y ' + v.ay.toFixed(2), C_GREEN, 14);
+  ctx.text(252, 248, 'Z ' + v.az.toFixed(2), C_BLUE, 14);
+  ctx.text(44, 270, 'samples ' + data.length + ' / ' + TRACE_POINTS, C_DIM, 14);
+  ctx.text(44, 290, 'swipe left / right to change page', hubTheme.colors.surfaceAlt, 14);
 }
 
 function drawSystem(ctx, v) {
-  ctx.text(16, 8, 'SYSTEM', C_DIM, 14);
-  ctx.text(16, 26, 'runtime inventory', hubTheme.colors.surfaceAlt, 14);
+  ctx.text(44, 38, 'SYSTEM', C_DIM, 14);
+  ctx.text(156, 38, 'runtime inventory', hubTheme.colors.surfaceAlt, 14);
   var rows = v.info;
   for (var i = 0; i < rows.length; i++) {
-    var y = 62 + i * 30;
-    ctx.text(16, y, rows[i][0], C_DIM, 14);
-    ctx.text(200, y, rows[i][1], C_TEXT, 14);
+    var y = 62 + i * 24;
+    ctx.text(44, y, rows[i][0], C_DIM, 14);
+    ctx.text(168, y, rows[i][1], C_TEXT, 14);
     /* Row separators are a retained path (r49 #6). */
   }
 }
@@ -386,27 +390,27 @@ lume.gesture.on(backdrop, 'swipe', function (e) {
 
 /* --- tab bar ------------------------------------------------------------ */
 
+/* r216: three 98x48 tabs with 9px gaps inside safe square [84..396, 352..400]. */
 function tab(x, index, label) {
   return Button({ title: label, style: {
-    x: x, y: 400, width: 136, height: 56,
+    x: x, y: 352, width: 98, height: 48,
     background: function () { return view().page === index ? 'accent' : 'surface'; },
     borderColor: hubTheme.colors.surfaceAlt, borderWidth: 1, borderRadius: 10
   }, onPress: function () { go(index); } });
 }
 
-tab(24, 0, 'GAUGE');
-tab(172, 1, 'TRACE');
-tab(320, 2, 'SYSTEM');
+tab(84, 0, 'GAUGE');
+tab(191, 1, 'TRACE');
+tab(298, 2, 'SYSTEM');
 
 /* r194: the TRACE strip is now a shell.Sparkline overlay. The signal stays
  * with the caller -- each series getter reads view().trace inside the
- * component's onDraw, so publish() repaints it. The old canvas mapping was
- * mid - clamp(sample * 9, -100, 100) inside a 340x200 box at canvas-local
- * (44,44); r214 places the overlay in SCREEN coords (84,84) 312x200 so it
- * lands inside the safe square and lines up with the retained grid. The
- * explicit domain and showLast keep that scale and the per-axis end markers.
- * Created last so it layers above the canvas grid; go() hides it off page 1. */
-var traceSpark = lume.ui.shell.Sparkline({ x: 84, y: 84, width: 312, height: 200,
+ * component's onDraw, so publish() repaints it. r214/r216 places the overlay
+ * in SCREEN coords (84,100) 312x180 so it lands inside the safe square above
+ * the tab bar and lines up with the retained grid. The explicit domain and
+ * showLast keep that scale and the per-axis end markers. Created last so it
+ * layers above the canvas grid; go() hides it off page 1. */
+var traceSpark = lume.ui.shell.Sparkline({ x: 84, y: 100, width: 312, height: 180,
   min: -100, max: 100, strokeWidth: 2, showLast: true,
   series: [
     { data: function () { return view().trace.map(function (t) { return t[0] * 9; }); }, color: C_RED },

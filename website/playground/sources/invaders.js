@@ -1,14 +1,15 @@
-/* Arcade-style single-screen shooter — original pixel approximations.
+/* Arcade-style single-screen shooter -- original pixel approximations.
  * Game Boy/NES-inspired 3-shade low-saturation green palette, hard edges only
  * (fillRect on integer pixels, no AA). Sprites are precomputed run-length spans
  * (the mario pattern): the geometry is decoded ONCE at eval and replayed every
- * frame. The stock 14px Montserrat font is kept (no pixel font swap — see the
+ * frame. The stock 14px Montserrat font is kept (no pixel font swap -- see the
  * r68 entry in docs/KNOWN-SIMPLIFICATIONS.md). No third-party sprite bitmaps
  * or marks are used; the alien silhouettes are original approximations of the
  * classic arcade visual language. */
 var IW=480, IH=480, BG='#0F380F';
-var COLS=11, ROWS=5, CELL_W=28, CELL_H=44, FORM_X=88, FORM_Y=60;
-var GROUND_Y=452, CANNON_Y=430, CANNON_PX=32, CANNON_H=24;
+var PLAY_L=80, PLAY_R=400, UFO_Y=124, BULLET_TOP=120;
+var COLS=11, ROWS=5, CELL_W=26, CELL_H=26, FORM_X=98, FORM_Y=142;
+var GROUND_Y=396, CANNON_Y=372, CANNON_PX=32, CANNON_H=24;
 var PAL={A:'#9BBC0F',B:'#8BAC0F',C:'#306230'};
 
 /* Two animation frames per alien type; 'A'/'B' are two brightness levels,
@@ -24,7 +25,7 @@ var SPRITES={
   ufo:['....AAAAAAAA....','..AAAAAAAAAAAA..','.A.A.A.A.A.A.A.A','.AA..AA..AA..AA.','....AA....AA....']
 };
 /* Precompute once. spanBuilds is a stable count of sprite keys, never touched
- * by tick or onDraw — the harness asserts it does not grow per frame. */
+ * by tick or onDraw -- the harness asserts it does not grow per frame. */
 var SPANS={}, spanBuilds=0;
 for(var sk in SPRITES){spanBuilds++;var rows=SPRITES[sk],out=[];for(var yy=0;yy<rows.length;yy++){var line=rows[yy],xx=0;while(xx<line.length){var ink=line.charAt(xx),st=xx;while(xx<line.length&&line.charAt(xx)===ink)xx++;if(ink!=='.')out.push([st,yy,xx-st,ink]);}}SPANS[sk]=out;}
 function spriteDim(type){return type==='small'?{w:8,h:5}:(type==='medium'?{w:11,h:8}:{w:12,h:8});}
@@ -50,20 +51,20 @@ function invaderStep(s,rnd){
   s.tick++;s.frame^=1;var ev='move';
   s.fx+=s.fdir*s.movePx;
   var right=s.fx+(COLS-1)*CELL_W+24,left=s.fx;
-  if(right>IW-16&&s.fdir>0){s.fdir=-1;s.fx=IW-16-((COLS-1)*CELL_W+24);s.fy+=CELL_H;s.descents++;ev='descend';invaderEmit(s,'DESCEND row='+s.descents);}
-  else if(left<16&&s.fdir<0){s.fdir=1;s.fx=16;s.fy+=CELL_H;s.descents++;ev='descend';invaderEmit(s,'DESCEND row='+s.descents);}
+  if(right>PLAY_R&&s.fdir>0){s.fdir=-1;s.fx=PLAY_R-((COLS-1)*CELL_W+24);s.fy+=CELL_H;s.descents++;ev='descend';invaderEmit(s,'DESCEND row='+s.descents);}
+  else if(left<PLAY_L&&s.fdir<0){s.fdir=1;s.fx=PLAY_L;s.fy+=CELL_H;s.descents++;ev='descend';invaderEmit(s,'DESCEND row='+s.descents);}
   if(s.fy+(ROWS-1)*CELL_H+16>GROUND_Y-20){s.over=true;ev='over';invaderEmit(s,'OVER score='+s.score);}
   if(s.bullet){s.bullet.y-=7;
-    if(s.bullet.y<40)s.bullet=null;
+    if(s.bullet.y<BULLET_TOP)s.bullet=null;
     else if(invaderHit(s,s.bullet)){s.bullet=null;ev='kill';invaderEmit(s,'WAVE'+s.wave+' alive='+s.aliveCount+' score='+s.score);if(!s.aliveCount){invaderNextWave(s);ev='wave';}}
   }
   if(s.aliveCount&&rnd()<0.05){var pool=[];for(var i=0;i<s.members.length;i++)if(s.members[i].alive)pool.push(s.members[i]);var m=pool[Math.floor(rnd()*pool.length)];var mb=invaderBox(m,s.fx,s.fy);s.enemyBullets.push({x:mb.x+mb.w/2-2,y:mb.y+mb.h});}
   for(var j=s.enemyBullets.length-1;j>=0;j--){var eb=s.enemyBullets[j];eb.y+=4;
-    if(eb.y>IH+8){s.enemyBullets.splice(j,1);continue;}
+    if(eb.y>GROUND_Y){s.enemyBullets.splice(j,1);continue;}
     if(eb.x>=s.cannonX&&eb.x<=s.cannonX+CANNON_PX&&eb.y>=CANNON_Y&&eb.y<=CANNON_Y+CANNON_H){s.enemyBullets.splice(j,1);invaderPlayerHit(s);ev='hit';}
   }
-  if(!s.ufo){s.ufoTimer++;if(s.ufoTimer>160){s.ufo={x:-32,y:44};s.ufoTimer=0;}}
-  else{s.ufo.x+=3;if(s.ufo.x>IW+32)s.ufo=null;else if(s.bullet&&s.bullet.x>=s.ufo.x&&s.bullet.x<=s.ufo.x+32&&s.bullet.y>=s.ufo.y&&s.bullet.y<=s.ufo.y+10){s.score+=100;s.bullet=null;s.ufo=null;invaderEmit(s,'UFO +100 score='+s.score);}}
+  if(!s.ufo){s.ufoTimer++;if(s.ufoTimer>160){s.ufo={x:PLAY_L,y:UFO_Y};s.ufoTimer=0;}}
+  else{s.ufo.x+=3;if(s.ufo.x+32>PLAY_R)s.ufo=null;else if(s.bullet&&s.bullet.x>=s.ufo.x&&s.bullet.x<=s.ufo.x+32&&s.bullet.y>=s.ufo.y&&s.bullet.y<=s.ufo.y+10){s.score+=100;s.bullet=null;s.ufo=null;invaderEmit(s,'UFO +100 score='+s.score);}}
   return ev;
 }
 
@@ -90,7 +91,7 @@ var SLOT={},PIXELS={},spritesUploaded=false;
 })();
 function ensureSprites(ctx){if(spritesUploaded)return;for(var k in SLOT){var p=PIXELS[k];ctx.retainImage(SLOT[k],p.w,p.h,p.px);}spritesUploaded=true;}
 function drawSprite(ctx,key,x,y,a){var ix=Math.floor(x),iy=Math.floor(y),p=PIXELS[key];if(ix+p.w<=0||ix>=IW||iy+p.h<=0||iy>=IH)return;ctx.drawImage(SLOT[key],ix,iy,0);}
-function drawStatic(ctx,a){ctx.fillColor(BG);ctx.fillRect(a.x,a.y,a.w,a.h);drawRect(ctx,PAL.C,box(0,GROUND_Y,IW,2),a);}
+function drawStatic(ctx,a){ctx.fillColor(BG);ctx.fillRect(a.x,a.y,a.w,a.h);drawRect(ctx,PAL.C,box(PLAY_L,GROUND_Y,PLAY_R-PLAY_L,2),a);}
 function bulletBBox(list){if(!list||!list.length)return null;var minX=IW,minY=IH,maxX=0,maxY=0;for(var i=0;i<list.length;i++){var e=list[i];if(e.x<minX)minX=e.x;if(e.y<minY)minY=e.y;if(e.x+4>maxX)maxX=e.x+4;if(e.y+8>maxY)maxY=e.y+8;}return box(minX,minY,maxX-minX,maxY-minY);}
 
 var prevFx=null,prevFy=null,prevCannonX=null,prevAlive=null,prevBullet=null,prevEnemy=[],prevUfo=null;
@@ -129,8 +130,8 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   painted=true;
   return valid.length?valid:undefined;
 }});
-/* r202: HUD/hint moved into the 480-round safe square ([84,396]); the
-   full-screen render canvas, ground line and cannon physics are unchanged. */
+/* r202/r216: HUD/hint and playfield (formation, UFO, cannon, ground) all sit
+   inside the 480-round safe square ([80..400, 80..398]). */
 Text({parent:root,text:'INVADERS',style:{position:'absolute',x:84,y:80,fontSize:14,color:'#40D8B0',borderRadius:0}});
 Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  W'+waveSig();},style:{position:'absolute',x:224,y:80,width:172,fontSize:14,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
 Text({parent:root,text:function(){return noteSig();},style:{position:'absolute',x:84,y:104,width:312,fontSize:13,color:'#FFD78E',borderRadius:0}});
@@ -149,7 +150,7 @@ function tick(){if(state.over||state.paused)return;var t0=Date.now();var ev=inva
   if(perfCount===25){logEvent('PERF js_avg_ms='+(perfSum/25).toFixed(2)+' js_max_ms='+perfMax+' dirty_max_px='+dirtyMax);perfCount=0;perfSum=0;perfMax=0;dirtyMax=0;}
 }
 function restart(){invaderRestart(state);while(state.events.length)logEvent(state.events.shift());updateSignals();noteSig.set('PAN MOVE   TAP FIRE   SWIPE UP PAUSE');period=invaderPeriod(state.wave);prevFx=null;prevAlive=null;painted=false;start();frame.set(frame()+1);}
-function moveCannon(e){if(state.over)return;state.cannonX=Math.max(0,Math.min(IW-CANNON_PX,e.x-CANNON_PX/2));frame.set(frame()+1);}
+function moveCannon(e){if(state.over)return;state.cannonX=Math.max(PLAY_L,Math.min(PLAY_R-CANNON_PX,e.x-CANNON_PX/2));frame.set(frame()+1);}
 function shoot(){if(state.over){restart();return;}if(invaderShoot(state))frame.set(frame()+1);}
 function swipe(e){if(e.dir!=='up'||Math.abs(e.dy)<50)return;if(state.over){restart();return;}state.paused=!state.paused;noteSig.set(state.paused?'PAUSED - SWIPE UP':'PAN MOVE   TAP FIRE   SWIPE UP PAUSE');if(state.paused)stop();else start();}
 lume.gesture.on(root,'panstart',moveCannon);lume.gesture.on(root,'pan',moveCannon);
