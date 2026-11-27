@@ -1,0 +1,11 @@
+SHOT index-1440.png (1440x900, js=true, theme=dark): overflowX=0 scrollH=5418 h1=46.8px h2=31.68px heroH=321 demoH=406 errs=0
+SHOT index-1440-hero.png (1440x900, js=true, theme=dark): overflowX=0 scrollH=5418 h1=46.8px h2=31.68px heroH=321 demoH=406 errs=0
+SHOT index-1440-light.png (1440x900, js=true, theme=light): overflowX=0 scrollH=5418 h1=46.8px h2=31.68px heroH=321 demoH=406 errs=0
+SHOT guide-1440.png (1440x900, js=true, theme=dark): overflowX=0 scrollH=9102 h1=53.6px h2=31.68px heroH=null demoH=null errs=0
+SHOT faq-1440.png (1440x900, js=true, theme=dark): overflowX=0 scrollH=1288 h1=53.6px h2=null heroH=null demoH=null errs=0
+SHOT 404-1440.png (1440x900, js=true, theme=dark): overflowX=0 scrollH=826 h1=53.6px h2=null heroH=null demoH=null errs=0
+SHOT examples-1440-top.png (1440x900, js=true, theme=dark): overflowX=0 scrollH=16618 h1=53.6px h2=18.4px heroH=null demoH=null errs=0
+SHOT examples-1440-featured.png (1440x900, js=true, theme=dark): overflowX=0 scrollH=16618 h1=53.6px h2=18.4px heroH=null demoH=null errs=0
+SHOT index-375.png (375x812, js=true, theme=dark): overflowX=0 scrollH=8812 h1=34.5px h2=24.8px heroH=450 demoH=666 errs=0
+SHOT examples-375.png (375x812, js=true, theme=dark): overflowX=0 scrollH=43444 h1=36px h2=18.4px heroH=null demoH=null errs=0
+SHOT index-nojs-1440.png (1440x900, js=false, theme=dark): overflowX=0 scrollH=5418 h1=46.8px h2=31.68px heroH=321 demoH=406 errs=0
