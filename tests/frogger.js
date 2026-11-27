@@ -19,7 +19,7 @@ function logic() {
   return ctx;
 }
 const f = logic();
-const ROOT = 1, CELL = 33, GX = 25, GY = 44;
+const ROOT = 1, CELL = 21, GX = 104, GY = 124;
 function putItemOnFrog(s, row) {
   const ln = f.froggerLaneAt(s, row);
   const fx = f.froggerBox(s.frog).x;

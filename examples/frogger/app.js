@@ -1,12 +1,12 @@
-/* Arcade-style road-and-river crossing game — original pixel approximations.
+/* Arcade-style road-and-river crossing game -- original pixel approximations.
  * NES-inspired muted palette on a gray-blue base: desaturated red/yellow/blue
  * vehicle blocks, brown logs, green lily pads, a two-tone green frog. Hard-edge
  * fillRect only (no AA). All sprites are precomputed run-length spans (mario
  * pattern), decoded once at eval and replayed every frame. Each scrolling lane
  * owns an independent dirty rect. The stock 14px Montserrat font is kept (no
- * pixel font swap — see the r68 entry in docs/KNOWN-SIMPLIFICATIONS.md). No
+ * pixel font swap -- see the r68 entry in docs/KNOWN-SIMPLIFICATIONS.md). No
  * third-party sprite bitmaps or marks are used. */
-var IW=480, IH=480, CELL=33, COLS=13, ROWS=13, GX=25, GY=44;
+var IW=480, IH=480, CELL=21, COLS=13, ROWS=13, GX=104, GY=124;
 var HOME_COLS=[1,3,5,7,9];
 var PAL={
   A:'#9BD96A',B:'#4E8C3A',R:'#C85A5A',Y:'#D6B25E',U:'#6E92C8',
@@ -19,9 +19,8 @@ var BAND={
 /* Original silhouettes. 'A' in a template is replaced by a body colour so the
  * car/truck shapes are shared but liveries differ. '.' is transparent. */
 var FROG=[
-  '.AA......AA.','.AAAAAAAAAA.','AAWAAAAAAWAA','AAAAAAAAAAAA',
-  '.AAAAAAAAAA.','..AAAAAAAA..','.AAAAAAAAAA.','AA........AA',
-  'A..........A','.AA......AA.','..AA....AA..','...A....A...'
+  '.A....A.','AAWAAWAA','AAAAAAAA','.AAAAAA.',
+  'A.AAAA.A','A..AA..A','.A....A.','..A..A..'
 ];
 var CAR_TPL=[
   '....AAAAAAAAAA....','..AAAAAAAAAAAAAA..','.AAAWWWWAAWWWWAAA.',
@@ -50,7 +49,7 @@ var SPRITES={
   truckR:tint(TRUCK_TPL,'R'),truckU:tint(TRUCK_TPL,'U'),log:LOG,lily:LILY
 };
 /* Precompute once. spanBuilds is a stable count of sprite keys, never touched
- * by tick or onDraw — the harness asserts it does not grow per frame. */
+ * by tick or onDraw -- the harness asserts it does not grow per frame. */
 var SPANS={},spanBuilds=0;
 for(var sk in SPRITES){spanBuilds++;var rows=SPRITES[sk],out=[];for(var yy=0;yy<rows.length;yy++){var line=rows[yy],xx=0;while(xx<line.length){var ink=line.charAt(xx),st=xx;while(xx<line.length&&line.charAt(xx)===ink)xx++;if(ink!=='.')out.push([st,yy,xx-st,ink]);}}SPANS[sk]=out;}
 /* NVS keys cap at 15 chars (lume_kv.c): 'hiscore.frogger' is 15 but a short
@@ -72,15 +71,15 @@ function froggerLanes(){
     {row:10,kind:'road',sprite:'carU',w:36,dir:1,speed:1.9,count:4}
   ];
   var lanes=[];for(var i=0;i<defs.length;i++){var d=defs[i],items=[];
-    for(var j=0;j<d.count;j++)items.push({x:((j*130+d.row*37)%560)-30});
+    for(var j=0;j<d.count;j++)items.push({x:GX+((j*105+d.row*31)%340)-30});
     lanes.push({row:d.row,kind:d.kind,sprite:d.sprite,w:d.w,dir:d.dir,speed:d.speed,items:items});
   }
   return lanes;
 }
 function froggerState(){var f={row:12,col:6,ox:0,highlight:0};return {frog:f,homes:[false,false,false,false,false],homeCols:HOME_COLS.slice(),lanes:froggerLanes(),score:0,lives:3,level:1,tick:0,frame:0,state:'alive',over:false,events:[]};}
 function froggerEmit(s,msg){s.events.push(msg);}
-function froggerBox(f){return {x:GX+f.col*CELL+4+f.ox,y:GY+f.row*CELL+4,w:24,h:24};}
-function itemBox(lane,item){return {x:item.x,y:GY+lane.row*CELL+8,w:lane.w,h:16};}
+function froggerBox(f){return {x:GX+f.col*CELL+2+f.ox,y:GY+f.row*CELL+2,w:16,h:16};}
+function itemBox(lane,item){return {x:item.x,y:GY+lane.row*CELL+2,w:lane.w,h:16};}
 function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 function froggerLaneAt(s,row){for(var i=0;i<s.lanes.length;i++)if(s.lanes[i].row===row)return s.lanes[i];return null;}
 function froggerRoadHit(s){var ln=froggerLaneAt(s,s.frog.row);if(!ln||ln.kind!=='road')return false;var fb=froggerBox(s.frog);for(var i=0;i<ln.items.length;i++)if(overlap(fb,itemBox(ln,ln.items[i])))return true;return false;}
@@ -112,8 +111,8 @@ function froggerStep(s){
   var row=s.frog.row,mul=1+(s.level-1)*0.35;
   for(var i=0;i<s.lanes.length;i++){var ln=s.lanes[i],d=ln.dir*ln.speed*mul;
     for(var j=0;j<ln.items.length;j++){var it=ln.items[j];it.x+=d;
-      if(ln.dir>0&&it.x>500)it.x=-ln.w-20;
-      if(ln.dir<0&&it.x+ln.w<-20)it.x=500;
+      if(ln.dir>0&&it.x>GX+COLS*CELL+20)it.x=GX-ln.w-20;
+      if(ln.dir<0&&it.x+ln.w<GX-20)it.x=GX+COLS*CELL+20;
     }
   }
   var p=froggerPlatformAt(s);
@@ -154,16 +153,16 @@ function laneRect(row){return clip(box(GX-2,GY+row*CELL-2,COLS*CELL+4,CELL+4));}
 function paintRow(ctx,row,a,s){
   drawRect(ctx,laneBand(row),box(GX,GY+row*CELL,COLS*CELL,CELL),a);
   if(row===0){
-    for(var h=0;h<s.homeCols.length;h++){var hx=GX+s.homeCols[h]*CELL+2,hy=GY+2;
-      drawRect(ctx,BAND.median,box(hx,hy,CELL-4,CELL-4),a);
-      if(s.homes[h])drawSprite(ctx,'frog',hx+4,hy+4,a);
+    for(var h=0;h<s.homeCols.length;h++){var hx=GX+s.homeCols[h]*CELL+1,hy=GY+1;
+      drawRect(ctx,BAND.median,box(hx,hy,CELL-2,CELL-2),a);
+      if(s.homes[h])drawSprite(ctx,'frog',hx+1,hy+1,a);
     }
   }
   var ln=froggerLaneAt(s,row);
   if(ln)for(var i=0;i<ln.items.length;i++){var ib=itemBox(ln,ln.items[i]);if(ib.x<a.x+a.w&&ib.x+ib.w>a.x)drawSprite(ctx,ln.sprite,ib.x,ib.y,a);}
   if(s.frog.row===row){var fb=froggerBox(s.frog);
     drawSprite(ctx,'frog',fb.x,fb.y,a);
-    if(s.frog.highlight>0)drawRect(ctx,PAL.W,box(fb.x-2,fb.y-2,28,2),a);
+    if(s.frog.highlight>0)drawRect(ctx,PAL.W,box(fb.x-1,fb.y-1,18,2),a);
   }
 }
 
@@ -198,10 +197,9 @@ var canvas=Canvas({parent:root,width:IW,height:IH,style:{position:'absolute',x:0
   prevFrogRow=s.frog.row;prevHomes=s.homes.slice();painted=true;
   return valid.length?valid:undefined;
 }});
-/* r209: HUD/hint moved into the 480-round safe square ([84,396]) following the
-   r202 invaders pattern; the full-bleed canvas, grid (GX/GY/CELL) and hop
-   logic are unchanged. HUD draws after the canvas so text stays on top;
-   slight overdraw over lane sprites is the accepted r202 trade-off. */
+/* r209/r216: HUD/hint and 13x13 playfield grid (GX=104, GY=124, CELL=21 ->
+   [104..377, 124..397]) all sit inside the 480-round safe square [75,405]
+   with zero HUD overlap. */
 Text({parent:root,text:'FROGGER',style:{position:'absolute',x:84,y:80,fontSize:14,color:'#40D8B0',borderRadius:0}});
 Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  LV '+levelSig();},style:{position:'absolute',x:224,y:80,width:172,fontSize:14,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
 Text({parent:root,text:function(){return noteSig()||('HOMES '+homeSig()+'/5   TAP AROUND FROG TO HOP');},style:{position:'absolute',x:84,y:104,width:312,fontSize:13,color:'#FFD78E',borderRadius:0}});
