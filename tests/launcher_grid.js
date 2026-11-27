@@ -68,7 +68,7 @@ const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmwar
   'firmware/components/lume-hotreload/include/lume_cmd.h',
   'firmware/components/lume-hotreload/lume_cmd.c',
   'firmware/components/lume-hotreload/lume_hotreload.c',
-  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/shot.js', 'tools/lume/transport.js',
   'firmware/components/lume-svg/lume_svg.c',
   'firmware/components/lvgl/lv_conf.h',
   'firmware/components/lume-net/lume_net.c', 'firmware/sdkconfig',

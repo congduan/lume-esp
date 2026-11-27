@@ -26,7 +26,8 @@ import { queryFirmwareTag } from './fwtag.js';
 import { parseQjsVersion, qjsVersion, assertEngineVersion, queryEngineVersion, compileBytecode, localQjsc } from './bytecode.js';
 import { openOta, otaMac, otaAuthResponse, OTA_PORT_DEFAULT } from './ota.js';
 import { attachPort, DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_DELAY_MS, DEFAULT_MAX_RETRIES, RESYNC_PREAMBLE } from './transport.js';
-import { decodeShot, bmpFromRgb565 } from './shot.js';
+import { decodeShot, bmpFromRgb565, rgbFromRgb565, formatShotError } from './shot.js';
+import { scanDevice, renderScan } from './scan.js';
 import { check, render, parsePerf } from './check.js';
 import { extractLumeCatalog, namespaceMembers, levenshtein, findUnknownMembers, suggest, parseEvalError } from './check_suggest.js';
 import { parseLayoutRules } from './check_layout.js';
@@ -943,4 +944,228 @@ test('r222 transport: bounded retries exhaust cleanly and non-retryable errors f
   await assert.rejects(dev3.repl('sideEffect()'), /did not ACK repl/);
   assert.equal(replAttempts, 1);
   await dev3.close();
+});
+
+/* ---- r223 device->host screenshot TX reliability & device --scan N ---- */
+
+function makeRgb565Frame(width, height, fillPx = 0x0000) {
+  const data = Buffer.alloc(width * height * 2);
+  for (let i = 0; i < width * height; i++) data.writeUInt16LE(fillPx, i * 2);
+  return data;
+}
+
+function paintRgb565Rect(data, width, x0, y0, x1, y1, px) {
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      data.writeUInt16LE(px, (y * width + x) * 2);
+    }
+  }
+}
+
+// Emit wire lines identical to firmware lume_shot_stream() (240 B chunks,
+// leading '\n' boundary). Options can drop one S64 line or abort with shot-tx.
+function encodeShotWire(data, width, height, { dropLine = -1, failTxAtLine = -1, noisePrefix = '' } = {}) {
+  const crc = crc32(data).toString(16).padStart(8, '0');
+  const out = [];
+  out.push(`${noisePrefix}\nSHOT ${width} ${height} ${data.length} ${crc}\n`);
+  let lineIdx = 0;
+  for (let off = 0; off < data.length; off += 240, lineIdx++) {
+    if (failTxAtLine === lineIdx) {
+      out.push('\nCMD ERR shot-tx\n');
+      return out.join('');
+    }
+    const chunk = data.subarray(off, Math.min(off + 240, data.length));
+    if (dropLine === lineIdx) continue;
+    out.push(`\nS64${chunk.toString('base64')}\n`);
+  }
+  out.push('\nSHOT OK\n');
+  return out.join('');
+}
+
+test('r223 shot: formatShotError and mock serial surface shot-tx clearly without false OK', async () => {
+  const err = formatShotError('shot-tx');
+  assert.equal(err.shotReason, 'shot-tx');
+  assert.match(err.message, /shot-tx/);
+  assert.match(err.message, /no partial image/);
+
+  // decodeShot also rejects collected lines containing CMD ERR shot-tx.
+  assert.throws(() => decodeShot(['SHOT 16 16 512 00000000', 'S64AAAA', 'CMD ERR shot-tx']),
+    /shot-tx/);
+
+  // Mock serial port: firmware aborts on chunk 1 with CMD ERR shot-tx (no SHOT OK).
+  const frameBuf = makeRgb565Frame(16, 16, 0x1234); // 512 B -> 3 chunks
+  const expectedCmd = cmdFrame('SHOT');
+  let rx = Buffer.alloc(0);
+  let shotRequests = 0;
+  const port = makeMockSerialPort((chunk, p) => {
+    rx = Buffer.concat([rx, chunk]);
+    if (rx.length === expectedCmd.length) {
+      rx = Buffer.alloc(0);
+      shotRequests++;
+      p.reply(encodeShotWire(frameBuf, 16, 16, { failTxAtLine: 1 }));
+    }
+  });
+  const dev = attachPort(port, '/dev/mock-shot-tx', { chunkSize: 256, chunkDelayMs: 0, maxRetries: 2, resyncDelayMs: 0 });
+  await assert.rejects(dev.screenshot(), e => {
+    assert.equal(e.shotReason, 'shot-tx');
+    assert.match(e.message, /device rejected screenshot: shot-tx/);
+    return true;
+  });
+  assert.equal(shotRequests, 1, 'shot-tx is not silently retried or treated as OK');
+  await dev.close();
+});
+
+test('r223 shot: leading-newline framing survives partial log prefix and rgbFromRgb565 decodes pixels', async () => {
+  const frameBuf = makeRgb565Frame(16, 16, 0x0000);
+  paintRgb565Rect(frameBuf, 16, 0, 0, 4, 4, 0xf800); // red
+  paintRgb565Rect(frameBuf, 16, 4, 0, 8, 4, 0x001f); // blue
+  const expectedCmd = cmdFrame('SHOT');
+  let rx = Buffer.alloc(0);
+  const port = makeMockSerialPort((chunk, p) => {
+    rx = Buffer.concat([rx, chunk]);
+    if (rx.length === expectedCmd.length) {
+      rx = Buffer.alloc(0);
+      // Partial log text without trailing newline right before "\nSHOT ...":
+      // leading '\n' isolates the SHOT header cleanly on column 0.
+      p.reply(encodeShotWire(frameBuf, 16, 16, { noisePrefix: 'I (99) lume-lvgl: partial' }));
+    }
+  });
+  const dev = attachPort(port, '/dev/mock-shot-ok', { chunkSize: 256, chunkDelayMs: 0, maxRetries: 0 });
+  const shot = await dev.screenshot();
+  assert.equal(shot.width, 16);
+  assert.equal(shot.height, 16);
+  assert.ok(shot.data.equals(frameBuf));
+  const rgb = rgbFromRgb565(shot.data, shot.width, shot.height);
+  assert.deepEqual([...rgb.rgb.subarray(0, 3)], [31 << 3, 0, 0]);
+  assert.deepEqual([...rgb.rgb.subarray(4 * 3, 4 * 3 + 3)], [0, 0, 31 << 3]);
+  await dev.close();
+});
+
+test('r223 scanDevice: all complete frames over mock serial port -> scan PASS', async () => {
+  const W = 16, H = 16;
+  const frames = [0, 1, 2].map(k => {
+    const buf = makeRgb565Frame(W, H, 0x0000);
+    paintRgb565Rect(buf, W, 0, 0, 4, 4, 0xffff);           // static white block
+    paintRgb565Rect(buf, W, 8 + k, 8, 10 + k, 10, 0x07e0); // moving green blob
+    return buf;
+  });
+  const expectedCmd = cmdFrame('SHOT');
+  let rx = Buffer.alloc(0);
+  let idx = 0;
+  const port = makeMockSerialPort((chunk, p) => {
+    rx = Buffer.concat([rx, chunk]);
+    if (rx.length === expectedCmd.length) {
+      rx = Buffer.alloc(0);
+      p.reply(encodeShotWire(frames[idx++], W, H));
+    }
+  });
+  const dev = attachPort(port, '/dev/mock-scan-pass', { chunkSize: 256, chunkDelayMs: 0, maxRetries: 0 });
+  const spec = {
+    roi: [0, 0, W, H],
+    backgroundSample: [15, 15],
+    inkThreshold: 20,
+    changeThreshold: 20,
+    dynamicRegion: [6, 6, 16, 16],
+    layers: [{ name: 'static-box', roi: [0, 0, 4, 4], minInk: 12 }],
+  };
+  const result = await scanDevice(dev, { scan: 3, spec, specName: 'demo' });
+  assert.equal(result.ok, true);
+  assert.equal(result.mode, 'device');
+  assert.equal(result.steps.length, 3);
+  assert.ok(result.steps.every(s => s.complete && s.ok && s.bytes === W * H * 2));
+  assert.equal(result.steps[1].staticIntrusions, 0);
+  assert.equal(result.steps[1].outOfBounds, 0);
+  const text = renderScan(result);
+  assert.match(text, /RESULT: PASS \(3 frames, 0 failed; exit 0\)/);
+  const parsed = JSON.parse(renderScan(result, { json: true }));
+  assert.equal(parsed.ok, true);
+  await dev.close();
+});
+
+test('r223 scanDevice: whole S64 line lost -> truncation error, no fake PASS', async () => {
+  const W = 16, H = 16;
+  const buf = makeRgb565Frame(W, H, 0x5555); // 512 B -> 3 S64 lines
+  const expectedCmd = cmdFrame('SHOT');
+  let rx = Buffer.alloc(0);
+  let idx = 0;
+  const port = makeMockSerialPort((chunk, p) => {
+    rx = Buffer.concat([rx, chunk]);
+    if (rx.length === expectedCmd.length) {
+      rx = Buffer.alloc(0);
+      const dropLine = idx === 1 ? 1 : -1; // drop 1 whole 240 B S64 line on frame 1
+      idx++;
+      p.reply(encodeShotWire(buf, W, H, { dropLine }));
+    }
+  });
+  const dev = attachPort(port, '/dev/mock-scan-drop', { chunkSize: 256, chunkDelayMs: 0, maxRetries: 0 });
+  const result = await scanDevice(dev, { scan: 3 });
+  assert.equal(result.ok, false);
+  assert.equal(result.steps.length, 2, 'aborts on failed frame 1');
+  assert.equal(result.steps[0].ok, true);
+  assert.equal(result.steps[1].ok, false);
+  assert.equal(result.steps[1].complete, false);
+  assert.match(result.error, /frame 1: screenshot payload truncated: 272 != 512 bytes/);
+  assert.match(renderScan(result), /RESULT: FAIL \(exit 1\)/);
+  await dev.close();
+});
+
+test('r223 scanDevice: firmware CMD ERR shot-tx and static-region intrusion both fail cleanly', async () => {
+  const W = 16, H = 16;
+  const expectedCmd = cmdFrame('SHOT');
+
+  // 1. Firmware aborts frame 1 with CMD ERR shot-tx -> scan FAIL.
+  {
+    const buf = makeRgb565Frame(W, H, 0x1111);
+    let rx = Buffer.alloc(0);
+    let idx = 0;
+    const port = makeMockSerialPort((chunk, p) => {
+      rx = Buffer.concat([rx, chunk]);
+      if (rx.length === expectedCmd.length) {
+        rx = Buffer.alloc(0);
+        const failTxAtLine = idx === 1 ? 1 : -1;
+        idx++;
+        p.reply(encodeShotWire(buf, W, H, { failTxAtLine }));
+      }
+    });
+    const dev = attachPort(port, '/dev/mock-scan-txerr', { chunkSize: 256, chunkDelayMs: 0, maxRetries: 0 });
+    const result = await scanDevice(dev, { scan: 3 });
+    assert.equal(result.ok, false);
+    assert.match(result.error, /frame 1: device rejected screenshot: shot-tx/);
+    assert.match(renderScan(result), /RESULT: FAIL \(exit 1\)/);
+    await dev.close();
+  }
+
+  // 2. Complete frames, but frame 1 mutates pixels inside a declared static region.
+  {
+    const f0 = makeRgb565Frame(W, H, 0x0000);
+    paintRgb565Rect(f0, W, 0, 0, 4, 4, 0xffff);
+    const f1 = Buffer.from(f0);
+    paintRgb565Rect(f1, W, 0, 0, 2, 2, 0xf800); // dirty intrusion inside static [0,0,4,4]
+    let rx = Buffer.alloc(0);
+    let idx = 0;
+    const port = makeMockSerialPort((chunk, p) => {
+      rx = Buffer.concat([rx, chunk]);
+      if (rx.length === expectedCmd.length) {
+        rx = Buffer.alloc(0);
+        p.reply(encodeShotWire(idx++ === 0 ? f0 : f1, W, H));
+      }
+    });
+    const dev = attachPort(port, '/dev/mock-scan-dirty', { chunkSize: 256, chunkDelayMs: 0, maxRetries: 0 });
+    const result = await scanDevice(dev, { scan: 2, staticRegions: [[0, 0, 4, 4]] });
+    assert.equal(result.ok, false);
+    assert.equal(result.steps[1].complete, true);
+    assert.ok(result.steps[1].staticIntrusions > 0);
+    assert.equal(result.steps[1].ok, false);
+    assert.match(renderScan(result), /RESULT: FAIL \(2 frames, 1 failed; exit 1\)/);
+    await dev.close();
+  }
+});
+
+test('r223 CLI: screenshot --scan help documents device mode and validates flags', async () => {
+  const cli = new URL('./lume.js', import.meta.url).pathname;
+  const help = await execFileAsync(process.execPath, [cli, '--help']);
+  assert.match(help.stdout, /lume screenshot --scan <N> \(--port <path> \| --host <ip> --token <t>\)/);
+  await assert.rejects(
+    execFileAsync(process.execPath, [cli, 'screenshot', '--scan', '3', '--port', '/dev/null', '--host', '127.0.0.1', '--token', OTA_TOKEN]),
+    err => /mutually exclusive/.test(err.stderr));
 });

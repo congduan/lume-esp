@@ -109,7 +109,7 @@ const R166_ALLOWED = ['firmware/components/lume-engine/lume_scripts.c', 'firmwar
   'firmware/components/lume-engine/CMakeLists.txt',
   'firmware/components/lume-engine/lume_engine.c',
   'firmware/components/lume-engine/lume_scripts.c',
-  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/transport.js',
+  'tools/lume/ota.js', 'tools/lume/protocol.js', 'tools/lume/shot.js', 'tools/lume/transport.js',
   // r181: emu frame-injection pacing (scan.js) + UI-queue backpressure bridge.
   'tools/lume/scan.js',
   'firmware/components/lume-ui-bridge/lume_ui_bridge.c',
