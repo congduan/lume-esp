@@ -1,0 +1,4 @@
+sokoban      tft_png_diff_px=0/230400 a_nonzero=230400 b_nonzero=230400
+minesweeper  tft_png_diff_px=0/230400 a_nonzero=230400 b_nonzero=230400
+invaders     tft_png_diff_px=11794/230400 a_nonzero=230400 b_nonzero=230400
+frogger      tft_png_diff_px=11391/230400 a_nonzero=230400 b_nonzero=230400

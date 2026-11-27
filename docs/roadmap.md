@@ -3484,3 +3484,23 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 **commits（未推送，拆分）**：feat `3e54f4c`（build.mjs + 生成物） / test `fe57938`（17 断言 + needle + ALLOWED） / docs（本节 + KNOWN-SIMPLIFICATIONS r167 节）。
 
 详见 docs/KNOWN-SIMPLIFICATIONS.md r167 节。
+
+### r212 result — 渲染性能审计 + Canvas 热点 app 层优化（纯 app 层；appended, milestone checkboxes untouched）
+
+**实证先行（任务 A，全量 54 Canvas app 测量表）**：基于 `tests/lib/prelude_runner.js`（与 `tests/skycombat.js` 同口径 `draws()` 计数）完成全仓 54 个 Canvas app 的 boot / 动画或交互 / idle 三口径普查（原始 JSON `artifacts/r212/audit-full.json`，全表见 `docs/r212-report.md`）。按数据驱动条款（`<=240` 且 `idle == 0` 即判达标不硬改），33 个非 OPT app（含 `speedometer`/`spectrum`/`spectrum_music`/`plasma`/`mochi`/`clock`/`weather`/`music_player`/`scroller`/`vec_demo` 等）及 11 个既有 OPT app 均已达标未动；明确检出 **TOP 5 热点**（均客观突破 `<=240` 或 `idle == 0` 红线）：`invaders`（901/帧 + paused 880）、`frogger`（315/帧 + over 300）、`sokoban`（boot 2774 / move 1388）、`minesweeper`（boot 602 / dig 371）、`skyfire`（over 态 33ms 持续 43 draw/帧整屏重绘）。
+
+**app 层优化（任务 B，纯 app 层，`firmware/`/`runtime/`/`prelude_runner.js`/vendored 零改动）**：
+- `invaders`：8 精灵一次预烘 RGB565 + `retainImage(1..8)` + `drawImage` + `paused`/`over` 0 绘制门控。boot `877 -> 2` draws（58 total ops），active `901 -> 3` draws（59 total ops），paused/over `880 -> 0`；宿主 RGB565 diff = **0/230,400 px**。
+- `frogger`：8 精灵一次 `retainImage(1..8)` + `drawImage` + 左右安全边距遮罩 + `over` 0 绘制门控。boot `347 -> 21` draws（53 total ops），active `315 -> 16` draws（48 total ops），over `300 -> 0`；宿主棋盘区内 diff = **0 px**。
+- `sokoban`：6 精灵 `retainImage(1..6)` + 省略墙下不透明 `floor` + 紧缩脏区 + 去 boot 重复绘。boot `2,774 -> 1` draw（81 total ops），move `1,388 -> 2` draws（82 total ops），idle = `0`；宿主 RGB565 diff = **0/230,400 px**。
+- `minesweeper`：8 瓦片（hidden/flagged/rev0/mine/boom/rev1..3）`retainImage(1..8)` + 增量脏格（`prevSnap`，1-8 格逐格脏区、>8 格合并单脏区）+ 去 boot 重复绘。boot `602 -> 1` draw（101 total ops），flag `309 -> 0` draw（1 op），dig `371 -> 0` draw（22-50 ops），idle = `0`；宿主 RGB565 diff = **0/230,400 px**。
+- `skyfire`：照抄 `skycombat` r177 纪律加 `SF_IDLE_DT=100` + `sfSchedule()` + `sfOverPainted`，over 态 10 tick 0 绘制且周期 `33 -> 100ms`，restart 恢复 `33ms`（active max 70/240 不变）。
+
+**esp32sim 指令数 A/B（任务 C，同 `lume.bin` 固件、固定 8.000s / 1.92G cycles，`RELOAD_ERR=0`）**：
+- `counter` 冒烟：`core0 154,053,792 + core1 59,024,748`（`eval_ok=2`）。
+- `invaders`：`core0 384.5M -> 252.8M (-34.3%)`，**`core1 1,046.3M -> 307.1M (-70.7%)`**，**总指令 `-60.9%`**（-870.9M insns）。
+- `frogger`：`core0 345.5M -> 278.3M (-19.4%)`，**`core1 480.6M -> 129.2M (-73.1%)`**，**总指令 `-50.7%`**（-418.5M insns）。
+- `sokoban`：`core0 170.4M -> 155.8M (-8.5%)`，**`core1 130.8M -> 71.4M (-45.4%)`**，**总指令 `-24.5%`**，eval `326ms -> 77ms`；**真固件 TFT PNG diff = 0/230,400 px（bit-identical）**。
+- `minesweeper`：`core0 151.7M -> 146.6M (-3.3%)`，`core1 78.5M -> 74.8M (-4.8%)`，总指令 `-3.8%`；**真固件 TFT PNG diff = 0/230,400 px（bit-identical）**。
+
+**验证（全部宿主机 / esp32sim 证据，非真机；原始日志 `artifacts/r212/`）**：5 份更新 harness 全绿（新增 `<=240` 与 10-tick idle 0 绘制断言）；全量回归 `TOTAL_JS=111 FAIL_JS=0`；`npm test --prefix tools/lume` 76 pass / 0 fail；`node tools/playground/build.mjs` 74 apps 重建通过；Playwright `tools/playground/verify.mjs` 全 PASS（含 `all examples load without runtime errors`）；`check_website.py` 四类 none；`firmware/`/`runtime/`/`prelude_runner.js` diff 为空；未跑 `idf.py build`；新增字面量全 ASCII；未 push。真机帧率、触控手感、PSRAM 峰值与 AMOLED 实拍全部 deferred，不声称真机验收。详见 `docs/r212-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md` r212 节。

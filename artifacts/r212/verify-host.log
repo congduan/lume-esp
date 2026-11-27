@@ -1,0 +1,748 @@
+=== 5 UPDATED HARNESSES ===
+--- tests/invaders.js ---
+PASS invaders formation direction flip at right edge
+PASS invaders edge contact descends one row
+PASS invaders bullet hit removes member + score
+PASS invaders player hit loses lives / game over
+PASS invaders UFO adds bonus score
+PASS invaders wave speed-up and formation reset
+PASS invaders last kill enters next wave
+PASS invaders high-score KV + graceful failure
+PASS invaders sprite spans precomputed once, stable across ticks
+PASS invaders game over restart
+PASS invaders canvas/dirty budget, pan follow, tap fire, swipe pause
+EVIDENCE invaders active max 3 draws / 59 total ops (<=240), paused/over 0 ops in 10 ticks, 8 spriteDefine
+PASS invaders r212 frame-budget and idle 0-draw discipline
+ALL INVADERS HARNESS CASES PASSED
+--- tests/frogger.js ---
+PASS frogger four-direction hop + boundary clamp
+PASS frogger vehicle collision
+PASS frogger log carry displacement
+PASS frogger water death
+PASS frogger home fill + level up
+PASS frogger difficulty speed-up
+PASS frogger high-score KV + graceful failure
+PASS frogger sprite spans precomputed once, stable across ticks
+PASS frogger game over restart
+PASS frogger canvas/events + tap-direction hops
+EVIDENCE frogger active max 16 draws / 48 total ops (<=240), over 0 ops in 10 ticks, 8 spriteDefine
+PASS frogger r212 frame-budget and idle 0-draw discipline
+ALL FROGGER HARNESS CASES PASSED
+--- tests/sokoban.js ---
+PASS sokoban single-box push + move counter
+PASS sokoban no two-box push / no wall walk
+PASS sokoban box cannot be pushed into wall
+PASS sokoban goal coverage + all-boxes-home win
+PASS sokoban corner deadlock + goal exemption
+PASS sokoban all 10 levels BFS-solvable at stated par (data integrity)
+PASS sokoban progress KV (<=15 char key, clamp, graceful failure)
+PASS sokoban unlock + next/prev/restart navigation
+PASS sokoban sprite spans precomputed once, stable across moves
+PASS sokoban canvas/events, dirty budget, swipe push, tap push, reset button
+EVIDENCE sokoban boot 81 ops, move 2 draws / 82 ops (<=240), idle 0 ops in 10 ticks, 6 spriteDefine
+PASS sokoban r212 frame-budget and idle 0-draw discipline
+ALL SOKOBAN HARNESS CASES PASSED
+--- tests/minesweeper.js ---
+PASS minesweeper deal: fresh board, mines pending first tap
+PASS minesweeper neighbors: corner=3 edge=5 interior=8, in bounds
+PASS minesweeper placement: 15 mines, first-tap 3x3 safe, counts correct (10 boards)
+PASS minesweeper first tap: always digs, placement deterministic under seed
+PASS minesweeper flood: zero region opens, boundary counts stay closed
+PASS minesweeper flood vs flags: flagged cells are not auto-opened
+PASS minesweeper flag: toggle + guards on revealed/out-of-range
+PASS minesweeper dig-vs-flag: flag blocks the dig, unflag re-opens
+PASS minesweeper boom: round over, mines revealed, hit cell marked
+PASS minesweeper win: 85 safe cells, WIN event, best time saved
+PASS minesweeper best: worse keeps / lower overwrites / equal keeps
+PASS minesweeper tick: clock runs only between start and end
+PASS minesweeper spans: 10 sprites decoded, palette refs all valid
+PASS minesweeper canvas budget: 230400 px single canvas, grid in bounds
+PASS minesweeper solvability: 20 random boards all diggable to a win
+EVIDENCE minesweeper boot 101 ops, flag 1 op, dig 50 ops (<=240), idle 0 ops in 10 ticks, 8 spriteDefine
+PASS minesweeper r212 frame-budget and idle 0-draw discipline
+ALL tests/minesweeper.js PASS
+--- tests/skyfire.js ---
+PASS collision, waves, upgrade cycle, invulnerability, player limits
+EVIDENCE skyfire active max 70/240, over 0 draws in 10 ticks, dt 33->100->33
+PASS real prelude, 60s smoke, draw max 70/240, fixed pools, idle 0-draw
+ALL SKYFIRE HARNESS CASES PASSED
+=== PLAYGROUND BUILD ===
+PASS bundle counter 2160 bytes
+PASS bundle clock 3433 bytes
+PASS bundle clock_round 4249 bytes
+PASS bundle dashboard_round 5015 bytes
+PASS bundle games_snake 3856 bytes
+PASS bundle games_2048 3395 bytes
+PASS bundle games_breakout 4423 bytes
+PASS bundle games_tetris 6060 bytes
+PASS bundle mario 6084 bytes
+PASS bundle game_of_life 4718 bytes
+PASS bundle pet 7110 bytes
+PASS bundle calculator 2968 bytes
+PASS bundle weather 12868 bytes
+PASS bundle music_player 12003 bytes
+PASS bundle dashboard 36492 bytes
+PASS bundle gravity_ball 2527 bytes
+PASS bundle typewriter 1595 bytes
+PASS bundle heart_curve 30677 bytes
+PASS bundle speedometer 3781 bytes
+PASS bundle power_demo 1857 bytes
+PASS bundle luna 92417 bytes
+PASS bundle watchface 9146 bytes
+PASS bundle async_demo 510 bytes
+PASS bundle piano 4490 bytes
+PASS bundle compass 3944 bytes
+PASS bundle invaders 9670 bytes
+PASS bundle frogger 9666 bytes
+PASS bundle abc123 42627 bytes
+PASS bundle sokoban 8419 bytes
+PASS bundle lcd_dual 7154 bytes
+PASS bundle memory 5574 bytes
+PASS bundle minesweeper 8060 bytes
+PASS bundle golf 9233 bytes
+PASS bundle scroller 7935 bytes
+PASS bundle raycast 7720 bytes
+PASS bundle fishtank 6626 bytes
+PASS bundle particles 5398 bytes
+PASS bundle voice_assistant 13762 bytes
+PASS bundle spectrum_music 3195 bytes
+PASS bundle plasma 5569 bytes
+PASS bundle skyfire 7413 bytes
+PASS bundle skycombat 8351 bytes
+PASS bundle aurora_clock 8064 bytes
+PASS bundle flapdot 5837 bytes
+PASS bundle wordring 13656 bytes
+PASS bundle image_gallery 5486 bytes
+PASS bundle files 37840 bytes
+PASS bundle adc_meter 4345 bytes
+PASS bundle crypto_check 3392 bytes
+PASS bundle archive_view 4507 bytes
+PASS bundle img_view 5570 bytes
+PASS bundle vec_demo 2712 bytes
+PASS bundle settings 60332 bytes
+PASS bundle hr_monitor 33310 bytes
+PASS bundle keyboard_demo 30431 bytes
+PASS bundle wordle 39794 bytes
+PASS bundle controls_demo 31038 bytes
+PASS bundle timer_kit 43594 bytes
+PASS bundle control_center 37286 bytes
+PASS bundle launcher_grid 37056 bytes
+PASS bundle minigolf 9827 bytes
+PASS bundle ipod_music 32553 bytes
+PASS bundle color_demo 30485 bytes
+PASS bundle ble_uart 2649 bytes
+PASS bundle spectrum 3907 bytes
+PASS bundle svg_icon 506 bytes
+PASS bundle gestures 2294 bytes
+PASS bundle storybook 10608 bytes
+PASS bundle mochi 8460 bytes
+PASS bundle shell_demo 30266 bytes
+PASS bundle sparkline_demo 31538 bytes
+PASS bundle app_manager 1512 bytes
+PASS bundle imu_poll 2170 bytes
+PASS bundle fitness 36392 bytes
+PASS esbuild-wasm assets and 74 editable sources
+PASS prelude 67986 bytes; 74 apps
+=== PLAYGROUND VERIFY ===
+PASS page loads without JavaScript errors
+  Counter: 15 nodes
+PASS counter has nonempty screen DOM
+  Snake: 5 nodes
+PASS games_snake has nonempty screen DOM
+  2048: 37 nodes
+PASS games_2048 has nonempty screen DOM
+  border-radius: 36px
+PASS rounded square device frame
+PASS editor compiles default and changed source, then reports syntax errors
+  share hash: 116 chars
+PASS hash restores editor source and share copies reloadable URL
+PASS oversized source keeps existing share hash
+PASS counter button updates count without errors
+  DEMO badge + tap -> LISTEN
+PASS voice_assistant degrades to DEMO without audio/network and is tappable
+PASS snake screen tap and swipe do not throw
+  B is for Ball
+  C is for Cat
+  D is for Dog
+  E is for Egg
+  F is for Fish
+  glyph background: rgba(0, 0, 0, 0); canvas node: 2
+PASS abc123 clears placeholder and redraws on five taps
+  mobile tap: B is for Ball
+PASS abc123 mobile touchscreen advances card
+  counter: 15 nodes
+  clock: 4 nodes
+  clock_round: 11 nodes
+  dashboard_round: 2 nodes
+  games_snake: 5 nodes
+  games_2048: 37 nodes
+  games_breakout: 41 nodes
+  mario: 6 nodes
+  calculator: 28 nodes
+  weather: 52 nodes
+  music_player: 26 nodes
+  storybook: 21 nodes
+  ipod_music: 17 nodes
+  dashboard: 27 nodes
+  gravity_ball: 2 nodes
+  typewriter: 5 nodes
+  heart_curve: 11 nodes
+  speedometer: 16 nodes
+  power_demo: 11 nodes
+  watchface: 44 nodes
+  games_tetris: 11 nodes
+  game_of_life: 6 nodes
+  pet: 9 nodes
+  async_demo: 3 nodes
+  piano: 60 nodes
+  compass: 8 nodes
+  skyfire: 4 nodes
+  skycombat: 2 nodes
+  luna: 2 nodes
+  invaders: 5 nodes
+  frogger: 5 nodes
+  abc123: 4 nodes
+  sokoban: 9 nodes
+  lcd_dual: 7 nodes
+  memory: 7 nodes
+  minesweeper: 7 nodes
+  golf: 7 nodes
+  scroller: 9 nodes
+  raycast: 6 nodes
+  fishtank: 2 nodes
+  particles: 7 nodes
+  plasma: 2 nodes
+  voice_assistant: 9 nodes
+  spectrum_music: 4 nodes
+  ble_uart: 28 nodes
+  spectrum: 6 nodes
+  svg_icon: 2 nodes
+  gestures: 22 nodes
+  aurora_clock: 10 nodes
+  flapdot: 6 nodes
+  wordring: 8 nodes
+  image_gallery: 19 nodes
+  files: 25 nodes
+  adc_meter: 18 nodes
+  crypto_check: 19 nodes
+  archive_view: 17 nodes
+  img_view: 10 nodes
+  vec_demo: 9 nodes
+  settings: 118 nodes
+  hr_monitor: 21 nodes
+  keyboard_demo: 39 nodes
+  wordle: 39 nodes
+  controls_demo: 15 nodes
+  timer_kit: 19 nodes
+  control_center: 16 nodes
+  launcher_grid: 50 nodes
+  minigolf: 10 nodes
+  color_demo: 8 nodes
+  mochi: 7 nodes
+  shell_demo: 14 nodes
+  sparkline_demo: 12 nodes
+  app_manager: 6 nodes
+  imu_poll: 20 nodes
+  fitness: 6 nodes
+PASS all examples load without runtime errors
+=== CHECK WEBSITE ===
+examples.html gallery up to date (74 cards)
+HTML pages: 7; internal href/src and anchors checked
+API: 162 catalog entries, 162 type declarations, 34 function namespaces
+API missing: none
+API invented: none
+API duplicates: none
+API signatures not found in lume.d.ts: none
+=== CLI NPM TEST ===
+
+> @lume/cli@0.1.0 test
+> node --test
+
+TAP version 13
+# Subtest: context emits every required field with --skip-check
+ok 1 - context emits every required field with --skip-check
+  ---
+  duration_ms: 23.515726
+  type: 'test'
+  ...
+# Subtest: unregistered is the source-grounded examples-minus-manifest set
+ok 2 - unregistered is the source-grounded examples-minus-manifest set
+  ---
+  duration_ms: 11.131111
+  type: 'test'
+  ...
+# Subtest: renderContext: compact one-line JSON and pretty JSON agree
+ok 3 - renderContext: compact one-line JSON and pretty JSON agree
+  ---
+  duration_ms: 11.120744
+  type: 'test'
+  ...
+# Subtest: a failing git block is isolated from the rest of the snapshot
+ok 4 - a failing git block is isolated from the rest of the snapshot
+  ---
+  duration_ms: 3.438992
+  type: 'test'
+  ...
+# Subtest: a failing sentinel check is recorded without dropping other fields
+ok 5 - a failing sentinel check is recorded without dropping other fields
+  ---
+  duration_ms: 13.355342
+  type: 'test'
+  ...
+# Subtest: parsePageExamples: real page.js yields 6-string tuples, counter present
+ok 6 - parsePageExamples: real page.js yields 6-string tuples, counter present
+  ---
+  duration_ms: 10.079955
+  type: 'test'
+  ...
+# Subtest: parsePageExamples: throws pointed error on shape drift
+ok 7 - parsePageExamples: throws pointed error on shape drift
+  ---
+  duration_ms: 1.127242
+  type: 'test'
+  ...
+# Subtest: catalog: manifest and disk union, registration flags grounded
+ok 8 - catalog: manifest and disk union, registration flags grounded
+  ---
+  duration_ms: 7.739855
+  type: 'test'
+  ...
+# Subtest: catalog with injected deps: no disk access, deterministic
+ok 9 - catalog with injected deps: no disk access, deterministic
+  ---
+  duration_ms: 2.626554
+  type: 'test'
+  ...
+# Subtest: renderCatalog: text lines + final summary JSON; json mode is NDJSON
+ok 10 - renderCatalog: text lines + final summary JSON; json mode is NDJSON
+  ---
+  duration_ms: 2.229108
+  type: 'test'
+  ...
+# Subtest: file chunk command keeps raw bytes and app frames unchanged
+ok 11 - file chunk command keeps raw bytes and app frames unchanged
+  ---
+  duration_ms: 5.267266
+  type: 'test'
+  ...
+# Subtest: frame bytes match firmware wire layout and CRC-32
+ok 12 - frame bytes match firmware wire layout and CRC-32
+  ---
+  duration_ms: 1.049493
+  type: 'test'
+  ...
+# Subtest: r115 REPL frame uses LUMR magic with the same 12-byte header and CRC
+ok 13 - r115 REPL frame uses LUMR magic with the same 12-byte header and CRC
+  ---
+  duration_ms: 0.80871
+  type: 'test'
+  ...
+# Subtest: parseFrame rejects bad magic, zero/overlong length and bad CRC
+ok 14 - parseFrame rejects bad magic, zero/overlong length and bad CRC
+  ---
+  duration_ms: 0.540403
+  type: 'test'
+  ...
+# Subtest: clampReplOutput bounds to REPL_OUT_CAP and flags truncation
+ok 15 - clampReplOutput bounds to REPL_OUT_CAP and flags truncation
+  ---
+  duration_ms: 0.748918
+  type: 'test'
+  ...
+# Subtest: decodeReplLines joins R64 base64 and ignores device log noise
+ok 16 - decodeReplLines joins R64 base64 and ignores device log noise
+  ---
+  duration_ms: 0.526317
+  type: 'test'
+  ...
+# Subtest: r43b bytecode frame uses LUMB magic with the same 12-byte header and CRC
+ok 17 - r43b bytecode frame uses LUMB magic with the same 12-byte header and CRC
+  ---
+  duration_ms: 0.563433
+  type: 'test'
+  ...
+# Subtest: r43b LQBC payload header round-trips a raw qjsc blob
+ok 18 - r43b LQBC payload header round-trips a raw qjsc blob
+  ---
+  duration_ms: 0.839235
+  type: 'test'
+  ...
+# Subtest: engine version is read from the vendored QuickJS-NG sources
+ok 19 - engine version is read from the vendored QuickJS-NG sources
+  ---
+  duration_ms: 52.359401
+  type: 'test'
+  ...
+# Subtest: bytecode deploy rejects a mismatched device engine version locally
+ok 20 - bytecode deploy rejects a mismatched device engine version locally
+  ---
+  duration_ms: 1.501129
+  type: 'test'
+  ...
+# Subtest: binary STORE keeps bytecode bytes intact (no UTF-8 round trip)
+ok 21 - binary STORE keeps bytecode bytes intact (no UTF-8 round trip)
+  ---
+  duration_ms: 0.476713
+  type: 'test'
+  ...
+# Subtest: qjsc compiles an esbuild bundle to loadable bytecode
+ok 22 - qjsc compiles an esbuild bundle to loadable bytecode
+  ---
+  duration_ms: 56.390378
+  type: 'test'
+  ...
+# Subtest: create writes complete offline scaffold and bundles with prelude globals
+ok 23 - create writes complete offline scaffold and bundles with prelude globals
+  ---
+  duration_ms: 17.670863
+  type: 'test'
+  ...
+# Subtest: esbuild iife runs in global-script host; esm syntax does not
+ok 24 - esbuild iife runs in global-script host; esm syntax does not
+  ---
+  duration_ms: 8.619741
+  type: 'test'
+  ...
+# Subtest: bundle rejects oversize output before opening serial
+ok 25 - bundle rejects oversize output before opening serial
+  ---
+  duration_ms: 20.048489
+  type: 'test'
+  ...
+# Subtest: OTA auth vector: HMAC-SHA256(token, challenge ASCII) + default port
+ok 26 - OTA auth vector: HMAC-SHA256(token, challenge ASCII) + default port
+  ---
+  duration_ms: 4.172017
+  type: 'test'
+  ...
+# Subtest: OTA push reuses the USB frame() bytes (right-token path)
+ok 27 - OTA push reuses the USB frame() bytes (right-token path)
+  ---
+  duration_ms: 16.13433
+  type: 'test'
+  ...
+# Subtest: OTA wrong token is rejected (AUTH ERR path)
+ok 28 - OTA wrong token is rejected (AUTH ERR path)
+  ---
+  duration_ms: 4.006544
+  type: 'test'
+  ...
+# Subtest: OTA screenshot round trips the RGB565 frame past log noise
+ok 29 - OTA screenshot round trips the RGB565 frame past log noise
+  ---
+  duration_ms: 44.979537
+  type: 'test'
+  ...
+# Subtest: decodeShot rejects a corrupted payload and a CRC mismatch
+ok 30 - decodeShot rejects a corrupted payload and a CRC mismatch
+  ---
+  duration_ms: 0.603948
+  type: 'test'
+  ...
+# Subtest: bmpFromRgb565 produces a valid bottom-up 24-bit BMP
+ok 31 - bmpFromRgb565 produces a valid bottom-up 24-bit BMP
+  ---
+  duration_ms: 0.494095
+  type: 'test'
+  ...
+# Subtest: OTA RELOAD ERR is surfaced as a push error
+ok 32 - OTA RELOAD ERR is surfaced as a push error
+  ---
+  duration_ms: 4.049608
+  type: 'test'
+  ...
+# Subtest: command frame uses LUMC magic, same header and CRC as app frames
+ok 33 - command frame uses LUMC magic, same header and CRC as app frames
+  ---
+  duration_ms: 0.358983
+  type: 'test'
+  ...
+# Subtest: STORE payload layout: verb, id, one-line meta, then raw source
+ok 34 - STORE payload layout: verb, id, one-line meta, then raw source
+  ---
+  duration_ms: 0.326016
+  type: 'test'
+  ...
+# Subtest: r106 FWTAG is an id-less LUMC verb and parses the device reply
+ok 35 - r106 FWTAG is an id-less LUMC verb and parses the device reply
+  ---
+  duration_ms: 0.553726
+  type: 'test'
+  ...
+# Subtest: OTA command round trip: STORE + LIST + LAUNCH ACKs
+ok 36 - OTA command round trip: STORE + LIST + LAUNCH ACKs
+  ---
+  duration_ms: 4.867094
+  type: 'test'
+  ...
+# Subtest: CLI apps usage, sub-command and id validation
+ok 37 - CLI apps usage, sub-command and id validation
+  ---
+  duration_ms: 684.957188
+  type: 'test'
+  ...
+# Subtest: OTA no-board path: connection refused is a clear error
+ok 38 - OTA no-board path: connection refused is a clear error
+  ---
+  duration_ms: 4.724202
+  type: 'test'
+  ...
+# Subtest: CLI --host usage, arg validation and no-board error output
+ok 39 - CLI --host usage, arg validation and no-board error output
+  ---
+  duration_ms: 445.114854
+  type: 'test'
+  ...
+# Subtest: check: d.ts catalog + Levenshtein nearest-neighbour spelling hint
+ok 40 - check: d.ts catalog + Levenshtein nearest-neighbour spelling hint
+  ---
+  duration_ms: 1.65286
+  type: 'test'
+  ...
+# Subtest: check: parseEvalError reads the real JS exception/stack log format
+ok 41 - check: parseEvalError reads the real JS exception/stack log format
+  ---
+  duration_ms: 0.712497
+  type: 'test'
+  ...
+# Subtest: check: layout R1-R7 aggregation and best-effort perf parsing
+ok 42 - check: layout R1-R7 aggregation and best-effort perf parsing
+  ---
+  duration_ms: 1.019319
+  type: 'test'
+  ...
+# Subtest: check: success path aggregates bundle/eval/layout/perf
+ok 43 - check: success path aggregates bundle/eval/layout/perf
+  ---
+  duration_ms: 1.26844
+  type: 'test'
+  ...
+# Subtest: check: layout FAIL is aggregated and fails the run
+ok 44 - check: layout FAIL is aggregated and fails the run
+  ---
+  duration_ms: 0.449165
+  type: 'test'
+  ...
+# Subtest: check: bundle failure fails fast with esbuild file:line:column
+ok 45 - check: bundle failure fails fast with esbuild file:line:column
+  ---
+  duration_ms: 0.652268
+  type: 'test'
+  ...
+# Subtest: check: eval failure carries raw message, original line and a spelling hint
+ok 46 - check: eval failure carries raw message, original line and a spelling hint
+  ---
+  duration_ms: 14.508246
+  type: 'test'
+  ...
+# Subtest: check: emulator timeout is a FAIL with a serial-log tail
+ok 47 - check: emulator timeout is a FAIL with a serial-log tail
+  ---
+  duration_ms: 0.781304
+  type: 'test'
+  ...
+# Subtest: check: --no-emu skips emu/layout/perf but keeps the bundle check
+ok 48 - check: --no-emu skips emu/layout/perf but keeps the bundle check
+  ---
+  duration_ms: 0.375396
+  type: 'test'
+  ...
+# Subtest: check: visual mode aggregates browser result and skips emulator
+ok 49 - check: visual mode aggregates browser result and skips emulator
+  ---
+  duration_ms: 0.360334
+  type: 'test'
+  ...
+# Subtest: check: CLI --json is valid JSON and exit codes are 0 (pass) / 1 (fail)
+ok 50 - check: CLI --json is valid JSON and exit codes are 0 (pass) / 1 (fail)
+  ---
+  duration_ms: 412.975425
+  type: 'test'
+  ...
+# Subtest: CLI token command validates the 32-hex token before opening a port
+ok 51 - CLI token command validates the 32-hex token before opening a port
+  ---
+  duration_ms: 318.799512
+  type: 'test'
+  ...
+# Subtest: initialize handshake negotiates a known protocolVersion
+ok 52 - initialize handshake negotiates a known protocolVersion
+  ---
+  duration_ms: 194.580015
+  type: 'test'
+  ...
+# Subtest: initialize with unknown protocolVersion answers the server latest
+ok 53 - initialize with unknown protocolVersion answers the server latest
+  ---
+  duration_ms: 211.439252
+  type: 'test'
+  ...
+# Subtest: tools/list exposes exactly the six stable tools with schemas
+ok 54 - tools/list exposes exactly the six stable tools with schemas
+  ---
+  duration_ms: 251.060116
+  type: 'test'
+  ...
+# Subtest: ping round-trips
+ok 55 - ping round-trips
+  ---
+  duration_ms: 197.175104
+  type: 'test'
+  ...
+# Subtest: lume_help returns the CLI usage text
+ok 56 - lume_help returns the CLI usage text
+  ---
+  duration_ms: 302.503267
+  type: 'test'
+  ...
+# Subtest: lume_manifest lists the playground apps (counter present, count > 70)
+ok 57 - lume_manifest lists the playground apps (counter present, count > 70)
+  ---
+  duration_ms: 149.791533
+  type: 'test'
+  ...
+# Subtest: lume_context returns the machine-readable snapshot (skipCheck default)
+ok 58 - lume_context returns the machine-readable snapshot (skipCheck default)
+  ---
+  duration_ms: 172.749617
+  type: 'test'
+  ...
+# Subtest: lume_check runs the counter sentinel (noEmu default) and passes
+ok 59 - lume_check runs the counter sentinel (noEmu default) and passes
+  ---
+  duration_ms: 325.1551
+  type: 'test'
+  ...
+# Subtest: lume_check on a broken app returns isError with the check failure
+ok 60 - lume_check on a broken app returns isError with the check failure
+  ---
+  duration_ms: 286.820095
+  type: 'test'
+  ...
+# Subtest: lume_deploy without a board returns isError and never hangs
+ok 61 - lume_deploy without a board returns isError and never hangs
+  ---
+  duration_ms: 194.347489
+  type: 'test'
+  ...
+# Subtest: unknown tool is JSON-RPC error -32602
+ok 62 - unknown tool is JSON-RPC error -32602
+  ---
+  duration_ms: 153.522499
+  type: 'test'
+  ...
+# Subtest: unknown method is JSON-RPC error -32601
+ok 63 - unknown method is JSON-RPC error -32601
+  ---
+  duration_ms: 146.590209
+  type: 'test'
+  ...
+# Subtest: non-JSON and malformed lines do not kill the server
+ok 64 - non-JSON and malformed lines do not kill the server
+  ---
+  duration_ms: 155.774388
+  type: 'test'
+  ...
+# Subtest: server exits cleanly on stdin EOF
+ok 65 - server exits cleanly on stdin EOF
+  ---
+  duration_ms: 300.818095
+  type: 'test'
+  ...
+# Subtest: decodeRgb round-trips a synthetic RGB8 PNG
+ok 66 - decodeRgb round-trips a synthetic RGB8 PNG
+  ---
+  duration_ms: 5.368592
+  type: 'test'
+  ...
+# Subtest: decodeRgb rejects a non-PNG buffer
+ok 67 - decodeRgb rejects a non-PNG buffer
+  ---
+  duration_ms: 0.95741
+  type: 'test'
+  ...
+# Subtest: inkCount counts only pixels differing from the background
+ok 68 - inkCount counts only pixels differing from the background
+  ---
+  duration_ms: 0.685216
+  type: 'test'
+  ...
+# Subtest: changedPixels returns count and half-open bbox
+ok 69 - changedPixels returns count and half-open bbox
+  ---
+  duration_ms: 0.788713
+  type: 'test'
+  ...
+# Subtest: analyzeFrames passes when layers persist and changes stay in bounds
+ok 70 - analyzeFrames passes when layers persist and changes stay in bounds
+  ---
+  duration_ms: 1.32358
+  type: 'test'
+  ...
+# Subtest: analyzeFrames detects a missing expected layer
+ok 71 - analyzeFrames detects a missing expected layer
+  ---
+  duration_ms: 0.579672
+  type: 'test'
+  ...
+# Subtest: analyzeFrames detects changed pixels intruding into a static layer
+ok 72 - analyzeFrames detects changed pixels intruding into a static layer
+  ---
+  duration_ms: 1.853671
+  type: 'test'
+  ...
+# Subtest: renderScan emits PASS/FAIL text and parseable JSON
+ok 73 - renderScan emits PASS/FAIL text and parseable JSON
+  ---
+  duration_ms: 0.420089
+  type: 'test'
+  ...
+# Subtest: scan() engine runs assertions over injected captured frames
+ok 74 - scan() engine runs assertions over injected captured frames
+  ---
+  duration_ms: 23.557256
+  type: 'test'
+  ...
+# Subtest: scan() fails cleanly when a frame is missing
+ok 75 - scan() fails cleanly when a frame is missing
+  ---
+  duration_ms: 0.888415
+  type: 'test'
+  ...
+# Subtest: CLI: --scan with no spec fails with exit 1 and parseable JSON
+ok 76 - CLI: --scan with no spec fails with exit 1 and parseable JSON
+  ---
+  duration_ms: 146.699795
+  type: 'test'
+  ...
+1..76
+# tests 76
+# suites 0
+# pass 76
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6054.638322
+=== FULL JS REGRESSION ===
+TOTAL_JS=111 FAIL_JS=0
+=== ASCII CHECK ===
+examples/invaders/app.js:1:/* Arcade-style single-screen shooter — original pixel approximations.
+examples/invaders/app.js:5: * frame. The stock 14px Montserrat font is kept (no pixel font swap — see the
+examples/invaders/app.js:27: * by tick or onDraw — the harness asserts it does not grow per frame. */
+examples/frogger/app.js:1:/* Arcade-style road-and-river crossing game — original pixel approximations.
+examples/frogger/app.js:7: * pixel font swap — see the r68 entry in docs/KNOWN-SIMPLIFICATIONS.md). No
+examples/frogger/app.js:53: * by tick or onDraw — the harness asserts it does not grow per frame. */
+examples/sokoban/app.js:1:/* Sokoban — original pixel approximations, r68 retro pixel dialect.
+examples/sokoban/app.js:5: * Stock 14px Montserrat is kept (no pixel font swap — r68 entry in
+examples/minesweeper/app.js:1:/* Minesweeper — r76, r68 retro pixel dialect, original art. 10x10 grid, 15 mines.
+examples/minesweeper/app.js:10: * goes to lume.storage.kv — NVS keys cap at 15 chars (lume_kv.c), so the key
+examples/minesweeper/app.js:12: * decorative Unicode — r64). */
+examples/minesweeper/app.js:14:/* ------------------- logic (host harness splits at /* GAME UI *​/) ------- */
+examples/minesweeper/app.js:25:/* 5x7 digit glyphs ('1'..'8' — ink char = its own palette key), 7x7 flag and
+examples/minesweeper/app.js:61: * until the first dig — first tap (and its 8 neighbours) is always safe. */
+examples/minesweeper/app.js:99: * — QuickJS depth budget stays untouched). Flagged cells are never auto-
+tests/invaders.js:125:// 7. KV read/write with ≤15-char key and graceful failure
+tests/sokoban.js:109:      if (seen.size > 2000000) throw Error('BFS cap exceeded — level too large');
+tests/sokoban.js:136:    assert.notEqual(optimal, null, 'L' + (i+1) + ' UNSOLVABLE — fix level data, not the assertion');
+=== FORBIDDEN DIFF CHECK ===
