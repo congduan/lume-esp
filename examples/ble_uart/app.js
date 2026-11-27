@@ -97,40 +97,42 @@ lume.app.onStart(startBle);
 lume.app.onPause(stopBle);
 lume.app.onResume(startBle);
 
-/* ---- UI ---- */
-var COLORS = { bg: '#0B1724', card: '#132436' };
+/* ---- UI (480x480 round AMOLED safe square [76, 404]) ---- */
+var COLORS = { bg: '#0B1724', card: '#132436', accent: '#117B69', danger: '#2A1720' };
 
 function row(label, value) {
   return View({ style: {
-    width: '100%', height: 52, background: COLORS.card, borderRadius: 12,
+    width: '100%', height: 28, background: COLORS.card, borderRadius: 8,
     display: 'flex', flexDirection: 'row',
-    justifyContent: 'space-between', alignItems: 'center', padding: 10,
+    justifyContent: 'space-between', alignItems: 'center',
+    paddingLeft: 10, paddingRight: 10, paddingTop: 0, paddingBottom: 0,
     scroll: 'none' } }, [
-    Text({ text: label, style: {} }),
-    Text({ text: value, style: {} })
+    Text({ text: label, style: { fontSize: 12, borderRadius: 0 } }),
+    Text({ text: value, style: { fontSize: 12, borderRadius: 0 } })
   ]);
 }
 
 /* Pairing flow steps: 'ok' when reached, 'wait' while it is the live step. */
 function stepRow(label, n) {
   return View({ style: {
-    width: '100%', height: 52, background: COLORS.card, borderRadius: 12,
+    width: '100%', height: 28, background: COLORS.card, borderRadius: 8,
     display: 'flex', flexDirection: 'row',
-    justifyContent: 'space-between', alignItems: 'center', padding: 10,
+    justifyContent: 'space-between', alignItems: 'center',
+    paddingLeft: 10, paddingRight: 10, paddingTop: 0, paddingBottom: 0,
     scroll: 'none' } }, [
-    Text({ text: label, style: {} }),
+    Text({ text: label, style: { fontSize: 12, borderRadius: 0 } }),
     Text({ text: function () {
       return phase() >= n ? 'ok' : (phase() + 1 === n ? 'wait...' : '-');
-    } })
+    }, style: { fontSize: 12, borderRadius: 0 } })
   ]);
 }
 
 View({ style: {
   width: '100%', height: '100%', background: COLORS.bg,
   display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-  padding: 36, gap: 8
+  padding: 76, gap: 4, scroll: 'none'
 } }, [
-  Text({ text: 'Bluetooth pairing', style: {} }),
+  Text({ text: 'Bluetooth pairing', style: { fontSize: 14, height: 18, borderRadius: 0 } }),
   row('device', function () { return NAME + ' (peripheral)'; }),
   stepRow('1 advertise', 1),
   stepRow('2 connect', 2),
@@ -142,17 +144,20 @@ View({ style: {
   }),
   row('last rx', function () { return lastMsg(); }),
   View({ style: {
-    width: '100%', height: 56, display: 'flex', flexDirection: 'row', gap: 8,
+    width: '100%', height: 48, display: 'flex', flexDirection: 'row', gap: 8,
     scroll: 'none' } }, [
     Button({ title: 'Ping', onPress: function () {
       var r = lume.ble.write('ping');
       if (r === 0) pings.set(pings() + 1);
       else linkStatus.set('BLE write error: ' + r);
-    }, style: { flexGrow: 1, height: 56, borderRadius: 12 } }),
-    Button({ title: 'Stop', onPress: stopBle,
-      style: { flexGrow: 1, height: 56, borderRadius: 12 } }),
+    }, style: { flexGrow: 1, height: 48, borderRadius: 12, background: COLORS.accent, fontSize: 13 } }),
     Button({ title: 'Advertise', onPress: startBle,
-      style: { flexGrow: 1, height: 56, borderRadius: 12 } })
+      style: { flexGrow: 1, height: 48, borderRadius: 12, fontSize: 13 } }),
+    Button({ title: 'Stop', onPress: stopBle,
+      style: { flexGrow: 1, height: 48, marginLeft: 16, borderRadius: 12,
+        background: COLORS.danger, borderColor: '#7A3240', borderWidth: 1,
+        color: '#FF6B79', fontSize: 13 } })
   ]),
-  Text({ text: 'connect with any NUS BLE console, reply to HELLO to pair', style: {} })
+  Text({ text: 'NUS BLE console: reply HELLO to pair',
+    style: { width: '100%', fontSize: 11, height: 16, textAlign: 'center', borderRadius: 0 } })
 ]);

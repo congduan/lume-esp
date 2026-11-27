@@ -129,22 +129,24 @@ lume.app.onPause(function () { paused = true; stop(); });
 lume.app.onResume(function () { paused = false; start(); });
 
 var root = View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',
-  display:'flex',flexDirection:'column',justifyContent:'space-between',padding:20,gap:10}},[
-  View({style:{width:'100%',height:44,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:'Vector Physics',style:{fontSize:24,color:'text'}})
+  display:'flex',flexDirection:'column',justifyContent:'space-between',padding:76,gap:4}},[
+  View({style:{width:'100%',height:32,display:'flex',flexDirection:'column',
+    alignItems:'center',justifyContent:'center',padding:0,gap:0}},[
+    Text({text:'Vector Physics',style:{fontSize:16,color:'text',borderRadius:0}})
   ]),
-  View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:hudDisplay,style:{fontSize:16,color:'text'}}),
-    Text({text:statusDisplay,style:{fontSize:14,color:'accent'}})
-  ]),
-  View({style:{width:'100%',height:60,display:'flex',flexDirection:'row',
-    alignItems:'center',justifyContent:'space-between',padding:0,gap:12}},[
-    Button({title:'NEXT',style:{width:120,height:48,borderRadius:999,background:'surface'},onPress:next})
+  View({style:{width:'100%',height:48,display:'flex',flexDirection:'row',
+    alignItems:'center',justifyContent:'space-between',padding:0,gap:8}},[
+    View({style:{height:44,display:'flex',flexDirection:'column',
+      justifyContent:'center',padding:0,gap:2}},[
+      Text({text:hudDisplay,style:{fontSize:14,color:'text',borderRadius:0}}),
+      Text({text:statusDisplay,style:{fontSize:12,color:'accent',borderRadius:0}})
+    ]),
+    Button({title:'NEXT',style:{width:100,height:48,borderRadius:12,background:'surface'},onPress:next})
   ])
 ]);
 
 Canvas({ parent: root, width: S, height: S,
-  style:{position:'absolute',x:120,y:100}, onDraw: function (c) {
+  style:{position:'absolute',x:120,y:112}, onDraw: function (c) {
   frame();                                    /* subscribe to tick redraws */
   c.fillColor(BG);
   c.fillRect(0, 0, S, S);

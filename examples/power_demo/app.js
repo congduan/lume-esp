@@ -5,19 +5,19 @@ var lastActivity=lume._nowMs();
 var state=signal('awake at '+Math.floor(lastActivity));
 var netStatus=lume.net.deinit();
 var touch=function(){lastActivity=lume._nowMs();};
-View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:24,gap:16},onPress:touch},[
-  View({style:{width:'100%',height:64,display:'flex',flexDirection:'column',padding:0,gap:4}},[
-    Text({text:'Power',style:{fontSize:24,color:'text'}}),
-    Text({text:'Sleep and wake status',style:{fontSize:13,color:'textDim'}})
+View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:76,gap:10},onPress:touch},[
+  View({style:{width:'100%',height:46,display:'flex',flexDirection:'column',padding:0,gap:2}},[
+    Text({text:'Power',style:{fontSize:20,color:'text',borderRadius:0}}),
+    Text({text:'Sleep and wake status',style:{fontSize:12,color:'textDim',borderRadius:0}})
   ]),
-  View({style:{width:'100%',height:224,background:'surface',borderRadius:20,padding:0,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8}},[
-    Text({text:'CURRENT STATE',style:{fontSize:13,color:'textDim',textAlign:'center'}}),
-    Text({text:function(){return state().indexOf('awake')===0?'Awake':state().indexOf('sleep')===0?'Asleep':'Attention';},style:{fontSize:40,color:'success',textAlign:'center'}}),
-    Text({text:function(){return state();},style:{fontSize:13,color:'textDim',longMode:'wrap',textAlign:'center'}})
+  View({style:{width:'100%',height:184,background:'surface',borderRadius:12,padding:12,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6}},[
+    Text({text:'CURRENT STATE',style:{fontSize:12,color:'textDim',textAlign:'center',borderRadius:0}}),
+    Text({text:function(){return state().indexOf('awake')===0?'Awake':state().indexOf('sleep')===0?'Asleep':'Attention';},style:{fontSize:32,color:'success',textAlign:'center',borderRadius:0}}),
+    Text({text:function(){return state();},style:{fontSize:12,color:'textDim',longMode:'wrap',textAlign:'center',borderRadius:0}})
   ]),
-  View({style:{width:'100%',height:96,display:'flex',flexDirection:'column',padding:0,gap:8}},[
-    Button({title:'Keep awake',style:{width:'100%',height:56,background:'accent',borderRadius:999},onPress:touch}),
-    Text({text:'Sleeps after 15 seconds idle',style:{width:'100%',fontSize:13,color:'textDim',textAlign:'center'}})
+  View({style:{width:'100%',height:74,display:'flex',flexDirection:'column',padding:0,gap:6}},[
+    Button({title:'Keep awake',style:{width:'100%',height:48,background:'accent',borderRadius:12},onPress:touch}),
+    Text({text:'Sleeps after 15 seconds idle',style:{width:'100%',fontSize:12,color:'textDim',textAlign:'center',borderRadius:0}})
   ])
 ]);
 if(netStatus!==0)state.set('WiFi deinit error '+netStatus);

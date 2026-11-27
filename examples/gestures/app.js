@@ -1,5 +1,5 @@
 /**
- * r21 gesture demo — 2x2 cards (flex rows), one gesture each, plus a status
+ * r21 gesture demo -- 2x2 cards (flex rows), one gesture each, plus a status
  * bar. Pan is shown as a live bar (width signal) instead of a draggable
  * square: x/y are ignored inside a flex container.
  *
@@ -11,7 +11,7 @@ lume.theme.set({
     bg: '#0B1E3F', card: '#1B3A5C', line: '#5B82B0',
     accent: '#F0A030', hot: '#E05A3A'
   },
-  radius: 14
+  radius: 12
 });
 
 var status = signal('ready');
@@ -30,13 +30,13 @@ function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
 function card(children) {
   return View({ style: {
     flexGrow: 1, height: '100%',
-    background: 'card', borderColor: 'line', borderWidth: 1,
+    background: 'card', borderColor: 'line', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'column',
     alignItems: 'start', justifyContent: 'start',
-    padding: 14, gap: 12, scroll: 'none'   /* gestures win over scrolling */
+    padding: 10, gap: 6, scroll: 'none'   /* gestures win over scrolling */
   } }, children);
 }
-function title(t) { return Text({ text: t, style: {} }); }
+function title(t) { return Text({ text: t, style: { fontSize: 14, borderRadius: 0 } }); }
 
 /* ---- tap: count ---- */
 var tapCard = card([
@@ -89,25 +89,25 @@ lume.gesture.on(panCard, 'pan', function (e) {
 });
 lume.gesture.on(panCard, 'panend', function (e) { echo(e); });
 
-/* ---- root: title + 2x2 grid + status bar, all flex ---- */
+/* ---- root: title + 2x2 grid + status bar, all flex inside [76, 404] ---- */
 var gridRow = function (a, b) {
   return View({ style: {
     width: '100%', flexGrow: 1,
-    display: 'flex', flexDirection: 'row', gap: 12
+    display: 'flex', flexDirection: 'row', gap: 8
   } }, [a, b]);
 };
 
 View({ style: {
   width: '100%', height: '100%', background: 'bg', scroll: 'none',
-  display: 'flex', flexDirection: 'column', padding: 40, gap: 12
+  display: 'flex', flexDirection: 'column', padding: 76, gap: 8
 } }, [
-  Text({ text: 'Gesture lab r21', style: {} }),
+  Text({ text: 'Gesture lab r21', style: { fontSize: 14, height: 20, borderRadius: 0 } }),
   gridRow(tapCard, swipeCard),
   gridRow(longCard, panCard),
-  View({ style: { width: '100%', height: 44,
-    background: 'card', borderColor: 'line', borderWidth: 1,
+  View({ style: { width: '100%', height: 36,
+    background: 'card', borderColor: 'line', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', alignItems: 'center',
-    paddingLeft: 12, scroll: 'none' } }, [
-    Text({ text: function () { return 'last: ' + status(); }, style: {} })
+    paddingLeft: 10, scroll: 'none' } }, [
+    Text({ text: function () { return 'last: ' + status(); }, style: { fontSize: 13, borderRadius: 0 } })
   ])
 ]);
