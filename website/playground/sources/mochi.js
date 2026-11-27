@@ -1,5 +1,5 @@
 /**
- * mochi — programmatic mascot expressions, ported from
+ * mochi -- programmatic mascot expressions, ported from
  * https://github.com/prabhavalabs/mochi (web/mochi.js reference
  * implementation, MIT license) to the Lume JS app API.
  *
@@ -389,13 +389,13 @@ View({ style: { width: '100%', height: '100%', background: COLORS.bg, scroll: 'n
     return (i < 10 ? '0' : '') + i + ' / ' + STATES.length;
   }, style: { x: 384, y: 8, width: 84, height: 20, textAlign: 'right' } }),
   Text({ text: function () { return STATES[stateIdx()].name; },
-    style: { x: 16, y: 408, width: 280, height: 24 } }),
+    style: { x: 84, y: 298, width: 312, height: 24, fontSize: 16 } }),
   Text({ text: function () { return STATES[stateIdx()].detail; },
-    style: { x: 16, y: 436, width: 348, height: 36 } }),
+    style: { x: 84, y: 322, width: 312, height: 24, fontSize: 12 } }),
   Button({ title: '<', onPress: function () { step(-1); },
-    style: { x: 376, y: 410, width: 46, height: 58, background: COLORS.btn, borderRadius: 10 } }),
+    style: { x: 84, y: 352, width: 80, height: 48, background: COLORS.btn, borderRadius: 10 } }),
   Button({ title: '>', onPress: function () { step(1); },
-    style: { x: 430, y: 410, width: 46, height: 58, background: COLORS.btn, borderRadius: 10 } })
+    style: { x: 316, y: 352, width: 80, height: 48, background: COLORS.btn, borderRadius: 10 } })
 ]);
 
 lume.system.setInterval(tick, 50);
