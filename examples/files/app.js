@@ -15,8 +15,8 @@ lume.theme.set({ colors: {
   text: '#F2F7FB', textDim: '#9EB3C6', accent: '#40D8B0', danger: '#FF6B79', success: '#40D8B0'
 }, radius: 12, spacing: 12 });
 
-const ROW_H = 48;
-const LIST_H = 204;
+const ROW_H = 52;
+const LIST_H = 212;
 const PREVIEW_ROWS = 7;
 
 /* ============ State ============ */
@@ -335,7 +335,7 @@ const root = View({ style: {
     /* Virtualized file list (<= 4.2 visible rows -> <= 28 live row nodes) */
     List({
       items: entries, itemHeight: ROW_H, overscan: 1,
-      style: { position: 'absolute', x: 4, y: 56, width: 320, height: LIST_H, background: '#09101A', scrollbar: 'off' },
+      style: { position: 'absolute', x: 4, y: 54, width: 320, height: LIST_H, background: '#09101A', scrollbar: 'off' },
       renderItem: function (e) {
         var rowKids = [];
         if (hasImageApi) {
@@ -350,7 +350,7 @@ const root = View({ style: {
         rowKids.push(Button({
           title: 'DEL',
           style: {
-            width: 44, height: 34, borderRadius: 8,
+            width: 48, height: 48, borderRadius: 8,
             background: '#2A1720', borderColor: '#692C3B', borderWidth: 1,
             color: '#FF6B79', fontSize: 11
           },
@@ -363,22 +363,22 @@ const root = View({ style: {
             borderColor: function () { return selected() === e.name ? '#34A88B' : '#233245'; },
             borderWidth: 1, borderRadius: 12,
             display: 'flex', flexDirection: 'row', alignItems: 'center',
-            paddingLeft: 8, paddingRight: 8, gap: 8, scroll: 'none'
+            paddingLeft: 8, paddingRight: 4, gap: 8, scroll: 'none'
           },
           onPress: function () { openEntry(e); }
         }, rowKids);
       }
     }),
 
-    /* Bottom action row: New Dir / View / Delete (danger isolated) */
+    /* Bottom action row: New Dir / View / Delete (48px tap targets, danger isolated) */
     View({ style: {
-      position: 'absolute', x: 4, y: 264, width: 320, height: 58,
+      position: 'absolute', x: 4, y: 272, width: 320, height: 52,
       display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, scroll: 'none'
     } }, [
       Button({
         title: 'NEW',
         style: {
-          flexGrow: 1, height: 44, borderRadius: 12,
+          flexGrow: 1, height: 48, borderRadius: 12,
           background: '#16202E', borderColor: '#233245', borderWidth: 1,
           color: '#F2F7FB', fontSize: 13
         },
@@ -387,7 +387,7 @@ const root = View({ style: {
       Button({
         title: 'VIEW',
         style: {
-          flexGrow: 1, height: 44, borderRadius: 12,
+          flexGrow: 1, height: 48, borderRadius: 12,
           background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
           color: '#F2F7FB', fontSize: 13
         },
@@ -396,7 +396,7 @@ const root = View({ style: {
       Button({
         title: 'DEL',
         style: {
-          flexGrow: 1, height: 44, borderRadius: 12,
+          flexGrow: 1, height: 48, marginLeft: 16, borderRadius: 12,
           background: '#2A1720', borderColor: '#7A3240', borderWidth: 1,
           color: '#FF6B79', fontSize: 13
         },
