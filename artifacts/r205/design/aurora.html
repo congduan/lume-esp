@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — Aurora Watchface v2 (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    --bg-0: #000000;
+    --bg-1: #040B14;
+    --text-hi: #F4FBFF;
+    --text-mid: #A8C4D8;
+    --accent: #40D8B0;
+    --warn: #FFD78E;
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+
+  html, body {
+    width: 480px; height: 480px;
+    background: var(--bg-0);
+    overflow: hidden;
+    font-family: var(--font-sans);
+    color: var(--text-hi);
+    user-select: none;
+  }
+
+  .watch-screen {
+    position: relative;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 50%, #071321 0%, #030A14 70%, #000000 100%);
+    box-shadow: inset 0 0 0 1.5px rgba(130, 198, 210, 0.2);
+  }
+
+  .aurora-svg {
+    position: absolute;
+    inset: 0;
+    width: 480px; height: 480px;
+  }
+
+  /* Top date complication inside safe zone */
+  .date-slot {
+    position: absolute;
+    left: 110px; top: 82px;
+    width: 260px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: #C8E2EE;
+    text-transform: uppercase;
+  }
+
+  /* Crisp isolated time hero -- zero glow overlap */
+  .time-stage {
+    position: absolute;
+    left: 76px; top: 192px;
+    width: 328px; height: 96px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .time-digits {
+    font-size: 76px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    color: #F4FBFF;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.72);
+  }
+
+  .time-colon {
+    display: inline-flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 16px;
+    margin: 0 10px;
+    vertical-align: middle;
+  }
+  .time-colon i {
+    display: block;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: #5CE4C2;
+  }
+
+  /* Bottom complications row: Battery slot + Exception-only WiFi badge */
+  .bottom-comps {
+    position: absolute;
+    left: 108px; top: 360px;
+    width: 264px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .comp-badge {
+    height: 28px;
+    padding: 0 11px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .comp-batt {
+    background: rgba(14, 30, 44, 0.86);
+    border: 1px solid rgba(64, 216, 176, 0.34);
+    color: #C8ECE2;
+  }
+
+  .comp-warn {
+    background: rgba(44, 33, 18, 0.86);
+    border: 1px solid rgba(255, 215, 142, 0.45);
+    color: #FFD78E;
+  }
+</style>
+</head>
+<body>
+<div class="watch-screen" role="application" aria-label="Aurora Watchface">
+  <svg class="aurora-svg" viewBox="0 0 480 480" fill="none">
+    <defs>
+      <clipPath id="innerDial">
+        <circle cx="240" cy="240" r="215"/>
+      </clipPath>
+      <linearGradient id="ribbonTop" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#0B2E3B" stop-opacity="0"/>
+        <stop offset="22%" stop-color="#1C6E76" stop-opacity="0.72"/>
+        <stop offset="50%" stop-color="#40D8B0" stop-opacity="0.92"/>
+        <stop offset="78%" stop-color="#358DA6" stop-opacity="0.72"/>
+        <stop offset="100%" stop-color="#0D2640" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="ribbonTopSoft" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#0C2A3B" stop-opacity="0"/>
+        <stop offset="25%" stop-color="#195266" stop-opacity="0.55"/>
+        <stop offset="55%" stop-color="#2D9699" stop-opacity="0.7"/>
+        <stop offset="85%" stop-color="#1A4B6C" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="#0A1F33" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="ribbonBot" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#0C223A" stop-opacity="0"/>
+        <stop offset="24%" stop-color="#275D7F" stop-opacity="0.65"/>
+        <stop offset="52%" stop-color="#53B8B8" stop-opacity="0.82"/>
+        <stop offset="78%" stop-color="#2D7E87" stop-opacity="0.62"/>
+        <stop offset="100%" stop-color="#0A2233" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="auroraBlur" filterUnits="userSpaceOnUse" x="0" y="0" width="480" height="480">
+        <feGaussianBlur stdDeviation="16"/>
+      </filter>
+      <filter id="auroraCrisp" filterUnits="userSpaceOnUse" x="0" y="0" width="480" height="480">
+        <feGaussianBlur stdDeviation="6"/>
+      </filter>
+    </defs>
+
+    <!-- Subtle circular dial rim -->
+    <circle cx="240" cy="240" r="215" stroke="rgba(116,184,202,0.22)" stroke-width="1.5"/>
+
+    <!-- Chord-constrained aurora ribbons: completely separated above & below the central clock band -->
+    <g clip-path="url(#innerDial)">
+      <!-- Subtle starlight dust -->
+      <circle cx="152" cy="108" r="1.3" fill="#BCE8F2" opacity="0.55"/>
+      <circle cx="328" cy="112" r="1.4" fill="#BCE8F2" opacity="0.5"/>
+      <circle cx="114" cy="296" r="1.2" fill="#BCE8F2" opacity="0.45"/>
+      <circle cx="366" cy="290" r="1.3" fill="#BCE8F2" opacity="0.5"/>
+
+      <!-- Upper aurora curtain (y ~ 124..174, chord-tapered <= 360px wide, zero filter clipping) -->
+      <path d="M 74 168 Q 162 118 244 146 T 406 134" stroke="url(#ribbonTopSoft)" stroke-width="44" stroke-linecap="round" filter="url(#auroraBlur)"/>
+      <path d="M 96 160 Q 170 126 246 148 T 386 140" stroke="url(#ribbonTop)" stroke-width="15" stroke-linecap="round" filter="url(#auroraCrisp)"/>
+      <path d="M 122 154 Q 186 132 248 148 T 360 144" stroke="#8EF0D6" stroke-opacity="0.55" stroke-width="4" stroke-linecap="round" filter="url(#auroraCrisp)"/>
+
+      <!-- Calm dark midnight well for the digits (y = 190..290) -- zero glow wash over numerals -->
+      <ellipse cx="240" cy="240" rx="164" ry="52" fill="#040C16" opacity="0.92"/>
+
+      <!-- Lower aurora curtain (y ~ 308..348, chord-tapered <= 340px wide) -->
+      <path d="M 88 328 Q 176 350 252 320 T 392 332" stroke="url(#ribbonBot)" stroke-width="38" stroke-linecap="round" filter="url(#auroraBlur)"/>
+      <path d="M 110 326 Q 182 342 252 324 T 370 330" stroke="url(#ribbonTop)" stroke-width="11" stroke-linecap="round" filter="url(#auroraCrisp)"/>
+      <path d="M 136 326 Q 192 338 252 325 T 346 330" stroke="#92E6D8" stroke-opacity="0.48" stroke-width="3.5" stroke-linecap="round" filter="url(#auroraCrisp)"/>
+    </g>
+  </svg>
+
+  <div class="date-slot">FRI · 27 NOV</div>
+
+  <div class="time-stage">
+    <div class="time-digits">10<span class="time-colon"><i></i><i></i></span>09</div>
+  </div>
+
+  <div class="bottom-comps">
+    <div class="comp-badge comp-batt" aria-label="Battery">
+      <svg width="16" height="10" viewBox="0 0 18 11" fill="none">
+        <rect x="0.75" y="1" width="14" height="9" rx="2" stroke="#40D8B0" stroke-width="1.5"/>
+        <rect x="2.75" y="3" width="8.5" height="5" rx="1" fill="#40D8B0"/>
+        <rect x="15.75" y="3.5" width="1.8" height="4" rx="0.8" fill="#40D8B0"/>
+      </svg>
+      <span>85%</span>
+    </div>
+
+    <div class="comp-badge comp-warn" aria-label="Offline">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFD78E" stroke-width="2.2" stroke-linecap="round">
+        <path d="M2.5 8.8a13.5 13.5 0 0 1 6.2-2.9"/>
+        <path d="M14.5 5.8a13.5 13.5 0 0 1 7 3"/>
+        <path d="M6.2 12.6a8.2 8.2 0 0 1 4.2-2.2"/>
+        <path d="M16.2 11.4a8.2 8.2 0 0 1 1.6 1.2"/>
+        <circle cx="12" cy="19.2" r="1.4" fill="#FFD78E" stroke="none"/>
+        <line x1="3" y1="3" x2="21" y2="21"/>
+      </svg>
+      <span>NO WIFI</span>
+    </div>
+  </div>
+</div>
+</body>
+</html>

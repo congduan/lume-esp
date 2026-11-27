@@ -16,8 +16,8 @@ function budget() {
   const start = ui.messages.length;
   ui.ctx.clockTick();
   const frame = ui.messages.slice(start);
-  const count = frame.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
-  assert.ok(count < 200, `clock draw calls ${count}`);
+  const count = frame.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'pathDraw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
+  assert.ok(count <= 240 && count < 200, `clock draw calls ${count}`);
   assert.ok(frame.some(m => m[0] === 'invalidate'));
   assert.ok(!frame.some(m => JSON.stringify(m).includes('NaN')));
   return count;

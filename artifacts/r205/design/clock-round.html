@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — Round Clock Refined v2 (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    --bg-0: #000000;
+    --bg-1: #060D18;
+    --text-hi: #F2F7FB;
+    --text-mid: #9EB3C6;
+    --accent: #40D8B0;
+    --second: #FF8E6E;
+    --warn: #FFD78E;
+    --bezel-hi: #5588AA;
+    --bezel-mid: #355D7A;
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", -apple-system, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+
+  html, body {
+    width: 480px; height: 480px;
+    background: var(--bg-0);
+    overflow: hidden;
+    font-family: var(--font-sans);
+    color: var(--text-hi);
+    user-select: none;
+  }
+
+  .watch-screen {
+    position: relative;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 42%, #0F1D30 0%, #07101C 62%, #000000 94%);
+  }
+
+  .dial-svg {
+    position: absolute;
+    inset: 0;
+    width: 480px; height: 480px;
+  }
+
+  /* Upper sync complication inside safe dial (replaces clipped corner NO WIFI) */
+  .sync-comp {
+    position: absolute;
+    left: 186px; top: 132px;
+    width: 108px; height: 26px;
+    border-radius: 999px;
+    background: rgba(24, 34, 48, 0.88);
+    border: 1px solid rgba(255, 215, 142, 0.42);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--warn);
+  }
+
+  /* Lower digital time complication -- unified geometric sans, tabular digits */
+  .digital-comp {
+    position: absolute;
+    left: 164px; top: 300px;
+    width: 152px; height: 34px;
+    border-radius: 999px;
+    background: rgba(16, 26, 40, 0.9);
+    border: 1px solid rgba(158, 179, 198, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--text-hi);
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+<div class="watch-screen" role="application" aria-label="Round Analog Clock">
+  <svg class="dial-svg" viewBox="0 0 480 480" fill="none">
+    <defs>
+      <linearGradient id="bezelGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#6DA5C7"/>
+        <stop offset="45%" stop-color="#355D7A"/>
+        <stop offset="100%" stop-color="#5282A3"/>
+      </linearGradient>
+    </defs>
+
+    <!-- Elevated metallic bezel (brightened one notch) -->
+    <circle cx="240" cy="240" r="218" stroke="url(#bezelGrad)" stroke-width="3.5"/>
+    <circle cx="240" cy="240" r="211" stroke="rgba(158,195,218,0.22)" stroke-width="1"/>
+    <circle cx="240" cy="240" r="142" stroke="rgba(158,179,198,0.08)" stroke-width="1"/>
+
+    <!-- 60 precision chapter ticks injected via JS -->
+    <g id="ticks"></g>
+
+    <!-- Unified geometric sans hour numerals at r=160 (minute hand stops at r=130 -> 30px clearance, ZERO 3-o'clock collision!) -->
+    <g fill="#EEF8F8" font-family="Liberation Sans, Nimbus Sans, sans-serif" font-weight="700" font-size="22" text-anchor="middle">
+      <text x="240" y="96">12</text>
+      <text x="396" y="248">3</text>
+      <text x="240" y="400">6</text>
+      <text x="84" y="248">9</text>
+    </g>
+
+    <!-- Watch hands showing 10:15:36 to explicitly prove ZERO collision at 3 o'clock! -->
+    <!-- Hour hand (10:15 -> 307.5 deg, length 90px) -->
+    <g transform="rotate(307.5 240 240)">
+      <line x1="240" y1="240" x2="240" y2="150" stroke="#EEF8F8" stroke-width="8" stroke-linecap="round"/>
+      <line x1="240" y1="224" x2="240" y2="160" stroke="#0B1522" stroke-width="2" stroke-linecap="round"/>
+    </g>
+
+    <!-- Minute hand (15m -> 90 deg pointing directly toward 3, length 130px -> tip at x=370 vs '3' at x=396: crisp clearance!) -->
+    <g transform="rotate(90 240 240)">
+      <line x1="240" y1="240" x2="240" y2="110" stroke="#40D8B0" stroke-width="5" stroke-linecap="round"/>
+      <line x1="240" y1="226" x2="240" y2="116" stroke="#B6FAEA" stroke-width="1.5" stroke-linecap="round"/>
+    </g>
+
+    <!-- Second hand (36s -> 216 deg, tip 144px, tail 26px) -->
+    <g transform="rotate(216 240 240)">
+      <line x1="240" y1="266" x2="240" y2="96" stroke="#FF8E6E" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="240" cy="264" r="3.2" fill="#FF8E6E"/>
+    </g>
+
+    <!-- Center jewelled pinion cap -->
+    <circle cx="240" cy="240" r="8" fill="#FF8E6E"/>
+    <circle cx="240" cy="240" r="3.5" fill="#0B1420"/>
+  </svg>
+
+  <div class="sync-comp" aria-label="Sync Status">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFD78E" stroke-width="2.2" stroke-linecap="round">
+      <path d="M2.5 8.8a13.5 13.5 0 0 1 6.2-2.9"/>
+      <path d="M14.5 5.8a13.5 13.5 0 0 1 7 3"/>
+      <circle cx="12" cy="19.2" r="1.4" fill="#FFD78E" stroke="none"/>
+      <line x1="3" y1="3" x2="21" y2="21"/>
+    </svg>
+    <span>NO WIFI</span>
+  </div>
+
+  <div class="digital-comp">10:15:36</div>
+</div>
+
+<script>
+  const ticksG = document.getElementById('ticks');
+  const ns = 'http://www.w3.org/2000/svg';
+  for (let i = 0; i < 60; i++) {
+    const isCard = i % 15 === 0;
+    const isMajor = i % 5 === 0;
+    const rOut = 205;
+    const rIn = isCard ? 185 : isMajor ? 189 : 197;
+    const rad = (i * 6 - 90) * Math.PI / 180;
+    const x1 = 240 + Math.cos(rad) * rIn;
+    const y1 = 240 + Math.sin(rad) * rIn;
+    const x2 = 240 + Math.cos(rad) * rOut;
+    const y2 = 240 + Math.sin(rad) * rOut;
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', x1.toFixed(1));
+    line.setAttribute('y1', y1.toFixed(1));
+    line.setAttribute('x2', x2.toFixed(1));
+    line.setAttribute('y2', y2.toFixed(1));
+    line.setAttribute('stroke', isCard ? '#40D8B0' : isMajor ? '#DCEAF4' : '#537691');
+    line.setAttribute('stroke-width', isCard ? '3.4' : isMajor ? '2.4' : '1.2');
+    line.setAttribute('stroke-linecap', 'round');
+    ticksG.appendChild(line);
+  }
+</script>
+</body>
+</html>

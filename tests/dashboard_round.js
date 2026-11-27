@@ -16,11 +16,16 @@ for (const imu of [undefined, { read: () => ({ ax: 1, ay: -2, az: 9, gx: 0, gy: 
   const start = ui.messages.length;
   ui.ctx.roundTick();
   const frame = ui.messages.slice(start);
-  const count = frame.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
-  assert.ok(count < 200, `dashboard draw calls ${count}`);
+  const count = frame.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'pathDraw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
+  assert.ok(count <= 240 && count < 200, `dashboard draw calls ${count}`);
   assert.ok(frame.some(m => m[0] === 'invalidate'));
   assert.ok(!frame.some(m => JSON.stringify(m).includes('NaN')));
   assert.equal(ui.ctx.roundData().sim, !imu);
-  console.log(`PASS dashboard_round ${imu ? 'IMU' : 'SIM'} prelude, ${count} calls/frame`);
+  console.log(`PASS dashboard_round ${imu ? 'IMU' : 'SIM'} prelude, ${count} calls/frame (<=240)`);
 }
-console.log('PASS dashboard_round relative heading and linear level mapping');
+assert.equal(pure.roundSector(0), 'N');
+assert.equal(pure.roundSector(90), 'E');
+assert.equal(pure.roundSector(180), 'S');
+assert.equal(pure.roundSector(270), 'W');
+assert.ok(source.includes("drawCardinal(c, 'S'"), 'compass S cardinal present');
+console.log('PASS dashboard_round relative heading, 360-deg cardinals, and linear level mapping');

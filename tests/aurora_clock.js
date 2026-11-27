@@ -78,5 +78,7 @@ assert.ok(ui.ctx.ac.ripple > 0, 'tap starts ripple');
 const before = ui.messages.length;
 ui.ctx.acFrame.set(ui.ctx.acFrame() + 1);
 assert.ok(countDraw(ui.messages.slice(before)) <= 35, 'ripple budget');
-console.log('PASS prelude/no IMU, per-frame draw calls max=' + maxCalls + ', ripple <=35');
+assert.ok(logic.acChordHalf(240) * 2 <= 430, 'equator chord width <= 430px');
+assert.ok(logic.acChordHalf(148) < logic.acChordHalf(240), 'chord narrows away from equator');
+console.log('PASS prelude/no IMU, per-frame draw calls max=' + maxCalls + ', ripple <=35 (budget <=240)');
 console.log('ALL AURORA CLOCK CASES PASSED');

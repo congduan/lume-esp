@@ -1,7 +1,13 @@
-/* Round clock. 480 logical pixels; all essential marks lie within R=205.
- * On the 466 panel the browser/device scales this centered design. */
-var CR_BG = '#050B15', CR_RING = '#244862', CR_TICK = '#88B5C8';
-var CR_INK = '#EEF8F8', CR_ACCENT = '#51E0C4', CR_SECOND = '#FF9A77';
+/* Round clock. 480 logical pixels; all essential marks lie within R=218.
+ * r205 refinements (from artifacts/r205/design/clock-round.html):
+ *  - Brightened metallic outer bezel (r=218) + retained 60 chapter ticks.
+ *  - Unified geometric sans numeral system (12 / 3 / 6 / 9) at r=158.
+ *  - Minute hand shortened to r=128 (30px clearance before '3', zero collision).
+ *  - NO WIFI moved from clipped corner into dedicated 12-o'clock complication
+ *    pill (wifi-off icon + status, hidden when synced) + lower digital pill. */
+var CR_BG = '#000000', CR_DIAL = '#07101C', CR_BEZEL = '#5689AC', CR_BEZEL_IN = '#294A63';
+var CR_TICK = '#537691', CR_MAJOR = '#DCEAF4', CR_INK = '#EEF8F8';
+var CR_ACCENT = '#40D8B0', CR_SECOND = '#FF8E6E';
 function clockAngles(h, m, s) {
   return { hour: (h % 12) * 30 + m * 0.5 + s / 120,
     minute: m * 6 + s * 0.1, second: s * 6 };
@@ -53,39 +59,123 @@ function clockSyncNtp() {
 }
 /* ---- r130: SNTP sync END ---- */
 
+function crPt(r, deg) {
+  var p = clockPolar(r, deg);
+  return [p[0] + 40, p[1] + 40];
+}
+
+function crBuildTicks() {
+  var minor = [], major = [], card = [];
+  for (var i = 0; i < 60; i++) {
+    var isCard = i % 15 === 0;
+    var isMaj = i % 5 === 0;
+    var p = crPt(isCard ? 185 : (isMaj ? 189 : 197), i * 6);
+    var q = crPt(205, i * 6);
+    if (isCard) card.push([p[0], p[1], q[0], q[1]]);
+    else if (isMaj) major.push([p[0], p[1], q[0], q[1]]);
+    else minor.push([p[0], p[1], q[0], q[1]]);
+  }
+  return { minor: minor, major: major, card: card };
+}
+var CR_TICKS = crBuildTicks();
+
+function crSvgBytes(svg) {
+  var b = new Uint8Array(svg.length);
+  for (var i = 0; i < svg.length; i++) b[i] = svg.charCodeAt(i);
+  return b.buffer;
+}
+var CR_WIFIOFF_SVG = crSvgBytes(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24">' +
+  '<path d="M 3 9 A 13 13 0 0 1 9 6" fill="none" stroke="#FFD78E" stroke-width="2.2" stroke-linecap="round"/>' +
+  '<path d="M 15 6 A 13 13 0 0 1 21 9" fill="none" stroke="#FFD78E" stroke-width="2.2" stroke-linecap="round"/>' +
+  '<path d="M 6.5 12.6 A 8.2 8.2 0 0 1 10.5 10.5" fill="none" stroke="#FFD78E" stroke-width="2.1" stroke-linecap="round"/>' +
+  '<circle cx="12" cy="19" r="1.5" fill="#FFD78E"/>' +
+  '<line x1="3" y1="3" x2="21" y2="21" stroke="#FFD78E" stroke-width="2.2" stroke-linecap="round"/>' +
+  '</svg>'
+);
+
 function clockTick() {
   if (lume._nowMs() >= clockNextSyncMs) clockSyncNtp();
   clockState.set(clockTime(new Date()));  /* genuine device/wall time, never fabricated */
+  if (typeof crSyncPill === 'number') {
+    lume.setAttr(crSyncPill, 5, clockSyncStatus() === '' ? 0 : 1);
+  }
 }
+
 function clockDraw(c) {
   var t = clockState(), a = clockAngles(t.h, t.m, t.s);
-  c.clear(); c.fillColor(CR_BG); c.fillRect(0, 0, 400, 400);
-  c.arc(200, 200, 186, 0, 360, 2, CR_RING);
-  for (var i = 0; i < 60; i++) {
-    var major = i % 5 === 0;
-    var p = clockPolar(major ? 163 : 173, i * 6), q = clockPolar(182, i * 6);
-    c.line(p[0], p[1], q[0], q[1], major ? CR_INK : CR_TICK, major ? 3 : 1);
+  c.clear();
+  c.fillColor(CR_BG); c.fillRect(0, 0, 480, 480);
+  c.fillCircle(240, 240, 224, CR_DIAL);
+
+  /* Brightened metallic bezel + subtle inner chapter track */
+  c.arc(240, 240, 218, 0, 360, 3, CR_BEZEL);
+  c.arc(240, 240, 211, 0, 360, 1, CR_BEZEL_IN);
+  c.arc(240, 240, 142, 0, 360, 1, '#122234');
+
+  if (!c.crPaths) {
+    c.crPaths = [
+      c.retainSegments(CR_TICKS.minor, CR_TICK, 1),
+      c.retainSegments(CR_TICKS.major, CR_MAJOR, 2),
+      c.retainSegments(CR_TICKS.card, CR_ACCENT, 3)
+    ];
   }
-  var pH = clockPolar(91, a.hour), pM = clockPolar(138, a.minute);
-  var pS = clockPolar(153, a.second), tail = clockPolar(23, a.second + 180);
-  c.line(200, 200, pH[0], pH[1], CR_INK, 7);
-  c.line(200, 200, pM[0], pM[1], CR_ACCENT, 4);
+  c.drawPath(c.crPaths[0]);
+  c.drawPath(c.crPaths[1]);
+  c.drawPath(c.crPaths[2]);
+
+  /* Hour baton (r=90, dark skeleton core) */
+  var pH = crPt(90, a.hour), pHIn = crPt(18, a.hour), pHOut = crPt(80, a.hour);
+  c.line(240, 240, pH[0], pH[1], CR_INK, 8);
+  c.line(pHIn[0], pHIn[1], pHOut[0], pHOut[1], '#0C1726', 2);
+
+  /* Minute baton shortened to r=128 -> 30px crisp clearance before '3' at r=158 */
+  var pM = crPt(128, a.minute), pMIn = crPt(16, a.minute), pMOut = crPt(122, a.minute);
+  c.line(240, 240, pM[0], pM[1], CR_ACCENT, 5);
+  c.line(pMIn[0], pMIn[1], pMOut[0], pMOut[1], '#B6FAEA', 1);
+
+  /* Counterbalanced sweep second hand */
+  var pS = crPt(142, a.second), tail = crPt(26, a.second + 180);
   c.line(tail[0], tail[1], pS[0], pS[1], CR_SECOND, 2);
-  c.circle(200, 200, 6, CR_SECOND);
-  c.text(185, 105, '12', CR_INK, 14);
-  c.text(287, 194, '3', CR_INK, 14);
-  c.text(195, 290, '6', CR_INK, 14);
-  c.text(102, 194, '9', CR_INK, 14);
+  c.fillCircle(tail[0], tail[1], 3, CR_SECOND);
+
+  /* Jewelled center pinion cap */
+  c.fillCircle(240, 240, 8, CR_SECOND);
+  c.fillCircle(240, 240, 3, '#0B1420');
 }
+
 var clockRoot = View({ style: { width: 480, height: 480, background: CR_BG, scroll: 'none' } });
-Canvas({ parent: clockRoot, width: 400, height: 400, onDraw: clockDraw,
-  style: { position: 'absolute', x: 40, y: 40 } });
-Text({ parent: clockRoot, text: function () { return clockDigital(clockState()); },
-  style: { position: 'absolute', x: 137, y: 266, width: 206, height: 36,
-    fontSize: 28, color: CR_INK, textAlign: 'center' } });
-/* r130: quiet ASCII sync status in the top-left corner; empty once synced. */
-Text({ parent: clockRoot, text: function () {
+Canvas({ parent: clockRoot, width: 480, height: 480, onDraw: clockDraw,
+  style: { position: 'absolute', x: 0, y: 0 } });
+
+/* Unified geometric sans hour numerals at r=158 (zero collision with minute hand!) */
+Text({ parent: clockRoot, text: '12', style: { position: 'absolute', x: 216, y: 74, width: 48, height: 26, fontSize: 22, color: CR_INK, textAlign: 'center' } });
+Text({ parent: clockRoot, text: '3',  style: { position: 'absolute', x: 374, y: 228, width: 44, height: 26, fontSize: 22, color: CR_INK, textAlign: 'center' } });
+Text({ parent: clockRoot, text: '6',  style: { position: 'absolute', x: 216, y: 382, width: 48, height: 26, fontSize: 22, color: CR_INK, textAlign: 'center' } });
+Text({ parent: clockRoot, text: '9',  style: { position: 'absolute', x: 62,  y: 228, width: 44, height: 26, fontSize: 22, color: CR_INK, textAlign: 'center' } });
+
+/* Upper 12-o'clock sync complication pill (exception-only, strictly inside dial) */
+var crSyncKids = [];
+var crWifiIcon = Image({ src: CR_WIFIOFF_SVG, style: { position: 'absolute', x: 14, y: 6, width: 13, height: 13 } });
+if (crWifiIcon > 0) crSyncKids.push(crWifiIcon);
+crSyncKids.push(Text({ text: function () {
   return clockWallValid ? '' : clockSyncStatus();
-}, style: { position: 'absolute', x: 8, y: 8, width: 120, height: 24,
-  fontSize: 14, color: CR_TICK } });
+}, style: { position: 'absolute', x: 30, y: 4, width: 72, height: 18, fontSize: 13, color: '#FFD78E', textAlign: 'left' } }));
+var crSyncPill = View({ parent: clockRoot, style: {
+  position: 'absolute', x: 184, y: 132, width: 112, height: 26,
+  borderRadius: 13, background: '#162231', borderWidth: 1, borderColor: '#6D5B3A',
+  scroll: 'none'
+} }, crSyncKids);
+
+/* Lower digital time complication pill -- unified sans, cleanly above '6' */
+View({ parent: clockRoot, style: {
+  position: 'absolute', x: 164, y: 300, width: 152, height: 34,
+  borderRadius: 17, background: '#101A28', borderWidth: 1, borderColor: '#2A3F56',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
+} }, [
+  Text({ text: function () { return clockDigital(clockState()); },
+    style: { fontSize: 20, color: CR_INK, textAlign: 'center' } })
+]);
+
+clockTick();
 lume.system.setInterval(clockTick, 1000);
