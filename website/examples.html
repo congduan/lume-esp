@@ -1,683 +1,939 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><meta name="description" content="Browse the Lume example gallery: real apps from the repository."><title>Examples · Lume</title><link rel="canonical" href="https://congduan.github.io/lume-esp/examples.html"><meta property="og:type" content="website"><meta property="og:site_name" content="Lume"><meta property="og:url" content="https://congduan.github.io/lume-esp/examples.html"><meta property="og:title" content="Examples · Lume"><meta property="og:description" content="Browse the Lume example gallery: games, music, sensors, utilities, and more."><meta property="og:image" content="https://congduan.github.io/lume-esp/assets/og-cover.png"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Examples · Lume"><meta name="twitter:description" content="Browse the Lume example gallery: games, music, sensors, utilities, and more."><link rel="alternate" hreflang="zh" href="https://congduan.github.io/lume-esp/examples.html?lang=zh"><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/style.css"><script defer src="assets/site.js"></script></head><body><a class="skip" href="#main">Skip to content</a><header class="site-header"><div class="shell nav"><a class="brand" href="index.html" aria-label="Lume home"><span class="brand-mark">L</span> lume<span class="brand-dot">.</span></a><nav class="nav-links" aria-label="Main navigation"><a href="index.html" aria-current="false"><span data-en="Overview" data-zh="概览">Overview</span></a><a href="guide.html" aria-current="false"><span data-en="Guide" data-zh="上手">Guide</span></a><a href="api.html" aria-current="false"><span data-en="API" data-zh="API">API</span></a><a href="examples.html" aria-current="true"><span data-en="Examples" data-zh="示例">Examples</span></a><a href="faq.html" aria-current="false"><span data-en="FAQ" data-zh="问答">FAQ</span></a></nav><div class="nav-actions"><button id="lang-toggle" type="button" aria-label="Switch language">中文</button><button id="theme-toggle" type="button" aria-label="Switch color theme">◐</button></div></div></header><main id="main"><section class="page-intro shell reveal"><span class="eyebrow">03 / EXAMPLES</span><h1 data-en="Explore the example gallery." data-zh="浏览示例画廊。">Explore the example gallery.</h1><p class="lead" data-en="Every card maps to a registered playground app and a real file in examples/. Some require board peripherals or a prepared TF card." data-zh="每张卡片对应一个已注册的 playground app 和 examples/ 中的真实文件。部分示例需要板载外设或预先准备的 TF 卡。">Every card maps to a registered playground app and a real file in examples/. Some require board peripherals or a prepared TF card.</p></section><section class="section shell"><!-- examples-gallery:start -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="Browse the Lume example gallery: real apps from the repository.">
+  <title>Examples · Lume</title>
+  <link rel="canonical" href="https://congduan.github.io/lume-esp/examples.html">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Lume">
+  <meta property="og:url" content="https://congduan.github.io/lume-esp/examples.html">
+  <meta property="og:title" content="Examples · Lume">
+  <meta property="og:description" content="Browse the Lume example gallery: games, music, sensors, utilities, and more.">
+  <meta property="og:image" content="https://congduan.github.io/lume-esp/assets/og-cover.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Examples · Lume">
+  <meta name="twitter:description" content="Browse the Lume example gallery: games, music, sensors, utilities, and more.">
+  <link rel="alternate" hreflang="zh" href="https://congduan.github.io/lume-esp/examples.html?lang=zh">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script defer src="assets/site.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="shell nav">
+      <a class="brand" href="index.html" aria-label="Lume home"><span class="brand-mark">L</span>lume<span class="brand-dot">.</span></a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="index.html" aria-current="false"><span data-en="Overview" data-zh="概览">Overview</span></a>
+        <a href="guide.html" aria-current="false"><span data-en="Guide" data-zh="上手">Guide</span></a>
+        <a href="api.html" aria-current="false"><span data-en="API" data-zh="API">API</span></a>
+        <a href="examples.html" aria-current="true"><span data-en="Examples" data-zh="示例">Examples</span></a>
+        <a href="playground/index.html"><span data-en="Playground" data-zh="在线体验">Playground</span></a>
+        <a href="faq.html" aria-current="false"><span data-en="FAQ" data-zh="问答">FAQ</span></a>
+      </nav>
+      <div class="nav-actions">
+        <a class="gh-badge-link" href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener" aria-label="Lume GitHub stars">
+          <img src="https://img.shields.io/github/stars/congduan/lume-esp?style=flat&amp;logo=github&amp;label=Stars&amp;color=08788c&amp;labelColor=0f1720" alt="GitHub stars" height="20">
+        </a>
+        <button id="lang-toggle" type="button" aria-label="Switch language">中文</button>
+        <button id="theme-toggle" type="button" aria-label="Switch color theme">◐</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="page-intro shell reveal">
+      <span class="eyebrow">03 / EXAMPLES</span>
+      <h1 data-en="Explore the example gallery." data-zh="浏览示例画廊。">Explore the example gallery.</h1>
+      <p class="lead" data-en="Every card maps to a registered playground app and a real file in examples/. Some require board peripherals or a prepared TF card." data-zh="每张卡片对应一个已注册的 Playground 应用和 examples/ 中的真实源码。部分示例需要板载外设或预先准备的 TF 卡。">Every card maps to a registered playground app and a real file in examples/. Some require board peripherals or a prepared TF card.</p>
+      <div class="intro-meta">
+        <span class="shots-honest-badge" data-en="Real firmware, rendered by esp32sim — not mockups" data-zh="标注 esp32sim 的缩略图为真实固件渲染，非效果图">Real firmware, rendered by esp32sim — not mockups</span>
+      </div>
+    </section>
+
+    <section class="section shell" style="padding-top:24px">
+      <div class="examples-toolbar" role="region" aria-label="Filter examples">
+        <input id="examples-search" type="search" placeholder="Filter by app name, path, or description..." data-placeholder-en="Filter by app name, path, or description..." data-placeholder-zh="按应用名、路径或简介筛选..." autocomplete="off">
+        <div class="filter-pills" role="group" aria-label="Example categories">
+          <button type="button" class="filter-btn" data-ex-filter="all" aria-pressed="true" data-en="All apps" data-zh="全部应用">All apps</button>
+          <button type="button" class="filter-btn" data-ex-filter="shot" aria-pressed="false" data-en="esp32sim captures" data-zh="固件实拍截图">esp32sim captures</button>
+          <button type="button" class="filter-btn" data-ex-filter="hw" aria-pressed="false" data-en="Hardware APIs" data-zh="含硬件外设">Hardware APIs</button>
+        </div>
+        <span id="examples-count" class="fine"></span>
+      </div>
+
+      <!-- examples-gallery:start -->
 <div class="examples-grid">
-<article class="example-card card reveal">
-<div class="example-index">01 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="counter" data-shot="1" data-hw="0" data-search="counter counter 计数器 tap-driven counter 点击计数">
+<div class="example-thumb"><img src="assets/shots/counter.webp" width="280" height="280" loading="lazy" alt="Counter - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">01 / EXAMPLE</div></div>
 <h2>Counter / 计数器</h2>
 <p data-en="Tap-driven counter" data-zh="点击计数">Tap-driven counter</p>
-<pre><code>examples/counter/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/counter/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/counter/app.js</code><button type="button" class="copy-btn" data-copy="examples/counter/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/counter/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">02 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="clock" data-shot="1" data-hw="0" data-search="clock clock 时钟 time and alarms 时间与闹钟">
+<div class="example-thumb"><img src="assets/shots/clock.webp" width="280" height="280" loading="lazy" alt="Clock - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">02 / EXAMPLE</div></div>
 <h2>Clock / 时钟</h2>
 <p data-en="Time and alarms" data-zh="时间与闹钟">Time and alarms</p>
-<pre><code>examples/clock/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/clock/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/clock/app.js</code><button type="button" class="copy-btn" data-copy="examples/clock/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/clock/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">03 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="clock_round" data-shot="0" data-hw="0" data-search="clock_round round clock 圆屏时钟 round analog clock 圆屏模拟表盘">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">12</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">03 / EXAMPLE</div></div>
 <h2>Round clock / 圆屏时钟</h2>
 <p data-en="Round analog clock" data-zh="圆屏模拟表盘">Round analog clock</p>
-<pre><code>examples/clock_round/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/clock_round/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/clock_round/app.js</code><button type="button" class="copy-btn" data-copy="examples/clock_round/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/clock_round/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">04 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="dashboard_round" data-shot="0" data-hw="0" data-search="dashboard_round round dashboard 圆屏仪表 relative heading and level 相对方位和水平仪">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">N</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">04 / EXAMPLE</div></div>
 <h2>Round dashboard / 圆屏仪表</h2>
 <p data-en="Relative heading and level" data-zh="相对方位和水平仪">Relative heading and level</p>
-<pre><code>examples/dashboard_round/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/dashboard_round/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/dashboard_round/app.js</code><button type="button" class="copy-btn" data-copy="examples/dashboard_round/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/dashboard_round/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">05 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="games_snake" data-shot="1" data-hw="0" data-search="games_snake snake 贪吃蛇 swipe to steer 滑动控制方向">
+<div class="example-thumb"><img src="assets/shots/games_snake.webp" width="280" height="280" loading="lazy" alt="Snake - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">05 / EXAMPLE</div></div>
 <h2>Snake / 贪吃蛇</h2>
 <p data-en="Swipe to steer" data-zh="滑动控制方向">Swipe to steer</p>
-<pre><code>examples/games_snake/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/games_snake/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/games_snake/app.js</code><button type="button" class="copy-btn" data-copy="examples/games_snake/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/games_snake/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">06 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="games_2048" data-shot="1" data-hw="0" data-search="games_2048 2048 2048 merge the tiles 合并方块">
+<div class="example-thumb"><img src="assets/shots/games_2048.webp" width="280" height="280" loading="lazy" alt="2048 - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">06 / EXAMPLE</div></div>
 <h2>2048</h2>
 <p data-en="Merge the tiles" data-zh="合并方块">Merge the tiles</p>
-<pre><code>examples/games_2048/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/games_2048/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/games_2048/app.js</code><button type="button" class="copy-btn" data-copy="examples/games_2048/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/games_2048/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">07 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="games_breakout" data-shot="1" data-hw="0" data-search="games_breakout breakout 打砖块 arcade paddle game 街机挡板游戏">
+<div class="example-thumb"><img src="assets/shots/games_breakout.webp" width="280" height="280" loading="lazy" alt="Breakout - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">07 / EXAMPLE</div></div>
 <h2>Breakout / 打砖块</h2>
 <p data-en="Arcade paddle game" data-zh="街机挡板游戏">Arcade paddle game</p>
-<pre><code>examples/games_breakout/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/games_breakout/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/games_breakout/app.js</code><button type="button" class="copy-btn" data-copy="examples/games_breakout/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/games_breakout/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">08 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="games_tetris" data-shot="1" data-hw="0" data-search="games_tetris tetris 俄罗斯方块 pan, rotate, drop 拖动旋转降落">
+<div class="example-thumb"><img src="assets/shots/games_tetris.webp" width="280" height="280" loading="lazy" alt="Tetris - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">08 / EXAMPLE</div></div>
 <h2>Tetris / 俄罗斯方块</h2>
 <p data-en="Pan, rotate, drop" data-zh="拖动旋转降落">Pan, rotate, drop</p>
-<pre><code>examples/games_tetris/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/games_tetris/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/games_tetris/app.js</code><button type="button" class="copy-btn" data-copy="examples/games_tetris/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/games_tetris/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">09 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="mario" data-shot="1" data-hw="0" data-search="mario mario 马里奥 platform demo 平台游戏演示">
+<div class="example-thumb"><img src="assets/shots/mario.webp" width="280" height="280" loading="lazy" alt="Mario - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">09 / EXAMPLE</div></div>
 <h2>Mario / 马里奥</h2>
 <p data-en="Platform demo" data-zh="平台游戏演示">Platform demo</p>
-<pre><code>examples/mario/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/mario/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/mario/app.js</code><button type="button" class="copy-btn" data-copy="examples/mario/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/mario/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">10 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="game_of_life" data-shot="1" data-hw="0" data-search="game_of_life game of life 生命游戏 cellular automata 细胞自动机">
+<div class="example-thumb"><img src="assets/shots/game_of_life.webp" width="280" height="280" loading="lazy" alt="Game of Life - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">10 / EXAMPLE</div></div>
 <h2>Game of Life / 生命游戏</h2>
 <p data-en="Cellular automata" data-zh="细胞自动机">Cellular automata</p>
-<pre><code>examples/game_of_life/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/game_of_life/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/game_of_life/app.js</code><button type="button" class="copy-btn" data-copy="examples/game_of_life/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/game_of_life/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">11 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="pet" data-shot="1" data-hw="0" data-search="pet desktop pet 桌面宠物 feed and pet it 喂养与抚摸">
+<div class="example-thumb"><img src="assets/shots/pet.webp" width="280" height="280" loading="lazy" alt="Desktop pet - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">11 / EXAMPLE</div></div>
 <h2>Desktop pet / 桌面宠物</h2>
 <p data-en="Feed and pet it" data-zh="喂养与抚摸">Feed and pet it</p>
-<pre><code>examples/pet/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/pet/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/pet/app.js</code><button type="button" class="copy-btn" data-copy="examples/pet/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/pet/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">12 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="calculator" data-shot="1" data-hw="0" data-search="calculator calculator 计算器 everyday arithmetic 日常运算">
+<div class="example-thumb"><img src="assets/shots/calculator.webp" width="280" height="280" loading="lazy" alt="Calculator - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">12 / EXAMPLE</div></div>
 <h2>Calculator / 计算器</h2>
 <p data-en="Everyday arithmetic" data-zh="日常运算">Everyday arithmetic</p>
-<pre><code>examples/calculator/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/calculator/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/calculator/app.js</code><button type="button" class="copy-btn" data-copy="examples/calculator/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/calculator/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">13 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="weather" data-shot="1" data-hw="0" data-search="weather weather 天气 forecast with sample data 模拟天气数据">
+<div class="example-thumb"><img src="assets/shots/weather.webp" width="280" height="280" loading="lazy" alt="Weather - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">13 / EXAMPLE</div></div>
 <h2>Weather / 天气</h2>
 <p data-en="Forecast with sample data" data-zh="模拟天气数据">Forecast with sample data</p>
-<pre><code>examples/weather/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/weather/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/weather/app.js</code><button type="button" class="copy-btn" data-copy="examples/weather/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/weather/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">14 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="music_player" data-shot="1" data-hw="0" data-search="music_player music player 音乐播放器 playback with sample tracks 模拟曲目播放">
+<div class="example-thumb"><img src="assets/shots/music_player.webp" width="280" height="280" loading="lazy" alt="Music player - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">14 / EXAMPLE</div></div>
 <h2>Music player / 音乐播放器</h2>
 <p data-en="Playback with sample tracks" data-zh="模拟曲目播放">Playback with sample tracks</p>
-<pre><code>examples/music_player/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/music_player/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/music_player/app.js</code><button type="button" class="copy-btn" data-copy="examples/music_player/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/music_player/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">15 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="dashboard" data-shot="1" data-hw="0" data-search="dashboard dashboard 仪表盘 live-style gauges 动态仪表">
+<div class="example-thumb"><img src="assets/shots/dashboard.webp" width="280" height="280" loading="lazy" alt="Dashboard - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">15 / EXAMPLE</div></div>
 <h2>Dashboard / 仪表盘</h2>
 <p data-en="Live-style gauges" data-zh="动态仪表">Live-style gauges</p>
-<pre><code>examples/dashboard/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/dashboard/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/dashboard/app.js</code><button type="button" class="copy-btn" data-copy="examples/dashboard/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/dashboard/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">16 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="gravity_ball" data-shot="1" data-hw="0" data-search="gravity_ball gravity ball 重力球 motion experiment 运动实验">
+<div class="example-thumb"><img src="assets/shots/gravity_ball.webp" width="280" height="280" loading="lazy" alt="Gravity ball - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">16 / EXAMPLE</div></div>
 <h2>Gravity ball / 重力球</h2>
 <p data-en="Motion experiment" data-zh="运动实验">Motion experiment</p>
-<pre><code>examples/gravity_ball/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/gravity_ball/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/gravity_ball/app.js</code><button type="button" class="copy-btn" data-copy="examples/gravity_ball/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/gravity_ball/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">17 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="typewriter" data-shot="1" data-hw="0" data-search="typewriter typewriter 打字机 animated text 文字动画">
+<div class="example-thumb"><img src="assets/shots/typewriter.webp" width="280" height="280" loading="lazy" alt="Typewriter - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">17 / EXAMPLE</div></div>
 <h2>Typewriter / 打字机</h2>
 <p data-en="Animated text" data-zh="文字动画">Animated text</p>
-<pre><code>examples/typewriter/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/typewriter/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/typewriter/app.js</code><button type="button" class="copy-btn" data-copy="examples/typewriter/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/typewriter/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">18 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="heart_curve" data-shot="1" data-hw="0" data-search="heart_curve heart curve 心形曲线 canvas drawing 画布绘图">
+<div class="example-thumb"><img src="assets/shots/heart_curve.webp" width="280" height="280" loading="lazy" alt="Heart curve - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">18 / EXAMPLE</div></div>
 <h2>Heart curve / 心形曲线</h2>
 <p data-en="Canvas drawing" data-zh="画布绘图">Canvas drawing</p>
-<pre><code>examples/heart_curve/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/heart_curve/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/heart_curve/app.js</code><button type="button" class="copy-btn" data-copy="examples/heart_curve/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/heart_curve/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">19 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="speedometer" data-shot="1" data-hw="0" data-search="speedometer speedometer 速度表 motion display 运动显示">
+<div class="example-thumb"><img src="assets/shots/speedometer.webp" width="280" height="280" loading="lazy" alt="Speedometer - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">19 / EXAMPLE</div></div>
 <h2>Speedometer / 速度表</h2>
 <p data-en="Motion display" data-zh="运动显示">Motion display</p>
-<pre><code>examples/speedometer/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/speedometer/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/speedometer/app.js</code><button type="button" class="copy-btn" data-copy="examples/speedometer/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/speedometer/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">20 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="power_demo" data-shot="1" data-hw="0" data-search="power_demo power demo 电源演示 power state ui 电源状态界面">
+<div class="example-thumb"><img src="assets/shots/power_demo.webp" width="280" height="280" loading="lazy" alt="Power demo - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">20 / EXAMPLE</div></div>
 <h2>Power demo / 电源演示</h2>
 <p data-en="Power state UI" data-zh="电源状态界面">Power state UI</p>
-<pre><code>examples/power_demo/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/power_demo/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/power_demo/app.js</code><button type="button" class="copy-btn" data-copy="examples/power_demo/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/power_demo/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">21 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="luna" data-shot="0" data-hw="0" data-search="luna luna 月球 explore the real lunar surface 浏览真实月面">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">◐</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">21 / EXAMPLE</div></div>
 <h2>Luna / 月球</h2>
 <p data-en="Explore the real lunar surface" data-zh="浏览真实月面">Explore the real lunar surface</p>
-<pre><code>examples/luna/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/luna/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/luna/app.js</code><button type="button" class="copy-btn" data-copy="examples/luna/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/luna/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">22 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="watchface" data-shot="1" data-hw="0" data-search="watchface watchface 表盘 five faces 五种表盘">
+<div class="example-thumb"><img src="assets/shots/watchface.webp" width="280" height="280" loading="lazy" alt="Watchface - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">22 / EXAMPLE</div></div>
 <h2>Watchface / 表盘</h2>
 <p data-en="Five faces" data-zh="五种表盘">Five faces</p>
-<pre><code>examples/watchface/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/watchface/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/watchface/app.js</code><button type="button" class="copy-btn" data-copy="examples/watchface/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/watchface/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">23 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="async_demo" data-shot="1" data-hw="0" data-search="async_demo async demo 异步演示 async / await 异步await">
+<div class="example-thumb"><img src="assets/shots/async_demo.webp" width="280" height="280" loading="lazy" alt="Async demo - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">23 / EXAMPLE</div></div>
 <h2>Async demo / 异步演示</h2>
 <p data-en="async / await" data-zh="异步Await">async / await</p>
-<pre><code>examples/async_demo/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/async_demo/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/async_demo/app.js</code><button type="button" class="copy-btn" data-copy="examples/async_demo/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/async_demo/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">24 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="piano" data-shot="1" data-hw="0" data-search="piano piano 钢琴 two-octave touch piano 双八度触屏钢琴">
+<div class="example-thumb"><img src="assets/shots/piano.webp" width="280" height="280" loading="lazy" alt="Piano - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">24 / EXAMPLE</div></div>
 <h2>Piano / 钢琴</h2>
 <p data-en="Two-octave touch piano" data-zh="双八度触屏钢琴">Two-octave touch piano</p>
-<pre><code>examples/piano/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/piano/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/piano/app.js</code><button type="button" class="copy-btn" data-copy="examples/piano/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/piano/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">25 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="compass" data-shot="1" data-hw="1" data-search="compass heading dial 方位仪表 inertial heading, no magnetometer 惯性方位，无磁力计">
+<div class="example-thumb"><img src="assets/shots/compass.webp" width="280" height="280" loading="lazy" alt="Heading dial - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">25 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Heading dial / 方位仪表</h2>
 <p data-en="Inertial heading, no magnetometer" data-zh="惯性方位，无磁力计">Inertial heading, no magnetometer</p>
-<pre><code>examples/compass/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/compass/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/compass/app.js</code><button type="button" class="copy-btn" data-copy="examples/compass/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/compass/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">26 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="invaders" data-shot="1" data-hw="0" data-search="invaders invaders 太空侵略者 arcade-style shooter 街机风格射击">
+<div class="example-thumb"><img src="assets/shots/invaders.webp" width="280" height="280" loading="lazy" alt="Invaders - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">26 / EXAMPLE</div></div>
 <h2>Invaders / 太空侵略者</h2>
 <p data-en="Arcade-style shooter" data-zh="街机风格射击">Arcade-style shooter</p>
-<pre><code>examples/invaders/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/invaders/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/invaders/app.js</code><button type="button" class="copy-btn" data-copy="examples/invaders/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/invaders/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">27 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="frogger" data-shot="1" data-hw="0" data-search="frogger frogger 过河青蛙 road and river crossing 公路河道穿越">
+<div class="example-thumb"><img src="assets/shots/frogger.webp" width="280" height="280" loading="lazy" alt="Frogger - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">27 / EXAMPLE</div></div>
 <h2>Frogger / 过河青蛙</h2>
 <p data-en="Road and river crossing" data-zh="公路河道穿越">Road and river crossing</p>
-<pre><code>examples/frogger/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/frogger/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/frogger/app.js</code><button type="button" class="copy-btn" data-copy="examples/frogger/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/frogger/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">28 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="abc123" data-shot="1" data-hw="0" data-search="abc123 abc 123 字母数字卡 tap-to-learn alphabet cards 点击学习字母数字">
+<div class="example-thumb"><img src="assets/shots/abc123.webp" width="280" height="280" loading="lazy" alt="ABC 123 - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">28 / EXAMPLE</div></div>
 <h2>ABC 123 / 字母数字卡</h2>
 <p data-en="Tap-to-learn alphabet cards" data-zh="点击学习字母数字">Tap-to-learn alphabet cards</p>
-<pre><code>examples/abc123/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/abc123/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/abc123/app.js</code><button type="button" class="copy-btn" data-copy="examples/abc123/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/abc123/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">29 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="sokoban" data-shot="1" data-hw="0" data-search="sokoban sokoban 推箱子 10 puzzles, swipe to push 十关推箱子">
+<div class="example-thumb"><img src="assets/shots/sokoban.webp" width="280" height="280" loading="lazy" alt="Sokoban - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">29 / EXAMPLE</div></div>
 <h2>Sokoban / 推箱子</h2>
 <p data-en="10 puzzles, swipe to push" data-zh="十关推箱子">10 puzzles, swipe to push</p>
-<pre><code>examples/sokoban/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/sokoban/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/sokoban/app.js</code><button type="button" class="copy-btn" data-copy="examples/sokoban/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/sokoban/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">30 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="lcd_dual" data-shot="1" data-hw="0" data-search="lcd_dual lcd dual 双屏 lcd segment-lcd catch &amp; dodge 幽灵段接面包与闪避">
+<div class="example-thumb"><img src="assets/shots/lcd_dual.webp" width="280" height="280" loading="lazy" alt="LCD dual - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">30 / EXAMPLE</div></div>
 <h2>LCD dual / 双屏 LCD</h2>
 <p data-en="Segment-LCD catch &amp; dodge" data-zh="幽灵段接面包与闪避">Segment-LCD catch &amp; dodge</p>
-<pre><code>examples/lcd_dual/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/lcd_dual/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/lcd_dual/app.js</code><button type="button" class="copy-btn" data-copy="examples/lcd_dual/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/lcd_dual/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">31 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="memory" data-shot="0" data-hw="0" data-search="memory memory match 记忆翻牌 4x4 pair-matching card game 4x4 配对翻牌">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">▸</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">31 / EXAMPLE</div></div>
 <h2>Memory Match / 记忆翻牌</h2>
 <p data-en="4x4 pair-matching card game" data-zh="4x4 配对翻牌">4x4 pair-matching card game</p>
-<pre><code>examples/memory/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/memory/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/memory/app.js</code><button type="button" class="copy-btn" data-copy="examples/memory/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/memory/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">32 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="minesweeper" data-shot="0" data-hw="0" data-search="minesweeper minesweeper 扫雷 10x10 grid, tap dig + long-press flag 10x10 扫雷：点开 + 长按插旗">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">✸</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">32 / EXAMPLE</div></div>
 <h2>Minesweeper / 扫雷</h2>
 <p data-en="10x10 grid, tap dig + long-press flag" data-zh="10x10 扫雷：点开 + 长按插旗">10x10 grid, tap dig + long-press flag</p>
-<pre><code>examples/minesweeper/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/minesweeper/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/minesweeper/app.js</code><button type="button" class="copy-btn" data-copy="examples/minesweeper/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/minesweeper/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">33 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="golf" data-shot="0" data-hw="1" data-search="golf golf 迷你高尔夫 swing golf, 10 procedural holes 体感挥杆，10 个程序化球洞">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">◉</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">33 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Golf / 迷你高尔夫</h2>
 <p data-en="Swing golf, 10 procedural holes" data-zh="体感挥杆，10 个程序化球洞">Swing golf, 10 procedural holes</p>
-<pre><code>examples/golf/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/golf/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/golf/app.js</code><button type="button" class="copy-btn" data-copy="examples/golf/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/golf/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">34 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="scroller" data-shot="1" data-hw="0" data-search="scroller scroller 横向卷轴 retained-sprite side scroller 精灵 blit 横向卷轴">
+<div class="example-thumb"><img src="assets/shots/scroller.webp" width="280" height="280" loading="lazy" alt="Scroller - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">34 / EXAMPLE</div></div>
 <h2>Scroller / 横向卷轴</h2>
 <p data-en="Retained-sprite side scroller" data-zh="精灵 blit 横向卷轴">Retained-sprite side scroller</p>
-<pre><code>examples/scroller/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/scroller/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/scroller/app.js</code><button type="button" class="copy-btn" data-copy="examples/scroller/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/scroller/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">35 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="raycast" data-shot="1" data-hw="0" data-search="raycast raycast 3d 射线迷宫 raycast maze shooter 第一人称射线迷宫射击">
+<div class="example-thumb"><img src="assets/shots/raycast.webp" width="280" height="280" loading="lazy" alt="Raycast 3D - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">35 / EXAMPLE</div></div>
 <h2>Raycast 3D / 射线迷宫</h2>
 <p data-en="Raycast maze shooter" data-zh="第一人称射线迷宫射击">Raycast maze shooter</p>
-<pre><code>examples/raycast/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/raycast/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/raycast/app.js</code><button type="button" class="copy-btn" data-copy="examples/raycast/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/raycast/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">36 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="fishtank" data-shot="0" data-hw="0" data-search="fishtank fishtank 电子鱼缸 procedural aquarium with feeding 程序化鱼群 + 投喂互动">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">◉</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">36 / EXAMPLE</div></div>
 <h2>Fishtank / 电子鱼缸</h2>
 <p data-en="Procedural aquarium with feeding" data-zh="程序化鱼群 + 投喂互动">Procedural aquarium with feeding</p>
-<pre><code>examples/fishtank/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/fishtank/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/fishtank/app.js</code><button type="button" class="copy-btn" data-copy="examples/fishtank/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/fishtank/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">37 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="particles" data-shot="0" data-hw="1" data-search="particles fluid particles 流体粒子 imu gravity + touch velocity field imu 重力 + 触摸速度场">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">o</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">37 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Fluid Particles / 流体粒子</h2>
 <p data-en="IMU gravity + touch velocity field" data-zh="IMU 重力 + 触摸速度场">IMU gravity + touch velocity field</p>
-<pre><code>examples/particles/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/particles/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/particles/app.js</code><button type="button" class="copy-btn" data-copy="examples/particles/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/particles/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">38 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="voice_assistant" data-shot="0" data-hw="1" data-search="voice_assistant voice assistant 语音助手 push-to-talk walkie-talkie demo 按住说话对讲机演示">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">◎</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">38 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Voice Assistant / 语音助手</h2>
 <p data-en="Push-to-talk walkie-talkie demo" data-zh="按住说话对讲机演示">Push-to-talk walkie-talkie demo</p>
-<pre><code>examples/voice_assistant/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/voice_assistant/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/voice_assistant/app.js</code><button type="button" class="copy-btn" data-copy="examples/voice_assistant/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/voice_assistant/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">39 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="spectrum_music" data-shot="0" data-hw="1" data-search="spectrum_music spectrum music 频谱音乐盒 radial live and demo spectrum 麦克风与演示径向频谱">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">♫</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">39 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Spectrum Music / 频谱音乐盒</h2>
 <p data-en="Radial live and demo spectrum" data-zh="麦克风与演示径向频谱">Radial live and demo spectrum</p>
-<pre><code>examples/spectrum_music/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/spectrum_music/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/spectrum_music/app.js</code><button type="button" class="copy-btn" data-copy="examples/spectrum_music/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/spectrum_music/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">40 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="plasma" data-shot="0" data-hw="1" data-search="plasma plasma 等离子屏保 tilt the lava; tap to change theme 倾斜熔岩，点击切换主题">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">◉</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">40 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Plasma / 等离子屏保</h2>
 <p data-en="Tilt the lava; tap to change theme" data-zh="倾斜熔岩，点击切换主题">Tilt the lava; tap to change theme</p>
-<pre><code>examples/plasma/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/plasma/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/plasma/app.js</code><button type="button" class="copy-btn" data-copy="examples/plasma/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/plasma/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">41 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="skyfire" data-shot="0" data-hw="0" data-search="skyfire skyfire 打飞机 vertical shooter 纵向弹幕射击">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">✈</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">41 / EXAMPLE</div></div>
 <h2>Skyfire / 打飞机</h2>
 <p data-en="Vertical shooter" data-zh="纵向弹幕射击">Vertical shooter</p>
-<pre><code>examples/skyfire/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/skyfire/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/skyfire/app.js</code><button type="button" class="copy-btn" data-copy="examples/skyfire/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/skyfire/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">42 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="skycombat" data-shot="0" data-hw="1" data-search="skycombat skycombat 3d 体感空战 tilt and fire in 3d 倾斜瞄准，点击开火">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">3D</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">42 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>SkyCombat 3D / 体感空战</h2>
 <p data-en="Tilt and fire in 3D" data-zh="倾斜瞄准，点击开火">Tilt and fire in 3D</p>
-<pre><code>examples/skycombat/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/skycombat/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/skycombat/app.js</code><button type="button" class="copy-btn" data-copy="examples/skycombat/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/skycombat/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">43 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="aurora_clock" data-shot="0" data-hw="0" data-search="aurora_clock aurora clock 极光时钟 flowing ribbons and time 流动极光与时间">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">o</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">43 / EXAMPLE</div></div>
 <h2>Aurora Clock / 极光时钟</h2>
 <p data-en="Flowing ribbons and time" data-zh="流动极光与时间">Flowing ribbons and time</p>
-<pre><code>examples/aurora_clock/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/aurora_clock/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/aurora_clock/app.js</code><button type="button" class="copy-btn" data-copy="examples/aurora_clock/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/aurora_clock/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">44 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="flapdot" data-shot="0" data-hw="0" data-search="flapdot flapdot 拍拍鸟 one-tap arcade flyer 一键街机飞行">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">b</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">44 / EXAMPLE</div></div>
 <h2>Flapdot / 拍拍鸟</h2>
 <p data-en="One-tap arcade flyer" data-zh="一键街机飞行">One-tap arcade flyer</p>
-<pre><code>examples/flapdot/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/flapdot/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/flapdot/app.js</code><button type="button" class="copy-btn" data-copy="examples/flapdot/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/flapdot/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">45 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="wordring" data-shot="0" data-hw="0" data-search="wordring word ring 字母环 tap-only 5-letter word game 点选字母的 5 字母猜词">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">WR</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">45 / EXAMPLE</div></div>
 <h2>Word Ring / 字母环</h2>
 <p data-en="Tap-only 5-letter word game" data-zh="点选字母的 5 字母猜词">Tap-only 5-letter word game</p>
-<pre><code>examples/wordring/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/wordring/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/wordring/app.js</code><button type="button" class="copy-btn" data-copy="examples/wordring/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/wordring/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">46 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="image_gallery" data-shot="1" data-hw="1" data-search="image_gallery image gallery 图片画廊 tf-card photos with fs fallback tf 卡图片，回退到 fs">
+<div class="example-thumb"><img src="assets/shots/image_gallery.webp" width="280" height="280" loading="lazy" alt="Image Gallery - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">46 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Image Gallery / 图片画廊</h2>
 <p data-en="TF-card photos with Fs fallback" data-zh="TF 卡图片，回退到 Fs">TF-card photos with Fs fallback</p>
-<pre><code>examples/image_gallery/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/image_gallery/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/image_gallery/app.js</code><button type="button" class="copy-btn" data-copy="examples/image_gallery/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/image_gallery/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">47 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="files" data-shot="1" data-hw="0" data-search="files file manager 文件管理器 browse directories and preview text 浏览目录并预览文本">
+<div class="example-thumb"><img src="assets/shots/files.webp" width="280" height="280" loading="lazy" alt="File Manager - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">47 / EXAMPLE</div></div>
 <h2>File Manager / 文件管理器</h2>
 <p data-en="Browse directories and preview text" data-zh="浏览目录并预览文本">Browse directories and preview text</p>
-<pre><code>examples/files/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/files/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/files/app.js</code><button type="button" class="copy-btn" data-copy="examples/files/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/files/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">48 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="adc_meter" data-shot="0" data-hw="1" data-search="adc_meter adc meter 电压表 adc1 pin and attenuation voltage readout adc1 引脚与衰减档位电压读数">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">AD</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">48 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>ADC Meter / 电压表</h2>
 <p data-en="ADC1 pin and attenuation voltage readout" data-zh="ADC1 引脚与衰减档位电压读数">ADC1 pin and attenuation voltage readout</p>
-<pre><code>examples/adc_meter/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/adc_meter/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/adc_meter/app.js</code><button type="button" class="copy-btn" data-copy="examples/adc_meter/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/adc_meter/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">49 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="crypto_check" data-shot="0" data-hw="0" data-search="crypto_check crypto check 加密校验 sha-256, hmac, crc32 and aes loopback sha-256、hmac、crc32 与 aes 回环">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">CR</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">49 / EXAMPLE</div></div>
 <h2>Crypto Check / 加密校验</h2>
 <p data-en="SHA-256, HMAC, CRC32 and AES loopback" data-zh="SHA-256、HMAC、CRC32 与 AES 回环">SHA-256, HMAC, CRC32 and AES loopback</p>
-<pre><code>examples/crypto_check/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/crypto_check/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/crypto_check/app.js</code><button type="button" class="copy-btn" data-copy="examples/crypto_check/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/crypto_check/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">50 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="archive_view" data-shot="0" data-hw="0" data-search="archive_view archive viewer 压缩包查看 deflate inflate of embedded payloads 内置 deflate 数据解压展示">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">AR</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">50 / EXAMPLE</div></div>
 <h2>Archive Viewer / 压缩包查看</h2>
 <p data-en="DEFLATE inflate of embedded payloads" data-zh="内置 DEFLATE 数据解压展示">DEFLATE inflate of embedded payloads</p>
-<pre><code>examples/archive_view/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/archive_view/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/archive_view/app.js</code><button type="button" class="copy-btn" data-copy="examples/archive_view/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/archive_view/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">51 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="img_view" data-shot="0" data-hw="0" data-search="img_view image scaler 图像缩放 rgb565 nearest / bilinear zoom demo rgb565 最近邻与双线性缩放">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">SC</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">51 / EXAMPLE</div></div>
 <h2>Image Scaler / 图像缩放</h2>
 <p data-en="RGB565 nearest / bilinear zoom demo" data-zh="RGB565 最近邻与双线性缩放">RGB565 nearest / bilinear zoom demo</p>
-<pre><code>examples/img_view/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/img_view/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/img_view/app.js</code><button type="button" class="copy-btn" data-copy="examples/img_view/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/img_view/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">52 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="vec_demo" data-shot="0" data-hw="0" data-search="vec_demo vector physics 向量物理 lume.math integrate and dot particles lume.math 积分与点积粒子">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">V2</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">52 / EXAMPLE</div></div>
 <h2>Vector Physics / 向量物理</h2>
 <p data-en="lume.math integrate and dot particles" data-zh="lume.math 积分与点积粒子">lume.math integrate and dot particles</p>
-<pre><code>examples/vec_demo/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/vec_demo/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/vec_demo/app.js</code><button type="button" class="copy-btn" data-copy="examples/vec_demo/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/vec_demo/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">53 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="settings" data-shot="1" data-hw="1" data-search="settings settings 系统设置 wifi, ble, volume and power settings wifi、蓝牙、音量与电源设置">
+<div class="example-thumb"><img src="assets/shots/settings.webp" width="280" height="280" loading="lazy" alt="Settings - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">53 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Settings / 系统设置</h2>
 <p data-en="WiFi, BLE, volume and power settings" data-zh="WiFi、蓝牙、音量与电源设置">WiFi, BLE, volume and power settings</p>
-<pre><code>examples/settings/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/settings/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/settings/app.js</code><button type="button" class="copy-btn" data-copy="examples/settings/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/settings/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">54 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="hr_monitor" data-shot="0" data-hw="0" data-search="hr_monitor hr monitor 心率广播 ble peripheral streams simulated heart rate ble 外设广播模拟心率">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">HR</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">54 / EXAMPLE</div></div>
 <h2>HR Monitor / 心率广播</h2>
 <p data-en="BLE peripheral streams simulated heart rate" data-zh="BLE 外设广播模拟心率">BLE peripheral streams simulated heart rate</p>
-<pre><code>examples/hr_monitor/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/hr_monitor/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/hr_monitor/app.js</code><button type="button" class="copy-btn" data-copy="examples/hr_monitor/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/hr_monitor/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">55 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="keyboard_demo" data-shot="0" data-hw="0" data-search="keyboard_demo keyboard demo 键盘演示 qwerty soft keyboard input demo qwerty 软键盘输入演示">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">KB</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">55 / EXAMPLE</div></div>
 <h2>Keyboard Demo / 键盘演示</h2>
 <p data-en="QWERTY soft keyboard input demo" data-zh="QWERTY 软键盘输入演示">QWERTY soft keyboard input demo</p>
-<pre><code>examples/keyboard_demo/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/keyboard_demo/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/keyboard_demo/app.js</code><button type="button" class="copy-btn" data-copy="examples/keyboard_demo/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/keyboard_demo/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">56 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="wordle" data-shot="0" data-hw="0" data-search="wordle wordle 猜词游戏 five letters, six tries, on-screen keyboard 5 字母 6 次机会的屏幕键盘猜词">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">WD</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">56 / EXAMPLE</div></div>
 <h2>Wordle / 猜词游戏</h2>
 <p data-en="Five letters, six tries, on-screen keyboard" data-zh="5 字母 6 次机会的屏幕键盘猜词">Five letters, six tries, on-screen keyboard</p>
-<pre><code>examples/wordle/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/wordle/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/wordle/app.js</code><button type="button" class="copy-btn" data-copy="examples/wordle/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/wordle/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">57 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="controls_demo" data-shot="0" data-hw="0" data-search="controls_demo controls demo 控件演示 switch, slider and progress shell controls 开关、滑块与进度条控件">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">UI</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">57 / EXAMPLE</div></div>
 <h2>Controls Demo / 控件演示</h2>
 <p data-en="Switch, Slider and Progress shell controls" data-zh="开关、滑块与进度条控件">Switch, Slider and Progress shell controls</p>
-<pre><code>examples/controls_demo/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/controls_demo/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/controls_demo/app.js</code><button type="button" class="copy-btn" data-copy="examples/controls_demo/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/controls_demo/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">58 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="timer_kit" data-shot="0" data-hw="0" data-search="timer_kit timer kit 计时工具 countdown and stopwatch via shell controls 基于 shell 控件的倒计时与秒表">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">TM</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">58 / EXAMPLE</div></div>
 <h2>Timer Kit / 计时工具</h2>
 <p data-en="Countdown and stopwatch via shell controls" data-zh="基于 shell 控件的倒计时与秒表">Countdown and stopwatch via shell controls</p>
-<pre><code>examples/timer_kit/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/timer_kit/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/timer_kit/app.js</code><button type="button" class="copy-btn" data-copy="examples/timer_kit/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/timer_kit/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">59 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="control_center" data-shot="0" data-hw="0" data-search="control_center control center 控制中心 quick settings cards in a safe area 安全区内的快捷设置卡片">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">CC</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">59 / EXAMPLE</div></div>
 <h2>Control Center / 控制中心</h2>
 <p data-en="Quick settings cards in a safe area" data-zh="安全区内的快捷设置卡片">Quick settings cards in a safe area</p>
-<pre><code>examples/control_center/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/control_center/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/control_center/app.js</code><button type="button" class="copy-btn" data-copy="examples/control_center/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/control_center/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">60 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="launcher_grid" data-shot="0" data-hw="0" data-search="launcher_grid launcher grid 应用宫格 3x3 app grid built with shell.launcher shell.launcher 的 3x3 应用宫格">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">LG</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">60 / EXAMPLE</div></div>
 <h2>Launcher Grid / 应用宫格</h2>
 <p data-en="3x3 app grid built with shell.Launcher" data-zh="shell.Launcher 的 3x3 应用宫格">3x3 app grid built with shell.Launcher</p>
-<pre><code>examples/launcher_grid/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/launcher_grid/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/launcher_grid/app.js</code><button type="button" class="copy-btn" data-copy="examples/launcher_grid/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/launcher_grid/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">61 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="minigolf" data-shot="0" data-hw="1" data-search="minigolf mini golf 迷你高尔夫 drag or imu swing putting demo 拖拽或体感挥杆推杆演示">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">GF</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">61 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>Mini Golf / 迷你高尔夫</h2>
 <p data-en="Drag or IMU swing putting demo" data-zh="拖拽或体感挥杆推杆演示">Drag or IMU swing putting demo</p>
-<pre><code>examples/minigolf/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/minigolf/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/minigolf/app.js</code><button type="button" class="copy-btn" data-copy="examples/minigolf/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/minigolf/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">62 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="ipod_music" data-shot="0" data-hw="0" data-search="ipod_music wheel music 转盘音乐 clickwheel ui demo, no audio 转盘界面演示，无音频">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">◉</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">62 / EXAMPLE</div></div>
 <h2>Wheel Music / 转盘音乐</h2>
 <p data-en="ClickWheel UI demo, no audio" data-zh="转盘界面演示，无音频">ClickWheel UI demo, no audio</p>
-<pre><code>examples/ipod_music/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/ipod_music/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/ipod_music/app.js</code><button type="button" class="copy-btn" data-copy="examples/ipod_music/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/ipod_music/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">63 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="color_demo" data-shot="0" data-hw="0" data-search="color_demo color studio 调色台 colorpicker tint saved to kv colorpicker 调色并存入 kv">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">CL</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">63 / EXAMPLE</div></div>
 <h2>Color Studio / 调色台</h2>
 <p data-en="ColorPicker tint saved to KV" data-zh="ColorPicker 调色并存入 KV">ColorPicker tint saved to KV</p>
-<pre><code>examples/color_demo/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/color_demo/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/color_demo/app.js</code><button type="button" class="copy-btn" data-copy="examples/color_demo/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/color_demo/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">64 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="ble_uart" data-shot="1" data-hw="0" data-search="ble_uart ble uart 蓝牙串口 ble link lifecycle with stub radio 模拟蓝牙连接流程">
+<div class="example-thumb"><img src="assets/shots/ble_uart.webp" width="280" height="280" loading="lazy" alt="BLE UART - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">64 / EXAMPLE</div></div>
 <h2>BLE UART / 蓝牙串口</h2>
 <p data-en="BLE link lifecycle with stub radio" data-zh="模拟蓝牙连接流程">BLE link lifecycle with stub radio</p>
-<pre><code>examples/ble_uart/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/ble_uart/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/ble_uart/app.js</code><button type="button" class="copy-btn" data-copy="examples/ble_uart/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/ble_uart/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">65 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="spectrum" data-shot="0" data-hw="0" data-search="spectrum spectrum 音频频谱 microphone spectrum with browser stub 模拟麦克风频谱">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">▥</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">65 / EXAMPLE</div></div>
 <h2>Spectrum / 音频频谱</h2>
 <p data-en="Microphone spectrum with browser stub" data-zh="模拟麦克风频谱">Microphone spectrum with browser stub</p>
-<pre><code>examples/spectrum/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/spectrum/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/spectrum/app.js</code><button type="button" class="copy-btn" data-copy="examples/spectrum/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/spectrum/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">66 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="svg_icon" data-shot="1" data-hw="0" data-search="svg_icon svg icon svg 图标 vector icon rendering 矢量图标渲染">
+<div class="example-thumb"><img src="assets/shots/svg_icon.webp" width="280" height="280" loading="lazy" alt="SVG icon - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">66 / EXAMPLE</div></div>
 <h2>SVG icon / SVG 图标</h2>
 <p data-en="Vector icon rendering" data-zh="矢量图标渲染">Vector icon rendering</p>
-<pre><code>examples/svg_icon/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/svg_icon/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/svg_icon/app.js</code><button type="button" class="copy-btn" data-copy="examples/svg_icon/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/svg_icon/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">67 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="gestures" data-shot="1" data-hw="0" data-search="gestures gestures 手势 tap, swipe, hold and pan 点击、滑动、长按与拖动">
+<div class="example-thumb"><img src="assets/shots/gestures.webp" width="280" height="280" loading="lazy" alt="Gestures - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">67 / EXAMPLE</div></div>
 <h2>Gestures / 手势</h2>
 <p data-en="Tap, swipe, hold and pan" data-zh="点击、滑动、长按与拖动">Tap, swipe, hold and pan</p>
-<pre><code>examples/gestures/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/gestures/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/gestures/app.js</code><button type="button" class="copy-btn" data-copy="examples/gestures/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/gestures/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">68 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="storybook" data-shot="0" data-hw="1" data-search="storybook storybook 儿童绘本 three-page sample story or tf story pack 三页示例故事或 tf 故事包">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">★</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">68 / EXAMPLE</div><span class="pill status-warn" title="Board hardware may be required" data-en="Board hardware" data-zh="需板载外设">Board hardware</span></div>
 <h2>StoryBook / 儿童绘本</h2>
 <p data-en="Three-page sample story or TF story pack" data-zh="三页示例故事或 TF 故事包">Three-page sample story or TF story pack</p>
-<pre><code>examples/storybook/app.js</code></pre>
-<span class="pill" data-en="Board hardware may be required" data-zh="可能需要板载外设">Board hardware may be required</span>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/storybook/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/storybook/app.js</code><button type="button" class="copy-btn" data-copy="examples/storybook/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/storybook/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">69 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="mochi" data-shot="1" data-hw="0" data-search="mochi mochi 吉祥物 programmatic canvas mascot expressions canvas 绘制的吉祥物表情演示">
+<div class="example-thumb"><img src="assets/shots/mochi.webp" width="280" height="280" loading="lazy" alt="Mochi - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">69 / EXAMPLE</div></div>
 <h2>Mochi / 吉祥物</h2>
 <p data-en="Programmatic Canvas mascot expressions" data-zh="Canvas 绘制的吉祥物表情演示">Programmatic Canvas mascot expressions</p>
-<pre><code>examples/mochi/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/mochi/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/mochi/app.js</code><button type="button" class="copy-btn" data-copy="examples/mochi/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/mochi/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">70 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="shell_demo" data-shot="1" data-hw="0" data-search="shell_demo shell demo 外壳组件 statusbar and edgenavigation demo 状态栏与边缘导航演示">
+<div class="example-thumb"><img src="assets/shots/shell_demo.webp" width="280" height="280" loading="lazy" alt="Shell Demo - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">70 / EXAMPLE</div></div>
 <h2>Shell Demo / 外壳组件</h2>
 <p data-en="StatusBar and EdgeNavigation demo" data-zh="状态栏与边缘导航演示">StatusBar and EdgeNavigation demo</p>
-<pre><code>examples/shell_demo/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/shell_demo/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/shell_demo/app.js</code><button type="button" class="copy-btn" data-copy="examples/shell_demo/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/shell_demo/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">71 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="sparkline_demo" data-shot="0" data-hw="0" data-search="sparkline_demo sparkline 迷你折线图 canvas mini line charts with shell.sparkline shell.sparkline 迷你折线图">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">SP</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">71 / EXAMPLE</div></div>
 <h2>Sparkline / 迷你折线图</h2>
 <p data-en="Canvas mini line charts with shell.Sparkline" data-zh="shell.Sparkline 迷你折线图">Canvas mini line charts with shell.Sparkline</p>
-<pre><code>examples/sparkline_demo/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/sparkline_demo/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/sparkline_demo/app.js</code><button type="button" class="copy-btn" data-copy="examples/sparkline_demo/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/sparkline_demo/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">72 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="app_manager" data-shot="1" data-hw="0" data-search="app_manager app manager 应用管理 two-tap uninstall from the installed app list via browser stub 浏览器桩应用列表：双击确认卸载">
+<div class="example-thumb"><img src="assets/shots/app_manager.webp" width="280" height="280" loading="lazy" alt="App Manager - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">72 / EXAMPLE</div></div>
 <h2>App Manager / 应用管理</h2>
 <p data-en="Two-tap uninstall from the installed app list via browser stub" data-zh="浏览器桩应用列表：双击确认卸载">Two-tap uninstall from the installed app list via browser stub</p>
-<pre><code>examples/app_manager/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/app_manager/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/app_manager/app.js</code><button type="button" class="copy-btn" data-copy="examples/app_manager/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/app_manager/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">73 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="imu_poll" data-shot="1" data-hw="0" data-search="imu_poll imu poll 惯性采样 poll raw x/y/z axes at 1 hz; browser stub reports unavailable 1 hz 轮询 x/y/z 原始轴；浏览器桩显示不可用">
+<div class="example-thumb"><img src="assets/shots/imu_poll.webp" width="280" height="280" loading="lazy" alt="IMU Poll - real firmware rendered by esp32sim"><span class="shot-tag">esp32sim</span></div>
+<div class="example-meta-row"><div class="example-index">73 / EXAMPLE</div></div>
 <h2>IMU Poll / 惯性采样</h2>
 <p data-en="Poll raw X/Y/Z axes at 1 Hz; browser stub reports unavailable" data-zh="1 Hz 轮询 X/Y/Z 原始轴；浏览器桩显示不可用">Poll raw X/Y/Z axes at 1 Hz; browser stub reports unavailable</p>
-<pre><code>examples/imu_poll/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/imu_poll/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/imu_poll/app.js</code><button type="button" class="copy-btn" data-copy="examples/imu_poll/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/imu_poll/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
-<article class="example-card card reveal">
-<div class="example-index">74 / EXAMPLE</div>
+<article class="example-card card reveal" data-app="fitness" data-shot="0" data-hw="0" data-search="fitness fitness 运动环 triple activity rings with imu step estimation and simulated hr 三环运动仪表：imu 计步近似与模拟心率">
+<div class="example-thumb example-thumb-placeholder"><span class="example-thumb-glyph" aria-hidden="true">◎</span><span class="example-thumb-note" data-en="Live in Playground" data-zh="Playground 在线运行">Live in Playground</span></div>
+<div class="example-meta-row"><div class="example-index">74 / EXAMPLE</div></div>
 <h2>Fitness / 运动环</h2>
 <p data-en="Triple activity rings with IMU step estimation and simulated HR" data-zh="三环运动仪表：IMU 计步近似与模拟心率">Triple activity rings with IMU step estimation and simulated HR</p>
-<pre><code>examples/fitness/app.js</code></pre>
-<a href="https://github.com/congduan/lume-esp/blob/main/examples/fitness/app.js">
-<span data-en="View source →" data-zh="查看源码 →">View source →</span>
-</a>
+<div class="path-row"><code>examples/fitness/app.js</code><button type="button" class="copy-btn" data-copy="examples/fitness/app.js" data-en="Copy" data-zh="复制">Copy</button></div>
+<div class="example-actions">
+<a class="button primary button-sm" href="playground/index.html"><span data-en="Open in Playground" data-zh="打开 Playground">Open in Playground</span></a>
+<a class="button ghost button-sm" href="https://github.com/congduan/lume-esp/blob/main/examples/fitness/app.js"><span data-en="View source" data-zh="查看源码">View source</span></a>
+</div>
 </article>
 </div>
 <!-- examples-gallery:end -->
-<p class="fine"><span data-en="Every registered app appears above; each card links to its app.js in the repository." data-zh="上方展示全部已注册 app；每张卡片都链接到仓库中的 app.js。">Every registered app appears above; each card links to its app.js in the repository.</span></p></section></main><footer class="site-footer"><div class="shell footer-inner"><div><strong>lume<span class="accent">.</span></strong><p><span data-en="JavaScript for the ESP32-S3 AMOLED." data-zh="为 ESP32-S3 AMOLED 构建的 JavaScript 框架。">JavaScript for the ESP32-S3 AMOLED.</span></p></div><div><a href="https://github.com/congduan/lume-esp">GitHub</a><a href="https://github.com/congduan/lume-esp/blob/main/LICENSE">MIT</a><small>not affiliated with Espressif or Waveshare</small></div></div></footer></body></html>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <strong>lume<span class="accent">.</span></strong>
+          <p data-en="Declarative JavaScript UI and hardware runtime for ESP32-S3 AMOLED boards." data-zh="面向 ESP32-S3 AMOLED 开发板的声明式 JavaScript UI 与硬件运行时。">Declarative JavaScript UI and hardware runtime for ESP32-S3 AMOLED boards.</p>
+          <div class="footer-badges">
+            <a class="gh-badge-link" href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener" aria-label="GitHub repository">
+              <img src="https://img.shields.io/github/stars/congduan/lume-esp?style=flat&amp;logo=github&amp;label=Stars&amp;color=08788c&amp;labelColor=0f1720" alt="GitHub stars" height="20">
+            </a>
+            <a class="gh-badge-link" href="https://github.com/congduan/lume-esp/blob/main/LICENSE" target="_blank" rel="noopener" aria-label="MIT License">
+              <img src="https://img.shields.io/badge/license-MIT-08788c?style=flat&amp;labelColor=0f1720" alt="MIT license" height="20">
+            </a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Documentation" data-zh="文档">Documentation</h3>
+          <ul>
+            <li><a href="index.html" data-en="Overview" data-zh="概览">Overview</a></li>
+            <li><a href="guide.html" data-en="Quickstart Guide" data-zh="上手指南">Quickstart Guide</a></li>
+            <li><a href="api.html" data-en="API Reference" data-zh="API 参考">API Reference</a></li>
+            <li><a href="faq.html" data-en="FAQ &amp; Caveats" data-zh="问答与边界">FAQ &amp; Caveats</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Explore" data-zh="探索">Explore</h3>
+          <ul>
+            <li><a href="examples.html" data-en="Examples Gallery" data-zh="示例画廊">Examples Gallery</a></li>
+            <li><a href="playground/index.html" data-en="Browser Playground" data-zh="在线体验">Browser Playground</a></li>
+            <li><a href="index.html#screenshots" data-en="Firmware Screenshots" data-zh="固件截图">Firmware Screenshots</a></li>
+            <li><a href="index.html#roadmap" data-en="Roadmap" data-zh="路线图">Roadmap</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h3 data-en="Resources" data-zh="资源">Resources</h3>
+          <ul>
+            <li><a href="https://github.com/congduan/lume-esp" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/issues" target="_blank" rel="noopener" data-en="Issue Tracker" data-zh="问题反馈">Issue Tracker</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/blob/main/docs/hardware-api.md" target="_blank" rel="noopener" data-en="Hardware Contract" data-zh="硬件接口契约">Hardware Contract</a></li>
+            <li><a href="https://github.com/congduan/lume-esp/blob/main/LICENSE" target="_blank" rel="noopener" data-en="MIT License" data-zh="MIT 许可证">MIT License</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span data-en="MIT License · Not affiliated with Espressif Systems or Waveshare." data-zh="MIT 许可证 · 与乐鑫（Espressif）或微雪（Waveshare）无关联。">MIT License · Not affiliated with Espressif Systems or Waveshare.</span>
+        <span data-en="Screenshots rendered by esp32sim; on-device acceptance pending." data-zh="截图由 esp32sim 渲染；真机验收待完成。">Screenshots rendered by esp32sim; on-device acceptance pending.</span>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
