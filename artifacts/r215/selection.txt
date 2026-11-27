@@ -1,0 +1,90 @@
+# r215 Candidate Selection (26 candidates empirically audited via prelude_runner)
+# Baseline HEAD: 9f7d9d3 (origin/main, 2026-11-27)
+# Safe square: x,y in [75, 405]; tap target >= 48x48; card borderRadius <= 12.
+
+## SELECTED (5 real P0 apps)
+
+1. games_breakout [P0: clipped playfield/paddle/bricks + HUD overlap]
+   - Empirical dump: scene Canvas at [48..432, 91..441] (384x350); bottom corners (48,441) & (432,441) are R=278px > 240px (outside circular screen!). Outer brick columns at x=68..122 and x=358..412 violate [75,405]. Paddle at screen y=416..426 is clipped off circular glass on left/right travel. HUD text at y=356/382 overlaps the playfield canvas.
+   - Harness check: tests/games.js only checks logic above /* GAME UI */ (bricks[0].x+20, bricks[0].y-6, y=200 wall rebound, y=356 > BH+5 game over); shrinking BW=312, BH=244 at (84,106) satisfies all assertions with zero test edits.
+
+2. files [P0: interactive buttons < 48x48 + danger button spacing]
+   - Empirical dump: row DEL button is 44x34 (both w and h < 48); bottom action row NEW / VIEW / DEL buttons have height=44 (< 48). Bottom DEL button has only 8px gap from VIEW (DESIGN-TOKENS red line 7 prefers >=24px isolation from primary action).
+   - Harness check: tests/files_dialog.js, tests/sd_files.js, tests/list_virtualization.js all stay green with ROW_H=52 (48x48 row DEL) and 48px bottom buttons inside [76,404].
+
+3. image_gallery [P0: interactive pagination buttons < 48x48]
+   - Empirical dump: bottom inspector '<' and '>' buttons are 48x34 (h=34 < 48, violating red line 3).
+   - Harness check: tests/sd_gallery.js, tests/image_mapping.js stay green with 48x48 '<'/'>' buttons in a 52px bar at y=272..324 inside [76,404] safeBox.
+
+4. crypto_check [P0: interactive NEXT button < 48x48]
+   - Empirical dump: NEXT button is 100x36 (h=36 < 48, violating red line 3; borderRadius=18).
+   - Harness check: tests/crypto_check.js (<=20 static nodes, ASCII-only, exact return-code predicates) stays green with 100x48 NEXT button (borderRadius=12) and re-pitched cards inside [76,404].
+
+5. archive_view [P0: interactive NEXT button < 48x48]
+   - Empirical dump: NEXT button is 100x36 (h=36 < 48, violating red line 3; borderRadius=18).
+   - Harness check: tests/archive_view.js (<=20 static nodes, ASCII-only, exact inflate predicates) stays green with 100x48 NEXT button (borderRadius=12) and adjusted content box inside [76,404].
+
+## DROPPED (21 candidates with empirical reasons)
+
+- dashboard [DEFERRED: real P0 blocked by forbidden test assertion]:
+  Tab buttons GAUGE/TRACE/SYSTEM are genuinely out of safe area ([24..160,400..456] / [172..308,400..456] / [320..456,400..456]) and SYSTEM canvas text starts at screen (56,48). However, tests/ota_consumers.js line 178 hard-asserts `/function systemStaticLines\(\)[\s\S]*?for \(var i = 0; i < 9; i\+\+\) segs\.push\(\[16, 82 \+ i \* 30/`, locking 10 rows at 30px pitch (284px data + 54px header = 338px > 330px safe-square height). Moving 48px tabs into [75,405] (y=348..396) would occlude the 10th OTA row on SYSTEM; tightening row pitch breaks tests/ota_consumers.js (editing tests/ is prohibited in r215). Requires a dedicated PR updating tests/ota_consumers.js alongside the SYSTEM layout.
+
+- clock_round [CLEAN / false positive]:
+  Already refined in r205. Sync pill (184..296, 132..158) and digital time pill (164..316, 300..334) sit inside [75,405]. Cardinal dial numerals 12/3/6/9 sit radially on the horizontal/vertical axes at R=158 (max corner R=178.5 << 240); no clipping on a 480px circular screen.
+
+- aurora_clock [CLEAN / false positive]:
+  Already refined in r205. Visible time sprite is drawn at (76,196) 328x88 -> [76..404,196..284], date at [110..370,80..104], bottom pills at y=362..390. The flagged Text node at x=50..430 sits underneath the opaque 480x480 Canvas (kept as a harness anchor, not rendered visually).
+
+- games_snake [CLEAN]:
+  Already fixed in r201 (CELL=10, 240x240 board at [120..360,128..368], HUD in [120..360,80..376]). Zero issues in dump.
+
+- games_2048 [CLEAN / nested relative false positive]:
+  Already fixed in r201 (240x240 board at [120..360,146..386], HUD in [120..360,80..388]). Cell label x=0,y=15 is parent-relative inside 54x54 tiles at [123..357,149..383]. Zero issues in absolute dump.
+
+- games_tetris [CLEAN]:
+  Already fixed in r201 (160x320 board at [80..240,80..400], HUD & NEXT box in [250..400,80..316]). Zero issues in dump.
+
+- mario [CLEAN / full-bleed game canvas]:
+  Already fixed in r201 (HUD at [84..396,80], LEFT/RIGHT/JUMP buttons 100x48 at y=350..398). The 480x352 canvas at (0,64) is the game world backdrop (known false positive; physics constants unchanged).
+
+- pet [CLEAN]:
+  Already fixed in r201/r202 (HUD in [84..396,80..402], SKIN button 108x48 at [288..396,108..156], 192x192 sprite at [144..336,120..312]). Zero issues in dump.
+
+- weather [CLEAN]:
+  Already redesigned in r205 (all header, hero temp, 3 metric pills, 3-day card inside [82..398,78..398]; circular refresh button 48x48 at [350..398,78..126]). Child coordinates inside dayRow/offlinePill are parent-relative. Chinese strings are intentional localized copy tested by tests/weather.js.
+
+- music_player [CLEAN]:
+  Already redesigned in r204 (all artwork, transport controls 52x52/66x66/52x52, volume bar & +/- 52x48, library buttons 72x48/54x48/52x48/312x48 sit inside [84..396,76..400]). Outer 436x436 view is circular dial bezel.
+
+- compass [CLEAN / decorative radial dial canvas]:
+  Already fixed in r201 (title/subtitle at [84..396,80..126], center heading at [170..310,221..286], MODE button 120x48 at [84..204,348..396]). 360x360 canvas at (60,64) renders circular dial ticks (R=162, max R=162 << 240).
+
+- invaders [CLEAN HUD / harness-pinned playfield]:
+  HUD already in [84..396,80..104] (r201/r202) on full-bleed 480x480 canvas. tests/invaders.js hard-pins formation edges (480-16, 16, CELL_H=44) and cannon y=430; modifying playfield physics would break forbidden tests/.
+
+- frogger [CLEAN HUD / harness-pinned playfield]:
+  HUD already in [84..396,80..104] (r201/r202) on full-bleed 480x480 canvas. tests/frogger.js line 22 hard-pins CELL=33, GX=25, GY=44; modifying playfield would break forbidden tests/.
+
+- sokoban [CLEAN]:
+  Already fixed in r201 (CELL=22, 13x10 board at [97..383,128..348], HUD in [84..396,78..112], PREV/RESET/NEXT buttons 92x48 at [84..396,352..400]). Zero issues in dump.
+
+- minesweeper [CLEAN HUD & button / harness-pinned grid]:
+  HUD in [84..396,80..116], RESTART button 92x48 at [304..396,78..126]. Grid CELL=38/GAP=2/GX=41/GY=64 is a documented tests/minesweeper.js harness anchor.
+
+- memory [CLEAN]:
+  Already fixed in r210 (4x4 board at [130..350,132..352], HUD in [80..396,76..112], DEAL button 144x48 at [168..312,356..404]). Zero issues in dump.
+
+- golf [CLEAN / full-bleed course canvas]:
+  Already fixed in r202 (all HUD text in [84..396,80..146]). 480x420 course canvas at (0,60) is the seeded course world tested by tests/golf.js (known full-canvas false positive).
+
+- lcd_dual [CLEAN]:
+  Already fixed in r202 (HUD in [84..396,80..126], MODE zone 160x48 at [160..320,348..396], Game A grid [120..360,80..368]). Zero issues in dump.
+
+- fishtank [CLEAN / full-bleed ambient canvas]:
+  Single 480x480 ambient aquarium canvas with no HUD text or buttons (known full-canvas false positive). Zero issues in dump.
+
+- adc_meter [CLEAN]:
+  Already redesigned in r206 (all header, readout card, sparkline canvas, PIN/ATTEN 156x48 buttons, footer strictly inside [76,404] safeBox). Zero issues in dump.
+
+- img_view [CLEAN]:
+  Already redesigned in r206 (header [80..400,78..106], canvas [138..342,112..316], HUD [80..400,322..344], NEXT/MODE buttons h=48 in [80..400,350..398]). Zero issues in dump.

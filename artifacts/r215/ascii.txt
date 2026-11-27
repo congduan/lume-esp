@@ -1,0 +1,5 @@
+examples/games_breakout/app.js: 0
+examples/files/app.js: 0
+examples/image_gallery/app.js: 0
+examples/crypto_check/app.js: 0
+examples/archive_view/app.js: 0
