@@ -297,7 +297,7 @@ check('canvas budget 40960/230400 px, grid in bounds', () => {
   assert.ok(gridRight <= s.IW, 'grid right inside canvas');
   assert.ok(gridBottom <= s.CANVAS_H, 'grid bottom inside canvas');
   assert.ok(s.CANVAS_Y + s.CANVAS_H <= 240, 'canvas clears the keyboard at y 240');
-  assert.ok(240 + 4 * 40 + 2 * 4 <= 480, '4-row keyboard fits the 480 px screen');
+  assert.ok(240 + 4 * 48 + 2 * 4 <= 480, '4-row keyboard fits the 480 px screen');
 });
 
 // 14. r165: day ordinal + deterministic pick from the wall clock
@@ -602,8 +602,8 @@ const checks = [
     x.includes('wdKey(state, ch)') && x.includes('wdBackspace(state)') &&
     x.includes('wdSubmit(state)')]],
 
-  ['Keyboard geometry: 40 px key, gap 0, x 40, y 240', [wiring, x =>
-    x.includes('keySize: 40, gap: 0, x: 40, y: 240')]],
+  ['Keyboard geometry: 44 px key, gap 0, x 16, y 240', [wiring, x =>
+    x.includes('keySize: 44, gap: 0, x: 16, y: 240')]],
 
   ['keyStates consume wdLetterMarks (r153 tint replaces the letter bar)', [source, x =>
     x.includes('var marks = wdLetterMarks(state)') &&
@@ -662,7 +662,7 @@ function must(name, mutation, checkName, sourceForCheck) {
 
 const REG = 'Keyboard registered on lume.ui.shell';
 const WIRE = 'app wires onKey/onBackspace/onSubmit into game logic';
-const GEO = 'Keyboard geometry: 40 px key, gap 0, x 40, y 240';
+const GEO = 'Keyboard geometry: 44 px key, gap 0, x 16, y 240';
 const TINT = 'keyStates consume wdLetterMarks (r153 tint replaces the letter bar)';
 const LABELS = 'native nodes carry QWERTY + SPACE/BKSP/ENTER';
 const ASCII = 'all UI string literals ASCII-only (r64)';
@@ -680,7 +680,7 @@ must('drop shell.Keyboard registration',
 must('app stops forwarding onKey',
   x => x.replace('wdKey(state, ch)', 'null'), WIRE, wiring);
 must('shrink the keyboard touch target',
-  x => x.replace('keySize: 40, gap: 0, x: 40, y: 240', 'keySize: 40, gap: 8, x: 40, y: 240'), GEO, wiring);
+  x => x.replace('keySize: 44, gap: 0, x: 16, y: 240', 'keySize: 44, gap: 8, x: 16, y: 240'), GEO, wiring);
 must('keyStates drop feedback marks',
   x => x.replace('var marks = wdLetterMarks(state)', 'var marks = {}'), TINT, source);
 must('a key label drifts from QWERTY',
