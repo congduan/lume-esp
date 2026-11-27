@@ -1,0 +1,7 @@
+PASS shell_keyboard default native message stream matches r217 golden (44x48 keys, 3x SPACE)
+PASS shell_keyboard mutation proof: golden stream rejects a default-path change
+PASS shell_keyboard default keyHeight enforces 48 px floor and tracks keySize above 48
+PASS shell_keyboard controlKeyRatio 1.5 widens only BKSP / ENTER to 66 px
+PASS shell_keyboard keyHeight decouples height from keySize without changing widths
+PASS shell_keyboard new params validate without touching the default path
+PASS 6 shell Keyboard cases

@@ -1,0 +1,21 @@
+PASS shell Card and IconButton expose watch-sized defaults
+PASS shell StatusBar getter follows signal
+PASS shell StatusBar clock timer and disposal
+PASS shell EdgeNavigation true handles back
+PASS shell EdgeNavigation false forwards page swipe
+PASS shell indicator draws and rebounds, mask toggles
+PASS shell Launcher creates bounded virtual grid
+PASS shell Launcher round shape inscribes defaults in the 466 safe square
+PASS shell Launcher rejects an unknown shape
+PASS shell app press and edge gesture route independently
+PASS shell dispose unregisters gestures and app close clears resources
+PASS shell spacing injects missing View padding and gap and follows theme changes
+PASS shell explicit spacing wins and invalid token is atomic
+PASS shell Dialog opens and close is idempotent
+PASS shell Dialog stack ignores covered button and closes top first
+PASS shell Dialog lifecycle pause removes overlays
+PASS shell danger button follows theme danger token
+PASS shell primary button follows theme primary token
+PASS shell Toast replaces current and resets timer
+PASS shell Toast fades then removes itself
+PASS 20 shell component cases

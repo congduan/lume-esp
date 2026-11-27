@@ -1,0 +1,86 @@
+=== WORDLE ===
+node 1 (View, p=0): w=480 h=480 abs=[0..480,0..480] pad=0 gap=0 Rmax=339.4 clr240=-99.4 clr233=-106.4 OUT_SAFE OUT_R240 OUT_R233 text=""
+node 2 (Canvas, p=1): w=320 h=128 abs=[80..400,110..238] pad=- gap=- Rmax=206.2 clr240=33.8 clr233=26.8 IN_SAFE IN_R240 IN_R233 text=""
+node 3 (Text, p=1): w=248 h=18 abs=[84..332,75..93] pad=- gap=- Rmax=227.1 clr240=12.9 clr233=5.9 IN_SAFE IN_R240 IN_R233 text="DAY #20784 1/6 S:0 B:0"
+node 4 (Text, p=1): w=248 h=18 abs=[84..332,94..112] pad=- gap=- Rmax=213.7 clr240=26.3 clr233=19.3 IN_SAFE IN_R240 IN_R233 text="TYPE 5 LETTERS"
+node 5 (Btn, p=1): w=60 h=48 abs=[336..396,75..123] pad=- gap=- [PRESS] Rmax=227.1 clr240=12.9 clr233=5.9 IN_SAFE IN_R240 IN_R233 text="NEW"
+node 6 (View, p=1): w=400 h=168 abs=[40..440,240..408] pad=4 gap=0 [KB_ROOT] Rmax=261.2 clr240=-21.2 clr233=-28.2 OUT_SAFE OUT_R240 OUT_R233 text=""
+--- WORDLE KEYBOARD KEYS (root=6, rows=4, keys=29, root=[40..440,240..408] 400x168, gap=0, pad=4) ---
+  row[0] (node 7, 10 keys): abs=[40..440,244..284] 400x40 Rmax=204.8 clr240=35.2 clr233=28.2 OUT_SAFE IN_R240 IN_R233
+    key "Q" (node 8): 40x40 abs=[40..80,244..284] TOUCH_UNDER48 Rmax=204.8 clr240=35.2 clr233=28.2 OUT_SAFE IN_R240 IN_R233
+    key "W" (node 9): 40x40 abs=[80..120,244..284] TOUCH_UNDER48 Rmax=165.9 clr240=74.1 clr233=67.1 IN_SAFE IN_R240 IN_R233
+    key "E" (node 10): 40x40 abs=[120..160,244..284] TOUCH_UNDER48 Rmax=127.8 clr240=112.2 clr233=105.2 IN_SAFE IN_R240 IN_R233
+    key "R" (node 11): 40x40 abs=[160..200,244..284] TOUCH_UNDER48 Rmax=91.3 clr240=148.7 clr233=141.7 IN_SAFE IN_R240 IN_R233
+    key "T" (node 12): 40x40 abs=[200..240,244..284] TOUCH_UNDER48 Rmax=59.5 clr240=180.5 clr233=173.5 IN_SAFE IN_R240 IN_R233
+    key "Y" (node 13): 40x40 abs=[240..280,244..284] TOUCH_UNDER48 Rmax=59.5 clr240=180.5 clr233=173.5 IN_SAFE IN_R240 IN_R233
+    key "U" (node 14): 40x40 abs=[280..320,244..284] TOUCH_UNDER48 Rmax=91.3 clr240=148.7 clr233=141.7 IN_SAFE IN_R240 IN_R233
+    key "I" (node 15): 40x40 abs=[320..360,244..284] TOUCH_UNDER48 Rmax=127.8 clr240=112.2 clr233=105.2 IN_SAFE IN_R240 IN_R233
+    key "O" (node 16): 40x40 abs=[360..400,244..284] TOUCH_UNDER48 Rmax=165.9 clr240=74.1 clr233=67.1 IN_SAFE IN_R240 IN_R233
+    key "P" (node 17): 40x40 abs=[400..440,244..284] TOUCH_UNDER48 Rmax=204.8 clr240=35.2 clr233=28.2 OUT_SAFE IN_R240 IN_R233
+  row[1] (node 18, 9 keys): abs=[60..420,284..324] 360x40 Rmax=198.6 clr240=41.4 clr233=34.4 OUT_SAFE IN_R240 IN_R233
+    key "A" (node 19): 40x40 abs=[60..100,284..324] TOUCH_UNDER48 Rmax=198.6 clr240=41.4 clr233=34.4 OUT_SAFE IN_R240 IN_R233
+    key "S" (node 20): 40x40 abs=[100..140,284..324] TOUCH_UNDER48 Rmax=163.3 clr240=76.7 clr233=69.7 IN_SAFE IN_R240 IN_R233
+    key "D" (node 21): 40x40 abs=[140..180,284..324] TOUCH_UNDER48 Rmax=130.6 clr240=109.4 clr233=102.4 IN_SAFE IN_R240 IN_R233
+    key "F" (node 22): 40x40 abs=[180..220,284..324] TOUCH_UNDER48 Rmax=103.2 clr240=136.8 clr233=129.8 IN_SAFE IN_R240 IN_R233
+    key "G" (node 23): 40x40 abs=[220..260,284..324] TOUCH_UNDER48 Rmax=86.3 clr240=153.7 clr233=146.7 IN_SAFE IN_R240 IN_R233
+    key "H" (node 24): 40x40 abs=[260..300,284..324] TOUCH_UNDER48 Rmax=103.2 clr240=136.8 clr233=129.8 IN_SAFE IN_R240 IN_R233
+    key "J" (node 25): 40x40 abs=[300..340,284..324] TOUCH_UNDER48 Rmax=130.6 clr240=109.4 clr233=102.4 IN_SAFE IN_R240 IN_R233
+    key "K" (node 26): 40x40 abs=[340..380,284..324] TOUCH_UNDER48 Rmax=163.3 clr240=76.7 clr233=69.7 IN_SAFE IN_R240 IN_R233
+    key "L" (node 27): 40x40 abs=[380..420,284..324] TOUCH_UNDER48 Rmax=198.6 clr240=41.4 clr233=34.4 OUT_SAFE IN_R240 IN_R233
+  row[2] (node 28, 7 keys): abs=[100..380,324..364] 280x40 Rmax=187 clr240=53.0 clr233=46.0 IN_SAFE IN_R240 IN_R233
+    key "Z" (node 29): 40x40 abs=[100..140,324..364] TOUCH_UNDER48 Rmax=187 clr240=53.0 clr233=46.0 IN_SAFE IN_R240 IN_R233
+    key "X" (node 30): 40x40 abs=[140..180,324..364] TOUCH_UNDER48 Rmax=159.3 clr240=80.7 clr233=73.7 IN_SAFE IN_R240 IN_R233
+    key "C" (node 31): 40x40 abs=[180..220,324..364] TOUCH_UNDER48 Rmax=137.8 clr240=102.2 clr233=95.2 IN_SAFE IN_R240 IN_R233
+    key "V" (node 32): 40x40 abs=[220..260,324..364] TOUCH_UNDER48 Rmax=125.6 clr240=114.4 clr233=107.4 IN_SAFE IN_R240 IN_R233
+    key "B" (node 33): 40x40 abs=[260..300,324..364] TOUCH_UNDER48 Rmax=137.8 clr240=102.2 clr233=95.2 IN_SAFE IN_R240 IN_R233
+    key "N" (node 34): 40x40 abs=[300..340,324..364] TOUCH_UNDER48 Rmax=159.3 clr240=80.7 clr233=73.7 IN_SAFE IN_R240 IN_R233
+    key "M" (node 35): 40x40 abs=[340..380,324..364] TOUCH_UNDER48 Rmax=187 clr240=53.0 clr233=46.0 IN_SAFE IN_R240 IN_R233
+  row[3] (node 36, 3 keys): abs=[88..392,364..404] 304x40 Rmax=223.6 clr240=16.4 clr233=9.4 IN_SAFE IN_R240 IN_R233
+    key "SPACE" (node 37): 160x40 abs=[88..248,364..404] TOUCH_UNDER48 Rmax=223.6 clr240=16.4 clr233=9.4 IN_SAFE IN_R240 IN_R233
+    key "BKSP" (node 38): 72x40 abs=[248..320,364..404] TOUCH_UNDER48 Rmax=182.5 clr240=57.5 clr233=50.5 IN_SAFE IN_R240 IN_R233
+    key "ENTER" (node 39): 72x40 abs=[320..392,364..404] TOUCH_UNDER48 Rmax=223.6 clr240=16.4 clr233=9.4 IN_SAFE IN_R240 IN_R233
+SUMMARY wordle: totalKeys=29 w=40..160 h=40..40 touch48x48=0/29 touchH48=0/29 inR240=29/29 inR233=29/29 inSafe=25/29 worstR=223.6 (SPACE(row3))
+
+=== KEYBOARD_DEMO ===
+node 1 (View, p=0): w=480 h=480 abs=[0..480,0..480] pad=12 gap=12 Rmax=339.4 clr240=-99.4 clr233=-106.4 OUT_SAFE OUT_R240 OUT_R233 text=""
+node 2 (View, p=1): w=312 h=56 abs=[84..396,80..136] pad=12 gap=12 Rmax=223.5 clr240=16.5 clr233=9.5 IN_SAFE IN_R240 IN_R233 text=""
+node 3 (Text, p=1): w=296 h=40 abs=[92..388,88..128] pad=8 gap=- Rmax=212.2 clr240=27.8 clr233=20.8 IN_SAFE IN_R240 IN_R233 text="_"
+node 4 (Text, p=1): w=312 h=40 abs=[84..396,144..184] pad=- gap=- Rmax=183.2 clr240=56.8 clr233=49.8 IN_SAFE IN_R240 IN_R233 text="Type a word, press ENTER"
+node 5 (Text, p=1): w=312 h=32 abs=[84..396,188..220] pad=- gap=- Rmax=164.4 clr240=75.6 clr233=68.6 IN_SAFE IN_R240 IN_R233 text="ASCII QWERTY / BKSP deletes / ENTER submits"
+node 6 (View, p=1): w=480 h=192 abs=[0..480,264..456] pad=4 gap=8 [KB_ROOT] Rmax=322.9 clr240=-82.9 clr233=-89.9 OUT_SAFE OUT_R240 OUT_R233 text=""
+--- KEYBOARD_DEMO KEYBOARD KEYS (root=6, rows=4, keys=29, root=[0..480,264..456] 480x192, gap=8, pad=4) ---
+  row[0] (node 7, 10 keys): abs=[4..476,268..308] 472x40 Rmax=245.6 clr240=-5.6 clr233=-12.6 OUT_SAFE OUT_R240 OUT_R233
+    key "Q" (node 8): 40x40 abs=[4..44,268..308] TOUCH_UNDER48 Rmax=245.6 clr240=-5.6 clr233=-12.6 OUT_SAFE OUT_R240 OUT_R233
+    key "W" (node 9): 40x40 abs=[52..92,268..308] TOUCH_UNDER48 Rmax=199.9 clr240=40.1 clr233=33.1 OUT_SAFE IN_R240 IN_R233
+    key "E" (node 10): 40x40 abs=[100..140,268..308] TOUCH_UNDER48 Rmax=155.6 clr240=84.4 clr233=77.4 IN_SAFE IN_R240 IN_R233
+    key "R" (node 11): 40x40 abs=[148..188,268..308] TOUCH_UNDER48 Rmax=114.4 clr240=125.6 clr233=118.6 IN_SAFE IN_R240 IN_R233
+    key "T" (node 12): 40x40 abs=[196..236,268..308] TOUCH_UNDER48 Rmax=81 clr240=159.0 clr233=152.0 IN_SAFE IN_R240 IN_R233
+    key "Y" (node 13): 40x40 abs=[244..284,268..308] TOUCH_UNDER48 Rmax=81 clr240=159.0 clr233=152.0 IN_SAFE IN_R240 IN_R233
+    key "U" (node 14): 40x40 abs=[292..332,268..308] TOUCH_UNDER48 Rmax=114.4 clr240=125.6 clr233=118.6 IN_SAFE IN_R240 IN_R233
+    key "I" (node 15): 40x40 abs=[340..380,268..308] TOUCH_UNDER48 Rmax=155.6 clr240=84.4 clr233=77.4 IN_SAFE IN_R240 IN_R233
+    key "O" (node 16): 40x40 abs=[388..428,268..308] TOUCH_UNDER48 Rmax=199.9 clr240=40.1 clr233=33.1 OUT_SAFE IN_R240 IN_R233
+    key "P" (node 17): 40x40 abs=[436..476,268..308] TOUCH_UNDER48 Rmax=245.6 clr240=-5.6 clr233=-12.6 OUT_SAFE OUT_R240 OUT_R233
+  row[1] (node 18, 9 keys): abs=[28..452,316..356] 424x40 Rmax=241.7 clr240=-1.7 clr233=-8.7 OUT_SAFE OUT_R240 OUT_R233
+    key "A" (node 19): 40x40 abs=[28..68,316..356] TOUCH_UNDER48 Rmax=241.7 clr240=-1.7 clr233=-8.7 OUT_SAFE OUT_R240 OUT_R233
+    key "S" (node 20): 40x40 abs=[76..116,316..356] TOUCH_UNDER48 Rmax=200.9 clr240=39.1 clr233=32.1 IN_SAFE IN_R240 IN_R233
+    key "D" (node 21): 40x40 abs=[124..164,316..356] TOUCH_UNDER48 Rmax=164 clr240=76.0 clr233=69.0 IN_SAFE IN_R240 IN_R233
+    key "F" (node 22): 40x40 abs=[172..212,316..356] TOUCH_UNDER48 Rmax=134.5 clr240=105.5 clr233=98.5 IN_SAFE IN_R240 IN_R233
+    key "G" (node 23): 40x40 abs=[220..260,316..356] TOUCH_UNDER48 Rmax=117.7 clr240=122.3 clr233=115.3 IN_SAFE IN_R240 IN_R233
+    key "H" (node 24): 40x40 abs=[268..308,316..356] TOUCH_UNDER48 Rmax=134.5 clr240=105.5 clr233=98.5 IN_SAFE IN_R240 IN_R233
+    key "J" (node 25): 40x40 abs=[316..356,316..356] TOUCH_UNDER48 Rmax=164 clr240=76.0 clr233=69.0 IN_SAFE IN_R240 IN_R233
+    key "K" (node 26): 40x40 abs=[364..404,316..356] TOUCH_UNDER48 Rmax=200.9 clr240=39.1 clr233=32.1 IN_SAFE IN_R240 IN_R233
+    key "L" (node 27): 40x40 abs=[412..452,316..356] TOUCH_UNDER48 Rmax=241.7 clr240=-1.7 clr233=-8.7 OUT_SAFE OUT_R240 OUT_R233
+  row[2] (node 28, 7 keys): abs=[76..404,364..404] 328x40 Rmax=231.9 clr240=8.1 clr233=1.1 IN_SAFE IN_R240 IN_R233
+    key "Z" (node 29): 40x40 abs=[76..116,364..404] TOUCH_UNDER48 Rmax=231.9 clr240=8.1 clr233=1.1 IN_SAFE IN_R240 IN_R233
+    key "X" (node 30): 40x40 abs=[124..164,364..404] TOUCH_UNDER48 Rmax=200.9 clr240=39.1 clr233=32.1 IN_SAFE IN_R240 IN_R233
+    key "C" (node 31): 40x40 abs=[172..212,364..404] TOUCH_UNDER48 Rmax=177.5 clr240=62.5 clr233=55.5 IN_SAFE IN_R240 IN_R233
+    key "V" (node 32): 40x40 abs=[220..260,364..404] TOUCH_UNDER48 Rmax=165.2 clr240=74.8 clr233=67.8 IN_SAFE IN_R240 IN_R233
+    key "B" (node 33): 40x40 abs=[268..308,364..404] TOUCH_UNDER48 Rmax=177.5 clr240=62.5 clr233=55.5 IN_SAFE IN_R240 IN_R233
+    key "N" (node 34): 40x40 abs=[316..356,364..404] TOUCH_UNDER48 Rmax=200.9 clr240=39.1 clr233=32.1 IN_SAFE IN_R240 IN_R233
+    key "M" (node 35): 40x40 abs=[364..404,364..404] TOUCH_UNDER48 Rmax=231.9 clr240=8.1 clr233=1.1 IN_SAFE IN_R240 IN_R233
+  row[3] (node 36, 3 keys): abs=[100..380,412..452] 280x40 Rmax=254.1 clr240=-14.1 clr233=-21.1 OUT_SAFE OUT_R240 OUT_R233
+    key "SPACE" (node 37): 184x40 abs=[100..284,412..452] TOUCH_UNDER48 Rmax=254.1 clr240=-14.1 clr233=-21.1 OUT_SAFE OUT_R240 OUT_R233
+    key "BKSP" (node 38): 40x40 abs=[292..332,412..452] TOUCH_UNDER48 Rmax=231.1 clr240=8.9 clr233=1.9 OUT_SAFE IN_R240 IN_R233
+    key "ENTER" (node 39): 40x40 abs=[340..380,412..452] TOUCH_UNDER48 Rmax=254.1 clr240=-14.1 clr233=-21.1 OUT_SAFE OUT_R240 OUT_R233
+SUMMARY keyboard_demo: totalKeys=29 w=40..184 h=40..40 touch48x48=0/29 touchH48=0/29 inR240=23/29 inR233=23/29 inSafe=20/29 worstR=254.1 (SPACE(row3))
+
