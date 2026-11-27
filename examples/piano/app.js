@@ -1,4 +1,4 @@
-/* Two-octave touch piano — pure app layer, no firmware/protocol changes.
+/* Single-octave touch piano -- pure app layer, no firmware/protocol changes.
  *
  * AUDIO CONTRACT (verified before coding, see docs/r67-piano-compass-report.md):
  *  - lume.audio.play() is SYNCHRONOUS, 16 kHz / 16-bit / interleaved STEREO.
@@ -17,10 +17,12 @@
  * If on-board acceptance ever hears a handoff artefact, the documented
  * fallback is brief option 2: feed the WHOLE envelope through playStream().
  *
- * Layout: 14 white keys x 34 px = 476 px fit one row at x=2 on a 480 px
- * screen. 10 black keys are absolutely positioned over the white-key seams.
+ * Layout (r219): 7 white keys x 46 px = 322 px centered at x=79 ([79..401])
+ * inside the 480 px round-screen safe square [75..405] (7 * 48 = 336 > 330,
+ * so 46 px is the widest symmetric even key width inside [76..404]; height is
+ * 190 px >= 2*48). 5 black keys (28x114) sit over the C/D/F/G/A seams.
  * Single-point touch only; pan gestures sweep across keys for glissando.
- * Key highlight is an in-place ATTR_BG_COLOR change on a persistent node —
+ * Key highlight is an in-place ATTR_BG_COLOR change on a persistent node --
  * never a node rebuild and never a per-frame redraw.
  *
  * Conservative global script: var / function only, no import/export.
@@ -29,21 +31,19 @@ var SR = 16000;                 /* only rate play() accepts */
 var NOTE_MS = 400;              /* one note envelope: 6400 stereo frames */
 var ATTACK_MS = 40;             /* <= 48 ms synchronous engine block */
 var CHUNK_FRAMES = 1152;        /* 1152 * 4 B = 4608 B playStream cap */
-var PEAK = 11000;              /* int16 headroom with 3 harmonics */
+var PEAK = 11000;               /* int16 headroom with 3 harmonics */
 var STREAM_OPTS = { sampleRate: SR, channels: 2, bits: 16 };
 
 var NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-/* Two octaves from a base C. White key -> semitone offset; black keys carry
+/* Single octave from a base C. White key -> semitone offset; black keys carry
  * the white-seam index they sit on. */
-var WHITE_OFFSETS = [0,2,4,5,7,9,11,12,14,16,17,19,21,23];
+var WHITE_OFFSETS = [0, 2, 4, 5, 7, 9, 11];
 var BLACK_KEYS = [
-  { seam: 0, off: 1 }, { seam: 1, off: 3 }, { seam: 3, off: 6 },
-  { seam: 4, off: 8 }, { seam: 5, off: 10 }, { seam: 7, off: 13 },
-  { seam: 8, off: 15 }, { seam: 10, off: 18 }, { seam: 11, off: 20 },
-  { seam: 12, off: 22 }
+  { seam: 0, off: 1 }, { seam: 1, off: 3 },
+  { seam: 3, off: 6 }, { seam: 4, off: 8 }, { seam: 5, off: 10 }
 ];
-var OCTAVE_LABELS = ['C3-C4', 'C4-C5', 'C5-C6'];
-var OCTAVE_BASE = [48, 60, 72]; /* MIDI of the low C for each label */
+var OCTAVE_LABELS = ['C3', 'C4', 'C5'];
+var OCTAVE_BASE = [48, 60, 72]; /* MIDI of the base C for each octave */
 
 /* ---- pure synthesis / mapping helpers (host-harness visible) ----------- */
 function pianoFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
@@ -80,21 +80,21 @@ function pianoSlice(pcm, from, to) {
 }
 function pianoMidiAt(base, semitone) { return base + semitone; }
 /* White key index for an absolute screen x, or -1 outside the keyboard. */
-var KB_X = 2, WHITE_W = 34;
+var KB_X = 79, WHITE_W = 46;
 function pianoKeyAtX(x) {
   var i = Math.floor((x - KB_X) / WHITE_W);
   return i >= 0 && i < WHITE_OFFSETS.length ? i : -1;
 }
 
 /* APP UI */
-var octaveIndex = 1;            /* default two-octave keyboard C4..B5 */
+var octaveIndex = 1;            /* default single-octave keyboard C4..B4 */
 var lastMidi = -1, lastNote = signal('--');
 var octaveLabel = signal(OCTAVE_LABELS[octaveIndex]);
 var highlightMidi = -1, highlightRev = signal(0), hlTimer = null;
-/* r202: keyboard raised/shortened so the whole control stack fits the
-   480-round safe square ([84,396]); white-key x-pitch (KB_X/WHITE_W) is a
-   harness anchor and is unchanged. */
-var KEY_Y = 150, WHITE_H = 190, BLACK_W = 22, BLACK_H = 116;
+/* r219: single octave [79..401, 148..338] fits strictly inside the 480-round
+ * safe square [75..405]; white key height 190 px and black key height 114 px
+ * both exceed 2*48 px. */
+var KEY_Y = 148, WHITE_H = 190, BLACK_W = 28, BLACK_H = 114;
 var WHITE_OFF = '#F2F7FB', WHITE_ON = '#FFD166';
 var BLACK_OFF = '#1B2436', BLACK_ON = '#40D8B0';
 /* Text nodes have no color attribute in this prelude (always white), so key
@@ -164,11 +164,11 @@ for (var wi = 0; wi < WHITE_OFFSETS.length; wi++) {
       borderRadius: 6, borderWidth: 1, borderColor: '#9FB0CC',
       background: function () { highlightRev(); return highlightMidi === pianoMidiAt(baseMidi(), WHITE_OFFSETS[i]) ? WHITE_ON : WHITE_OFF; }
     } });
-    View({ parent: root, style: { position: 'absolute', x: KB_X + i * WHITE_W + 7, y: KEY_Y + WHITE_H - 30,
-      width: 20, height: 22, borderRadius: 4, background: '#1B2436' } });
+    View({ parent: root, style: { position: 'absolute', x: KB_X + i * WHITE_W + 11, y: KEY_Y + WHITE_H - 30,
+      width: 24, height: 22, borderRadius: 4, background: '#1B2436' } });
     Text({ parent: root, text: NOTE_NAMES[WHITE_OFFSETS[i] % 12], style: {
-      position: 'absolute', x: KB_X + i * WHITE_W + 7, y: KEY_Y + WHITE_H - 28,
-      width: 20, height: 18, fontSize: 12, textAlign: 'center'
+      position: 'absolute', x: KB_X + i * WHITE_W + 11, y: KEY_Y + WHITE_H - 28,
+      width: 24, height: 18, fontSize: 12, textAlign: 'center'
     } });
   })(wi);
 }
@@ -185,12 +185,12 @@ for (var bi = 0; bi < BLACK_KEYS.length; bi++) {
 var kbLayer = View({ parent: root, style: {
   position: 'absolute', x: KB_X, y: KEY_Y, width: WHITE_W * WHITE_OFFSETS.length, height: WHITE_H
 } });
-Text({ parent: root, text: 'TOUCH PIANO', style: { position: 'absolute', x: 130, y: 76, width: 220, height: 28,
+Text({ parent: root, text: 'TOUCH PIANO', style: { position: 'absolute', x: 130, y: 78, width: 220, height: 28,
   fontSize: 24, color: '#F2F7FB', textAlign: 'center', borderRadius: 0 } });
 Text({ parent: root, text: function () { return 'OCT ' + octaveLabel() + '   LAST ' + lastNote(); },
-  style: { position: 'absolute', x: 84, y: 108, width: 312, height: 24,
+  style: { position: 'absolute', x: 84, y: 112, width: 312, height: 24,
     fontSize: 16, color: '#FFD78E', textAlign: 'center', borderRadius: 0 } });
-/* r202: all four controls share one 48px-tall safe row (y=348..396). */
+/* All four controls share one 48px-tall safe row (x=84..396, y=348..396). */
 Button({ parent: root, title: 'DEMO', onPress: demoStart,
   style: { position: 'absolute', x: 84, y: 348, width: 72, height: 48,
     background: '#1F2C3D', borderRadius: 8, fontSize: 14, color: '#F2F7FB' } });
@@ -211,21 +211,23 @@ function blackAtX(x) {
   }
   return null;
 }
-function semitoneAt(x) {
-  var b = blackAtX(x);
-  if (b) return b.off;
+function semitoneAt(x, y) {
+  if (y === undefined || y <= KEY_Y + BLACK_H) {
+    var b = blackAtX(x);
+    if (b) return b.off;
+  }
   var w = pianoKeyAtX(x);
   return w < 0 ? -1 : WHITE_OFFSETS[w];
 }
 function triggerSemitone(s) { if (s >= 0) pressKey(s); }
-lume.gesture.on(kbLayer, 'tap', function (e) { triggerSemitone(semitoneAt(e.x)); });
-lume.gesture.on(kbLayer, 'panstart', function (e) { panLast = semitoneAt(e.x); triggerSemitone(panLast); });
+lume.gesture.on(kbLayer, 'tap', function (e) { triggerSemitone(semitoneAt(e.x, e.y)); });
+lume.gesture.on(kbLayer, 'panstart', function (e) { panLast = semitoneAt(e.x, e.y); triggerSemitone(panLast); });
 lume.gesture.on(kbLayer, 'pan', function (e) {
-  var s = semitoneAt(e.x);
+  var s = semitoneAt(e.x, e.y);
   if (s >= 0 && s !== panLast) { panLast = s; triggerSemitone(s); }
   else if (s < 0) panLast = -1;
 });
 lume.gesture.on(kbLayer, 'panend', function () { panLast = -1; });
 
 lume.app.onPause(demoStop);
-lume.log('PIANO READY keys=24 oct=' + OCTAVE_LABELS[octaveIndex] + ' note_ms=' + NOTE_MS);
+lume.log('PIANO READY keys=12 oct=' + OCTAVE_LABELS[octaveIndex] + ' note_ms=' + NOTE_MS);
