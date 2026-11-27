@@ -132,3 +132,154 @@ NPM_TEST_EXIT=0
 - test 段：`tests/ota_consumers.js` + `artifacts/r205/*.log`。
 - docs 段：`docs/r205-report.md` + `docs/KNOWN-SIMPLIFICATIONS.md`（r205 取舍登记）。
 - 未 push；未跑 `idf.py build`（firmware 零改动）；未做真机验收，板级指标仍 deferred。
+
+
+---
+
+# Part II: Lume r205 UI 专业度第二梯队报告 — 5 App 设计稿先行 + Lume 翻译验收
+
+> **范围**：纯 app 层重构（`examples/{settings,weather,dashboard_round,aurora_clock,clock_round}/app.js`）、5 张 480×480 圆屏 HTML 设计稿及截图（`artifacts/r205/design/*.{html,png}`）、5 张翻译后 playground 圆屏实拍（`artifacts/r205/*.png`）、对应 4 份宿主 harness（`tests/{weather,dashboard_round,aurora_clock,clock_round}.js`）及 playground 产物重建（74/74 apps）。  
+> **目标名澄清**：简报标题曾误写 `color_demo` 并简写 `dashboard`，对照主控 vision 审计表逐项特征（罗盘 S 缺失 / SIM 在刻度环 / 180° 弧 / 外圆穿 LEVEL / 028 DEG，以及 clock_round 8.3/10 三针与 3 时碰撞），实际目标为 `examples/dashboard_round/app.js` 与 `examples/clock_round/app.js`；`examples/dashboard/app.js`（LUME HUB，受 `tests/ota_consumers.js` 守卫）与 `examples/color_demo/app.js` 保持零改动。  
+> **红线边界**：`firmware/`、`runtime/`、`prelude`、`shell.js`、`tools/`、其他 `examples/` 零改动；全部数据源 / KV / SNTP / Dialog / OTA / Reboot / Power-off 语义零改动。  
+> **诚实口径**：全部截图、帧绘制调用计数与回归测试均为宿主机验证（Node `prelude_runner` + 无头 Chromium Playwright 480×480 / playground 圆屏模式）；CO5300 真机 AMOLED 发光观感、触控手感、实测 WiFi/BLE/IMU/音频仍 deferred 至 board bring-up，**不声称真机验收**。
+
+---
+
+## 1. 设计稿自检与翻译还原度对照
+
+依据 `docs/DESIGN-TOKENS.md`（R1–R8 红线、12 Primitive 色板、≤3 字阶、≤3 accent）与主控实拍审计结论，先在 `artifacts/r205/design/` 产出 5 张独立高保真 HTML 设计稿并通过 Playwright 480×480 截图与 DOM 安全区/触区自动化校验（全部 0 error / 0 safeViolations / 0 touchIssues），再逐 app 翻译并在 `website/playground/index.html` 圆屏模式截图对照：
+
+| App | 审计原分 | 设计稿 | 设计稿自检 | 翻译实拍 | 布局 | 层级 | 色彩 | 图标 | 还原度 |
+|---|---:|---|---:|---|---:|---:|---:|---:|---:|
+| `settings` | 4.0/10 | `artifacts/r205/design/settings.png` | **9.0/10** | `artifacts/r205/settings.png` | 9.3 | 9.2 | 9.3 | 9.2 | **9.2/10** |
+| `weather` | 3.5/10 | `artifacts/r205/design/weather.png` | **9.0/10** | `artifacts/r205/weather.png` | 9.0 | 9.0 | 9.0 | 8.9 | **9.0/10** |
+| `dashboard_round` | 6.0/10 | `artifacts/r205/design/dashboard.png` | **9.2/10** | `artifacts/r205/dashboard_round.png` | 9.3 | 9.2 | 9.2 | 9.1 | **9.2/10** |
+| `aurora_clock` | 6.0/10 | `artifacts/r205/design/aurora.png` | **9.2/10** | `artifacts/r205/aurora_clock.png` | 8.9 | 9.0 | 8.9 | 8.6 | **8.8/10** |
+| `clock_round` | 8.3/10 | `artifacts/r205/design/clock-round.png` | **9.2/10** | `artifacts/r205/clock_round.png` | 9.2 | 9.2 | 9.2 | 9.0 | **9.2/10** |
+
+全部 5 张设计稿自检 ≥ 9.0/10（要求 ≥ 8.0），全部 5 个翻译 app 还原度 8.8–9.2/10（要求 ≥ 7.5）。
+
+---
+
+## 2. 审计缺陷逐项销账表
+
+### 2.1 `examples/settings/app.js`（4/10 → 9.2/10）
+
+| # | 原审计致命缺陷 | 本轮修复方案 | 状态 |
+|---|---|---|---|
+| 1 | W/B/G 字母占位图标（违红线 R8） | 4 枚内联 ASCII SVG 圆盘图标（`Image({ src })` + `xmlns`）：Wi-Fi 扇形波纹 / Bluetooth 符文 / 喇叭声波 / 8 齿齿轮 | 已销账 |
+| 2 | 面包屑失控（`Settings Battery →CONNECTIONS` 挤一行） | 顶部独立三段紧凑栏：左时间胶囊 `HH:MM` + 中 `Settings` + 右电量 Canvas 图标胶囊 `80%`；分组头 `CONNECTIONS / SOUND / DEVICE` 独立 10px 矢量微字条 | 已销账 |
+| 3 | 纯矩形布局贴边裁切 | 外层 `#000000` + `452×452` 圆形表盘底 + 全菜单项严守 `x ∈ [80, 400], y ∈ [76, 395]` 安全区；子页同步收拢 `SAFE = 76` | 已销账 |
+| 4 | 底部 40% 大面积空白 | 重组为 `CONNECTIONS`（Wi-Fi / Bluetooth）+ `SOUND`（Volume）+ `DEVICE`（General）三组四卡（每卡 `320×52px`），均匀填满 `[75, 405]` 圆屏安全区 | 已销账 |
+| 5 | `Swipe up to go back` 教学文案常驻 | 彻底移除常驻教学文案，保留 prelude 全局上滑返回行为 | 已销账 |
+| 6 | General 行值=`50% volume` 语义错位 | 拆出 `SOUND -> Volume` 行显示迷你 teal 音量条 + `50%`；`DEVICE -> General` 行显示 `System` + chevron | 已销账 |
+| 7 | 缺少 iOS 式开关与 chevron | Wi-Fi / Bluetooth 行右侧以轻量化 `66×28` Canvas 绘制 iOS 胶囊开关（含分层圆 knob 投影）+ chevron `>`；Volume/General 配对应右侧读数与 chevron | 已销账 |
+| 8 | 既有功能守卫兼容 | 完整保留 `r129` NTP、`r132` OTA Dialog、`r143` Reboot Dialog、`r164` Power-off Dialog、100% ASCII 字面量与 `125 <= 128` 节点预算 | 已销账 |
+
+### 2.2 `examples/weather/app.js`（3.5/10 → 9.0/10）
+
+| # | 原审计致命缺陷 | 本轮修复方案 | 状态 |
+|---|---|---|---|
+| 1 | 纯矩形布局、刷新钮右上角与温度列贴边裁切 | 圆形 AMOLED 表盘 + 全部元素收拢至 `x ∈ [82, 398], y ∈ [78, 398]`；圆形 `48×48` 刷新按钮内收至 `(350, 78)` 零裁切 | 已销账 |
+| 2 | 涂鸦风天气图标 + 黑方块底 + 灰色杂块 | 重写 `drawWeatherIcon`：表盘同色无缝底（消除黑方块）、分层太阳暖光晕 + 高光核 + 三层立体云朵（阴影/冷灰底/主云体/顶部高光），同步赋能主图标与三日迷你图标 | 已销账 |
+| 3 | 调试文案「WiFi 未连接，显示演示数据」红字外露 | 离线态改为低噪圆角胶囊：内联 `cloud-off` SVG 图标 + 柔和次文本 `演示数据`（保留 SNTP/HTTP 故障时的真实错误码回报契约） | 已销账 |
+| 4 | 「今日」卡与三日预报「今天」完全重复 | 三指标胶囊重设为 **体感**（温度计 SVG）/ **湿度**（水滴 SVG）/ **风速**（风线 SVG），与三日预报零重复 | 已销账 |
+| 5 | 温度主视觉偏小且偏向一侧 | 径向居中主舞台：`84×84` 精绘天气图标配 `44px` 居中大号温度 `18°` + 状态与当日区间；三日预报卡增补迷你天气图标与温度范围条 | 已销账 |
+
+### 2.3 `examples/dashboard_round/app.js`（6/10 → 9.2/10）
+
+| # | 原审计致命缺陷 | 本轮修复方案 | 状态 |
+|---|---|---|---|
+| 1 | 罗盘 S 缺失 | 补齐 360° 全四向矢量方位标：`N`（珊瑚红 `#FF6B79`）/ `E` / `S` / `W` 均布于 `r = 164` | 已销账 |
+| 2 | `SIM` 出现在刻度环上易误读为方位 | `SIM` / `REL` 移出刻度环，迁入内舱左上独立徽章胶囊 `(146, 110)`，右侧对称配十六方位扇区胶囊（如 `NE`） | 已销账 |
+| 3 | 刻度弧仅 180°（90°–270° 无法显示） | 升级为完整 360° 72 刻度表圈（每 5°/15°/30°/90° 分级，通过 `retainSegments` 静态缓存），配全 360° 外轨航向实心指针与航向扇弧 | 已销账 |
+| 4 | 外圈大圆穿 `LEVEL` 表盘元素重叠 | 居中分层仪表架构：外圈 `r = 184..215`、四向标 `r = 164`、圆形水平仪居中 `(240, 282)` 半径 `r = 58`、`LEVEL` 标于 `y = 352`（距底部 `S` 留白 ≥ 40px），零重叠 | 已销账 |
+| 5 | `028 DEG` 非等宽数字 + 水平仪缺容差圈 | Canvas 逐字符定宽等宽矢量数字 `drawMonoHeading`（零水平抖动）；水平仪新增虚线外容差圈（`r = 38`）+ 中心靶心容差圈（`r = 17`，入圈亮 mint / 出圈转 amber）+ 立体气泡高光 | 已销账 |
+
+### 2.4 `examples/aurora_clock/app.js`（6/10 → 8.8/10）
+
+| # | 原审计致命缺陷 | 本轮修复方案 | 状态 |
+|---|---|---|---|
+| 1 | 光带满幅出血被圆表圈切割 | 引入弦长约束函数 `acChordHalf(y)`（赤道弦宽 ≤ 424px ≤ 430px），上下极光幕布宽 `340px / 320px` 随圆弦收束并自然淡出 | 已销账 |
+| 2 | 错位重影图层显脏 | 移除原 3 组错位重叠椭圆与 `acGlow` 硬贴图；改为每主题预渲染一次的高斯羽化 RGB565 极光幕布精灵（`retainImage` 槽 2/3），丝滑无重影 | 已销账 |
+| 3 | 辉光与数字叠加发虚 | 极光幕布严格分离至时间区上下方（`y ∈ [106, 196]` 与 `[288, 370]`），中部保留纯净 `#040C16` 深空井；升级圆角几何时间精灵配圆形 mint 冒号 | 已销账 |
+| 4 | `NO WIFI` 纯文字无图标无异常态且缺电量位 | 底部安全区设双 complication 胶囊：左电池 SVG + 电量百分比，右异常态 `wifi-off` SVG + `NO WIFI` 琥珀徽章（同步后切回低噪 `AURORA`） | 已销账 |
+
+### 2.5 `examples/clock_round/app.js`（8.3/10 → 9.2/10）
+
+| # | 原审计遗留问题 | 本轮精修方案 | 状态 |
+|---|---|---|---|
+| 1 | 字体三套不统一 | 统一无衬线几何字系：`12 / 3 / 6 / 9`（22px）、底部数字时间胶囊（20px）、顶部状态胶囊（13px）均走原生统一无衬线排版 | 已销账 |
+| 2 | `NO WIFI` 贴左上角 `(8, 8)` 被圆屏裁切且无 complication 位 | 迁入表盘 12 时内舱专用 complication 胶囊 `(184, 132)`，配内联 `wifi-off` SVG 图标，同步成功后自动隐藏 | 已销账 |
+| 3 | 分钟针扫 3 时碰撞 | 时标定于 `r = 158`，分钟针缩短至 `r = 128`（针尖距 `3/6/9/12` 保留 30px 净空，零碰撞），配镂空时针与平衡锤秒针 | 已销账 |
+| 4 | 表圈偏暗 | 表圈提亮一档：`#244862` → 金属蓝灰 `#5689AC`（3px 主圈）+ `#294A63` 内反射圈 + `retainSegments` 60 刻度（四主时标 mint 强调） | 已销账 |
+
+---
+
+## 3. 翻译映射与偏差/简化记录
+
+| App | 设计稿元素 | Lume 实现方式 | 偏差 / 简化记录 |
+|---|---|---|---|
+| `settings` | CSS 线性渐变卡片与柔光开关投影 | 1px 描边 `View` + 内联 `Image` SVG 圆盘 + 轻量 Canvas 分层圆 knob 投影 | **简化**：CSS `linear-gradient` / `box-shadow` 退化为深色纯底 + 1px 亮边 + 双层偏移圆；菜单静态+全子页共 125 节点（≤ 128 预算） |
+| `weather` | SVG `radialGradient` 太阳光晕与背景大气渐层 | `Canvas` 分层同心圆光晕 + 三层立体云朵；其余 pin/cloud-off/refresh/metric 图标用 `Image` 内联 SVG | **简化**：表盘顶部大气弧光与温度条双色渐变简化为纯色 `#40D8B0` 温度条；离线胶囊固定宽度 `102px` 避免长状态串撑爆 |
+| `dashboard_round` | SVG 72 刻度 + `radialGradient` 气泡 + `DejaVu Sans Mono` | 单张 `480×480` Canvas + 4 条 `retainSegments` 静态路径 + `drawMonoHeading` 等宽矢量数字 + 三层高光气泡 | **偏差（有意）**：全仪表收进单张 Canvas（2 节点），每帧仅 81–88 次绘制调用（远低于 240 上限） |
+| `aurora_clock` | SVG `feGaussianBlur` 双极光丝带 + 矢量字体 `10:09` | 预渲染高斯羽化 RGB565 极光精灵（主题切换上传一次）+ 每分钟上传一次的 RGB565 几何时间精灵 | **简化**：受限于 RGB565 无实时高斯模糊，用预计算高斯羽化精灵实现平滑渐晕；底部两枚 complication 用独立 `View + Image + Text` 保证零逐帧文本写入 |
+| `clock_round` | SVG 金属渐变表圈 + 几何无衬线时标 | 单张 `480×480` Canvas + 3 条 `retainSegments` 静态刻度 + 原生 `Text` 统一无衬线时标与胶囊 | **简化**：表圈渐变简化为 `#5689AC` + `#294A63` 双环；状态胶囊子节点用绝对定位规避 `ATTR_VISIBLE` 切回时重置 flex |
+
+---
+
+## 4. 帧预算、Canvas PSRAM 与节点预算汇总
+
+| App | Canvas 节点 | Canvas 总像素（上限 `≤ 230,400`） | 单帧绘制调用（上限 `≤ 240`） | DOM/UI 节点数（上限 `≤ 128`） |
+|---|---:|---:|---:|---:|
+| `settings` | 8（微标/电量/开关/音量） | `25,312 px` (11%) | N/A（事件/轮询驱动） | **125** |
+| `weather` | 4（`84×84` + 3×`24×24`） | `8,784 px` (4%) | N/A（数据变更驱动） | **52** |
+| `dashboard_round` | 1（`480×480`） | `230,400 px` (100%) | **81 (SIM) / 88 (IMU)** (`≤ 240` PASS) | **2** |
+| `aurora_clock` | 1（`480×480`） | `230,400 px` (100%) | **max 11**, ripple `≤ 35` (`≤ 240` PASS) | **10** |
+| `clock_round` | 1（`480×480`） | `230,400 px` (100%) | **17** (`≤ 240` PASS) | **11** |
+
+---
+
+## 5. 原始验证输出
+
+```text
+# 1) 设计稿 Playwright 480x480 DOM 几何自检
+settings {"errors":0,"safeViolations":[],"touchIssues":[]}
+weather {"errors":0,"safeViolations":[],"touchIssues":[]}
+dashboard {"errors":0,"safeViolations":[],"touchIssues":[]}
+aurora {"errors":0,"safeViolations":[],"touchIssues":[]}
+clock-round {"errors":0,"safeViolations":[],"touchIssues":[]}
+
+# 2) 三款径向 Canvas App 帧预算与专项回归
+PASS dashboard_round SIM prelude, 81 calls/frame (<=240)
+PASS dashboard_round IMU prelude, 88 calls/frame (<=240)
+PASS dashboard_round relative heading, 360-deg cardinals, and linear level mapping
+PASS prelude/no IMU, per-frame draw calls max=11, ripple <=35 (budget <=240)
+ALL AURORA CLOCK CASES PASSED
+PASS clock_round pure angles, prelude, 17 calls/frame, 60-second tick smoke
+PASS 13 weather cases (10 logic + 3 UI)
+
+# 3) 全量宿主 harness 顺序回归（111/111 PASS，0 FAIL）
+SEQUENTIAL_REGRESSION pass=111 fail=0 failed=
+
+# 4) lume check --no-emu（5/5 PASS）
+lume check examples/settings        -> [PASS] bundle 50438 bytes | RESULT: PASS (exit 0)
+lume check examples/weather         -> [PASS] bundle 12868 bytes | RESULT: PASS (exit 0)
+lume check examples/dashboard_round -> [PASS] bundle  5015 bytes | RESULT: PASS (exit 0)
+lume check examples/aurora_clock    -> [PASS] bundle  8064 bytes | RESULT: PASS (exit 0)
+lume check examples/clock_round     -> [PASS] bundle  4249 bytes | RESULT: PASS (exit 0)
+
+# 5) CLI 单元测试（npm test --prefix tools/lume）
+# tests 76 / pass 75 / fail 0 / skipped 1 (qjsc binary)
+
+# 6) Playground 重建与 Playwright 全量加载验证（74/74 apps）
+PASS prelude 67986 bytes; 74 apps
+PASS all examples load without runtime errors
+  settings: 125 nodes | weather: 52 nodes | dashboard_round: 2 nodes | aurora_clock: 10 nodes | clock_round: 11 nodes
+
+# 7) 文档站一致性检查（scripts/check_website.py & gen_api_docs.py --check）
+examples.html gallery up to date (74 cards)
+HTML pages: 7; internal href/src and anchors checked
+API: 162 catalog entries, 162 type declarations, 34 function namespaces
+api.html is up to date with lume.d.ts (162 entries)
+```

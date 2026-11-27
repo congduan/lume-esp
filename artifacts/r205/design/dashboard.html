@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — Round Dashboard v2 (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    --bg-0: #000000;
+    --bg-1: #0D1420;
+    --bg-2: #16202E;
+    --bg-3: #1F2C3D;
+    --text-hi: #F2F7FB;
+    --text-mid: #9EB3C6;
+    --text-low: #5C7794;
+    --accent: #40D8B0;
+    --danger: #FF6B79;
+    --warn: #FFD78E;
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", sans-serif;
+    --font-mono: "DejaVu Sans Mono", "Liberation Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+
+  html, body {
+    width: 480px; height: 480px;
+    background: var(--bg-0);
+    overflow: hidden;
+    font-family: var(--font-sans);
+    color: var(--text-hi);
+    user-select: none;
+  }
+
+  .watch-screen {
+    position: relative;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 48%, #101E2E 0%, #09121C 58%, #000000 92%);
+    box-shadow: inset 0 0 0 1.5px rgba(158, 179, 198, 0.18);
+  }
+
+  .dial-svg {
+    position: absolute;
+    inset: 0;
+    width: 480px; height: 480px;
+  }
+
+  /* Mode badge cleanly inside upper-left corner of inner cockpit (off the compass ring!) */
+  .sim-badge {
+    position: absolute;
+    left: 146px; top: 112px;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: rgba(255, 215, 142, 0.14);
+    border: 1px solid rgba(255, 215, 142, 0.48);
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--warn);
+  }
+
+  .sim-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--warn);
+  }
+
+  .sector-pill {
+    position: absolute;
+    right: 146px; top: 112px;
+    height: 22px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: rgba(64, 216, 176, 0.12);
+    border: 1px solid rgba(64, 216, 176, 0.34);
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+
+  /* Monospace tabular heading readout */
+  .heading-block {
+    position: absolute;
+    left: 120px; top: 140px;
+    width: 240px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .heading-num {
+    font-family: var(--font-mono);
+    font-size: 48px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.02em;
+    color: var(--text-hi);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .heading-unit {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--text-mid);
+  }
+
+  .level-caption {
+    position: absolute;
+    left: 180px; top: 354px;
+    width: 120px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: var(--text-mid);
+  }
+</style>
+</head>
+<body>
+<div class="watch-screen" role="application" aria-label="Round Compass and Level Dashboard">
+  <svg class="dial-svg" id="dial" viewBox="0 0 480 480" fill="none">
+    <defs>
+      <radialGradient id="levelWell" cx="50%" cy="45%" r="55%">
+        <stop offset="0%" stop-color="#172738"/>
+        <stop offset="100%" stop-color="#0B131E"/>
+      </radialGradient>
+      <radialGradient id="bubbleGrad" cx="35%" cy="30%" r="70%">
+        <stop offset="0%" stop-color="#A6F5E0"/>
+        <stop offset="55%" stop-color="#40D8B0"/>
+        <stop offset="100%" stop-color="#117B69"/>
+      </radialGradient>
+    </defs>
+
+    <!-- Outer bezel ring (r=214) & compass inner track (r=184) -->
+    <circle cx="240" cy="240" r="215" stroke="#2D465E" stroke-width="2"/>
+    <circle cx="240" cy="240" r="184" stroke="rgba(158,179,198,0.16)" stroke-width="1"/>
+
+    <!-- Active heading arc highlight (0 deg -> 28 deg) -->
+    <path d="M 240 42 A 198 198 0 0 1 332.9 65.2" stroke="rgba(64,216,176,0.34)" stroke-width="12" stroke-linecap="butt"/>
+
+    <!-- Full 360-degree ticks injected via JS -->
+    <g id="ticks"></g>
+
+    <!-- All 4 Cardinal Letters N / E / S / W cleanly positioned at r=164 -->
+    <text x="240" y="83" text-anchor="middle" fill="#FF6B79" font-size="18" font-weight="800" font-family="Liberation Sans, sans-serif">N</text>
+    <text x="404" y="246" text-anchor="middle" fill="#F2F7FB" font-size="16" font-weight="700" font-family="Liberation Sans, sans-serif">E</text>
+    <text x="240" y="409" text-anchor="middle" fill="#F2F7FB" font-size="16" font-weight="700" font-family="Liberation Sans, sans-serif">S</text>
+    <text x="76" y="246" text-anchor="middle" fill="#F2F7FB" font-size="16" font-weight="700" font-family="Liberation Sans, sans-serif">W</text>
+
+    <!-- Heading pointer chevron at 28 degrees -->
+    <g id="heading-needle" transform="rotate(28 240 240)">
+      <polygon points="240,26 232,42 248,42" fill="#40D8B0"/>
+      <line x1="240" y1="42" x2="240" y2="56" stroke="#40D8B0" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Dedicated Circular Bubble Level (cx=240, cy=282, r=60: completely clear of compass ring & S!) -->
+    <g id="level-instrument">
+      <circle cx="240" cy="282" r="60" fill="url(#levelWell)" stroke="#2E4A63" stroke-width="2"/>
+      <!-- Outer & inner tolerance rings -->
+      <circle cx="240" cy="282" r="38" stroke="rgba(158,179,198,0.28)" stroke-width="1.2" stroke-dasharray="4 4"/>
+      <circle cx="240" cy="282" r="17" stroke="rgba(64,216,176,0.58)" stroke-width="1.5"/>
+      <!-- Precision crosshairs -->
+      <line x1="184" y1="282" x2="296" y2="282" stroke="rgba(158,179,198,0.24)" stroke-width="1"/>
+      <line x1="240" y1="226" x2="240" y2="338" stroke="rgba(158,179,198,0.24)" stroke-width="1"/>
+      <!-- Spirit bubble (sample offset dx=+14, dy=-10) -->
+      <circle cx="254" cy="274" r="14" fill="rgba(0,0,0,0.45)"/>
+      <circle cx="254" cy="272" r="13" fill="url(#bubbleGrad)" stroke="#9CF3DD" stroke-width="1.2"/>
+      <circle cx="250" cy="268" r="3.5" fill="rgba(255,255,255,0.82)"/>
+    </g>
+  </svg>
+
+  <div class="sim-badge"><span class="sim-dot"></span>SIM</div>
+  <div class="sector-pill">NNE</div>
+
+  <div class="heading-block">
+    <div class="heading-num">028°</div>
+    <div class="heading-unit">DEG REL</div>
+  </div>
+
+  <div class="level-caption">LEVEL</div>
+</div>
+
+<script>
+  const ticksG = document.getElementById('ticks');
+  const ns = 'http://www.w3.org/2000/svg';
+  for (let deg = 0; deg < 360; deg += 5) {
+    const isCard = deg % 90 === 0;
+    const isMajor = deg % 30 === 0;
+    const isMid = deg % 15 === 0;
+    const rOut = 208;
+    const rIn = isCard ? 190 : isMajor ? 193 : isMid ? 197 : 201;
+    const rad = (deg - 90) * Math.PI / 180;
+    const x1 = 240 + Math.cos(rad) * rIn;
+    const y1 = 240 + Math.sin(rad) * rIn;
+    const x2 = 240 + Math.cos(rad) * rOut;
+    const y2 = 240 + Math.sin(rad) * rOut;
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', x1.toFixed(1));
+    line.setAttribute('y1', y1.toFixed(1));
+    line.setAttribute('x2', x2.toFixed(1));
+    line.setAttribute('y2', y2.toFixed(1));
+    line.setAttribute('stroke', deg === 0 ? '#FF6B79' : isMajor ? '#E2EEF8' : isMid ? '#7C9BB5' : '#354E66');
+    line.setAttribute('stroke-width', isCard ? '3' : isMajor ? '2.2' : '1.2');
+    line.setAttribute('stroke-linecap', 'round');
+    ticksG.appendChild(line);
+  }
+</script>
+</body>
+</html>
