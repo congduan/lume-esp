@@ -12,7 +12,7 @@
 import net from 'node:net';
 import { createHmac } from 'node:crypto';
 import { frame, cmdFrame, bytecodeFrame } from './protocol.js';
-import { decodeShot } from './shot.js';
+import { decodeShot, formatShotError } from './shot.js';
 
 export const OTA_PORT_DEFAULT = 8765;
 const CONNECT_TIMEOUT_MS = 5000;
@@ -251,11 +251,11 @@ export async function openOta(ip, token, port = OTA_PORT_DEFAULT) {
     async screenshot() {
       await write(cmdFrame('SHOT'));
       const lines = await reader.collect(
-        l => /^SHOT \d+ \d+ \d+ [0-9a-f]{8}$/.test(l),
+        l => /^SHOT \d+ \d+ \d+ [0-9a-f]{8}$/.test(l) || /^CMD ERR /.test(l),
         l => l === 'SHOT OK' || /^CMD ERR /.test(l),
         ACK_TIMEOUT_MS, 'OTA screenshot');
       if (lines[lines.length - 1].startsWith('CMD ERR ')) {
-        throw new Error(`device rejected screenshot: ${lines[lines.length - 1].slice('CMD ERR '.length)}`);
+        throw formatShotError(lines[lines.length - 1].slice('CMD ERR '.length));
       }
       return decodeShot(lines);
     },

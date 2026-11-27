@@ -110,3 +110,48 @@ int lume_cmd_parse(const uint8_t *payload, size_t len, lume_cmd_t *out);
 
 /* Stable token for the CMD ERR reply line ("arg"/"verb"/"id"/"format"/"empty"). */
 const char *lume_cmd_reason(int code);
+
+/* ------------------------------------------------------------------------
+ * r223: portable TX retry and SHOT reply streaming helpers.
+ * Compiled into both firmware (lume_hotreload.c) and host tests (tests/shot_tx.c).
+ * ------------------------------------------------------------------------ */
+#define LUME_TX_USB_WRITE_MS        50u
+#define LUME_TX_USB_DRAIN_MS        20u
+#define LUME_TX_USB_RETRY_DELAY_MS  10u
+#define LUME_TX_USB_MAX_RETRIES     4
+#define LUME_TX_TCP_MAX_RETRIES     4
+
+#define LUME_SHOT_CHUNK             240u  /* multiple of 3 -> 320 base64 chars */
+#define LUME_SHOT_B64_BUF           ((LUME_SHOT_CHUNK / 3u) * 4u + 16u)
+
+typedef struct {
+    /* Return >0 bytes accepted, 0 on retryable stall, <0 on fatal error. */
+    int  (*write)(const uint8_t *buf, size_t len, void *user);
+    /* Optional: wait for TX buffer drain before retry. Return true if drained. */
+    bool (*drain)(void *user);
+    /* Optional: short backoff delay when drain() did not free space. */
+    void (*delay)(void *user);
+    void *user;
+} lume_tx_ops_t;
+
+bool lume_tx_write_retry(const uint8_t *buf, size_t len, int max_retries,
+                         const lume_tx_ops_t *ops);
+
+typedef enum {
+    LUME_SHOT_OK = 0,
+    LUME_SHOT_ERR_ARG,
+    LUME_SHOT_ERR_ENCODE,
+    LUME_SHOT_ERR_TX,
+} lume_shot_status_t;
+
+typedef struct {
+    bool     (*write_line)(const char *line, size_t len, void *user);
+    uint32_t (*crc32)(const uint8_t *data, size_t len);
+    int      (*b64_encode)(unsigned char *dst, size_t dlen, size_t *olen,
+                           const unsigned char *src, size_t slen);
+    void     *user;
+} lume_shot_ops_t;
+
+lume_shot_status_t lume_shot_stream(const uint8_t *frame, uint16_t width,
+                                    uint16_t height, const lume_shot_ops_t *ops,
+                                    size_t *failed_offset);

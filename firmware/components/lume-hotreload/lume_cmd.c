@@ -4,6 +4,7 @@
  * compiled verbatim on the host by tests/apps_protocol.c.
  */
 #include "lume_cmd.h"
+#include <stdio.h>
 #include <string.h>
 
 /* Return the index of the first '\n' at/after `from`, or `len` if absent. */
@@ -239,4 +240,104 @@ const char *lume_cmd_reason(int code)
     case LUME_CMD_ERR_EMPTY:  return "empty";
     default:                  return "cmd";
     }
+}
+
+/* ------------------------------------------------------------------------
+ * r223: bounded-retry reply writer and SHOT frame streamer.
+ * ------------------------------------------------------------------------ */
+bool lume_tx_write_retry(const uint8_t *buf, size_t len, int max_retries,
+                         const lume_tx_ops_t *ops)
+{
+    if (len == 0) return true;
+    if (buf == NULL || ops == NULL || ops->write == NULL) return false;
+    if (max_retries < 0) max_retries = 0;
+
+    size_t sent = 0;
+    int stall_retries = 0;
+    const int max_iters = max_retries + 16;
+
+    for (int iter = 0; iter < max_iters && sent < len; iter++) {
+        int w = ops->write(buf + sent, len - sent, ops->user);
+        if (w > 0) {
+            size_t adv = (size_t)w;
+            if (adv > len - sent) adv = len - sent;
+            sent += adv;
+            if (sent == len) return true;
+            continue;
+        }
+        if (w < 0) {
+            return false;
+        }
+        if (stall_retries >= max_retries) {
+            return false;
+        }
+        stall_retries++;
+        bool drained = ops->drain != NULL ? ops->drain(ops->user) : false;
+        if (!drained && ops->delay != NULL) {
+            ops->delay(ops->user);
+        }
+    }
+    return sent == len;
+}
+
+lume_shot_status_t lume_shot_stream(const uint8_t *frame, uint16_t width,
+                                    uint16_t height, const lume_shot_ops_t *ops,
+                                    size_t *failed_offset)
+{
+    static const char ERR_TX[]     = "\nCMD ERR shot-tx\n";
+    static const char ERR_ENCODE[] = "\nCMD ERR shot-encode\n";
+    static const char FOOTER_OK[]  = "\nSHOT OK\n";
+
+    if (failed_offset != NULL) *failed_offset = 0;
+    if (frame == NULL || width == 0 || height == 0 || ops == NULL ||
+        ops->write_line == NULL || ops->crc32 == NULL ||
+        ops->b64_encode == NULL) {
+        return LUME_SHOT_ERR_ARG;
+    }
+
+    const size_t total = (size_t)width * (size_t)height * 2u;
+    char hdr[64];
+    int hn = snprintf(hdr, sizeof(hdr), "\nSHOT %u %u %u %08x\n",
+                      (unsigned)width, (unsigned)height, (unsigned)total,
+                      (unsigned)ops->crc32(frame, total));
+    if (hn <= 0 || (size_t)hn >= sizeof(hdr)) {
+        (void)ops->write_line(ERR_ENCODE, sizeof(ERR_ENCODE) - 1u, ops->user);
+        return LUME_SHOT_ERR_ENCODE;
+    }
+    if (!ops->write_line(hdr, (size_t)hn, ops->user)) {
+        (void)ops->write_line(ERR_TX, sizeof(ERR_TX) - 1u, ops->user);
+        return LUME_SHOT_ERR_TX;
+    }
+
+    unsigned char b64[LUME_SHOT_B64_BUF];
+    for (size_t off = 0; off < total; off += LUME_SHOT_CHUNK) {
+        const size_t chunk = total - off < LUME_SHOT_CHUNK
+                                 ? total - off
+                                 : (size_t)LUME_SHOT_CHUNK;
+        size_t olen = 0;
+        b64[0] = '\n';
+        b64[1] = 'S';
+        b64[2] = '6';
+        b64[3] = '4';
+        if (ops->b64_encode(b64 + 4, sizeof(b64) - 5u, &olen,
+                            frame + off, chunk) != 0 ||
+            olen + 5u > sizeof(b64)) {
+            if (failed_offset != NULL) *failed_offset = off;
+            (void)ops->write_line(ERR_ENCODE, sizeof(ERR_ENCODE) - 1u, ops->user);
+            return LUME_SHOT_ERR_ENCODE;
+        }
+        b64[olen + 4u] = '\n';
+        if (!ops->write_line((const char *)b64, olen + 5u, ops->user)) {
+            if (failed_offset != NULL) *failed_offset = off;
+            (void)ops->write_line(ERR_TX, sizeof(ERR_TX) - 1u, ops->user);
+            return LUME_SHOT_ERR_TX;
+        }
+    }
+
+    if (!ops->write_line(FOOTER_OK, sizeof(FOOTER_OK) - 1u, ops->user)) {
+        if (failed_offset != NULL) *failed_offset = total;
+        (void)ops->write_line(ERR_TX, sizeof(ERR_TX) - 1u, ops->user);
+        return LUME_SHOT_ERR_TX;
+    }
+    return LUME_SHOT_OK;
 }

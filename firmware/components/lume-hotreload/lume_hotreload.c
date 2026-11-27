@@ -40,6 +40,7 @@
  *     post_back/post_lifecycle, set_ota_status_provider.
  */
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>          /* malloc/free for CMD reply lines */
 #include <string.h>
 #include <stdint.h>
@@ -92,7 +93,7 @@ static const char *OTA_TAG = "lume-ota";
 #define USB_RX_READ_MS          20
 #define USB_RX_FRAME_TIMEOUT_MS 1000  /* abort stalled mid-frame RX and free staging */
 #define USJ_RX_BUFFER           4096  /* driver requires > 64; 4 KiB absorbs USB bursts */
-#define USJ_TX_BUFFER           512
+#define USJ_TX_BUFFER           2048  /* r223: holds ~6 x 325 B S64 lines; avoids TX stalls */
 
 #define PENDING_MAX        16     /* bounded outstanding reloads */
 
@@ -134,23 +135,69 @@ static void pending_drop_tail(void)        /* caller holds s_pending_mutex */
     if (s_pending_count > 0) s_pending_count--;
 }
 
-static void reply_write(reply_sink_t sink, const char *line, size_t n)
+static int usb_tx_write_op(const uint8_t *buf, size_t len, void *user)
 {
-    if (n == 0) return;
+    (void)user;
+    return usb_serial_jtag_write_bytes(buf, len, pdMS_TO_TICKS(LUME_TX_USB_WRITE_MS));
+}
+
+static bool usb_tx_drain_op(void *user)
+{
+    (void)user;
+    return usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(LUME_TX_USB_DRAIN_MS)) == ESP_OK;
+}
+
+static void usb_tx_delay_op(void *user)
+{
+    (void)user;
+    vTaskDelay(pdMS_TO_TICKS(LUME_TX_USB_RETRY_DELAY_MS));
+}
+
+static int tcp_tx_write_op(const uint8_t *buf, size_t len, void *user)
+{
+    int sock = *(const int *)user;
+    int w = send(sock, buf, len, 0);
+    if (w > 0) return w;
+    if (w < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)) {
+        return 0;   /* retryable */
+    }
+    return -1;      /* fatal socket error or peer closed */
+}
+
+static bool reply_write(reply_sink_t sink, const char *line, size_t n)
+{
+    if (n == 0) return true;
     xSemaphoreTake(s_tx_mutex, portMAX_DELAY);
+    bool ok;
     if (sink.kind == REPLY_USB) {
-        int w = usb_serial_jtag_write_bytes(line, n, pdMS_TO_TICKS(50));
-        if (w != (int)n) {
-            ESP_LOGE(TAG, "USB reply TX short/failed (%d/%u)", w, (unsigned)n);
+        lume_tx_ops_t ops = {
+            .write = usb_tx_write_op,
+            .drain = usb_tx_drain_op,
+            .delay = usb_tx_delay_op,
+            .user  = NULL,
+        };
+        ok = lume_tx_write_retry((const uint8_t *)line, n,
+                                 LUME_TX_USB_MAX_RETRIES, &ops);
+        if (!ok) {
+            ESP_LOGE(TAG, "USB reply TX failed after retries (%u bytes)", (unsigned)n);
         }
     } else {
-        int w = send(sink.sock, line, n, 0);
-        if (w != (int)n) {
-            ESP_LOGE(OTA_TAG, "TCP reply TX short/failed (%d/%u, errno %d)",
-                     w, (unsigned)n, errno);
+        int sock = sink.sock;
+        lume_tx_ops_t ops = {
+            .write = tcp_tx_write_op,
+            .drain = NULL,
+            .delay = usb_tx_delay_op,
+            .user  = &sock,
+        };
+        ok = lume_tx_write_retry((const uint8_t *)line, n,
+                                 LUME_TX_TCP_MAX_RETRIES, &ops);
+        if (!ok) {
+            ESP_LOGE(OTA_TAG, "TCP reply TX failed (%u bytes, errno %d)",
+                     (unsigned)n, errno);
         }
     }
     xSemaphoreGive(s_tx_mutex);
+    return ok;
 }
 
 /* Shared by BOTH channels: the exact "RELOAD OK/ERR" line of the M1 protocol. */
@@ -327,8 +374,23 @@ typedef struct {
  * row-major RGB565 (pre-swap flush copy), w*h*2 bytes, no stride padding.
  * The CLI collects S64 lines between the header and the footer and verifies
  * the CRC — interleaved device log lines are simply skipped. */
-#define SHOT_CHUNK        240       /* multiple of 3 -> clean base64 lines */
 #define SHOT_TIMEOUT_MS   5000
+
+/* r223: lock-free vprintf sink installed only while streaming a USB SHOT reply.
+ * Suppressing ESP_LOG* during the ~622 KiB burst eliminates both VFS per-char
+ * tx_mux contention and partial log prefixes sticking to S64 / SHOT lines. */
+static int shot_quiet_vprintf(const char *fmt, va_list args)
+{
+    (void)fmt;
+    (void)args;
+    return 0;
+}
+
+static bool shot_write_line_op(const char *line, size_t len, void *user)
+{
+    reply_sink_t sink = *(const reply_sink_t *)user;
+    return reply_write(sink, line, len);
+}
 
 static void handle_shot(reply_sink_t sink)
 {
@@ -362,36 +424,31 @@ static void handle_shot(reply_sink_t sink)
         cmd_reply(sink, false, NULL, NULL, 0, "shot-failed");
         return;
     }
-    char line[48];
-    int n = snprintf(line, sizeof(line), "SHOT %u %u %u %08x\n",
-                     bw, bh, (unsigned)total,
-                     (unsigned)lume_frame_crc32(frame, total));
-    if (n <= 0 || (size_t)n >= sizeof(line)) {
-        cmd_reply(sink, false, NULL, NULL, 0, "shot-encode");
-        return;
-    }
-    reply_write(sink, line, (size_t)n);
 
-    /* 240 bytes -> 320 base64 chars, no padding except on the last chunk. */
-    unsigned char b64[SHOT_CHUNK / 3 * 4 + 4];
-    for (size_t off = 0; off < total; off += SHOT_CHUNK) {
-        const size_t chunk = total - off < SHOT_CHUNK ? total - off : SHOT_CHUNK;
-        size_t olen = 0;
-        if (mbedtls_base64_encode(b64, sizeof(b64), &olen,
-                                  frame + off, chunk) != 0) {
-            cmd_reply(sink, false, NULL, NULL, 0, "shot-encode");
-            return;
-        }
-        b64[olen] = 0;   /* keep the buffer NUL-terminated for memmove headroom */
-        /* Prepend the "S64" sentinel (overlapping shift, O(chunk)). */
-        memmove(b64 + 3, b64, olen);
-        b64[0] = 'S';
-        b64[1] = '6';
-        b64[2] = '4';
-        b64[olen + 3] = '\n';
-        reply_write(sink, (const char *)b64, olen + 4);
+    vprintf_like_t prev_vprintf = NULL;
+    if (sink.kind == REPLY_USB) {
+        prev_vprintf = esp_log_set_vprintf(shot_quiet_vprintf);
+        /* Let any already-in-flight VFS log line finish draining first. */
+        (void)usb_serial_jtag_wait_tx_done(pdMS_TO_TICKS(LUME_TX_USB_DRAIN_MS));
     }
-    reply_write(sink, "SHOT OK\n", 8);
+
+    lume_shot_ops_t ops = {
+        .write_line = shot_write_line_op,
+        .crc32      = lume_frame_crc32,
+        .b64_encode = mbedtls_base64_encode,
+        .user       = &sink,
+    };
+    size_t failed_off = 0;
+    lume_shot_status_t st = lume_shot_stream(frame, bw, bh, &ops, &failed_off);
+
+    if (sink.kind == REPLY_USB && prev_vprintf != NULL) {
+        esp_log_set_vprintf(prev_vprintf);
+    }
+
+    if (st != LUME_SHOT_OK) {
+        ESP_LOGE(TAG, "SHOT stream aborted (status=%d at %u/%u bytes)",
+                 (int)st, (unsigned)failed_off, (unsigned)total);
+    }
 }
 
 static void list_emit(void *arg, const char *id)

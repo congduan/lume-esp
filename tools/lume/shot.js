@@ -11,8 +11,25 @@
 // catches anything that slips through anyway.
 import { crc32 } from './protocol.js';
 
-const SHOT_HEADER = /^SHOT (\d+) (\d+) (\d+) ([0-9a-f]{8})$/;
-const SHOT_DATA = /^S64([A-Za-z0-9+/=]+)$/;
+const SHOT_HEADER = /^SHOT (\d+) (\d+) (\d+) ([0-9a-f]{8})\r?$/;
+const SHOT_DATA = /^S64([A-Za-z0-9+/=]+)\r?$/;
+const SHOT_CMD_ERR = /^CMD ERR (\S+)\r?$/;
+
+/**
+ * Format a device-side "CMD ERR <reason>" screenshot rejection with an
+ * actionable error message. `shot-tx` means the firmware aborted streaming
+ * after bounded TX retries instead of emitting a false "SHOT OK".
+ */
+export function formatShotError(reason) {
+  const clean = String(reason ?? '').trim() || 'unknown';
+  let msg = `device rejected screenshot: ${clean}`;
+  if (clean === 'shot-tx') {
+    msg = 'device rejected screenshot: shot-tx (device TX timed out while streaming frame; no partial image returned)';
+  }
+  const err = new Error(msg);
+  err.shotReason = clean;
+  return err;
+}
 
 /**
  * Decode the collected reply lines of one SHOT exchange. Log lines outside
@@ -20,6 +37,8 @@ const SHOT_DATA = /^S64([A-Za-z0-9+/=]+)$/;
  * data line) are ignored. Returns { width, height, data: Buffer }.
  */
 export function decodeShot(lines) {
+  const errLine = lines.map(l => SHOT_CMD_ERR.exec(l)).find(Boolean);
+  if (errLine) throw formatShotError(errLine[1]);
   const header = lines.map(l => SHOT_HEADER.exec(l)).find(Boolean);
   if (!header) throw new Error('device sent no SHOT header (firmware too old?)');
   const width = Number(header[1]);
@@ -32,9 +51,30 @@ export function decodeShot(lines) {
     throw new Error(`screenshot payload truncated: ${data.length} != ${bytes} bytes`);
   }
   if (crc32(data) !== crc) {
-    throw new Error('screenshot CRC mismatch — retry (device log noise corrupted the stream)');
+    throw new Error('screenshot CRC mismatch - retry (device log noise corrupted the stream)');
   }
   return { width, height, data };
+}
+
+/**
+ * Decode a little-endian RGB565 frame into a top-down RGB8 buffer matching
+ * decodeRgb() from png.js, so device screenshots share analyzeFrames().
+ */
+export function rgbFromRgb565(data, width, height) {
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {
+    throw new Error(`invalid frame size: ${width}x${height}`);
+  }
+  if (data.length !== width * height * 2) {
+    throw new Error(`frame size mismatch: ${data.length} bytes for ${width}x${height} RGB565`);
+  }
+  const rgb = Buffer.alloc(width * height * 3);
+  for (let i = 0, dst = 0; i < data.length; i += 2) {
+    const px = data.readUInt16LE(i);
+    rgb[dst++] = (px >> 11) << 3;
+    rgb[dst++] = ((px >> 5) & 0x3f) << 2;
+    rgb[dst++] = (px & 0x1f) << 3;
+  }
+  return { width, height, rgb };
 }
 
 /**

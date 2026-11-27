@@ -1,6 +1,6 @@
 import { SerialPort } from 'serialport';
 import { frame, cmdFrame, bytecodeFrame, replFrame, decodeReplLines } from './protocol.js';
-import { decodeShot } from './shot.js';
+import { decodeShot, formatShotError } from './shot.js';
 
 const ACK_TIMEOUT_MS = 15000;
 
@@ -81,8 +81,9 @@ export function attachPort(port, selected, {
       return;
     }
     if (pending.kind === 'shot') {
-      if (line === 'SHOT OK' || CMD_ERR_LINE.test(line)) {
-        if (CMD_ERR_LINE.test(line)) return finish(false, new Error(`device rejected screenshot: ${line.slice('CMD ERR '.length)}`));
+      const cmdErr = CMD_ERR_LINE.exec(line);
+      if (cmdErr) return finish(false, formatShotError(cmdErr[1]));
+      if (/^SHOT OK\r?$/.test(line)) {
         try { return finish(true, decodeShot(pending.shotLines)); }
         catch (err) { return finish(false, err); }
       }

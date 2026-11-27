@@ -19,6 +19,7 @@ import { homedir } from 'node:os';
 import { bundle } from './bundle.js';
 import { frame } from './protocol.js';
 import { decodeRgb } from './png.js';
+import { rgbFromRgb565 } from './shot.js';
 
 const ROOT = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const SPECS_PATH = join(ROOT, 'tools/lume/scan_specs.json');
@@ -69,24 +70,29 @@ export function changedPixels(a, b, roi, threshold) {
 }
 
 /* Pure per-frame analysis. frames: [{width,height,rgb}] (already decoded).
- * spec: the app's entry from scan_specs.json. */
+ * spec: the app's entry from scan_specs.json (or a custom static-region spec). */
 export function analyzeFrames(frames, spec) {
-  const roi = spec.roi;
-  const bgSample = spec.backgroundSample || [2, 2];
+  const bgSample = spec.backgroundSample || [0, 0];
   const inkThr = spec.inkThreshold ?? 24;
   const chThr = spec.changeThreshold ?? 24;
-  const boxes = Array.isArray(spec.dynamicRegion[0]) ? spec.dynamicRegion : [spec.dynamicRegion];
+  const layers = spec.layers || [];
+  const hasDyn = Array.isArray(spec.dynamicRegion) && spec.dynamicRegion.length > 0;
+  const boxes = hasDyn
+    ? (Array.isArray(spec.dynamicRegion[0]) ? spec.dynamicRegion : [spec.dynamicRegion])
+    : null;
   const out = [];
   for (let k = 0; k < frames.length; k++) {
     const f = frames[k];
-    const bg = rgbAt(f, bgSample[0], bgSample[1]);
+    const roi = spec.roi || [0, 0, f.width, f.height];
+    const bg = rgbAt(f, Math.min(bgSample[0], f.width - 1), Math.min(bgSample[1], f.height - 1));
     // Assertion A: expected layer set present.
     const layerInk = {};
     const missing = [];
-    for (const layer of spec.layers) {
+    for (const layer of layers) {
       const n = inkCount(f, layer.roi, bg, inkThr);
       layerInk[layer.name] = n;
-      if (n < (layer.minInk ?? 1)) missing.push(`${layer.name}: ${n} < ${layer.minInk ?? 1} ink`);
+      const minInk = layer.minInk ?? 1;
+      if (n < minInk) missing.push(`${layer.name}: ${n} < ${minInk} ink`);
     }
     // Assertion B: changed pixels stay in bounds (frame 0 compares to itself).
     const prev = k === 0 ? f : frames[k - 1];
@@ -94,8 +100,8 @@ export function analyzeFrames(frames, spec) {
     const outOfBounds = [];
     const intrusions = [];
     for (const [x, y] of diff.points) {
-      if (!boxes.some(b => inBox(x, y, b))) outOfBounds.push([x, y]);
-      if (spec.layers.some(l => inBox(x, y, l.roi))) intrusions.push([x, y]);
+      if (boxes && !boxes.some(b => inBox(x, y, b))) outOfBounds.push([x, y]);
+      if (layers.some(l => inBox(x, y, l.roi))) intrusions.push([x, y]);
     }
     const frameResult = {
       frame: k,
@@ -275,8 +281,141 @@ export async function scan(appDir, options = {}, deps = {}) {
   return result;
 }
 
+/* ------------------------------------------------------------------ */
+/* Device burst-scan: capture N frames over USB serial / WiFi OTA.    */
+/* Asserts every frame is complete (no truncation / CRC / shot-tx)    */
+/* and optionally checks static-region dirty-area assertions.         */
+/* ------------------------------------------------------------------ */
+function normalizeStaticSpec(staticRegions) {
+  const layers = staticRegions.map((entry, idx) => {
+    if (Array.isArray(entry)) {
+      return { name: `static-${idx}`, roi: entry, minInk: 0 };
+    }
+    return { name: entry.name || `static-${idx}`, roi: entry.roi, minInk: entry.minInk ?? 0 };
+  });
+  return { layers };
+}
+
+export async function scanDevice(device, options = {}, deps = {}) {
+  const io = {
+    readSpecs: async () => JSON.parse(await readFile(SPECS_PATH, 'utf8')),
+    sleep: ms => new Promise(res => setTimeout(res, ms)),
+    ...deps,
+  };
+  const N = Math.max(1, Number(options.scan) || 5);
+  const intervalMs = Math.max(0, Number(options.intervalMs) || 0);
+  const target = device.path ?? device.address ?? 'device';
+  const result = {
+    ok: false,
+    mode: 'device',
+    target,
+    frames: N,
+    spec: null,
+    steps: [],
+  };
+
+  let spec = options.spec || null;
+  if (!spec && options.specName) {
+    try {
+      const specs = await io.readSpecs();
+      const rawName = String(options.specName);
+      const baseName = basename(resolve(rawName));
+      spec = specs[rawName] || specs[baseName] || null;
+      if (!spec) {
+        throw new Error(`no scan specification for "${rawName}" (add it to tools/lume/scan_specs.json)`);
+      }
+      result.spec = specs[rawName] ? rawName : baseName;
+    } catch (err) {
+      result.error = err.message;
+      return result;
+    }
+  } else if (!spec && Array.isArray(options.staticRegions) && options.staticRegions.length > 0) {
+    spec = normalizeStaticSpec(options.staticRegions);
+    result.spec = 'static-regions';
+  } else if (spec) {
+    result.spec = options.specName || 'custom';
+  }
+
+  const rgbFrames = [];
+  for (let k = 0; k < N; k++) {
+    let shot;
+    try {
+      shot = await device.screenshot();
+      if (!shot || !Number.isInteger(shot.width) || !Number.isInteger(shot.height) ||
+          shot.width <= 0 || shot.height <= 0 || !Buffer.isBuffer(shot.data)) {
+        throw new Error('device returned malformed screenshot frame');
+      }
+      const expected = shot.width * shot.height * 2;
+      if (shot.data.length !== expected) {
+        throw new Error(`screenshot payload truncated: ${shot.data.length} != ${expected} bytes`);
+      }
+      rgbFrames.push(rgbFromRgb565(shot.data, shot.width, shot.height));
+      result.steps.push({
+        frame: k,
+        width: shot.width,
+        height: shot.height,
+        bytes: shot.data.length,
+        complete: true,
+        ok: true,
+      });
+    } catch (err) {
+      const msg = err && err.message ? err.message : String(err);
+      result.steps.push({
+        frame: k,
+        complete: false,
+        ok: false,
+        error: msg,
+      });
+      result.error = `frame ${k}: ${msg}`;
+      result.ok = false;
+      return result;
+    }
+    if (k + 1 < N && intervalMs > 0) {
+      await io.sleep(intervalMs);
+    }
+  }
+
+  if (spec) {
+    const analyzed = analyzeFrames(rgbFrames, spec);
+    for (let k = 0; k < analyzed.length; k++) {
+      const step = result.steps[k];
+      const a = analyzed[k];
+      result.steps[k] = { ...step, ...a, ok: step.complete && a.ok };
+    }
+  }
+
+  result.ok = result.steps.length === N && result.steps.every(s => s.ok);
+  return result;
+}
+
 export function renderScan(result, { json = false } = {}) {
   if (json) return JSON.stringify(result, null, 2) + '\n';
+  if (result.mode === 'device') {
+    const label = result.spec ? `${result.target} (${result.spec})` : result.target;
+    const lines = [`lume screenshot --scan ${result.frames} ${label}`, ''];
+    if (result.error) {
+      lines.push(`[FAIL] error: ${result.error}`);
+      lines.push('', 'RESULT: FAIL (exit 1)');
+      return lines.join('\n') + '\n';
+    }
+    lines.push(`frames: ${result.frames}   target: ${result.target}`);
+    for (const s of result.steps) {
+      let line = `[${s.ok ? 'PASS' : 'FAIL'}] frame ${String(s.frame).padStart(2)}  ` +
+        `${s.width}x${s.height}  bytes=${s.bytes}  complete=${s.complete ? 'yes' : 'no'}`;
+      if (s.layerInk) {
+        const ink = Object.entries(s.layerInk).map(([k, v]) => `${k}=${v}`).join(' ');
+        line += `  layers[${ink}]  changed=${s.changedPixels}  ` +
+          `bbox=${s.changedBbox ? s.changedBbox.join(',') : '-'}  ` +
+          `oob=${s.outOfBounds}  static-hits=${s.staticIntrusions}` +
+          (s.missing && s.missing.length ? `  MISSING: ${s.missing.join('; ')}` : '');
+      }
+      lines.push(line);
+    }
+    const failed = result.steps.filter(s => !s.ok).length;
+    lines.push('');
+    lines.push(`RESULT: ${result.ok ? 'PASS' : 'FAIL'} (${result.steps.length} frames, ${failed} failed; exit ${result.ok ? 0 : 1})`);
+    return lines.join('\n') + '\n';
+  }
   const lines = [`lume screenshot --scan ${result.frames} ${result.app}`, ''];
   if (result.error) {
     lines.push(`[FAIL] error: ${result.error}`);
