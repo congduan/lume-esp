@@ -1,62 +1,42 @@
 /**
- * 示例：文件管理器（examples/files + 原 examples/file_manager 合并）
+ * File browser (examples/files, r206 round AMOLED redesign).
  *
- * Fs 目录浏览、进入下级/返回上级、新建目录、预览文本文件、删除确认。
- * 布局为相对布局：根容器 flex column + padding 24（圆角屏安全区），
- * 三段等高节奏（顶栏 56 / 列表 272 / 操作行 56），间距由 space-between
- * 分配为 24。列表行里文件名左对齐（flexGrow 撑满剩余宽度），DEL 按钮
- * 贴右边缘，而不是紧跟在文件名后面。
- * 删除经 Dialog 确认 + 递归删除（POSIX remove() 对非空目录会失败）。
- * 预览整屏叠一层 Text 面板：运行时没有文本输入控件/滚动文本，最多 8 行。
- *
- * r127：TF 卡挂载后，Fs 根目录列表追加一个 `SD/` 虚拟入口，点入即切到独立
- * 的 SD 浏览模式（onSd=true，cwd 重置为 '/'）；卡根目录按 Sd.list 列举，
- * Sd 模式下预览/新建/递归删除分别走 Sd.read / Sd.mkdir / Sd.remove（契约
- * 与 Fs 对齐，递归仍在 JS 侧完成）。每步独立 try/catch；Sd 调用失败（负数
- * 错误码/抛错）时该步回落 Fs 同路径——这是兼容性兜底，卡拔出/路径不存在时
- * 表现与无卡一致，不把两种后端混成一个命名空间。仍失败（Fs 也报错）才退化
- * 为「空目录/读取失败」，不拖垮整个 eval。顶栏在 SD 模式显示
- * Sd.statvfs() 的剩余 MB（错误码显示 NO CARD）。UI 文案全 ASCII（r64）。
- * 真机插卡验收 deferred。
+ * Fs directory browsing, enter/parent navigation, mkdir, text file preview,
+ * and Dialog-confirmed recursive delete. r127 adds TF-card (Sd) mount discovery
+ * via an SD/ virtual entry in Fs root with per-op Sd->Fs fallback and try/catch
+ * degradation. r206 aligns the presentation layer to the 480x480 round AMOLED
+ * [76, 404] safe square with grouped cards, vector folder/file/SD icons, empty
+ * state, and danger-isolated delete controls (<= 240 draw calls per frame).
  */
 import '../../runtime/shell.js';
 
-lume.theme.set({ colors: { bg:'#07111D', primary:'#07111D', surface:'#132435', surfaceAlt:'#1C3449', text:'#F2F7FB', textDim:'#9EB3C6', accent:'#40D8B0', danger:'#FF6B79', success:'#40D8B0' }, radius: 12, spacing:12 });
+lume.theme.set({ colors: {
+  bg: '#000000', primary: '#09101A', surface: '#16202E', surfaceAlt: '#1F2C3D',
+  text: '#F2F7FB', textDim: '#9EB3C6', accent: '#40D8B0', danger: '#FF6B79', success: '#40D8B0'
+}, radius: 12, spacing: 12 });
 
-const GUTTER = 24;
-const ROW_H = 56;
-const LIST_H = 272;
-const PREVIEW_ROWS = 8;
+const ROW_H = 48;
+const LIST_H = 204;
+const PREVIEW_ROWS = 7;
 
-/* ============ 状态 ============ */
+/* ============ State ============ */
 const cwd = signal('/');
 const entries = signal([]);
 const selected = signal(null);
-const preview = signal(null);   /* { name, lines } | null —— 预览面板内容 */
-const onSd = signal(false);     /* true = 当前浏览 Sd 卡根目录，false = 原 Fs */
+const preview = signal(null);   /* { name, lines } | null */
+const onSd = signal(false);     /* true = browsing TF card root, false = Fs */
 
 function notify(message) { lume.ui.shell.Toast.show(message); }
 
-/* Sd 防御式解析：无此 API（理论不可能）时 sdReady=false，根目录不添加 SD/
- * 入口，行为与 r126 之前完全一致。 */
 var sd = (lume.storage && lume.storage.Sd) || null;
 var sdReady = !!(sd && typeof sd.mounted === 'function' && sd.mounted() === true);
 
-/* 后端分发：SD 模式先走 Sd.*；Sd 调用失败（负数错误码 -1/-2/-3/-4 或 native
- * 抛错）时该步回落 Fs 同路径，否则走原 Fs.*。SD->Fs 回落是兼容性兜底：卡拔出 /
- * 路径不存在时 Sd 侧报负数错误码，此时表现与无卡一致。回落后再失败（Fs 也返回
- * 错误码或抛错）才交给调用方按原失败路径处理；每步调用方各自 try/catch，不拖垮
- * 整个 eval。实证（lume_sd.c / lume_engine.c）：Sd.read/list 成功为 string/array、
- * 失败为负数；Sd.exists 成功为 bool、失败为负数；Sd.remove/mkdir 成功为 0、失败
- * 为负数——故统一用「number 且 < 0」判别失败（0 是成功，不算失败）。
- * 另实证：Sd.exists(p + '/') 沿用 Fs 的「是目录」约定，Sd.remove 与 Fs.remove
- * 同为 unlink→rmdir 兜底，list 归一化尾部斜杠，递归删除在 JS 侧完成。 */
 function sdOrFs(method, p) {
   var r;
   try { r = sd[method](p); }
-  catch (e) { return Fs[method](p); }                     // native 抛错 -> Fs 同路径
-  if (typeof r === 'number' && r < 0) return Fs[method](p); // 负数错误码 -> Fs 同路径
-  return r;                                               // 成功值原样返回
+  catch (e) { return Fs[method](p); }
+  if (typeof r === 'number' && r < 0) return Fs[method](p);
+  return r;
 }
 function pathExists(p) { return onSd() ? sdOrFs('exists', p) : Fs.exists(p); }
 function listDir(p) { return onSd() ? sdOrFs('list', p) : Fs.list(p); }
@@ -64,12 +44,12 @@ function readText(p) { return onSd() ? sdOrFs('read', p) : Fs.read(p); }
 function removeAt(p) { return onSd() ? sdOrFs('remove', p) : Fs.remove(p); }
 function mkdirAt(p) { return onSd() ? sdOrFs('mkdir', p) : Fs.mkdir(p); }
 
-/* ============ 数据层 ============ */
+/* ============ Data layer ============ */
 function isDirPath(p) {
   try {
-    return pathExists(p + '/') === true;   // 目录以 / 结尾探测
+    return pathExists(p + '/') === true;
   } catch (e) {
-    return false;                          // Sd native 抛错视作「不是目录」
+    return false;
   }
 }
 
@@ -84,10 +64,6 @@ function itemsLabel() {
   return n + (n === 1 ? ' item' : ' items');
 }
 
-/* SD 模式顶栏状态：statvfs() 成功返回 {total,free}（字节），失败返回负数
- * 错误码——number 不是容量，必须用 typeof === 'object' 判别。剩余字节按
- * 1 MiB=1048576 B Math.floor 截断成整数 MB（口径见 KNOWN-SIMPLIFICATIONS）。
- * 错误码或抛错显示 NO CARD；无 Sd API 则不显示（理论不会发生，因 sdReady 已门控）。 */
 function cardInfoText() {
   if (!sd || typeof sd.statvfs !== 'function') return '';
   try {
@@ -107,20 +83,18 @@ function statusLabel() {
 }
 
 function loadDir(path) {
-  const clean = path.replace(/\/+$/, '') || '/';   // 尾斜杠在 native 侧归一化
+  const clean = path.replace(/\/+$/, '') || '/';
   let list;
   try { list = listDir(clean); }
   catch (e) { list = -2; }
   if (typeof list === 'number') {
     entries.set([]);
     cwd.set(clean === '/' ? '/' : clean + '/');
-    selected.set(null);   // 失败分支与成功路径同口径：清掉旧选中项
-    closePreview();       // 同时收起预览，避免残留上一个目录的文件名
+    selected.set(null);
+    closePreview();
     notify('Read failed: ' + list);
     return;
   }
-  /* Fs 根目录（且卡已挂载）追加 SD/ 虚拟入口，这是进入 SD 模式的唯一入口；
-   * SD 模式内部不再追加，避免自指。 */
   if (!onSd() && sdReady && clean === '/' && list.indexOf('SD/') < 0) {
     list = list.slice();
     list.push('SD/');
@@ -135,14 +109,14 @@ function loadDir(path) {
     if (name === 'SD/') return { name: name, isDir: true, sd: true };
     return { name: name, isDir: isDirPath(path + name) };
   }));
-  cwd.set(clean === '/' ? '/' : clean + '/');   /* keep the trailing-slash join convention */
+  cwd.set(clean === '/' ? '/' : clean + '/');
   selected.set(null);
   closePreview();
 }
 
 function goUp() {
   if (cwd() === '/') {
-    if (onSd()) {                 // SD 根 -> 退回 Fs 根，保留 SD/ 入口
+    if (onSd()) {
       onSd.set(false);
       loadDir('/');
       return;
@@ -154,7 +128,7 @@ function goUp() {
 }
 
 function openEntry(e) {
-  if (e.sd) {                     // 根目录的 SD/ 虚拟入口
+  if (e.sd) {
     onSd.set(true);
     loadDir('/');
     return;
@@ -167,9 +141,6 @@ function openEntry(e) {
   notify(e.name + ' selected');
 }
 
-/* POSIX remove() 对目录等价 rmdir：目录非空时失败，所以自底向上递归。
- * Sd.remove / Sd.exists / Sd.list 与 Fs 同语义（实证 lume_sd.c），同一套 JS
- * 递归两用；SD 模式每步 try/catch，native 抛错按 -2 IO 处理。 */
 function removeTree(path, isDirectory, depth) {
   if (depth > 8) return -1;
   if (!isDirectory) {
@@ -206,13 +177,18 @@ function askDelete(name) {
     notify('Select an item first');
     return;
   }
-  if (name === 'SD/') {           // 虚拟入口不是真实文件，禁删；Dialog 流程不双份
+  if (name === 'SD/') {
     notify('Cannot delete SD entry');
     return;
   }
-  lume.ui.shell.Dialog({title:'Delete ' + name + '?', message:name + ' cannot be recovered.',
-    buttons:[{label:'Cancel',style:'plain'},
-      {label:'Delete',style:'danger',onPress:function () { deleteEntry(name); }}]});
+  lume.ui.shell.Dialog({
+    title: 'Delete ' + name + '?',
+    message: name + ' cannot be recovered.',
+    buttons: [
+      { label: 'Cancel', style: 'plain' },
+      { label: 'Delete', style: 'danger', onPress: function () { deleteEntry(name); } }
+    ]
+  });
 }
 
 function removeSelected() {
@@ -224,8 +200,6 @@ function removeSelected() {
   askDelete(name);
 }
 
-/* 运行时装不了输入法，NEW 自动挑一个未占用的 folder-N 名字。
- * SD 模式走 Sd.exists / Sd.mkdir；native 抛错按「占用/失败」处理。 */
 function makeDir() {
   for (let i = 1; i < 100; i++) {
     const candidate = 'folder-' + i;
@@ -248,7 +222,7 @@ function makeDir() {
 function closePreview() {
   if (preview() === null) return;
   preview.set(null);
-  lume.setAttr(previewPanel, 5, 0);   /* ATTR_VISIBLE = 5 */
+  lume.setAttr(previewPanel, 5, 0);
 }
 
 function previewSelected() {
@@ -268,132 +242,234 @@ function previewSelected() {
     notify('Read failed ' + text);
     return;
   }
-  /* 46 字符/行、8 行：预览面板一屏放得下，超长行用 longMode dots 省略。 */
   const raw = String(text).replace(/\r/g, '').split('\n');
   const lines = [];
   for (let i = 0; i < raw.length && lines.length < PREVIEW_ROWS; i++) {
-    lines.push(raw[i].slice(0, 46));
+    lines.push(raw[i].slice(0, 38));
   }
   preview.set({ name: name, lines: lines });
   lume.setAttr(previewPanel, 5, 1);
 }
 
-/* ============ UI ============ */
-const root = View({ style: {
-  width: '100%', height: '100%', background: 'primary', scroll: 'none',
-  display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-  padding: GUTTER
-}}, [
-  /* 顶栏：返回 + 路径 + 项数/挂载状态（SD 模式改为卡剩余空间） */
-  View({ style: {
-    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8,
-    width: '100%', height: 56,
-    background: 'surface', borderRadius: 12,
-    paddingLeft: 12, paddingRight: 12, scroll: 'none'
-  }}, [
-    Button({
-      title: '<',
-      style: { width: 56, height: 56, borderRadius: 12, background:'surfaceAlt' },
-      onPress: goUp,
-    }),
-    Text({ text: function () { return (onSd() ? 'SD:' : 'Files:') + trim(cwd(), 18); },
-      style: { flexGrow: 1, textAlign: 'center', longMode: 'dots' } }),
-    Text({ text: statusLabel,
-      style: { width: 120, textAlign: 'right', fontSize: 12, longMode: 'dots' } }),
-  ]),
+/* ============ Inline SVG Icons (0 Canvas PSRAM, 0 draw calls) ============ */
+function svgBuf(svg) {
+  var b = new Uint8Array(svg.length);
+  for (var i = 0; i < svg.length; i++) b[i] = svg.charCodeAt(i);
+  return b.buffer;
+}
 
-  /* 文件列表（固定高度，窗口化渲染） */
-  List({
-    items: entries, itemHeight: ROW_H,
-    style: { width: '100%', height: LIST_H, background: 'surface', borderRadius: 12,
-             scrollbar: 'off' },
-    renderItem: function (e, index) { return Row({
-      style: {
-        alignItems: 'center', gap: 8, width: '100%', height: ROW_H,
-        paddingLeft: 12, paddingRight: 12, borderRadius: 8,
-        background: function () {
-          return selected() === e.name ? 'surfaceAlt' : (index % 2 ? 'surfaceAlt' : 'surface');
+var SVG_SD = svgBuf(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+  '<rect x="1" y="1" width="30" height="30" rx="8" fill="#152B44" stroke="#2B4E75" stroke-width="1"/>' +
+  '<path d="M 10 8 L 19 8 L 23 12 L 23 24 L 10 24 Z" fill="none" stroke="#5B9DF7" stroke-width="1.8" stroke-linejoin="round"/>' +
+  '<line x1="13.5" y1="11" x2="13.5" y2="14.5" stroke="#5B9DF7" stroke-width="1.6"/>' +
+  '<line x1="17" y1="11" x2="17" y2="14.5" stroke="#5B9DF7" stroke-width="1.6"/>' +
+  '</svg>'
+);
+
+var SVG_DIR = svgBuf(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+  '<rect x="1" y="1" width="30" height="30" rx="8" fill="#2E2616" stroke="#5F4D26" stroke-width="1"/>' +
+  '<path d="M 7 11 L 13 11 L 15.5 13.5 L 25 13.5 L 25 23 L 7 23 Z" fill="none" stroke="#FFD78E" stroke-width="1.8" stroke-linejoin="round"/>' +
+  '</svg>'
+);
+
+var SVG_FILE = svgBuf(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">' +
+  '<rect x="1" y="1" width="30" height="30" rx="8" fill="#133334" stroke="#285E5C" stroke-width="1"/>' +
+  '<path d="M 10 8 L 18.5 8 L 22.5 12 L 22.5 24 L 10 24 Z" fill="none" stroke="#40D8B0" stroke-width="1.8" stroke-linejoin="round"/>' +
+  '<line x1="13" y1="15.5" x2="19.5" y2="15.5" stroke="#40D8B0" stroke-width="1.5"/>' +
+  '<line x1="13" y1="19.5" x2="18" y2="19.5" stroke="#40D8B0" stroke-width="1.5"/>' +
+  '</svg>'
+);
+
+var hasImageApi = !!(lume.image && typeof lume.image.sizeOf === 'function');
+
+/* ============ UI (480x480 Round AMOLED, [76, 404] safe area) ============ */
+const root = View({ style: {
+  width: '100%', height: '100%', background: '#000000', scroll: 'none'
+} }, [
+  /* Round dial bezel */
+  View({ style: {
+    position: 'absolute', x: 14, y: 14, width: 452, height: 452,
+    borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
+    scroll: 'none'
+  } }),
+
+  /* Safe area container [76, 404] */
+  View({ style: {
+    position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+    background: '#09101A', scroll: 'none'
+  } }, [
+    /* Breadcrumb top bar */
+    View({ style: {
+      position: 'absolute', x: 4, y: 0, width: 320, height: 48,
+      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, scroll: 'none'
+    } }, [
+      Button({
+        title: '<',
+        style: {
+          width: 48, height: 48, borderRadius: 12,
+          background: '#16202E', borderColor: '#233245', borderWidth: 1,
+          color: '#F2F7FB', fontSize: 18
         },
-        scroll: 'none'
-      },
-      onPress: function () { openEntry(e); },
-    }, [
-      View({style:{width:4,height:32,background:function(){return selected()===e.name?'accent':'surface';},borderRadius:8}}),
-      Text({ text: e.isDir ? 'DIR' : 'FILE',
-        style: { width: 44, fontSize: 12, longMode: 'dots' } }),
-      /* flexGrow 吃掉剩余宽度：文件名靠左，DEL 按钮被推到行尾。 */
-      Text({ text: trim(e.name, 40),
-        style: { flexGrow: 1, textAlign: 'left', longMode: 'dots' } }),
+        onPress: goUp
+      }),
+      View({ style: {
+        flexGrow: 1, height: 48, background: '#16202E',
+        borderColor: '#233245', borderWidth: 1, borderRadius: 12,
+        paddingLeft: 10, paddingRight: 10, paddingTop: 4, paddingBottom: 4,
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', scroll: 'none'
+      } }, [
+        Text({
+          text: function () { return (onSd() ? 'SD:' : 'Files:') + trim(cwd(), 18); },
+          style: { width: '100%', height: 20, fontSize: 14, color: '#F2F7FB', longMode: 'dots' }
+        }),
+        Text({
+          text: statusLabel,
+          style: { width: '100%', height: 16, fontSize: 11, color: '#40D8B0', longMode: 'dots' }
+        })
+      ])
+    ]),
+
+    /* Virtualized file list (<= 4.2 visible rows -> <= 28 live row nodes) */
+    List({
+      items: entries, itemHeight: ROW_H, overscan: 1,
+      style: { position: 'absolute', x: 4, y: 56, width: 320, height: LIST_H, background: '#09101A', scrollbar: 'off' },
+      renderItem: function (e) {
+        var rowKids = [];
+        if (hasImageApi) {
+          var ic = Image({ src: e.sd ? SVG_SD : (e.isDir ? SVG_DIR : SVG_FILE),
+            style: { width: 32, height: 32, borderRadius: 8 } });
+          if (ic > 0) rowKids.push(ic);
+        }
+        rowKids.push(Text({
+          text: trim(e.name, 18),
+          style: { flexGrow: 1, fontSize: 14, color: '#F2F7FB', textAlign: 'left', longMode: 'dots' }
+        }));
+        rowKids.push(Button({
+          title: 'DEL',
+          style: {
+            width: 44, height: 34, borderRadius: 8,
+            background: '#2A1720', borderColor: '#692C3B', borderWidth: 1,
+            color: '#FF6B79', fontSize: 11
+          },
+          onPress: function () { askDelete(e.name); }
+        }));
+        return View({
+          style: {
+            width: 300, height: ROW_H - 2,
+            background: function () { return selected() === e.name ? '#13292F' : '#16202E'; },
+            borderColor: function () { return selected() === e.name ? '#34A88B' : '#233245'; },
+            borderWidth: 1, borderRadius: 12,
+            display: 'flex', flexDirection: 'row', alignItems: 'center',
+            paddingLeft: 8, paddingRight: 8, gap: 8, scroll: 'none'
+          },
+          onPress: function () { openEntry(e); }
+        }, rowKids);
+      }
+    }),
+
+    /* Bottom action row: New Dir / View / Delete (danger isolated) */
+    View({ style: {
+      position: 'absolute', x: 4, y: 264, width: 320, height: 58,
+      display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 8, scroll: 'none'
+    } }, [
+      Button({
+        title: 'NEW',
+        style: {
+          flexGrow: 1, height: 44, borderRadius: 12,
+          background: '#16202E', borderColor: '#233245', borderWidth: 1,
+          color: '#F2F7FB', fontSize: 13
+        },
+        onPress: makeDir
+      }),
+      Button({
+        title: 'VIEW',
+        style: {
+          flexGrow: 1, height: 44, borderRadius: 12,
+          background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
+          color: '#F2F7FB', fontSize: 13
+        },
+        onPress: previewSelected
+      }),
       Button({
         title: 'DEL',
-        style: { width: 56, height: 56, borderRadius: 8, background:'danger' },
-        onPress: function () { askDelete(e.name); },
-      }),
-    ]); },
-  }),
-
-  /* 底部操作行：新建 / 预览 / 删除选中项 */
-  View({ style: {
-    display: 'flex', flexDirection: 'row', gap: 8,
-    width: '100%', height: 56
-  }}, [
-    Button({ title: 'NEW', style: { flexGrow: 1, height: 56, borderRadius: 12,
-             background:'surface', borderWidth: 1, borderColor: 'surfaceAlt' },
-             onPress: makeDir }),
-    Button({ title: 'VIEW', style: { flexGrow: 1, height: 56, borderRadius: 12,
-             background:'surface', borderWidth: 1, borderColor: 'surfaceAlt' },
-             onPress: previewSelected }),
-    Button({ title: 'DEL', style: { flexGrow: 1, height: 56, borderRadius: 12, background:'accent' },
-             onPress: removeSelected }),
-  ]),
+        style: {
+          flexGrow: 1, height: 44, borderRadius: 12,
+          background: '#2A1720', borderColor: '#7A3240', borderWidth: 1,
+          color: '#FF6B79', fontSize: 13
+        },
+        onPress: removeSelected
+      })
+    ])
+  ])
 ]);
 
-Text({text:function(){return entries().length?'':'[ ]';},style:{x:200,y:196,width:80,fontSize:32,textAlign:'center'}});
-Text({text:function(){return entries().length?'':'No files in this folder';},style:{x:GUTTER,y:244,width:480 - GUTTER * 2,fontSize:13,textAlign:'center'}});
+/* Empty state inside safe area when directory has 0 entries */
+Text({
+  text: function () { return entries().length ? '' : 'No files in this folder'; },
+  style: {
+    position: 'absolute', x: 80, y: 224, width: 320, height: 24,
+    fontSize: 14, color: '#5C7794', textAlign: 'center'
+  }
+});
 
-/* 预览面板：整屏覆盖，点任意处关闭（创建后隐藏，VIEW 切换 ATTR_VISIBLE）。 */
+/* Text preview overlay inside round safe area */
 const previewPanel = View({
   visible: false,
-  style: { x: 0, y: 0, width: 480, height: 480, background: 'primary', scroll: 'none' },
-  onPress: closePreview,
+  style: {
+    position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+    background: '#0D1420', borderColor: '#2B3E54', borderWidth: 1, borderRadius: 12,
+    scroll: 'none'
+  },
+  onPress: closePreview
 });
-Text({ parent: previewPanel,
-  text: function () { const p = preview(); return p ? trim(p.name, 46) : ''; },
-  style: { x: GUTTER, y: 64, width: 480 - GUTTER * 2, height: 32,
-    fontSize: 20, textAlign: 'center', longMode: 'dots' } });
+Text({
+  parent: previewPanel,
+  text: function () { const p = preview(); return p ? trim(p.name, 30) : ''; },
+  style: {
+    position: 'absolute', x: 12, y: 10, width: 304, height: 26,
+    fontSize: 18, color: '#40D8B0', textAlign: 'center', longMode: 'dots'
+  }
+});
 for (let i = 0; i < PREVIEW_ROWS; i++) {
-  Text({ parent: previewPanel,
+  Text({
+    parent: previewPanel,
     text: function () { const p = preview(); return p && p.lines[i] ? p.lines[i] : ''; },
-    style: { x: GUTTER, y: 116 + i * 34, width: 480 - GUTTER * 2, height: 30,
-      fontSize: 14, longMode: 'dots' } });
+    style: {
+      position: 'absolute', x: 12, y: 44 + i * 34, width: 304, height: 28,
+      fontSize: 13, color: '#F2F7FB', longMode: 'dots'
+    }
+  });
 }
-Text({ parent: previewPanel, text: 'tap anywhere to close',
-  style: { x: GUTTER, y: 432, width: 480 - GUTTER * 2, height: 24,
-    fontSize: 12, textAlign: 'center' } });
+Text({
+  parent: previewPanel,
+  text: 'Tap anywhere to close',
+  style: {
+    position: 'absolute', x: 12, y: 296, width: 304, height: 22,
+    fontSize: 12, color: '#5C7794', textAlign: 'center'
+  }
+});
 
-/* 下滑 = 返回上级（全局 node 0 监听，与 swipe-up 回桌面互不冲突）。 */
 lume.gesture.on(0, 'swipe', function (e) {
   if (e.dir !== 'down') return;
   if (preview() !== null) closePreview();
   else goUp();
 });
 
-/* BACK 键：先关预览，再逐级上移，根目录放行给系统。 */
 lume.app.onBack(function () {
   if (preview() !== null) { closePreview(); return true; }
   if (cwd() === '/' && !onSd()) return false;
-  goUp();                 // SD 根目录的 BACK 先退出 SD 模式，不直接回桌面
+  goUp();
   return true;
 });
 
-/* ============ 生命周期 ============ */
-lume.app.onResume(function () { loadDir(cwd()); });   // 回前台重读目录
+lume.app.onResume(function () { loadDir(cwd()); });
 
-/* 开发验证：在控制台调用 seedTestEntries()，用 1000 条模拟目录测试滚动。
- * 不写 TF 卡；重新 loadDir(cwd()) 即可恢复真实目录。 */
 function seedTestEntries() {
   const test = [];
-  for (let i = 0; i < 1000; i++) test.push({name: 'dir-' + i, isDir: true});
+  for (let i = 0; i < 1000; i++) test.push({ name: 'dir-' + i, isDir: true });
   entries.set(test);
 }
 

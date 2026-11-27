@@ -114,8 +114,8 @@ var volume = signal(function () {
 var volNote = signal('');
 var powerNote = signal('');       /* r164: ASCII note for guarded power-off failure */
 var wifiBusy = signal('');         /* ssid while a connect attempt is running */
-var timeSyncLine = signal('TIME SYNC: --');  /* r129: General-page NTP status */
-var otaLine = signal('ota off');             /* r132: General-page OTA status */
+var timeSyncLine = signal('Time  OFFLINE');  /* r129: General-page NTP status */
+var otaLine = signal('OTA  OFFLINE');        /* r132: General-page OTA status */
 var otaNote = signal('');                    /* r132: transient setToken result */
 var rebootNote = signal('');                 /* r143: transient reboot guard note */
 
@@ -178,16 +178,23 @@ var SVG_GEAR = svgBuf(
 /* ---- compact 10px uppercase stroke glyphs for group headers ------------- */
 
 var MICRO_GLYPHS = {
+  A: [[0,8,0,2],[0,2,1,0],[1,0,3,0],[3,0,4,2],[4,2,4,8],[0,4,4,4]],
+  B: [[0,0,3,0],[3,0,4,1],[4,1,4,3],[4,3,3,4],[3,4,0,4],[3,4,4,5],[4,5,4,7],[4,7,3,8],[3,8,0,8],[0,8,0,0]],
   C: [[4,0,1,0],[1,0,0,1],[0,1,0,7],[0,7,1,8],[1,8,4,8]],
   D: [[0,0,3,0],[3,0,4,1],[4,1,4,7],[4,7,3,8],[3,8,0,8],[0,8,0,0]],
   E: [[0,0,4,0],[0,0,0,8],[0,4,3,4],[0,8,4,8]],
   I: [[1,0,3,0],[2,0,2,8],[1,8,3,8]],
+  K: [[0,0,0,8],[4,0,0,4],[1,3,4,8]],
   N: [[0,8,0,0],[0,0,4,8],[4,8,4,0]],
   O: [[1,0,3,0],[3,0,4,1],[4,1,4,7],[4,7,3,8],[3,8,1,8],[1,8,0,7],[0,7,0,1],[0,1,1,0]],
+  P: [[0,8,0,0],[0,0,3,0],[3,0,4,1],[4,1,4,3],[4,3,3,4],[3,4,0,4]],
+  R: [[0,8,0,0],[0,0,3,0],[3,0,4,1],[4,1,4,3],[4,3,3,4],[3,4,0,4],[2,4,4,8]],
   S: [[4,1,3,0],[3,0,1,0],[1,0,0,1],[0,1,0,3],[0,3,4,5],[4,5,4,7],[4,7,3,8],[3,8,1,8],[1,8,0,7]],
   T: [[0,0,4,0],[2,0,2,8]],
   U: [[0,0,0,7],[0,7,1,8],[1,8,3,8],[3,8,4,7],[4,7,4,0]],
-  V: [[0,0,2,8],[2,8,4,0]]
+  V: [[0,0,2,8],[2,8,4,0]],
+  W: [[0,0,0,8],[0,8,2,4],[2,4,4,8],[4,8,4,0]],
+  Y: [[0,0,2,4],[4,0,2,4],[2,4,2,8]]
 };
 
 function drawMicroLabel(c, text, x, y, col) {
@@ -219,6 +226,68 @@ function drawCapsule(c, x, y, w, h, fill, border) {
     c.fillCircle(x + w - r, y + r, r, fill);
     c.fillColor(fill); c.fillRect(x + r, y, w - 2 * r, h);
   }
+}
+
+function drawCardBox(c, x, y, w, h, fill, border) {
+  var r = 10;
+  if (border) {
+    c.fillCircle(x + r, y + r, r, border);
+    c.fillCircle(x + w - r, y + r, r, border);
+    c.fillCircle(x + r, y + h - r, r, border);
+    c.fillCircle(x + w - r, y + h - r, r, border);
+    c.fillColor(border);
+    c.fillRect(x + r, y, w - 2 * r, h);
+    c.fillRect(x, y + r, w, h - 2 * r);
+    x += 1; y += 1; w -= 2; h -= 2; r = 9;
+  }
+  c.fillCircle(x + r, y + r, r, fill);
+  c.fillCircle(x + w - r, y + r, r, fill);
+  c.fillCircle(x + r, y + h - r, r, fill);
+  c.fillCircle(x + w - r, y + h - r, r, fill);
+  c.fillColor(fill);
+  c.fillRect(x + r, y, w - 2 * r, h);
+  c.fillRect(x, y + r, w, h - 2 * r);
+}
+
+function drawStatusPill(c, x, y, w, h, label, fg, bg, border) {
+  drawCapsule(c, x, y, w, h, bg, border);
+  c.fillCircle(x + 11, y + Math.floor(h / 2), 3, fg);
+  c.text(x + 19, y + Math.floor((h - 14) / 2), label, fg);
+}
+
+function drawSignalBars(c, x, y, tier, col) {
+  var dim = '#2A3B4F';
+  c.fillColor(tier >= 1 ? col : dim); c.fillRect(x, y + 8, 3, 5);
+  c.fillColor(tier >= 2 ? col : dim); c.fillRect(x + 6, y + 4, 3, 9);
+  c.fillColor(tier >= 3 ? col : dim); c.fillRect(x + 12, y, 3, 13);
+}
+
+function drawLockGlyph(c, x, y, col) {
+  c.line(x + 2, y + 4, x + 2, y + 2, col, 1);
+  c.line(x + 2, y + 2, x + 7, y + 2, col, 1);
+  c.line(x + 7, y + 2, x + 7, y + 4, col, 1);
+  c.line(x, y + 5, x + 9, y + 5, col, 1);
+  c.line(x, y + 11, x + 9, y + 11, col, 1);
+  c.line(x, y + 5, x, y + 11, col, 1);
+  c.line(x + 9, y + 5, x + 9, y + 11, col, 1);
+}
+
+function drawWifiGlyph(c, cx, cy, col, bg, ring) {
+  c.fillCircle(cx, cy, 16, ring);
+  c.fillCircle(cx, cy, 15, bg);
+  c.arc(cx, cy + 5, 11, 225, 315, 2, col);
+  c.arc(cx, cy + 5, 7, 225, 315, 2, col);
+  c.fillCircle(cx, cy + 6, 2, col);
+}
+
+function drawBtGlyph(c, cx, cy, col, bg, ring) {
+  c.fillCircle(cx, cy, 17, ring);
+  c.fillCircle(cx, cy, 16, bg);
+  c.line(cx, cy - 9, cx, cy + 9, col, 2);
+  c.line(cx, cy - 9, cx + 6, cy - 4, col, 2);
+  c.line(cx + 6, cy - 4, cx - 5, cy + 5, col, 2);
+  c.line(cx - 5, cy - 5, cx + 6, cy + 4, col, 2);
+  c.line(cx + 6, cy + 4, cx, cy + 9, col, 2);
 }
 
 function drawChevron(c, x, y, col) {
@@ -520,26 +589,26 @@ function powerOff() {
  * radio-free "synced?" heuristic (ASCII copy, r64 discipline). */
 function timeSyncStatus() {
   var t = lume.system.time(), d = Date.now();
-  if (typeof t !== 'number' || typeof d !== 'number') return 'TIME SYNC: NOT SYNCED';
-  if (Math.abs(t - d) > 5000) return 'TIME SYNC: NOT SYNCED';
-  return t > 1000000000000 ? 'TIME SYNC: NTP OK' : 'TIME SYNC: NOT SYNCED';
+  if (typeof t !== 'number' || typeof d !== 'number') return 'Time  OFFLINE';
+  if (Math.abs(t - d) > 5000) return 'Time  OFFLINE';
+  return t > 1000000000000 ? 'Time  SYNCED' : 'Time  OFFLINE';
 }
 function syncTimeNow() {
   var sys = lume.system;
   if (!sys || typeof sys.setTimeNtp !== 'function') {
-    timeSyncLine.set('TIME SYNC: NO API');
+    timeSyncLine.set('Time  NO API');
     return;
   }
   var st = lume.net.status();
   if (typeof st !== 'object' || st === null || st.state !== lume.net.GOT_IP) {
-    timeSyncLine.set('TIME SYNC: NO WIFI');
+    timeSyncLine.set('Time  NO WIFI');
     return;
   }
   var r = sys.setTimeNtp();            /* default server / default 10 s */
-  if (r === 0) timeSyncLine.set('TIME SYNC: NTP OK');
-  else if (r === -2) timeSyncLine.set('TIME SYNC: SYNC FAILED');
-  else if (r === -3) timeSyncLine.set('TIME SYNC: NO WIFI');
-  else timeSyncLine.set('TIME SYNC: ERR ' + r);
+  if (r === 0) timeSyncLine.set('Time  SYNCED');
+  else if (r === -2) timeSyncLine.set('Time  FAILED');
+  else if (r === -3) timeSyncLine.set('Time  NO WIFI');
+  else timeSyncLine.set('Time  ERR ' + r);
 }
 
 /* ---- r132: OTA status + token rotation BEGIN (pure app layer) ----------------
@@ -549,10 +618,10 @@ function syncTimeNow() {
 function otaStatusText() {
   var st = lume.ota.status();
   if (!(typeof st === 'object') || st === null) return 'ota err ' + st;
-  if (!st.running) return 'ota off';
-  if (!st.wifiReady) return 'ota wifi down';
-  if (!st.tokenReady) return 'ota no token';
-  return 'ota :' + st.port + (st.hmac ? ' hmac' : '');
+  if (!st.running) return 'OTA  OFFLINE';
+  if (!st.wifiReady) return 'OTA  NO WIFI';
+  if (!st.tokenReady) return 'OTA  NO TOKEN';
+  return 'OTA  :' + st.port + (st.hmac ? ' HMAC' : '');
 }
 function refreshOta() { otaLine.set(otaStatusText()); }
 
@@ -690,38 +759,21 @@ function stopPolling() {
   pollTimer = null;
 }
 
-/* ---- shared widgets ------------------------------------------------------------ */
+/* ---- shared subpage widgets (r206 round AMOLED language) -------------------- */
 
-function titleText(text) {
-  return Text({ text: text, style: { width: '100%', height: 28, fontSize: 22, color: 'text', textAlign: 'center' } });
-}
-function infoRow(label, value, height) {
-  return View({ style: {
-    width: '100%', height: height || 36, background: 'surface',
-    borderColor: '#243548', borderWidth: 1, borderRadius: 10,
-    display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 8, scroll: 'none'
-  } }, [
-    Text({ text: label, style: { fontSize: 14, color: 'textDim' } }),
-    Text({ text: value, style: { fontSize: 14, color: 'text' } })
-  ]);
-}
-function actionRow(children, height) {
-  return View({ style: {
-    width: '100%', height: height || 48, display: 'flex',
-    flexDirection: 'row', gap: 8
-  } }, children);
-}
-function bigButton(title, onPress, grow) {
-  return Button({ title: title, onPress: onPress, style: {
-    flexGrow: grow || 1, height: 48, borderRadius: 10 } });
+function backPill(dest) {
+  return Button({ title: '<', onPress: function () { go(dest); }, style: {
+    position: 'absolute', x: 4, y: 2, width: 48, height: 30,
+    background: '#16202E', borderColor: '#233245', borderWidth: 1,
+    borderRadius: 15, color: '#9EB3C6', fontSize: 16
+  } });
 }
 
-/* ---- page: menu (r205 round AMOLED design) ----------------------------------- */
+/* ---- page: menu (r205 round AMOLED design, shared dial bezel) --------------- */
 
 function menuGroupHeader(label, y) {
   return Canvas({ width: 320, height: 12,
-    style: { position: 'absolute', x: 80, y: y, scroll: 'none' },
+    style: { position: 'absolute', x: 4, y: y - 76, scroll: 'none' },
     onDraw: function (c) {
       c.fillColor('#09101A'); c.fillRect(0, 0, 320, 12);
       drawMicroLabel(c, label, 4, 2, '#5C7794');
@@ -735,7 +787,7 @@ function makeMenuRow(y, svgBytes, title, rightNode, isOnFn, action) {
   children.push(Text({ text: title, style: { flexGrow: 1, height: 24, fontSize: 16, color: 'text' } }));
   children.push(rightNode);
   return View({ onPress: action, style: {
-    position: 'absolute', x: 80, y: y, width: 320, height: 52,
+    position: 'absolute', x: 4, y: y - 76, width: 320, height: 52,
     background: function () { return isOnFn && isOnFn() ? '#14292E' : '#16202E'; },
     borderColor: function () { return isOnFn && isOnFn() ? '#34A88B' : '#233245'; },
     borderWidth: 1, borderRadius: 12,
@@ -793,7 +845,7 @@ var sysTrailing = Canvas({ width: 82, height: 28, style: { scroll: 'none' },
   onDraw: function (c) { drawSystemTrailing(c); } });
 
 var battCompCanvas = Canvas({ width: 68, height: 24,
-  style: { position: 'absolute', x: 332, y: 78, scroll: 'none' },
+  style: { position: 'absolute', x: 256, y: 2, scroll: 'none' },
   onDraw: function (c) {
     var p = battPct();
     var shown = p >= 0 ? p : 85;
@@ -810,24 +862,25 @@ var battCompCanvas = Canvas({ width: 68, height: 24,
     c.text(26, 5, (p >= 0 ? p + '%' : '--%'), '#40D8B0');
   } });
 
+var dialBezel = View({ style: {
+  position: 'absolute', x: 14, y: 14, width: 452, height: 452,
+  borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
+  scroll: 'none'
+} });
+
 var menuPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
-  background: '#000000', scroll: 'none'
+  position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+  background: '#09101A', scroll: 'none'
 } }, [
   View({ style: {
-    position: 'absolute', x: 14, y: 14, width: 452, height: 452,
-    borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
-    scroll: 'none'
-  } }),
-  View({ style: {
-    position: 'absolute', x: 80, y: 78, width: 62, height: 24,
+    position: 'absolute', x: 4, y: 2, width: 62, height: 24,
     background: '#16202E', borderRadius: 12, borderWidth: 1, borderColor: '#233245',
     display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
   } }, [
     Text({ text: clockText, style: { fontSize: 13, color: '#9EB3C6', textAlign: 'center' } })
   ]),
   Text({ text: 'Settings', style: {
-    position: 'absolute', x: 150, y: 76, width: 180, height: 28,
+    position: 'absolute', x: 74, y: 0, width: 180, height: 28,
     fontSize: 22, color: 'text', textAlign: 'center'
   } }),
   battCompCanvas,
@@ -845,167 +898,416 @@ var menuPage = View({ style: {
 ]);
 pageNodes.menu = menuPage;
 
-/* ---- page: wifi --------------------------------------------------------------------- */
+/* ---- page: wifi (r206 round AMOLED design) ---------------------------------- */
+
+function wifiVisualState() {
+  var s = wifiLine();
+  var busy = wifiBusy();
+  if (busy !== '' || s.indexOf('connecting') === 0 || s.indexOf('scanning') === 0) return 'connecting';
+  if (s.indexOf('ip ') === 0 || s === 'associated' || s === 'got ip') return 'connected';
+  if (s.indexOf('err') >= 0 || s.indexOf('failed') === 0) return 'error';
+  return 'off';
+}
 
 function netRow(item) {
-  var isAuto = function () { return autoSsid() === item.ssid; };
   return View({ style: {
-    width: '100%', height: 42, background: 'surface',
-    display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
+    width: '100%', height: 48, background: '#09101A',
+    display: 'flex', flexDirection: 'row', alignItems: 'center',
+    gap: 6, paddingTop: 2, paddingBottom: 2, scroll: 'none'
   }, onPress: function () { connectNet(item); } }, [
-    Text({ text: function () {
-      return item.ssid.slice(0, 14) + (isAuto() ? ' (auto)' : '');
-    }, style: { flexGrow: 1, fontSize: 14 } }),
-    Button({ title: 'X', onPress: function () { forgetNet(item); },
-      style: { width: 34, height: 32, borderRadius: 8 } })
+    Canvas({ width: 274, height: 44, style: { scroll: 'none' }, onDraw: function (c) {
+      var isAuto = autoSsid() === item.ssid;
+      c.fillColor('#09101A'); c.fillRect(0, 0, 274, 44);
+      drawCardBox(c, 0, 0, 274, 44, isAuto ? '#14292E' : '#16202E', isAuto ? '#34A88B' : '#233245');
+      drawSignalBars(c, 12, 15, isAuto ? 3 : 2, '#40D8B0');
+      c.text(36, 14, item.ssid.slice(0, 14), '#F2F7FB');
+      if (isAuto) {
+        drawCapsule(c, 196, 12, 46, 20, '#133334', '#285E5C');
+        c.text(204, 15, 'AUTO', '#40D8B0');
+      }
+      drawLockGlyph(c, 252, 16, '#5C7794');
+    } }),
+    Button({ title: 'X', onPress: function () { forgetNet(item); }, style: {
+      width: 40, height: 44, borderRadius: 10,
+      background: '#2A1720', borderColor: '#692C3B', borderWidth: 1, color: '#FF6B79'
+    } })
   ]);
 }
 
+var wifiHeaderCanvas = Canvas({ width: 128, height: 30,
+  style: { position: 'absolute', x: 196, y: 2, scroll: 'none' },
+  onDraw: function (c) {
+    var st = wifiVisualState();
+    c.fillColor('#09101A'); c.fillRect(0, 0, 128, 30);
+    if (st === 'connected') drawStatusPill(c, 12, 3, 114, 24, 'CONNECTED', '#40D8B0', '#122A2B', '#2E7D6B');
+    else if (st === 'connecting') drawStatusPill(c, 6, 3, 120, 24, 'CONNECTING', '#FFD78E', '#2A2315', '#745B2A');
+    else if (st === 'error') drawStatusPill(c, 44, 3, 82, 24, 'ERROR', '#FF6B79', '#2A1720', '#7A3240');
+    else drawStatusPill(c, 52, 3, 74, 24, 'OFF', '#9EB3C6', '#16202E', '#2A3B4F');
+  } });
+
+var wifiHeroCanvas = Canvas({ width: 320, height: 54,
+  style: { position: 'absolute', x: 4, y: 38, scroll: 'none' },
+  onDraw: function (c) {
+    var st = wifiVisualState();
+    var line = wifiLine();
+    var busy = wifiBusy();
+    var auto = autoSsid();
+    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 54);
+    var fill = st === 'connected' ? '#12262B' : (st === 'connecting' ? '#241E14' : '#16202E');
+    var brd = st === 'connected' ? '#34A88B' : (st === 'connecting' ? '#8A6B30' : '#233245');
+    drawCardBox(c, 0, 0, 320, 54, fill, brd);
+    var icCol = st === 'connected' ? '#40D8B0' : (st === 'connecting' ? '#FFD78E' : '#5C7794');
+    var icBg = st === 'connected' ? '#133334' : (st === 'connecting' ? '#332914' : '#1B2838');
+    var icRing = st === 'connected' ? '#285E5C' : (st === 'connecting' ? '#6B5326' : '#2A3B4F');
+    drawWifiGlyph(c, 28, 27, icCol, icBg, icRing);
+    var title = busy !== '' ? busy.slice(0, 16) : (auto !== '' ? auto.slice(0, 16) : 'Wi-Fi Radio');
+    c.text(56, 10, title, '#F2F7FB');
+    var sub = st === 'off' ? 'Disconnected - tap Scan' : line.slice(0, 26);
+    c.text(56, 30, sub, st === 'connected' ? '#40D8B0' : (st === 'connecting' ? '#FFD78E' : '#9EB3C6'));
+    if (st === 'connected') {
+      c.fillCircle(296, 27, 12, '#163D38');
+      c.line(291, 27, 295, 31, '#40D8B0', 2);
+      c.line(295, 31, 302, 23, '#40D8B0', 2);
+    } else if (st === 'connecting') {
+      c.arc(296, 27, 9, 0, 270, 2, '#FFD78E');
+    } else {
+      c.fillCircle(296, 27, 5, '#3A4E66');
+    }
+  } });
+
+var wifiSavedHeaderCanvas = Canvas({ width: 320, height: 14,
+  style: { position: 'absolute', x: 4, y: 150, scroll: 'none' },
+  onDraw: function (c) {
+    var n = savedNets().length;
+    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 14);
+    drawMicroLabel(c, 'SAVED NETWORKS', 4, 3, '#5C7794');
+    c.text(246, 0, n === 0 ? 'EMPTY' : (n + ' SAVED'), '#5C7794');
+  } });
+
 var wifiPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
-  background: 'primary', padding: SAFE, gap: 8,
-  display: 'flex', flexDirection: 'column', scroll: 'none'
+  position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+  background: '#09101A', scroll: 'none'
 } }, [
-  titleText('WiFi'),
-  infoRow('status', function () { return wifiLine(); }),
-  actionRow([
-    bigButton('Scan', function () { go('scan'); }),
-    bigButton('Disconnect', disconnectNet),
-    bigButton('Add', addNetwork)
-  ]),
-  Text({ text: 'saved - tap to connect, X to forget',
-    style: { width: '100%', height: 18, fontSize: 13, color: 'textDim' } }),
-  List({ items: savedNets, itemHeight: 42, overscan: 1,
+  backPill('menu'),
+  Text({ text: 'Wi-Fi', style: {
+    position: 'absolute', x: 58, y: 2, width: 132, height: 28,
+    fontSize: 20, color: '#F2F7FB', textAlign: 'center'
+  } }),
+  wifiHeaderCanvas,
+  wifiHeroCanvas,
+  Button({ title: 'Scan', onPress: function () { go('scan'); }, style: {
+    position: 'absolute', x: 4, y: 98, width: 102, height: 46, borderRadius: 12,
+    background: '#116354', borderColor: '#40D8B0', borderWidth: 1, color: '#F2F7FB', fontSize: 14
+  } }),
+  Button({ title: 'Add', onPress: addNetwork, style: {
+    position: 'absolute', x: 113, y: 98, width: 102, height: 46, borderRadius: 12,
+    background: '#16202E', borderColor: '#233245', borderWidth: 1, color: '#F2F7FB', fontSize: 14
+  } }),
+  Button({ title: 'Disconnect', onPress: disconnectNet, style: {
+    position: 'absolute', x: 222, y: 98, width: 102, height: 46, borderRadius: 12,
+    background: '#2A1720', borderColor: '#692C3B', borderWidth: 1, color: '#FF6B79', fontSize: 13
+  } }),
+  wifiSavedHeaderCanvas,
+  List({ items: savedNets, itemHeight: 48, overscan: 1,
     renderItem: netRow,
-    style: { width: '100%', height: 126, background: 'primary',
-      scrollbar: 'auto' } })
+    style: { position: 'absolute', x: 4, y: 168, width: 320, height: 156,
+      background: '#09101A', scrollbar: 'auto' } })
 ]);
 pageNodes.wifi = wifiPage;
 
-/* ---- page: wifi scan --------------------------------------------------------------- */
+/* ---- page: wifi scan (r206 round AMOLED design) ----------------------------- */
 
 function scanRow(item) {
   return View({ style: {
-    width: '100%', height: 42, background: 'surface',
-    display: 'flex', flexDirection: 'row', alignItems: 'center',
-    padding: 6, scroll: 'none'
+    width: '100%', height: 48, background: '#09101A',
+    paddingTop: 2, paddingBottom: 2, scroll: 'none'
   }, onPress: function () { connectFromScan(item); } }, [
-    Text({ text: function () {
-      var name = item.ssid === '' ? '(hidden)' : item.ssid.slice(0, 16);
-      return name + '  ' + item.rssi + 'dBm' + (item.auth === 0 ? ' open' : '');
-    }, style: { flexGrow: 1, fontSize: 14 } })
+    Canvas({ width: 320, height: 44, style: { scroll: 'none' }, onDraw: function (c) {
+      c.fillColor('#09101A'); c.fillRect(0, 0, 320, 44);
+      drawCardBox(c, 0, 0, 320, 44, '#16202E', '#233245');
+      var tier = item.rssi >= -58 ? 3 : (item.rssi >= -72 ? 2 : 1);
+      drawSignalBars(c, 12, 15, tier, tier === 1 ? '#FFD78E' : '#40D8B0');
+      var name = item.ssid === '' ? '(hidden)' : item.ssid.slice(0, 15);
+      c.text(36, 14, name, '#F2F7FB');
+      c.text(222, 14, item.rssi + ' dBm', '#9EB3C6');
+      if (item.auth === 0) {
+        c.text(282, 14, 'OPEN', '#FFD78E');
+      } else {
+        drawLockGlyph(c, 296, 16, '#5C7794');
+      }
+    } })
   ]);
 }
 
+var scanHeaderCanvas = Canvas({ width: 104, height: 30,
+  style: { position: 'absolute', x: 220, y: 2, scroll: 'none' },
+  onDraw: function (c) {
+    var n = scanResults().length;
+    c.fillColor('#09101A'); c.fillRect(0, 0, 104, 30);
+    var label = n > 0 ? (n + ' FOUND') : 'READY';
+    drawStatusPill(c, 8, 3, 94, 24, label, n > 0 ? '#40D8B0' : '#9EB3C6',
+      n > 0 ? '#122A2B' : '#16202E', n > 0 ? '#2E7D6B' : '#2A3B4F');
+  } });
+
+var scanLabelCanvas = Canvas({ width: 320, height: 14,
+  style: { position: 'absolute', x: 4, y: 92, scroll: 'none' },
+  onDraw: function (c) {
+    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 14);
+    drawMicroLabel(c, 'NEARBY', 4, 3, '#5C7794');
+    c.text(130, 0, wifiLine().slice(0, 24), '#9EB3C6');
+  } });
+
 var scanPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
-  background: 'primary', padding: SAFE, gap: 8,
-  display: 'flex', flexDirection: 'column', scroll: 'none'
+  position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+  background: '#09101A', scroll: 'none'
 } }, [
-  titleText('WiFi scan'),
-  infoRow('status', function () { return wifiLine(); }),
-  actionRow([bigButton('Rescan', scanNow)]),
-  List({ items: scanResults, itemHeight: 42, overscan: 1,
+  backPill('wifi'),
+  Text({ text: 'Wi-Fi Scan', style: {
+    position: 'absolute', x: 58, y: 2, width: 156, height: 28,
+    fontSize: 20, color: '#F2F7FB', textAlign: 'center'
+  } }),
+  scanHeaderCanvas,
+  Button({ title: 'Rescan', onPress: scanNow, style: {
+    position: 'absolute', x: 4, y: 38, width: 320, height: 46, borderRadius: 12,
+    background: '#116354', borderColor: '#40D8B0', borderWidth: 1, color: '#F2F7FB', fontSize: 15
+  } }),
+  scanLabelCanvas,
+  List({ items: scanResults, itemHeight: 48, overscan: 1,
     renderItem: scanRow,
-    style: { width: '100%', height: 146, background: 'primary',
-      scrollbar: 'auto' } }),
-  Text({ text: 'Tap a network to connect',
-    style: { width: '100%', height: 18, fontSize: 13, color: 'textDim' } })
+    style: { position: 'absolute', x: 4, y: 110, width: 320, height: 192,
+      background: '#09101A', scrollbar: 'auto' } }),
+  Text({ text: 'Tap a network to connect', style: {
+    position: 'absolute', x: 4, y: 306, width: 320, height: 18,
+    fontSize: 12, color: '#5C7794', textAlign: 'center'
+  } })
 ]);
 pageNodes.scan = scanPage;
 
-/* ---- page: bluetooth ------------------------------------------------------------------ */
+/* ---- page: bluetooth (r206 round AMOLED design) ----------------------------- */
+
+function btVisualState() {
+  var s = btLine();
+  if (s.indexOf('connected') === 0) return 'connected';
+  if (s.indexOf('advertising') === 0) return 'advertising';
+  return 'off';
+}
+
+var btHeaderCanvas = Canvas({ width: 96, height: 30,
+  style: { position: 'absolute', x: 228, y: 2, scroll: 'none' },
+  onDraw: function (c) {
+    var st = btVisualState();
+    c.fillColor('#09101A'); c.fillRect(0, 0, 96, 30);
+    if (st === 'connected') drawStatusPill(c, 10, 3, 84, 24, 'CONN', '#40D8B0', '#122A2B', '#2E7D6B');
+    else if (st === 'advertising') drawStatusPill(c, 16, 3, 78, 24, 'ADV', '#5B9DF7', '#152B44', '#2F5C8D');
+    else drawStatusPill(c, 20, 3, 74, 24, 'OFF', '#9EB3C6', '#16202E', '#2A3B4F');
+  } });
+
+var btHeroCanvas = Canvas({ width: 320, height: 112,
+  style: { position: 'absolute', x: 4, y: 42, scroll: 'none' },
+  onPress: function () {
+    if (btVisualState() === 'off') bleStart(); else bleStop();
+  },
+  onDraw: function (c) {
+    var st = btVisualState();
+    var isOn = st !== 'off';
+    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 112);
+    var fill = st === 'connected' ? '#12262B' : (isOn ? '#142338' : '#16202E');
+    var brd = st === 'connected' ? '#34A88B' : (isOn ? '#2F5C8D' : '#233245');
+    drawCardBox(c, 0, 0, 320, 112, fill, brd);
+    drawBtGlyph(c, 32, 36, isOn ? '#5B9DF7' : '#5C7794', '#152B44', isOn ? '#2F5C8D' : '#2A3B4F');
+    c.text(62, 17, btName().slice(0, 16), '#F2F7FB');
+    c.text(62, 37, 'BLE GATT Peripheral', '#9EB3C6');
+    drawCapsule(c, 256, 24, 46, 24, isOn ? '#40D8B0' : '#1F2C3D', isOn ? '#6EEAC8' : '#3A4E66');
+    var kx = isOn ? 290 : 268;
+    c.fillCircle(kx, 36, 9, '#FFFFFF');
+    c.line(14, 70, 306, 70, '#243548', 1);
+    c.text(16, 82, 'Status', '#9EB3C6');
+    var badgeText = st === 'connected' ? 'CONNECTED' : (st === 'advertising' ? 'ADVERTISING' : btLine().toUpperCase());
+    var badgeCol = st === 'connected' ? '#40D8B0' : (st === 'advertising' ? '#5B9DF7' : '#9EB3C6');
+    c.text(170, 82, badgeText.slice(0, 16), badgeCol);
+  } });
+
+var btIdentityCanvas = Canvas({ width: 320, height: 68,
+  style: { position: 'absolute', x: 4, y: 162, scroll: 'none' },
+  onPress: renameBle,
+  onDraw: function (c) {
+    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 68);
+    drawMicroLabel(c, 'IDENTITY', 4, 2, '#5C7794');
+    drawCardBox(c, 0, 18, 320, 50, '#16202E', '#233245');
+    c.text(16, 36, 'Device Name', '#F2F7FB');
+    c.text(196, 36, btName().slice(0, 11), '#9EB3C6');
+    drawChevron(c, 300, 43, '#5C7794');
+  } });
 
 var btPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
-  background: 'primary', padding: SAFE, gap: 10,
-  display: 'flex', flexDirection: 'column', scroll: 'none'
+  position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+  background: '#09101A', scroll: 'none'
 } }, [
-  titleText('Bluetooth'),
-  infoRow('device', function () {
-    return btName() + ' ' + btLine();
-  }),
-  actionRow([
-    bigButton('Advertise', bleStart),
-    bigButton('Stop', bleStop),
-    bigButton('Rename', renameBle)
-  ]),
-  Text({ text: 'Ready to connect with another device',
-    style: { width: '100%', height: 22, fontSize: 13, color: 'textDim', textAlign: 'center' } })
+  backPill('menu'),
+  Text({ text: 'Bluetooth', style: {
+    position: 'absolute', x: 58, y: 2, width: 164, height: 28,
+    fontSize: 20, color: '#F2F7FB', textAlign: 'center'
+  } }),
+  btHeaderCanvas,
+  btHeroCanvas,
+  btIdentityCanvas,
+  Button({ title: 'Advertise', onPress: bleStart, style: {
+    position: 'absolute', x: 4, y: 242, width: 156, height: 48, borderRadius: 12,
+    background: function () { return btVisualState() === 'off' ? '#116354' : '#1F2C3D'; },
+    borderColor: function () { return btVisualState() === 'off' ? '#40D8B0' : '#233245'; },
+    borderWidth: 1,
+    color: '#F2F7FB', fontSize: 14
+  } }),
+  Button({ title: 'Stop', onPress: bleStop, style: {
+    position: 'absolute', x: 168, y: 242, width: 156, height: 48, borderRadius: 12,
+    background: function () { return btVisualState() === 'off' ? '#16202E' : '#2A1720'; },
+    borderColor: function () { return btVisualState() === 'off' ? '#233245' : '#692C3B'; },
+    borderWidth: 1,
+    color: function () { return btVisualState() === 'off' ? '#5C7794' : '#FF6B79'; },
+    fontSize: 14
+  } }),
+  Text({ text: 'Discoverable as Nordic-UART peripheral', style: {
+    position: 'absolute', x: 4, y: 300, width: 320, height: 20,
+    fontSize: 12, color: '#5C7794', textAlign: 'center'
+  } })
 ]);
 pageNodes.bt = btPage;
 
-/* ---- page: general ---------------------------------------------------------------------- */
+/* ---- page: general (r206 round AMOLED design) ------------------------------- */
+
+var generalHeaderCanvas = Canvas({ width: 72, height: 30,
+  style: { position: 'absolute', x: 252, y: 2, scroll: 'none' },
+  onDraw: function (c) {
+    var p = battPct();
+    c.fillColor('#09101A'); c.fillRect(0, 0, 72, 30);
+    drawCapsule(c, 2, 3, 68, 24, '#13222C', '#245852');
+    c.text(18, 8, (p >= 0 ? p + '%' : '--%'), '#40D8B0');
+  } });
+
+var volSliderCanvas = Canvas({ width: 212, height: 48, style: { scroll: 'none' },
+  onDraw: function (c) {
+    var pct = Math.max(0, Math.min(100, volume()));
+    c.fillColor('#16202E'); c.fillRect(0, 0, 212, 48);
+    c.text(4, 4, 'VOLUME', '#9EB3C6');
+    c.text(168, 4, pct + '%', '#40D8B0');
+    drawCapsule(c, 4, 28, 204, 10, '#1F2C3D', '#32455A');
+    var fw = Math.round(196 * pct / 100);
+    if (fw > 4) {
+      drawCapsule(c, 5, 29, Math.max(8, fw), 8, '#40D8B0', null);
+    }
+    var tx = Math.max(14, Math.min(198, 6 + fw));
+    c.fillCircle(tx, 33, 11, '#40D8B0');
+    c.fillCircle(tx, 33, 9, '#F2F7FB');
+    c.fillCircle(tx, 33, 3, '#117B69');
+  } });
+
+var telemetryCanvas = Canvas({ width: 320, height: 26,
+  style: { position: 'absolute', x: 4, y: 194, scroll: 'none' },
+  onDraw: function (c) {
+    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 26);
+    drawCardBox(c, 0, 0, 320, 26, '#121B28', '#233245');
+    c.text(10, 6, ('Batt ' + battLine()).slice(0, 18), '#9EB3C6');
+    var stText = storeLine() + (volNote() === '' ? '' : ' ' + volNote());
+    c.text(184, 6, stText.slice(0, 16), '#9EB3C6');
+  } });
 
 var generalPage = View({ style: {
-  position: 'absolute', x: 0, y: 0, width: 480, height: 480,
-  background: 'primary', padding: SAFE, gap: 6,
-  display: 'flex', flexDirection: 'column', scroll: 'vertical'
+  position: 'absolute', x: 76, y: 76, width: 328, height: 328,
+  background: '#09101A', scroll: 'none'
 } }, [
-  titleText('General'),
+  backPill('menu'),
+  Text({ text: 'General', style: {
+    position: 'absolute', x: 58, y: 2, width: 188, height: 28,
+    fontSize: 20, color: '#F2F7FB', textAlign: 'center'
+  } }),
+  generalHeaderCanvas,
   View({ style: {
-    width: '100%', height: 40, background: 'surface', borderRadius: 10,
-    display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
+    position: 'absolute', x: 4, y: 36, width: 320, height: 56,
+    background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
+    display: 'flex', flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', paddingLeft: 6, paddingRight: 6, gap: 4, scroll: 'none'
   } }, [
-    Text({ text: 'volume', style: { fontSize: 14 } }),
-    Button({ title: '-', onPress: function () { applyVolume(volume() - 10, true); },
-      style: { width: 40, height: 30, borderRadius: 8 } }),
-    Text({ text: function () { return volume() + '%'; }, style: { width: 52, textAlign: 'center', fontSize: 14 } }),
-    Button({ title: '+', onPress: function () { applyVolume(volume() + 10, true); },
-      style: { width: 40, height: 30, borderRadius: 8 } })
+    Button({ title: '-', onPress: function () { applyVolume(volume() - 10, true); }, style: {
+      width: 44, height: 44, borderRadius: 10, background: '#1F2C3D',
+      borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 18
+    } }),
+    volSliderCanvas,
+    Button({ title: '+', onPress: function () { applyVolume(volume() + 10, true); }, style: {
+      width: 44, height: 44, borderRadius: 10, background: '#1F2C3D',
+      borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 18
+    } })
   ]),
-  infoRow('battery', function () { return battLine(); }, 34),
-  infoRow('storage', function () {
-    return storeLine() + (volNote() === '' ? '' : ' ' + volNote());
-  }, 34),
   /* r132 OTA ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
    * The Text shows status only; the full token never enters a render path.
    * Kept BEFORE the r129 NTP row so the 3-node NTP slice stays isolated. */
   View({ style: {
-    width: '100%', height: 40, background: 'surface', borderRadius: 10,
+    position: 'absolute', x: 4, y: 98, width: 320, height: 42,
+    background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
+    alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
   } }, [
     Text({ text: function () {
       return otaLine() + (otaNote() === '' ? '' : ' ' + otaNote());
-    }, style: { fontSize: 13 } }),
-    Button({ title: 'New token', onPress: rotateOtaToken,
-      style: { width: 112, height: 30, borderRadius: 8 } })
+    }, style: { fontSize: 13, color: function () {
+      var s = otaLine();
+      return s.indexOf(':') >= 0 ? '#40D8B0' : (s.indexOf('err') >= 0 ? '#FF6B79' : '#9EB3C6');
+    } } }),
+    Button({ title: 'New token', onPress: rotateOtaToken, style: {
+      width: 104, height: 32, borderRadius: 9, background: '#1F2C3D',
+      borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 12
+    } })
   ]),
   /* r132 OTA ROW END */
   /* r129: NTP sync row -- exactly 3 new nodes (View + Text + Button). */
   View({ style: {
-    width: '100%', height: 40, background: 'surface', borderRadius: 10,
+    position: 'absolute', x: 4, y: 146, width: 320, height: 42,
+    background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
+    alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
   } }, [
-    Text({ text: function () { return timeSyncLine(); }, style: { fontSize: 13 } }),
-    Button({ title: 'Sync now', onPress: syncTimeNow,
-      style: { width: 92, height: 30, borderRadius: 8 } })
+    Text({ text: function () { return timeSyncLine(); }, style: { fontSize: 13, color: function () {
+      var s = timeSyncLine();
+      return s.indexOf('SYNCED') >= 0 ? '#40D8B0' : (s.indexOf('FAILED') >= 0 || s.indexOf('ERR') >= 0 ? '#FF6B79' : '#FFD78E');
+    } } }),
+    Button({ title: 'Sync now', onPress: syncTimeNow, style: {
+      width: 96, height: 32, borderRadius: 9, background: '#1F2C3D',
+      borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 12
+    } })
   ]),
   /* r143 REBOOT ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
    * The button opens a shell.Dialog; the Text is status only and the guarded
    * note is the sole feedback when a binding is absent. */
   View({ style: {
-    width: '100%', height: 40, background: 'surface', borderRadius: 10,
+    position: 'absolute', x: 4, y: 226, width: 320, height: 42,
+    background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', padding: 6, gap: 6, scroll: 'none'
+    alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
   } }, [
     Text({ text: function () {
       return rebootNote() === '' ? 'Restart the device' : rebootNote();
-    }, style: { fontSize: 13 } }),
-    Button({ title: 'Reboot', onPress: rebootNow,
-      style: { width: 96, height: 30, borderRadius: 8 } })
+    }, style: { fontSize: 13, color: '#9EB3C6' } }),
+    Button({ title: 'Reboot', onPress: rebootNow, style: {
+      width: 96, height: 32, borderRadius: 9, background: '#2A2315',
+      borderColor: '#745B2A', borderWidth: 1, color: '#FFD78E', fontSize: 12
+    } })
   ]),
   /* r143 REBOOT ROW END */
-  actionRow([
-    bigButton('Sleep now', function () { lume.power.sleepNow(); }),
-    bigButton(function () {
+  telemetryCanvas,
+  View({ style: {
+    position: 'absolute', x: 4, y: 276, width: 320, height: 48,
+    display: 'flex', flexDirection: 'row', gap: 8, scroll: 'none'
+  } }, [
+    Button({ title: 'Sleep now', onPress: function () { lume.power.sleepNow(); }, style: {
+      flexGrow: 1, height: 48, borderRadius: 12, background: '#16202E',
+      borderColor: '#233245', borderWidth: 1, color: '#F2F7FB', fontSize: 14
+    } }),
+    Button({ title: function () {
       return powerNote() === '' ? 'Power off' : powerNote();
-    }, powerOff, 1)
-  ], 44)
+    }, onPress: powerOff, style: {
+      flexGrow: 1, height: 48, borderRadius: 12, background: '#2A1720',
+      borderColor: '#7A3240', borderWidth: 1, color: '#FF6B79', fontSize: 14
+    } })
+  ])
 ]);
 pageNodes.general = generalPage;
 
@@ -1013,12 +1315,22 @@ pageNodes.general = generalPage;
 
 var root = View({ style: {
   width: '100%', height: '100%', background: 'bg', scroll: 'none'
-} }, [menuPage, wifiPage, btPage, generalPage, scanPage, kbOverlay]);
+} }, [dialBezel, menuPage, wifiPage, btPage, generalPage, scanPage, kbOverlay]);
 
 showPage('menu');
 clockText.set(readClock());
 var initBatt = lume.pmic.battPercent();
 if (typeof initBatt === 'number' && initBatt >= 0 && initBatt <= 100) battPct.set(Math.round(initBatt));
+var initMv = lume.pmic.battVoltageMv();
+var initChg = lume.pmic.chargingStatus();
+battLine.set((initBatt >= 0 ? Math.round(initBatt) + '%' : '--') +
+  (initMv >= 0 ? ' ' + (initMv / 1000).toFixed(2) + 'V' : '') +
+  (initChg >= 0 && initChg <= 5 ? ' ' + CHARGE_STATES[initChg] : ''));
+var initFs = lume.storage && lume.storage.Fs && typeof lume.storage.Fs.mounted === 'function' ? lume.storage.Fs.mounted() : false;
+var initKeys = kv && typeof kv.keys === 'function' ? kv.keys() : null;
+storeLine.set((initFs === true ? 'fs ok' : 'fs --') +
+  (typeof initKeys === 'object' && initKeys !== null ? ' ' + initKeys.length + ' kv' : ''));
+timeSyncLine.set(timeSyncStatus());
 
 lume.app.onStart(function () {
   startPolling();
