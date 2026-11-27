@@ -18,9 +18,16 @@ s=logic.sfState();s.wave=1;s.waveClock=100;s.spawnLeft=0;let e=logic.sfTake(s.en
 s=logic.sfState();s.wave=1;s.waveClock=100;s.spawnLeft=0;logic.sfBullet(s.hostile,240,396,0,4);logic.sfStep(s,()=>0.5);assert.equal(s.lives,2);logic.sfBullet(s.hostile,240,396,0,4);logic.sfStep(s,()=>0.5);assert.equal(s.lives,2);
 console.log('PASS collision, waves, upgrade cycle, invulnerability, player limits');
 function draws(ms){return ms.reduce((n,m)=>n+(m[0]==='draw'?1:m[0]==='batch'?m[2].length/6:0),0);}
-const ui=runApp(app);assert.ok(draws(ui.messages)>0);let max=draws(ui.messages);assert.ok(max<=250);
+const ui=runApp(app);assert.ok(draws(ui.messages)>0);let max=draws(ui.messages);assert.ok(max<=240);
+assert.equal(ui.ctx.sfTimerDt,33,'combat timer stays at 33 ms');
 ui.ctx.sf.drag=true;const pools=[ui.ctx.sf.enemies,ui.ctx.sf.friendly,ui.ctx.sf.hostile,ui.ctx.sf.particles];
-for(let tick=0;tick<1820;tick++){const st=ui.messages.length;ui.ctx.sfStep(ui.ctx.sf,()=>0.37);ui.ctx.sf.events.length=0;ui.ctx.sfFrame.set(ui.ctx.sfFrame()+1);const d=draws(ui.messages.slice(st));max=Math.max(max,d);assert.ok(d<=250,`draw budget tick ${tick}: ${d}`);for(const pool of pools){assert.ok(ui.ctx.sfActive(pool)<=pool.length);for(const o of pool)if(o.active){assert.ok(Number.isFinite(o.x)&&Number.isFinite(o.y));assert.ok(o.x>=-50&&o.x<=530&&o.y>=-50&&o.y<=530);}}for(const enemy of ui.ctx.sf.enemies)if(enemy.active)assert.ok(enemy.x>=22&&enemy.x<=458);if(ui.ctx.sf.over)ui.ctx.sf=ui.ctx.sfState();}
+for(let tick=0;tick<1820;tick++){const st=ui.messages.length;ui.ctx.sfStep(ui.ctx.sf,()=>0.37);ui.ctx.sf.events.length=0;ui.ctx.sfFrame.set(ui.ctx.sfFrame()+1);const d=draws(ui.messages.slice(st));max=Math.max(max,d);assert.ok(d<=240,`draw budget tick ${tick}: ${d}`);for(const pool of pools){assert.ok(ui.ctx.sfActive(pool)<=pool.length);for(const o of pool)if(o.active){assert.ok(Number.isFinite(o.x)&&Number.isFinite(o.y));assert.ok(o.x>=-50&&o.x<=530&&o.y>=-50&&o.y<=530);}}for(const enemy of ui.ctx.sf.enemies)if(enemy.active)assert.ok(enemy.x>=22&&enemy.x<=458);if(ui.ctx.sf.over)ui.ctx.sf=ui.ctx.sfState();}
 assert.equal(ui.ctx.sf.enemies.length,8);assert.equal(ui.ctx.sf.friendly.length,32);assert.equal(ui.ctx.sf.hostile.length,32);assert.equal(ui.ctx.sf.particles.length,40);
-console.log(`PASS real prelude, 60s smoke, draw max ${max}/250, fixed pools`);
+ui.ctx.sf.over=true;ui.ctx.sfTick();
+assert.equal(ui.ctx.sfTimerDt,100,'game-over timer drops to 100 ms');
+let from=ui.messages.length;for(let i=0;i<10;i++)ui.ctx.sfTick();
+assert.equal(draws(ui.messages.slice(from)),0,'game-over ticks emit 0 canvas draws');
+ui.ctx.sfRestart();assert.equal(ui.ctx.sfTimerDt,33,'restart restores 33 ms cadence');
+console.log(`EVIDENCE skyfire active max ${max}/240, over 0 draws in 10 ticks, dt 33->100->33`);
+console.log(`PASS real prelude, 60s smoke, draw max ${max}/240, fixed pools, idle 0-draw`);
 console.log('ALL SKYFIRE HARNESS CASES PASSED');

@@ -10,6 +10,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
+const { runApp } = require('./lib/prelude_runner');
 
 let kvStore = {};
 const mockLume = {
@@ -324,6 +325,39 @@ function plain(v) { return JSON.parse(JSON.stringify(v)); } // vm-realm arrays -
     assert.equal(st.won, true, 'board ' + n + ' fully diggable to a win');
   }
   console.log('PASS minesweeper solvability: 20 random boards all diggable to a win');
+}
+
+// 16. r212 frame-budget discipline: 8 retained tile sprites, incremental dirty cells, 0 idle draws
+{
+  const draws = ms => ms.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
+  const totalOps = ms => ms.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : m[0] === 'spriteDraw' ? 1 : 0), 0);
+  const ui = runApp(fs.readFileSync('examples/minesweeper/app.js', 'utf8'));
+  const bootOps = totalOps(ui.messages);
+  assert.equal(ui.messages.filter(m => m[0] === 'spriteDefine').length, 8, '8 retained tile sprites');
+  assert.ok(bootOps <= 240, `boot ops ${bootOps}`);
+  // single flag toggle: 1 cell dirty rect, 1 spriteDraw, 0 draw calls
+  let from = ui.messages.length;
+  ui.gesture(1, 0, 41 + 10, 64 + 10, 0);
+  ui.gesture(1, 1, 41 + 10, 64 + 10, 500);
+  ui.gesture(1, 2, 41 + 10, 64 + 10, 520);
+  const flagSlice = ui.messages.slice(from);
+  assert.equal(draws(flagSlice), 0, 'flag toggle emits 0 draw calls');
+  assert.equal(totalOps(flagSlice), 1, 'flag toggle emits 1 spriteDraw');
+  assert.equal(flagSlice.filter(m => m[0] === 'invalidate').length, 1, 'flag toggle emits 1 dirty rect');
+  // dig (flood fill) stays <=240 ops
+  from = ui.messages.length;
+  ui.gesture(1, 0, 41 + 5 * 40 + 10, 64 + 5 * 40 + 10, 600);
+  ui.gesture(1, 2, 41 + 5 * 40 + 10, 64 + 5 * 40 + 10, 640);
+  const digSlice = ui.messages.slice(from);
+  const digOps = totalOps(digSlice);
+  assert.ok(digOps > 0 && digOps <= 240, `dig ops ${digOps}`);
+  // 10 idle ticks (1 Hz clock) emit 0 canvas draws
+  from = ui.messages.length;
+  for (let i = 0; i < 10; i++) ui.ctx.tick();
+  assert.equal(totalOps(ui.messages.slice(from)), 0, 'idle clock ticks emit 0 canvas ops');
+  assert.equal(ui.messages.filter(m => m[0] === 'spriteDefine').length, 8, 'tiles uploaded once');
+  console.log(`EVIDENCE minesweeper boot ${bootOps} ops, flag 1 op, dig ${digOps} ops (<=240), idle 0 ops in 10 ticks, 8 spriteDefine`);
+  console.log('PASS minesweeper r212 frame-budget and idle 0-draw discipline');
 }
 
 console.log('ALL tests/minesweeper.js PASS');

@@ -209,4 +209,34 @@ const a = logic();
   console.log('PASS invaders canvas/dirty budget, pan follow, tap fire, swipe pause');
 }
 
+// 11. r212 frame-budget discipline: retained sprites (8 once), <=240 ops/frame, 0 idle draws
+{
+  const draws = ms => ms.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : 0), 0);
+  const totalOps = ms => ms.reduce((n, m) => n + (m[0] === 'draw' ? 1 : m[0] === 'batch' ? m[2].length / 6 : m[0] === 'spriteDraw' ? 1 : 0), 0);
+  const ui = runApp(fs.readFileSync('examples/invaders/app.js', 'utf8'));
+  const bootDefs = ui.messages.filter(m => m[0] === 'spriteDefine').length;
+  assert.equal(bootDefs, 8, `expected 8 retained sprites, got ${bootDefs}`);
+  assert.ok(totalOps(ui.messages) <= 240, `boot ops ${totalOps(ui.messages)}`);
+  let maxD = 0, maxOps = 0;
+  for (let i = 0; i < 30; i++) {
+    const from = ui.messages.length;
+    ui.ctx.tick();
+    const slice = ui.messages.slice(from);
+    maxD = Math.max(maxD, draws(slice));
+    maxOps = Math.max(maxOps, totalOps(slice));
+    assert.ok(totalOps(slice) <= 240, `tick ${i} ops ${totalOps(slice)}`);
+  }
+  assert.equal(ui.messages.filter(m => m[0] === 'spriteDefine').length, 8, 'sprites uploaded once');
+  ui.ctx.state.paused = true;
+  let from = ui.messages.length;
+  for (let i = 0; i < 10; i++) ui.ctx.tick();
+  assert.equal(totalOps(ui.messages.slice(from)), 0, 'paused ticks emit 0 canvas ops');
+  ui.ctx.state.paused = false; ui.ctx.state.over = true;
+  from = ui.messages.length;
+  for (let i = 0; i < 10; i++) ui.ctx.tick();
+  assert.equal(totalOps(ui.messages.slice(from)), 0, 'game-over ticks emit 0 canvas ops');
+  console.log(`EVIDENCE invaders active max ${maxD} draws / ${maxOps} total ops (<=240), paused/over 0 ops in 10 ticks, 8 spriteDefine`);
+  console.log('PASS invaders r212 frame-budget and idle 0-draw discipline');
+}
+
 console.log('ALL INVADERS HARNESS CASES PASSED');
