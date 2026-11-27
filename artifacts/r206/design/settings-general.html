@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — Settings: General (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    --bg-0: #000000;
+    --bg-1: #0D1420;
+    --bg-2: #16202E;
+    --bg-3: #1F2C3D;
+    --text-hi: #F2F7FB;
+    --text-mid: #9EB3C6;
+    --text-low: #5C7794;
+    --accent: #40D8B0;
+    --accent-deep: #117B69;
+    --danger: #FF6B79;
+    --warn: #FFD78E;
+    --info: #5B9DF7;
+    --border-subtle: rgba(242, 247, 251, 0.08);
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  html, body {
+    width: 480px; height: 480px;
+    background: var(--bg-0); overflow: hidden;
+    font-family: var(--font-sans); color: var(--text-hi);
+    user-select: none;
+  }
+  .watch-screen {
+    position: relative; width: 480px; height: 480px;
+    border-radius: 50%; overflow: hidden;
+    background: radial-gradient(circle at 50% 18%, rgba(22, 34, 50, 0.8) 0%, #09101A 54%, #000000 88%);
+    box-shadow: inset 0 0 0 1.5px rgba(158, 179, 198, 0.18);
+  }
+  .bezel-ring {
+    position: absolute; inset: 14px; border-radius: 50%;
+    border: 1px solid rgba(158, 179, 198, 0.12); pointer-events: none;
+  }
+  .safe-area {
+    position: absolute; left: 75px; top: 75px;
+    width: 330px; height: 330px; padding: 0 5px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .header {
+    height: 32px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .back-btn {
+    width: 48px; height: 30px; border-radius: 999px;
+    background: var(--bg-2); border: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: center; color: var(--text-mid);
+  }
+  .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .batt-pill {
+    height: 24px; padding: 0 8px; border-radius: 999px;
+    background: #13222C; border: 1px solid rgba(64, 216, 176, 0.3);
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  /* r201 Control-Center Volume Slider Card */
+  .vol-card {
+    width: 320px; height: 64px; padding: 8px 10px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #1B2738 0%, var(--bg-2) 100%);
+    border: 1px solid var(--border-subtle);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .vol-btn {
+    width: 48px; height: 48px; border-radius: 10px;
+    background: var(--bg-3); border: 1px solid rgba(158, 179, 198, 0.16);
+    color: var(--text-hi); font-size: 20px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .vol-center {
+    flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 0 4px;
+  }
+  .vol-top {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; font-weight: 700; color: var(--text-mid);
+  }
+  .vol-val { color: var(--accent); font-variant-numeric: tabular-nums; font-size: 13px; }
+  .slider-track {
+    position: relative; height: 10px; border-radius: 999px;
+    background: var(--bg-3); border: 1px solid rgba(158, 179, 198, 0.16);
+  }
+  .slider-fill {
+    position: absolute; left: 0; top: -1px; height: 10px; width: 62%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+  }
+  .slider-thumb {
+    position: absolute; left: calc(62% - 12px); top: -7px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: linear-gradient(180deg, #FFFFFF 0%, #DCE7F2 100%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    border: 2.5px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slider-thumb::after {
+    content: ""; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent-deep);
+  }
+  /* System rows */
+  .section-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.11em;
+    color: var(--text-low); padding-left: 4px; line-height: 1;
+  }
+  .sys-row {
+    width: 320px; height: 48px; padding: 0 8px 0 10px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #1B2738 0%, var(--bg-2) 100%);
+    border: 1px solid var(--border-subtle);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .mini-disc {
+    width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mini-disc.teal { background: #133334; border: 1px solid #285E5C; color: var(--accent); }
+  .mini-disc.blue { background: #152B44; border: 1px solid #2B4E75; color: var(--info); }
+  .row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .row-name { font-size: 14px; font-weight: 600; color: var(--text-hi); line-height: 1.1; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    width: fit-content; padding: 2px 6px; border-radius: 6px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+  }
+  .badge.ok { background: rgba(64, 216, 176, 0.16); color: var(--accent); }
+  .badge.off { background: rgba(158, 179, 198, 0.14); color: var(--text-mid); }
+  .badge.warn { background: rgba(255, 215, 142, 0.16); color: var(--warn); }
+  .row-act {
+    height: 34px; padding: 0 12px; border-radius: 9px;
+    background: var(--bg-3); border: 1px solid rgba(158, 179, 198, 0.2);
+    color: var(--text-hi); font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  /* Compact Device Telemetry Strip */
+  .meta-strip {
+    width: 320px; height: 28px; padding: 0 10px;
+    border-radius: 9px; background: rgba(22, 32, 46, 0.72);
+    border: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 12px; color: var(--text-mid); font-variant-numeric: tabular-nums;
+  }
+  /* Power Zone — Danger Isolated */
+  .power-row {
+    width: 320px; height: 48px;
+    display: flex; gap: 8px;
+  }
+  .pwr-btn {
+    flex: 1; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    font-size: 13px; font-weight: 700;
+  }
+  .pwr-btn.sleep {
+    background: var(--bg-2); border: 1px solid var(--border-subtle); color: var(--text-hi);
+  }
+  .pwr-btn.reboot {
+    background: rgba(255, 215, 142, 0.12);
+    border: 1px solid rgba(255, 215, 142, 0.34);
+    color: var(--warn);
+  }
+  .pwr-btn.danger {
+    background: rgba(255, 107, 121, 0.16);
+    border: 1px solid rgba(255, 107, 121, 0.45);
+    color: var(--danger);
+  }
+</style>
+</head>
+<body>
+<div class="watch-screen" role="application" aria-label="General Settings">
+  <div class="bezel-ring"></div>
+  <main class="safe-area">
+    <header class="header">
+      <div class="back-btn" role="button" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="10 3.5 5.5 8 10 12.5"/>
+        </svg>
+      </div>
+      <h1 class="page-title">General</h1>
+      <div class="batt-pill">85%</div>
+    </header>
+
+    <!-- Volume Slider (r201 control-center language) -->
+    <section class="vol-card">
+      <div class="vol-btn" role="button">-</div>
+      <div class="vol-center">
+        <div class="vol-top">
+          <span>VOLUME</span>
+          <span class="vol-val">60%</span>
+        </div>
+        <div class="slider-track">
+          <div class="slider-fill"></div>
+          <div class="slider-thumb"></div>
+        </div>
+      </div>
+      <div class="vol-btn" role="button">+</div>
+    </section>
+
+    <div class="section-label">SERVICES</div>
+
+    <!-- Time Sync Row with Friendly Badge -->
+    <section class="sys-row">
+      <div class="mini-disc teal">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+          <circle cx="10" cy="10" r="7.5"/><polyline points="10 5.5 10 10 13 11.8"/>
+        </svg>
+      </div>
+      <div class="row-info">
+        <div class="row-name">Time Sync</div>
+        <div class="badge ok">SYNCED</div>
+      </div>
+      <div class="row-act" role="button">Sync now</div>
+    </section>
+
+    <!-- OTA Row with Friendly Badge -->
+    <section class="sys-row">
+      <div class="mini-disc blue">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 3v9"/><polyline points="6.5 6.5 10 3 13.5 6.5"/><path d="M4 13.5v2a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5v-2"/>
+        </svg>
+      </div>
+      <div class="row-info">
+        <div class="row-name">OTA Update</div>
+        <div class="badge off">OFFLINE</div>
+      </div>
+      <div class="row-act" role="button">New token</div>
+    </section>
+
+    <!-- Telemetry -->
+    <div class="meta-strip">
+      <span>Batt 85% 4.12V</span>
+      <span>FS OK · 4 KV</span>
+    </div>
+
+    <!-- Danger-isolated Power Zone -->
+    <section class="power-row">
+      <div class="pwr-btn sleep" role="button">Sleep</div>
+      <div class="pwr-btn reboot" role="button">Reboot</div>
+      <div class="pwr-btn danger" role="button">Power off</div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

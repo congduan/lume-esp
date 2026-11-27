@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — Media Gallery & Image Scale (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    --bg-0: #000000;
+    --bg-1: #0D1420;
+    --bg-2: #16202E;
+    --bg-3: #1F2C3D;
+    --text-hi: #F2F7FB;
+    --text-mid: #9EB3C6;
+    --text-low: #5C7794;
+    --accent: #40D8B0;
+    --info: #5B9DF7;
+    --warn: #FFD78E;
+    --border-subtle: rgba(242, 247, 251, 0.1);
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  html, body {
+    width: 480px; height: 480px; background: var(--bg-0); overflow: hidden;
+    font-family: var(--font-sans); color: var(--text-hi); user-select: none;
+  }
+  .watch-screen {
+    position: relative; width: 480px; height: 480px;
+    border-radius: 50%; overflow: hidden;
+    background: radial-gradient(circle at 50% 18%, rgba(22, 34, 50, 0.8) 0%, #09101A 54%, #000000 88%);
+    box-shadow: inset 0 0 0 1.5px rgba(158, 179, 198, 0.18);
+  }
+  .bezel-ring {
+    position: absolute; inset: 14px; border-radius: 50%;
+    border: 1px solid rgba(158, 179, 198, 0.12); pointer-events: none;
+  }
+  .safe-area {
+    position: absolute; left: 75px; top: 75px;
+    width: 330px; height: 330px; padding: 0 5px;
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .header {
+    height: 30px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .page-title { font-size: 21px; font-weight: 700; letter-spacing: -0.02em; }
+  .meta-pill {
+    height: 22px; padding: 0 9px; border-radius: 999px;
+    background: rgba(64, 216, 176, 0.14);
+    border: 1px solid rgba(64, 216, 176, 0.36);
+    color: var(--accent); font-size: 11px; font-weight: 700;
+    display: inline-flex; align-items: center;
+  }
+  /* Mode 1: 2x2 Gallery Grid */
+  .grid-view {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    width: 320px; height: 242px;
+  }
+  .tile {
+    border-radius: 12px; background: var(--bg-2);
+    border: 1px solid var(--border-subtle);
+    padding: 8px; display: flex; flex-direction: column; gap: 6px;
+    cursor: pointer; position: relative; overflow: hidden;
+  }
+  .tile.active { border-color: rgba(64, 216, 176, 0.55); background: #142730; }
+  .thumb {
+    flex: 1; border-radius: 8px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: #0B121C;
+  }
+  .tile-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; font-weight: 600; color: var(--text-mid);
+  }
+  .tile-foot span:first-child { color: var(--text-hi); }
+  /* Mode 2: Fullscreen Inspector / Zoom Viewer */
+  .viewer-view {
+    display: none;
+    width: 320px; height: 242px;
+    flex-direction: column; align-items: center; justify-content: space-between;
+  }
+  .watch-screen[data-mode="viewer"] .grid-view { display: none; }
+  .watch-screen[data-mode="viewer"] .viewer-view { display: flex; }
+  .stage-row {
+    width: 320px; height: 204px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-arrow {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--bg-2); border: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: center; color: var(--text-hi);
+  }
+  .stage-frame {
+    width: 204px; height: 204px; border-radius: 12px;
+    background: #0B121C; border: 1px solid rgba(64, 216, 176, 0.35);
+    position: relative; display: flex; align-items: center; justify-content: center;
+  }
+  .zoom-hint {
+    position: absolute; bottom: 8px; padding: 3px 8px; border-radius: 999px;
+    background: rgba(13, 20, 32, 0.85); border: 1px solid var(--border-subtle);
+    font-size: 10px; font-weight: 700; color: var(--text-mid);
+  }
+  .viewer-hud {
+    font-size: 12px; font-weight: 600; color: var(--text-mid);
+    font-variant-numeric: tabular-nums;
+  }
+  /* Bottom bar */
+  .footer-bar {
+    width: 320px; height: 48px; display: flex; gap: 8px;
+  }
+  .foot-btn {
+    flex: 1; height: 48px; border-radius: 12px;
+    background: var(--bg-2); border: 1px solid var(--border-subtle);
+    color: var(--text-hi); font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .foot-btn.accent { background: var(--accent); color: #07131A; border-color: #6EEAC8; }
+</style>
+</head>
+<body>
+<div class="watch-screen" id="screen" data-mode="grid" role="application" aria-label="Media Gallery">
+  <div class="bezel-ring"></div>
+  <main class="safe-area">
+    <header class="header">
+      <h1 class="page-title" id="title">Gallery</h1>
+      <span class="meta-pill" id="meta">4 ITEMS · SD</span>
+    </header>
+
+    <!-- 2x2 Thumbnail Grid -->
+    <section class="grid-view">
+      <div class="tile active" role="button">
+        <div class="thumb">
+          <svg width="100%" height="100%" viewBox="0 0 120 76">
+            <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1E4D6B"/><stop offset="100%" stop-color="#40D8B0"/></linearGradient></defs>
+            <rect width="120" height="76" fill="url(#g1)"/>
+            <circle cx="88" cy="24" r="11" fill="#FFD78E" fill-opacity="0.85"/>
+            <polygon points="0,76 42,36 78,76" fill="#0D1F2D"/>
+            <polygon points="48,76 86,44 120,76" fill="#132D3F"/>
+          </svg>
+        </div>
+        <div class="tile-foot"><span>photo.jpg</span><span>96×96</span></div>
+      </div>
+
+      <div class="tile" role="button">
+        <div class="thumb">
+          <svg width="100%" height="100%" viewBox="0 0 120 76">
+            <rect width="120" height="76" fill="#142336"/>
+            <circle cx="60" cy="38" r="22" fill="#5B9DF7" fill-opacity="0.22" stroke="#5B9DF7" stroke-width="2.5"/>
+            <polygon points="53,28 73,38 53,48" fill="#5B9DF7"/>
+          </svg>
+        </div>
+        <div class="tile-foot"><span>icon.png</span><span>PNG</span></div>
+      </div>
+
+      <div class="tile" role="button">
+        <div class="thumb">
+          <svg width="100%" height="100%" viewBox="0 0 120 76">
+            <rect width="120" height="76" fill="#18202B"/>
+            <rect x="20" y="14" width="24" height="24" fill="#2A3B4F"/>
+            <rect x="44" y="38" width="24" height="24" fill="#2A3B4F"/>
+            <rect x="68" y="14" width="24" height="24" fill="#2A3B4F"/>
+            <circle cx="60" cy="38" r="18" fill="#40D8B0" fill-opacity="0.65"/>
+          </svg>
+        </div>
+        <div class="tile-foot"><span>alpha.png</span><span>RGBA</span></div>
+      </div>
+
+      <div class="tile" role="button">
+        <div class="thumb">
+          <svg width="100%" height="100%" viewBox="0 0 120 76">
+            <rect width="120" height="76" fill="#26131A"/>
+            <rect x="34" y="14" width="52" height="48" rx="6" fill="#FF4B5C"/>
+          </svg>
+        </div>
+        <div class="tile-foot"><span>probe.png</span><span>1×1</span></div>
+      </div>
+    </section>
+
+    <!-- Fullscreen / RGB565 Inspector Mode -->
+    <section class="viewer-view">
+      <div class="stage-row">
+        <div class="nav-arrow" role="button" aria-label="Prev">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="10 3.5 5.5 8 10 12.5"/></svg>
+        </div>
+        <div class="stage-frame">
+          <svg width="132" height="132" viewBox="0 0 24 24" shape-rendering="crispEdges" style="margin-bottom: 16px;">
+            <rect x="0" y="0" width="12" height="12" fill="#40D8B0"/>
+            <rect x="12" y="0" width="12" height="12" fill="#1F6F5B"/>
+            <rect x="0" y="12" width="6" height="6" fill="#FFFFFF"/>
+            <rect x="6" y="12" width="6" height="6" fill="#0B121C"/>
+            <rect x="0" y="18" width="6" height="6" fill="#0B121C"/>
+            <rect x="6" y="18" width="6" height="6" fill="#FFFFFF"/>
+            <rect x="12" y="12" width="12" height="12" fill="#2AD4E8"/>
+            <line x1="12" y1="12" x2="24" y2="24" stroke="#FF4B5C" stroke-width="2"/>
+          </svg>
+          <span class="zoom-hint">2x tap to zoom</span>
+        </div>
+        <div class="nav-arrow" role="button" aria-label="Next">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 3.5 10.5 8 6 12.5"/></svg>
+        </div>
+      </div>
+      <div class="viewer-hud">X4 BILINEAR · 24x24 -> 96x96 · OK</div>
+    </section>
+
+    <footer class="footer-bar">
+      <div class="foot-btn accent" id="btn-primary" role="button">Inspect</div>
+      <div class="foot-btn" id="btn-secondary" role="button">Mode: Grid</div>
+    </footer>
+  </main>
+</div>
+<script>
+  window.setGalleryMode = function (m) {
+    var s = document.getElementById('screen');
+    s.dataset.mode = m;
+    document.getElementById('title').textContent = m === 'viewer' ? 'Image Scale' : 'Gallery';
+    document.getElementById('meta').textContent = m === 'viewer' ? 'X4 · OK' : '4 ITEMS · SD';
+    document.getElementById('btn-primary').textContent = m === 'viewer' ? 'Zoom 2x/4x/8x' : 'Inspect';
+    document.getElementById('btn-secondary').textContent = m === 'viewer' ? 'Bilinear' : 'Mode: Grid';
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=480, initial-scale=1.0" />
+<title>Lume Design — Settings: Wi-Fi (480x480 Round AMOLED)</title>
+<style>
+  :root {
+    --bg-0: #000000;
+    --bg-1: #0D1420;
+    --bg-2: #16202E;
+    --bg-3: #1F2C3D;
+    --text-hi: #F2F7FB;
+    --text-mid: #9EB3C6;
+    --text-low: #5C7794;
+    --accent: #40D8B0;
+    --accent-deep: #117B69;
+    --danger: #FF6B79;
+    --warn: #FFD78E;
+    --info: #5B9DF7;
+    --border-subtle: rgba(242, 247, 251, 0.08);
+    --accent-border: rgba(64, 216, 176, 0.42);
+    --font-sans: "Liberation Sans", "Nimbus Sans", "DejaVu Sans", -apple-system, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+  html, body {
+    width: 480px; height: 480px;
+    background: var(--bg-0);
+    overflow: hidden;
+    font-family: var(--font-sans);
+    color: var(--text-hi);
+    user-select: none;
+  }
+  .watch-screen {
+    position: relative;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 18%, rgba(22, 34, 50, 0.8) 0%, #09101A 54%, #000000 88%);
+    box-shadow: inset 0 0 0 1.5px rgba(158, 179, 198, 0.18);
+  }
+  .bezel-ring {
+    position: absolute; inset: 14px;
+    border-radius: 50%;
+    border: 1px solid rgba(158, 179, 198, 0.12);
+    pointer-events: none;
+  }
+  .safe-area {
+    position: absolute;
+    left: 75px; top: 75px;
+    width: 330px; height: 330px;
+    padding: 0 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  /* Header */
+  .header {
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .back-btn {
+    width: 48px; height: 32px;
+    border-radius: 999px;
+    background: var(--bg-2);
+    border: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-mid);
+    cursor: pointer;
+  }
+  .page-title {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.02em;
+    color: var(--text-hi); line-height: 1;
+  }
+  .status-pill {
+    height: 24px; padding: 0 9px;
+    border-radius: 999px;
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    background: rgba(64, 216, 176, 0.14);
+    border: 1px solid var(--accent-border);
+    color: var(--accent);
+  }
+  .status-pill.connecting {
+    background: rgba(255, 215, 142, 0.14);
+    border-color: rgba(255, 215, 142, 0.42);
+    color: var(--warn);
+  }
+  .status-pill .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+  }
+  /* Connected Hero Card */
+  .hero-card {
+    width: 320px; min-height: 54px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #152D33 0%, #102129 100%);
+    border: 1px solid var(--accent-border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .hero-card.is-connecting {
+    background: linear-gradient(180deg, #2A2416 0%, #1C1910 100%);
+    border-color: rgba(255, 215, 142, 0.42);
+  }
+  .icon-disc {
+    width: 34px; height: 34px; border-radius: 50%;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    background: #133334; border: 1px solid #285E5C; color: var(--accent);
+  }
+  .hero-card.is-connecting .icon-disc {
+    background: #332914; border-color: #6B5326; color: var(--warn);
+  }
+  .hero-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .hero-ssid { font-size: 16px; font-weight: 700; color: var(--text-hi); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hero-sub { font-size: 12px; font-weight: 600; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .hero-card.is-connecting .hero-sub { color: var(--warn); }
+  .check-badge {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: rgba(64, 216, 176, 0.18);
+    display: flex; align-items: center; justify-content: center; color: var(--accent);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2.2px solid rgba(255, 215, 142, 0.25);
+    border-top-color: var(--warn);
+    animation: spin 0.9s linear infinite;
+  }
+  /* Action Pills */
+  .actions {
+    width: 320px; height: 48px;
+    display: flex; gap: 8px;
+  }
+  .act-btn {
+    flex: 1; height: 48px; border-radius: 12px;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-2);
+    color: var(--text-hi);
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    cursor: pointer;
+  }
+  .act-btn.primary {
+    background: var(--accent); color: #07131A; border-color: #6EEAC8; font-weight: 700;
+  }
+  .act-btn.danger-soft {
+    background: rgba(255, 107, 121, 0.12);
+    border-color: rgba(255, 107, 121, 0.35);
+    color: var(--danger);
+  }
+  /* Group */
+  .group-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    color: var(--text-low); padding-left: 4px; line-height: 1;
+    display: flex; justify-content: space-between;
+  }
+  .net-list {
+    width: 320px;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .net-row {
+    width: 320px; height: 48px;
+    padding: 0 10px 0 12px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #1B2738 0%, var(--bg-2) 100%);
+    border: 1px solid var(--border-subtle);
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer;
+  }
+  .net-row.active {
+    background: linear-gradient(180deg, #142B30 0%, #102028 100%);
+    border-color: rgba(64, 216, 176, 0.36);
+  }
+  .net-name { flex: 1; font-size: 15px; font-weight: 600; color: var(--text-hi); }
+  .auto-tag {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 2px 6px; border-radius: 6px;
+    background: rgba(64, 216, 176, 0.14); color: var(--accent);
+  }
+  .rssi-text {
+    font-size: 11px; color: var(--text-mid); font-variant-numeric: tabular-nums;
+  }
+  .lock-ic { color: var(--text-low); flex-shrink: 0; }
+  /* Password overlay state (hidden by default) */
+  .pw-sheet {
+    display: none;
+    position: absolute; left: 75px; top: 158px; width: 330px; height: 244px;
+    border-radius: 12px; background: #0D1420; border: 1px solid #2B3E54;
+    padding: 10px; flex-direction: column; gap: 8px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.75);
+  }
+  .watch-screen[data-state="password"] .pw-sheet { display: flex; }
+  .pw-title { font-size: 13px; font-weight: 700; color: var(--text-mid); }
+  .pw-input {
+    height: 36px; border-radius: 8px; background: var(--bg-3);
+    border: 1px solid var(--accent-border);
+    padding: 0 10px; display: flex; align-items: center;
+    font-size: 16px; letter-spacing: 0.18em; color: var(--text-hi);
+  }
+  .kb-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; flex: 1;
+  }
+  .kb-key {
+    border-radius: 6px; background: var(--bg-2); border: 1px solid var(--border-subtle);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600; color: var(--text-hi);
+  }
+  .kb-key.ok { background: var(--accent); color: #07131A; font-weight: 700; grid-column: span 2; }
+  .kb-key.esc { background: var(--bg-3); color: var(--text-mid); grid-column: span 2; }
+</style>
+</head>
+<body>
+<div class="watch-screen" id="screen" data-state="connected" role="application" aria-label="Wi-Fi Settings">
+  <div class="bezel-ring"></div>
+
+  <main class="safe-area">
+    <header class="header">
+      <div class="back-btn" role="button" aria-label="Back">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="10 3.5 5.5 8 10 12.5"/>
+        </svg>
+      </div>
+      <h1 class="page-title">Wi-Fi</h1>
+      <div class="status-pill" id="status-pill">
+        <span class="dot"></span>
+        <span id="status-label">CONNECTED</span>
+      </div>
+    </header>
+
+    <!-- Active connection / Connecting state hero -->
+    <section class="hero-card" id="hero-card">
+      <div class="icon-disc">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <path d="M2.5 8.8a13.5 13.5 0 0 1 19 0"/>
+          <path d="M6.2 12.6a8.2 8.2 0 0 1 11.6 0"/>
+          <path d="M9.8 16.2a3.2 3.2 0 0 1 4.4 0"/>
+          <circle cx="12" cy="19.5" r="1.4" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div class="hero-meta">
+        <div class="hero-ssid" id="hero-ssid">Lume-Studio-5G</div>
+        <div class="hero-sub" id="hero-sub">192.168.1.42 · Strong</div>
+      </div>
+      <div class="check-badge" id="hero-badge">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3 8.5 6.5 12 13 4.5"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Primary actions -->
+    <div class="actions">
+      <div class="act-btn primary" role="button">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round">
+          <path d="M3 10a7 7 0 1 1 2 4.9"/><polyline points="3 15 3 10.5 7.5 10.5"/>
+        </svg>
+        <span>Scan</span>
+      </div>
+      <div class="act-btn" role="button">
+        <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <line x1="10" y1="4" x2="10" y2="16"/><line x1="4" y1="10" x2="16" y2="10"/>
+        </svg>
+        <span>Add</span>
+      </div>
+      <div class="act-btn danger-soft" role="button">
+        <span>Off</span>
+      </div>
+    </div>
+
+    <div class="group-label">
+      <span>NETWORKS</span>
+      <span>3 FOUND</span>
+    </div>
+
+    <!-- Signal 3-tier + SSID + Lock + Status -->
+    <section class="net-list">
+      <div class="net-row active" role="button">
+        <!-- 3 bars strong -->
+        <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
+          <rect x="1" y="10" width="3.5" height="5" rx="1" fill="#40D8B0"/>
+          <rect x="7" y="6" width="3.5" height="9" rx="1" fill="#40D8B0"/>
+          <rect x="13" y="2" width="3.5" height="13" rx="1" fill="#40D8B0"/>
+        </svg>
+        <span class="net-name">Lume-Studio</span>
+        <span class="auto-tag">AUTO</span>
+        <svg class="lock-ic" width="13" height="14" viewBox="0 0 14 15" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2.5" y="6.5" width="9" height="6.5" rx="1.6"/>
+          <path d="M4.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"/>
+        </svg>
+      </div>
+
+      <div class="net-row" role="button">
+        <!-- 2 bars medium -->
+        <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
+          <rect x="1" y="10" width="3.5" height="5" rx="1" fill="#40D8B0"/>
+          <rect x="7" y="6" width="3.5" height="9" rx="1" fill="#40D8B0"/>
+          <rect x="13" y="2" width="3.5" height="13" rx="1" fill="#2A3B4F"/>
+        </svg>
+        <span class="net-name">Office-Mesh</span>
+        <span class="rssi-text">-62 dBm</span>
+        <svg class="lock-ic" width="13" height="14" viewBox="0 0 14 15" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2.5" y="6.5" width="9" height="6.5" rx="1.6"/>
+          <path d="M4.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"/>
+        </svg>
+      </div>
+
+      <div class="net-row" role="button">
+        <!-- 1 bar weak -->
+        <svg width="18" height="16" viewBox="0 0 18 16" fill="none">
+          <rect x="1" y="10" width="3.5" height="5" rx="1" fill="#FFD78E"/>
+          <rect x="7" y="6" width="3.5" height="9" rx="1" fill="#2A3B4F"/>
+          <rect x="13" y="2" width="3.5" height="13" rx="1" fill="#2A3B4F"/>
+        </svg>
+        <span class="net-name">Lab-Bench</span>
+        <span class="rssi-text">-79 dBm</span>
+        <svg class="lock-ic" width="13" height="14" viewBox="0 0 14 15" fill="none" stroke="currentColor" stroke-width="1.6">
+          <rect x="2.5" y="6.5" width="9" height="6.5" rx="1.6"/>
+          <path d="M4.5 6.5V4.5a2.5 2.5 0 0 1 5 0v2"/>
+        </svg>
+      </div>
+    </section>
+  </main>
+
+  <!-- Password Entry Sheet (state=password) -->
+  <section class="pw-sheet" aria-label="Password Input">
+    <div class="pw-title">Password · Office-Mesh</div>
+    <div class="pw-input">••••••••</div>
+    <div class="kb-grid">
+      <div class="kb-key">q</div><div class="kb-key">w</div><div class="kb-key">e</div><div class="kb-key">r</div><div class="kb-key">t</div><div class="kb-key">y</div><div class="kb-key">u</div>
+      <div class="kb-key">a</div><div class="kb-key">s</div><div class="kb-key">d</div><div class="kb-key">f</div><div class="kb-key">g</div><div class="kb-key">h</div><div class="kb-key">DEL</div>
+      <div class="kb-key">#123</div><div class="kb-key">z</div><div class="kb-key">x</div><div class="kb-key esc">ESC</div><div class="kb-key ok">OK</div>
+    </div>
+  </section>
+</div>
+<script>
+  window.setWifiState = function (st) {
+    var s = document.getElementById('screen');
+    var pill = document.getElementById('status-pill');
+    var label = document.getElementById('status-label');
+    var hero = document.getElementById('hero-card');
+    var sub = document.getElementById('hero-sub');
+    var badge = document.getElementById('hero-badge');
+    s.dataset.state = st;
+    if (st === 'connecting') {
+      pill.className = 'status-pill connecting';
+      label.textContent = 'CONNECTING';
+      hero.className = 'hero-card is-connecting';
+      sub.textContent = 'Authenticating WPA2...';
+      badge.innerHTML = '<div class="spinner"></div>';
+    } else {
+      pill.className = 'status-pill';
+      label.textContent = 'CONNECTED';
+      hero.className = 'hero-card';
+      sub.textContent = '192.168.1.42 · Strong';
+      badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 8.5 6.5 12 13 4.5"/></svg>';
+    }
+  };
+</script>
+</body>
+</html>
