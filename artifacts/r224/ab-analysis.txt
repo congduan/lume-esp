@@ -1,0 +1,21 @@
+=== BEFORE ===
+top amber      band_px=5 transition_colors=0 ramp=[]
+left green     band_px=5 transition_colors=0 ramp=[]
+diag200 green  band_px=5 transition_colors=2 ramp=[(32, 85, 82), (32, 76, 74)]
+right amber    band_px=0 transition_colors=3 ramp=[(98, 48, 57), (255, 101, 123), (255, 101, 123), (255, 101, 123), (255, 101, 123), (139, 60, 74)]
+red            band_px=0 transition_colors=3 ramp=[(98, 48, 57), (255, 101, 123), (255, 101, 123), (255, 101, 123), (255, 101, 123), (139, 60, 74)]
+
+=== AFTER  ===
+top amber      band_px=5 transition_colors=0 ramp=[]
+left green     band_px=5 transition_colors=0 ramp=[]
+diag200 green  band_px=5 transition_colors=2 ramp=[(16, 52, 49), (32, 93, 82)]
+right amber    band_px=0 transition_colors=3 ramp=[(65, 36, 49), (255, 101, 123), (255, 101, 123), (255, 101, 123), (255, 101, 123), (139, 60, 74)]
+red            band_px=0 transition_colors=3 ramp=[(131, 56, 74), (255, 101, 123), (255, 101, 123), (255, 101, 123), (255, 101, 123), (115, 52, 65)]
+
+CHANGED_PIXELS 3177
+BBOX 80 82 400 351
+CHANGED_OUTSIDE_DIAL 0
+BEFORE BAND_COLOR_PIXELS 2271
+AFTER BAND_COLOR_PIXELS 2317
+BEFORE angles_with_blend 270 mean_blend_colors 2.422 max 5 hist {0: 1, 1: 27, 2: 130, 3: 89, 4: 20, 5: 4}
+AFTER  angles_with_blend 264 mean_blend_colors 2.269 max 5 hist {0: 7, 1: 49, 2: 114, 3: 83, 4: 17, 5: 1}

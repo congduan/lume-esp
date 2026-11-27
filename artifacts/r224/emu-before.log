@@ -1,0 +1,10 @@
+bundle /tmp/lume-r224-wt/examples/speedometer: source 3781 bytes; payload 3781 bytes; frame 3793 bytes (source)
+I (1738) lume-engine: engine task up (pinned core 1), PSRAM free=5433756 bytes
+I (1785) lume-engine: runtime up; eval app '<home>' (5127 bytes)
+I (1916) lume-engine: app eval ok; entering event loop
+I (2690) lume-engine: engine recv RELOAD -> recycle runtime
+I (2938) lume-engine: runtime up; eval app '<embedded-demo>' (3781 bytes)
+I (2982) lume-engine: app eval ok; entering event loop
+[emu] stop: Halted — core0 318669971 + core1 90458622 insns in 10.6s wall = 38.7 Minsn/s; emulated 8.000s (1920000000 cycles); 537169 exceptions, 27171 interrupts
+TFT: /tmp/lume-r224-wt/artifacts/r224/speedo-before-run/tft.png
+serial: /tmp/lume-r224-wt/artifacts/r224/speedo-before-run/serial.log

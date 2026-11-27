@@ -1,0 +1,118 @@
+=== bridge create defaults (lume_ui_bridge.c:516-550) ===
+        case LUME_NODE_ARC:
+            /* Native LVGL arc: lv_draw_sw_arc renders with coverage, so the ring
+             * is anti-aliased -- unlike Canvas, which writes raw pixels. */
+            obj = lv_arc_create(parent);
+            if (!obj) { fail_create(m->node_id); return; }
+            lv_obj_remove_style(obj, NULL, LV_PART_KNOB);
+            lv_obj_set_style_arc_width(obj, 8, LV_PART_MAIN);
+            lv_obj_set_style_arc_width(obj, 8, LV_PART_INDICATOR);
+            lv_obj_set_style_arc_color(obj, lv_color_hex(0x1B3145), LV_PART_MAIN);
+            lv_obj_set_style_arc_color(obj, lv_color_hex(0x34D399), LV_PART_INDICATOR);
+            lv_obj_set_style_arc_rounded(obj, true, LV_PART_INDICATOR);
+            /* The plain lv_obj default style paints an opaque rounded box; an
+             * arc must be a pure ring, so kill every box style on PART_MAIN. */
+            lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
+            lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_INDICATOR);
+            lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN);
+            lv_obj_set_style_outline_width(obj, 0, LV_PART_MAIN);
+            lv_obj_set_style_shadow_width(obj, 0, LV_PART_MAIN);
+            lv_obj_set_style_radius(obj, 0, LV_PART_MAIN);
+            lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+            lv_obj_remove_flag(obj, LV_OBJ_FLAG_CLICKABLE);
+            ESP_LOGI(TAG, "arc id=%u bg_opa=%d bg=%06x radius=%d border=%d outline=%d shadow=%d pad=%d",
+                     (unsigned)m->node_id,
+                     (int)lv_obj_get_style_bg_opa(obj, LV_PART_MAIN),
+                     (unsigned)(lv_color_to_u32(lv_obj_get_style_bg_color(obj, LV_PART_MAIN)) & 0xFFFFFFu),
+                     (int)lv_obj_get_style_radius(obj, LV_PART_MAIN),
+                     (int)lv_obj_get_style_border_width(obj, LV_PART_MAIN),
+                     (int)lv_obj_get_style_outline_width(obj, LV_PART_MAIN),
+                     (int)lv_obj_get_style_shadow_width(obj, LV_PART_MAIN),
+                     (int)lv_obj_get_style_pad_top(obj, LV_PART_MAIN));
+            lv_arc_set_bg_angles(obj, 135, 45);
+            lv_arc_set_angles(obj, 135, 135);
+            s_arc_start[m->node_id] = 135;
+            s_arc_end[m->node_id] = 45;
+            break;
+=== bridge set-attr ARC (lume_ui_bridge.c:797-825) ===
+        case LUME_ATTR_ARC_START:
+            s_arc_start[m->node_id] = (int16_t)m->value;
+            lv_arc_set_bg_angles(obj, s_arc_start[m->node_id], s_arc_end[m->node_id]);
+            lv_arc_set_angles(obj, s_arc_start[m->node_id], s_arc_start[m->node_id]);
+            break;
+        case LUME_ATTR_ARC_END:
+            s_arc_end[m->node_id] = (int16_t)m->value;
+            lv_arc_set_bg_angles(obj, s_arc_start[m->node_id], s_arc_end[m->node_id]);
+            lv_arc_set_angles(obj, s_arc_start[m->node_id], s_arc_start[m->node_id]);
+            break;
+        case LUME_ATTR_ARC_THICKNESS:
+            lv_obj_set_style_arc_width(obj, m->value, LV_PART_MAIN);
+            lv_obj_set_style_arc_width(obj, m->value, LV_PART_INDICATOR);
+            break;
+        case LUME_ATTR_ARC_TRACK:
+            lv_obj_set_style_arc_color(obj, lv_color_hex((uint32_t)m->value), LV_PART_MAIN);
+            break;
+        case LUME_ATTR_ARC_COLOR:
+            lv_obj_set_style_arc_color(obj, lv_color_hex((uint32_t)m->value), LV_PART_INDICATOR);
+            break;
+        case LUME_ATTR_ARC_VALUE: {
+            /* percent of the configured start->end sweep, clockwise */
+            int32_t start = s_arc_start[m->node_id], end = s_arc_end[m->node_id];
+            int32_t span = ((end - start) % 360 + 360) % 360;
+            if (span == 0) span = 360;
+            int32_t v = m->value < 0 ? 0 : (m->value > 100 ? 100 : m->value);
+            lv_arc_set_angles(obj, start, (start + span * v / 100) % 360);
+            break;
+        }
+=== LVGL get_center (lv_arc.c:816-830) ===
+static void get_center(const lv_obj_t * obj, lv_point_t * center, int32_t * arc_r)
+{
+    int32_t left_bg = lv_obj_get_style_pad_left(obj, LV_PART_MAIN);
+    int32_t right_bg = lv_obj_get_style_pad_right(obj, LV_PART_MAIN);
+    int32_t top_bg = lv_obj_get_style_pad_top(obj, LV_PART_MAIN);
+    int32_t bottom_bg = lv_obj_get_style_pad_bottom(obj, LV_PART_MAIN);
+
+    int32_t r = (LV_MIN(lv_obj_get_width(obj) - left_bg - right_bg,
+                        lv_obj_get_height(obj) - top_bg - bottom_bg)) / 2;
+
+    center->x = obj->coords.x1 + r + left_bg;
+    center->y = obj->coords.y1 + r + top_bg;
+
+    if(arc_r) *arc_r = r;
+}
+=== prelude Arc (prelude.js:900-934) ===
+/* Native LVGL arc (anti-aliased ring). style.background is the value ring
+ * colour, `track` the background ring; value 0..100 across start->end. */
+function Arc(props) {
+  props = props || {};
+  /* style.background is the ring colour for an arc, NOT a box fill: strip it
+   * before __applyAttrs so it can never reach ATTR_BG_COLOR (which forces an
+   * opaque rounded background). `color` is the same value in prop form. */
+  var src = props.style || {};
+  var style = {}, ring;
+  for (var sk in src) { if (sk === 'background') ring = src[sk]; else style[sk] = src[sk]; }
+  if (ring === undefined) ring = props.color === undefined ? '#34D399' : props.color;
+  var clean = {};
+  for (var pk in props) { if (pk !== 'style' && pk !== 'color') clean[pk] = props[pk]; }
+  clean.style = style;
+  var id = lume.createNode(NODE_ARC, props.parent || 0);
+  __applyAttrs(id, clean);
+  if (typeof ring === 'function') {
+    __ownedEffects[id] = __ownedEffects[id] || [];
+    __ownedEffects[id].push(effect(function () { lume.setAttr(id, ATTR_ARC_COLOR, __color(ring())); }));
+  } else lume.setAttr(id, ATTR_ARC_COLOR, __color(ring));
+  var start = props.start === undefined ? 135 : props.start;
+  var end = props.end === undefined ? 45 : props.end;
+  lume.setAttr(id, ATTR_ARC_START, __pixel(start));
+  lume.setAttr(id, ATTR_ARC_END, __pixel(end));
+  if (props.thickness !== undefined) lume.setAttr(id, ATTR_ARC_THICKNESS, __pixel(props.thickness));
+  if (props.track !== undefined) lume.setAttr(id, ATTR_ARC_TRACK, __color(props.track));
+  var value = props.value === undefined ? 0 : props.value;
+  if (typeof value === 'function') {
+    __ownedEffects[id] = __ownedEffects[id] || [];
+    __ownedEffects[id].push(effect(function () {
+      lume.setAttr(id, ATTR_ARC_VALUE, __arcPercent(value()));
+    }));
+  } else lume.setAttr(id, ATTR_ARC_VALUE, __arcPercent(value));
+  return id;
+}

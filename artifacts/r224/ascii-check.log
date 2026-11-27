@@ -1,0 +1,6 @@
+scope: firmware/ tools/ tests/ examples/speedometer/ (generated website/playground blobs excluded, r223 methodology)
+=== added non-ASCII lines ===
+=== count ===
+ADDED_NON_ASCII=0
+=== app UI string literals ===
+APP_UI_NON_ASCII=0

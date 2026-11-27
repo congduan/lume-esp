@@ -1,0 +1,1 @@
+2.500 serial-file /tmp/lume-r224-wt/artifacts/r224/speedo-after-run/app.frame.part-aa

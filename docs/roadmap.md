@@ -172,11 +172,12 @@ Next, in the order I would take it:
    outer radius) with vertical coverage. Exact geometry (the dial stops sampling
    276 segments in JS at all) and the only path to phone-smooth joins and caps
    without supersampling. Also the natural place to add dashes and gradients.
-3. **Bands as native `Arc` widgets** — zero new code: `Arc` already exposes
-   value/start/end/thickness/track/color and `lv_draw_sw_arc()` renders through an
-   LVGL mask (8-bit coverage), i.e. it is anti-aliased. Cost: three stacked
-   transparent `Arc` widgets for the three colour bands, with the Canvas kept for
-   ticks and needle. Try this first if only the example matters.
+3. **Bands as native `Arc` widgets** — **LANDED in r224** (see `### r224 result`
+   below; this entry is kept for the historical rationale). Zero new code: `Arc`
+   already exposes value/start/end/thickness/track/color and `lv_draw_sw_arc()`
+   renders through an LVGL mask (8-bit coverage), i.e. it is anti-aliased. Cost:
+   three stacked transparent `Arc` widgets for the three colour bands, with the
+   Canvas kept for ticks and needle. Try this first if only the example matters.
 4. **Bigger display draw buffers** (r33 item, currently blocked) — 20 lines
    (4.2 % of the screen). Measured internal DMA headroom is 21.5 KB largest /
    16.7 KB minimum free, while 48 lines needs 46 KB, so this cannot move until
@@ -3504,3 +3505,38 @@ roadmap M2 的 TF 卡行本轮仍不勾（留真机插卡验收后再勾）。
 - `minesweeper`：`core0 151.7M -> 146.6M (-3.3%)`，`core1 78.5M -> 74.8M (-4.8%)`，总指令 `-3.8%`；**真固件 TFT PNG diff = 0/230,400 px（bit-identical）**。
 
 **验证（全部宿主机 / esp32sim 证据，非真机；原始日志 `artifacts/r212/`）**：5 份更新 harness 全绿（新增 `<=240` 与 10-tick idle 0 绘制断言）；全量回归 `TOTAL_JS=111 FAIL_JS=0`；`npm test --prefix tools/lume` 76 pass / 0 fail；`node tools/playground/build.mjs` 74 apps 重建通过；Playwright `tools/playground/verify.mjs` 全 PASS（含 `all examples load without runtime errors`）；`check_website.py` 四类 none；`firmware/`/`runtime/`/`prelude_runner.js` diff 为空；未跑 `idf.py build`；新增字面量全 ASCII；未 push。真机帧率、触控手感、PSRAM 峰值与 AMOLED 实拍全部 deferred，不声称真机验收。详见 `docs/r212-report.md` 与 `docs/KNOWN-SIMPLIFICATIONS.md` r212 节。
+
+### r224 result — rendering backlog #3: speedometer 色带迁原生 Arc widget（host + esp32sim，无真机验收）
+
+Closes the last item of the rendering backlog on the host/simulator. Only
+`examples/speedometer/app.js` changed (+3 generated playground files to keep the
+byte-identical invariant); **firmware C, bridge ABI, prelude, `.d.ts` and test
+predicates are untouched**. The three colour bands become three stacked native
+LVGL `Arc` widgets with `track: DIAL_BG` (hides the default track because
+`ATTR_ARC_TRACK` only recolours it), `thickness: 5`, `value: 100`; Canvas keeps
+background/ticks/needle and its dirty-rect strategy.
+
+- **Assumption check** (`artifacts/r224/arc-bridge-evidence.txt`): default track
+  is width 8 / `0x1B3145` and `ATTR_ARC_TRACK` cannot hide it; arcs are
+  `LV_OBJ_FLAG_CLICKABLE`-free so stacking does not block touches. A first emu
+  capture exposed a 2 px inward shift: this LVGL draws the stroke *inside*
+  `radius` (`area_in = bbox - width`), so a 320 px widget (R=160) + thickness 5
+  lands the ring on r=156..160, matching the old `ctx.arc(r=158, width=5)`.
+- **emu A/B** (`artifacts/r224/speedo-before.png` -> `speedo-after.png`, same
+  firmware, 8 s deterministic): band geometry identical (top y=82..86, left
+  x=80..84, diagonal r=156..160); seams at 260°/343° have no gaps; needle/ticks/
+  labels present. Edge colour steps (r47 methodology): axis-aligned edges 2
+  colours both; diagonal 2 transition colours both; 270-angle aggregate mean
+  2.422 -> 2.269 blended colours/angle. Before is already r48 AA `ctx.arc`, so
+  this is AA-vs-AA — **no image-quality claim, equivalence only**. 3177 changed pixels,
+  all inside the dial bbox; r<130 changes are demo-needle phase only.
+- **Verification** (raw output in `artifacts/r224/`): `idf.py build && idf.py
+  size` `BUILD_SIZE_EXIT=0` with **+0 B** vs r223 on Flash Code (2,045,024),
+  Flash Data (853,348), DIRAM (247,159), IRAM (16,384/16,384, Remain 0), Total
+  (3,039,627); 112 `tests/*.js` harnesses 0 FAIL; `npm test --prefix tools/lume`
+  87 tests / 86 pass / 0 fail / 1 skipped; `bridge_protocol.c` +
+  `apps_protocol.c` (52 checks, 0 failure); `lume check examples/speedometer
+  --no-emu` PASS; `ADDED_NON_ASCII=0`.
+- **Not on-device acceptance**: host/esp32sim evidence only. AMOLED colour,
+  touch, frame time, sleep current and radio remain deferred to board bring-up.
+  Full record: `docs/r224-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r224).
