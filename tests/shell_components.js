@@ -58,11 +58,11 @@ check('Launcher creates bounded virtual grid', () => {
 });
 check('Launcher round shape inscribes defaults in the 466 safe square', () => {
   const s = app('globalThis.apps=Array.from({length:9},(_,i)=>({id:"app"+i,label:"App "+i,color:"#117B69",ring:"#40D8B0"}));globalThis.root=lume.ui.shell.Launcher({apps,shape:"round"});');
-  /* safeInsets('round', 480) -> 339x339 box at (70,70): every default control
-   * must stay inside [70,409] on both axes. */
-  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 2 && m[3] === 339), 'bar width is the inscribed side');
-  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 18 && m[3] === 70), 'bar x at safe left');
-  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 19 && m[3] === 70), 'bar y at safe top');
+  /* safeInsets('round', 480) -> 339x339 box at (70,70); r219 tightens round
+   * StatusBar by 8px per side to 323px at (78,78) [78..401], matching listX. */
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 2 && m[3] === 323), 'bar width is safe side minus 16');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 18 && m[3] === 78), 'bar x 8px inside safe left');
+  assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 19 && m[3] === 78), 'bar y 8px inside safe top');
   assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 18 && m[3] === 345), 'edit button right edge inside safe square');
   assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 19 && m[3] === 126), 'edit button below bar');
   assert.ok(s.messages.some(m => m[0] === 'attr' && m[2] === 18 && m[3] === 78), 'list x inside safe square');

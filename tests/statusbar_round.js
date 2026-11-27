@@ -45,7 +45,7 @@ check('1.8 square 368 clamps the bar to the screen - no overflow', () => {
   assert.ok(24 + 432 > 368, 'legacy 432 bar would have overflowed 368 - bug reproduced in the assertion');
 });
 
-check('1.75C round 466 bar is equal-width with the SafeArea inscribed square', () => {
+check('1.75C round 466 bar stays 8px inside the SafeArea inscribed square', () => {
   const s = app(
     'globalThis.bar=lume.ui.shell.StatusBar({shape:"round"});' +
     'globalThis.safe=lume.ui.shell.SafeArea({shape:"round",size:466});',
@@ -53,15 +53,28 @@ check('1.75C round 466 bar is equal-width with the SafeArea inscribed square', (
   const bar = metrics(s, s.ctx.bar);
   const safe = metrics(s, s.ctx.safe);
   assert.deepEqual(safeInsetsRound466(s), {top:68,right:69,bottom:69,left:68});
-  assert.equal(bar.w, 329, 'round bar spans the full 329px safe side');
   assert.equal(safe.w, 329);
-  assert.equal(bar.w, safe.w, 'equal-width: StatusBar width == SafeArea width');
-  assert.deepEqual([bar.x, bar.y], [68, 68], 'bar starts at the safe insets');
+  assert.equal(bar.w, 313, 'round bar is safe.w - 16 (8px inner margin per side)');
+  assert.equal(bar.w, safe.w - 16, '8px inner margin inside SafeArea width');
+  assert.deepEqual([bar.x, bar.y], [76, 76], 'bar starts 8px inside safe insets');
+  // Top corners must stay strictly inside the 466px circle (R <= 233).
+  assert.ok(Math.hypot(bar.x - 233, bar.y - 233) <= 233, 'top-left corner inside R=233');
+  assert.ok(Math.hypot(bar.x + bar.w - 233, bar.y - 233) <= 233, 'top-right corner inside R=233');
   // Negative assertions: legacy bar was 432 wide at x=24 -> right edge 456,
   // well past the safe right edge 397 (466 - 69).
   assert.notEqual(bar.w, 432, 'legacy fixed width is gone on round screens');
   assert.ok(bar.x + bar.w <= 466 - 69, 'bar right edge within the round safe square');
   assert.ok(24 + 432 > 466 - 69, 'legacy 432/24 bar overflowed the safe square - bug reproduced');
+});
+
+check('480 round bar stays strictly inside [75,405] safe box and R<=240', () => {
+  const s = app('globalThis.bar=lume.ui.shell.StatusBar({shape:"round"});', {w:480,h:480});
+  const bar = metrics(s, s.ctx.bar);
+  assert.deepEqual(bar, {x:78, y:78, w:323, h:56});
+  assert.ok(bar.x >= 75 && bar.x + bar.w <= 405, 'horizontal bounds inside [75,405]');
+  assert.ok(bar.y >= 75 && bar.y + bar.h <= 405, 'vertical bounds inside [75,405]');
+  assert.ok(Math.hypot(bar.x - 240, bar.y - 240) <= 233, 'top-left clears 466px bezel');
+  assert.ok(Math.hypot(bar.x + bar.w - 240, bar.y - 240) <= 233, 'top-right clears 466px bezel');
 });
 function safeInsetsRound466(s) {
   return JSON.parse(evaluate(s, 'JSON.stringify(lume.ui.shell.safeInsets("round",466))'));
