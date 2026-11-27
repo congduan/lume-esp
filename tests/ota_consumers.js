@@ -12,8 +12,8 @@
 //   - the "New token" button opens a shell.Dialog; its danger Rotate action
 //     generates 32 lowercase hex chars with Math.random (non-CSPRNG, registered
 //     in the header + KNOWN-SIMPLIFICATIONS.md r132; modal gate added in r163).
-//   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators still fit
-//     the 360 px page height.
+//   - dashboard SYSTEM canvas publishes a 10th OTA row; 9 separators fit
+//     inside the 480-round safe square above the y=352..400 tab bar (r216).
 //   - dashboard playground generated source matches the example, dashboard is
 //     in the playground manifest, and all UI literals are ASCII (r64).
 //   - the firmware/runtime/CLI-tooling surface is pinned to BASE (R166_ALLOWED).
@@ -173,9 +173,9 @@ const checks = [
     s.includes('lume.ota.status()') && s.includes("typeof ota === 'object'") &&
     s.includes("'ota err ' + ota")]],
 
-  ['dashboard publishes OTA row with 9 separators inside 360 px', [dashboard, s =>
+  ['dashboard publishes OTA row with 9 separators inside safe area', [dashboard, s =>
     s.includes("['OTA', otaText]") &&
-    /function systemStaticLines\(\)[\s\S]*?for \(var i = 0; i < 9; i\+\+\) segs\.push\(\[16, 82 \+ i \* 30/.test(s)]],
+    /function systemStaticLines\(\)[\s\S]*?for \(var i = 0; i < 9; i\+\+\) segs\.push\(\[44, 81 \+ i \* 24, W - 44, 81 \+ i \* 24\]\)/.test(s)]],
 
   ['dashboard OTA line never reads token', [dashOta, s => noTokenRead(s)]],
 
@@ -246,7 +246,7 @@ must('dashboard truthy test replaces typeof === object',
   'dashboard SYSTEM reads status() with typeof === object discrimination', dashOta);
 must('dashboard separators revert to 8',
   s => s.replace('i < 9', 'i < 8'),
-  'dashboard publishes OTA row with 9 separators inside 360 px', dashboard);
+  'dashboard publishes OTA row with 9 separators inside safe area', dashboard);
 must('dashboard renders the full token on canvas',
   s => s.replace("'ota off'", "'ota ' + ota.token"),
   'dashboard OTA line never reads token', dashOta);
