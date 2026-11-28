@@ -1,3 +1,96 @@
+/* r230 adaptive: app authored on a 480 logical canvas; map to real screen.
+ * At 480 this block is an exact no-op (all wrappers forward unchanged args).
+ * Mechanism mirrors the r227 __A_* shim (13 round flagships + 16 others). */
+var SW = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.w > 0) ? __lumeScreen.w : 480;
+var SH = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.h > 0) ? __lumeScreen.h : 480;
+var __A_ADAPT = SW !== 480 || SH !== 480;
+var __A_KX = SW / 480, __A_KY = SH / 480;
+function __A_SX(v) { return Math.round(v * __A_KX); }
+function __A_SY(v) { return Math.round(v * __A_KY); }
+var __A_XK = ',width,x,borderRadius,borderWidth,gap,margin,marginLeft,marginRight,padding,paddingLeft,paddingRight,minWidth,maxWidth,letterSpacing,translateX,';
+var __A_YK = ',height,y,borderRadius,borderWidth,gap,margin,marginTop,marginBottom,padding,paddingTop,paddingBottom,minHeight,maxHeight,lineHeight,translateY,';
+function __A_style(s) {
+  if (!__A_ADAPT || !s || typeof s !== 'object') return s;
+  var o = {}, k;
+  for (k in s) {
+    var v = s[k];
+    if (typeof v === 'number' && __A_XK.indexOf(',' + k + ',') >= 0) o[k] = __A_SX(v);
+    else if (typeof v === 'number' && __A_YK.indexOf(',' + k + ',') >= 0) o[k] = __A_SY(v);
+    else o[k] = v;
+  }
+  return o;
+}
+function __A_ctx(c) {
+  if (c.__r230Ctx) return c.__r230Ctx;
+  var w = { nodeId: c.nodeId };
+  function pt(p) { return [__A_SX(p[0]), __A_SY(p[1])]; }
+  function sg(s) { return [__A_SX(s[0]), __A_SY(s[1]), __A_SX(s[2]), __A_SY(s[3])]; }
+  w.clear = function () { return c.clear(); };
+  w.fillColor = function (x) { return c.fillColor(x); };
+  w.fillRect = function (x, y, ww, hh) { return c.fillRect(__A_SX(x), __A_SY(y), __A_SX(ww), __A_SY(hh)); };
+  w.line = function (a, b, d, e, col, wd) { return c.line(__A_SX(a), __A_SY(b), __A_SX(d), __A_SY(e), col, wd); };
+  w.polyline = function (p, col, wd) { return c.polyline(p.map(pt), col, wd); };
+  w.retainPath = function (p, col, wd) { return c.retainPath(p.map(pt), col, wd); };
+  w.retainSegments = function (p, col, wd) { return c.retainSegments(p.map(sg), col, wd); };
+  w.drawPath = function (id, dx, dy) { return c.drawPath(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy)); };
+  w.retainImage = function (id, ww, hh, px) {
+    var rw = Math.min(SW, __A_SX(ww)), rh = Math.min(SH, __A_SY(hh));
+    if (rw === ww && rh === hh) return c.retainImage(id, ww, hh, px);
+    var out = new Uint16Array(rw * rh);
+    for (var y = 0; y < rh; y++) {
+      var sy = Math.min(hh - 1, Math.round(y * hh / rh));
+      for (var x = 0; x < rw; x++) {
+        var sx = Math.min(ww - 1, Math.round(x * ww / rw));
+        out[y * rw + x] = px[sy * ww + sx];
+      }
+    }
+    return c.retainImage(id, rw, rh, out);
+  };
+  w.drawImage = function (id, dx, dy, flip) { return c.drawImage(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy), flip); };
+  w.circle = function (x, y, r, col) { return c.circle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillCircle = function (x, y, r, col) { return c.fillCircle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillEllipse = function (x, y, rx, ry, col) { return c.fillEllipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col); };
+  w.ellipse = function (x, y, rx, ry, col, wd) { return c.ellipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col, wd); };
+  w.arc = function (x, y, r, fr, to, wd, col) { return c.arc(__A_SX(x), __A_SY(y), __A_SX(r), fr, to, wd, col); };
+  w.text = function (x, y, str, col, sz) { return c['text'](__A_SX(x), __A_SY(y), str, col, sz); };
+  c.__r230Ctx = w;
+  return w;
+}
+function __A_Canvas(p) {
+  if (!__A_ADAPT || !p) return Canvas(p);
+  var o = {}, k;
+  for (k in p) o[k] = p[k];
+  var cw = Math.min(SW, __A_SX(Number(p.width) || 0)), ch = Math.min(SH, __A_SY(Number(p.height) || 0));
+  o.width = cw; o.height = ch; o.style = __A_style(p.style);
+  var fn = p.onDraw;
+  o.onDraw = function (c) {
+    var d = fn(__A_ctx(c));
+    if (!d || typeof d !== 'object') return d;
+    function rect(r) {
+      var x = __A_SX(r.x), y = __A_SY(r.y);
+      return { x: x, y: y, w: Math.min(cw - x, __A_SX(r.w)), h: Math.min(ch - y, __A_SY(r.h)) };
+    }
+    return Array.isArray(d) ? d.map(rect) : rect(d);
+  };
+  return Canvas(o);
+}
+function __A_props(p) {
+  if (!__A_ADAPT || !p || typeof p !== 'object') return p;
+  var o = {}, k;
+  for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  return o;
+}
+function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_Text(p, kids) { return Text(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Image(p, kids) { return Image(__A_props(p), kids); }
+function __A_List(p) {
+  if (!__A_ADAPT || !p) return List(p);
+  var o = __A_props(p);
+  o.itemHeight = __A_SY(p.itemHeight);
+  return List(o);
+}
+
 /*
  * r204: control_center v2 -- translated from artifacts/r201/design/control-center.html
  * with r201 vision fixes applied:
@@ -209,20 +302,20 @@ function drawSliderCardCanvas(c, kind, pct) {
 }
 
 /* ---- UI: round watch bezel + SafeArea layout --------------------------- */
-var outerRoot = View({ style: { x: 0, y: 0, width: 480, height: 480,
+var outerRoot = __A_View({ style: { x: 0, y: 0, width: 480, height: 480,
   padding: 0, gap: 0, background: '#000000', scroll: 'none' } });
-View({ parent: outerRoot, style: { position: 'absolute', x: 16, y: 16, width: 448, height: 448,
+__A_View({ parent: outerRoot, style: { position: 'absolute', x: 16, y: 16, width: 448, height: 448,
   borderRadius: 224, background: '#0A111B', borderWidth: 1, borderColor: '#1B2838',
   padding: 0, gap: 0, scroll: 'none' } });
 
-var root = lume.ui.shell.SafeArea({ parent: outerRoot, shape: 'round', size: 480, children: [] });
+var root = lume.ui.shell.SafeArea({ parent: outerRoot, shape: 'round', size: SW, children: [] });
 
-Text({ parent: root, text: 'Control Center',
+__A_Text({ parent: root, text: 'Control Center',
   style: { position: 'absolute', x: 10, y: 0, width: 320, height: 26, fontSize: 20,
     textAlign: 'center', scroll: 'none' } });
 
 /* Group 1 label: CONNECTIONS (10px muted gray, vision fix). */
-Canvas({ parent: root, width: 320, height: 12,
+__A_Canvas({ parent: root, width: 320, height: 12,
   style: { position: 'absolute', x: 10, y: 28, scroll: 'none' },
   onDraw: function (c) {
     c.fillColor('#0A111B'); c.fillRect(0, 0, 320, 12);
@@ -230,7 +323,7 @@ Canvas({ parent: root, width: 320, height: 12,
   } });
 
 /* Row 1: Wi-Fi and Bluetooth toggle cards (154x78 each, radius 12). */
-var wifiCanvas = Canvas({ width: 134, height: 62, style: { scroll: 'none' },
+var wifiCanvas = __A_Canvas({ width: 134, height: 62, style: { scroll: 'none' },
   onDraw: function (c) { drawToggleCardCanvas(c, 'wifi', wifi()); } });
 var wifiCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { toggleWifi(); },
@@ -241,7 +334,7 @@ var wifiCard = lume.ui.shell.Card({ parent: root,
     alignItems: 'center', justifyContent: 'center' },
   children: [wifiCanvas] });
 
-var bleCanvas = Canvas({ width: 134, height: 62, style: { scroll: 'none' },
+var bleCanvas = __A_Canvas({ width: 134, height: 62, style: { scroll: 'none' },
   onDraw: function (c) { drawToggleCardCanvas(c, 'ble', ble()); } });
 var bleCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { toggleBle(); },
@@ -253,7 +346,7 @@ var bleCard = lume.ui.shell.Card({ parent: root,
   children: [bleCanvas] });
 
 /* Group 2 label: OUTPUT (10px muted gray, vision fix). */
-Canvas({ parent: root, width: 320, height: 12,
+__A_Canvas({ parent: root, width: 320, height: 12,
   style: { position: 'absolute', x: 10, y: 124, scroll: 'none' },
   onDraw: function (c) {
     c.fillColor('#0A111B'); c.fillRect(0, 0, 320, 12);
@@ -261,7 +354,7 @@ Canvas({ parent: root, width: 320, height: 12,
   } });
 
 /* Row 2: Brightness slider card (320x66). Tap cycles 1..5; pan drags directly. */
-var brtCanvas = Canvas({ width: 296, height: 52, style: { scroll: 'none' },
+var brtCanvas = __A_Canvas({ width: 296, height: 52, style: { scroll: 'none' },
   onDraw: function (c) { drawSliderCardCanvas(c, 'brt', Math.round((brt() / 5) * 100)); } });
 var brtCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { cycleBrt(); },
@@ -272,7 +365,7 @@ var brtCard = lume.ui.shell.Card({ parent: root,
   children: [brtCanvas] });
 
 /* Row 3: Volume slider card (320x66). Tap cycles 0..10; pan drags directly. */
-var volCanvas = Canvas({ width: 296, height: 52, style: { scroll: 'none' },
+var volCanvas = __A_Canvas({ width: 296, height: 52, style: { scroll: 'none' },
   onDraw: function (c) { drawSliderCardCanvas(c, 'vol', vol() * 10); } });
 var volCard = lume.ui.shell.Card({ parent: root,
   onPress: function () { cycleVol(); },
@@ -296,7 +389,7 @@ lume.gesture.on(volCanvas, 'pan', function (e) {
 });
 
 /* Row 4: Dedicated ghost-outlined danger "Reset All" pill with circular undo arrow. */
-var resetCanvas = Canvas({ width: 164, height: 32, style: { scroll: 'none' },
+var resetCanvas = __A_Canvas({ width: 164, height: 32, style: { scroll: 'none' },
   onDraw: function (c) {
     c.fillColor('#201118'); c.fillRect(0, 0, 164, 32);
     /* Circular undo arrow icon at (48, 16) */
@@ -305,7 +398,7 @@ var resetCanvas = Canvas({ width: 164, height: 32, style: { scroll: 'none' },
     c.line(42, 15, 47, 14, '#FF6B79', 2);
     c.text(62, 9, 'Reset All', '#FF6B79');
   } });
-var resetBtn = View({ parent: root,
+var resetBtn = __A_View({ parent: root,
   onPress: function () { resetAll(); },
   style: { position: 'absolute', x: 64, y: 286, width: 212, height: 48,
     borderRadius: 999, background: '#201118', borderWidth: 1, borderColor: '#BF4E5B',

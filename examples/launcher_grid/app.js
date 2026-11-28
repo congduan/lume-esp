@@ -1,3 +1,96 @@
+/* r230 adaptive: app authored on a 480 logical canvas; map to real screen.
+ * At 480 this block is an exact no-op (all wrappers forward unchanged args).
+ * Mechanism mirrors the r227 __A_* shim (13 round flagships + 16 others). */
+var SW = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.w > 0) ? __lumeScreen.w : 480;
+var SH = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.h > 0) ? __lumeScreen.h : 480;
+var __A_ADAPT = SW !== 480 || SH !== 480;
+var __A_KX = SW / 480, __A_KY = SH / 480;
+function __A_SX(v) { return Math.round(v * __A_KX); }
+function __A_SY(v) { return Math.round(v * __A_KY); }
+var __A_XK = ',width,x,borderRadius,borderWidth,gap,margin,marginLeft,marginRight,padding,paddingLeft,paddingRight,minWidth,maxWidth,letterSpacing,translateX,';
+var __A_YK = ',height,y,borderRadius,borderWidth,gap,margin,marginTop,marginBottom,padding,paddingTop,paddingBottom,minHeight,maxHeight,lineHeight,translateY,';
+function __A_style(s) {
+  if (!__A_ADAPT || !s || typeof s !== 'object') return s;
+  var o = {}, k;
+  for (k in s) {
+    var v = s[k];
+    if (typeof v === 'number' && __A_XK.indexOf(',' + k + ',') >= 0) o[k] = __A_SX(v);
+    else if (typeof v === 'number' && __A_YK.indexOf(',' + k + ',') >= 0) o[k] = __A_SY(v);
+    else o[k] = v;
+  }
+  return o;
+}
+function __A_ctx(c) {
+  if (c.__r230Ctx) return c.__r230Ctx;
+  var w = { nodeId: c.nodeId };
+  function pt(p) { return [__A_SX(p[0]), __A_SY(p[1])]; }
+  function sg(s) { return [__A_SX(s[0]), __A_SY(s[1]), __A_SX(s[2]), __A_SY(s[3])]; }
+  w.clear = function () { return c.clear(); };
+  w.fillColor = function (x) { return c.fillColor(x); };
+  w.fillRect = function (x, y, ww, hh) { return c.fillRect(__A_SX(x), __A_SY(y), __A_SX(ww), __A_SY(hh)); };
+  w.line = function (a, b, d, e, col, wd) { return c.line(__A_SX(a), __A_SY(b), __A_SX(d), __A_SY(e), col, wd); };
+  w.polyline = function (p, col, wd) { return c.polyline(p.map(pt), col, wd); };
+  w.retainPath = function (p, col, wd) { return c.retainPath(p.map(pt), col, wd); };
+  w.retainSegments = function (p, col, wd) { return c.retainSegments(p.map(sg), col, wd); };
+  w.drawPath = function (id, dx, dy) { return c.drawPath(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy)); };
+  w.retainImage = function (id, ww, hh, px) {
+    var rw = Math.min(SW, __A_SX(ww)), rh = Math.min(SH, __A_SY(hh));
+    if (rw === ww && rh === hh) return c.retainImage(id, ww, hh, px);
+    var out = new Uint16Array(rw * rh);
+    for (var y = 0; y < rh; y++) {
+      var sy = Math.min(hh - 1, Math.round(y * hh / rh));
+      for (var x = 0; x < rw; x++) {
+        var sx = Math.min(ww - 1, Math.round(x * ww / rw));
+        out[y * rw + x] = px[sy * ww + sx];
+      }
+    }
+    return c.retainImage(id, rw, rh, out);
+  };
+  w.drawImage = function (id, dx, dy, flip) { return c.drawImage(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy), flip); };
+  w.circle = function (x, y, r, col) { return c.circle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillCircle = function (x, y, r, col) { return c.fillCircle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillEllipse = function (x, y, rx, ry, col) { return c.fillEllipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col); };
+  w.ellipse = function (x, y, rx, ry, col, wd) { return c.ellipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col, wd); };
+  w.arc = function (x, y, r, fr, to, wd, col) { return c.arc(__A_SX(x), __A_SY(y), __A_SX(r), fr, to, wd, col); };
+  w.text = function (x, y, str, col, sz) { return c['text'](__A_SX(x), __A_SY(y), str, col, sz); };
+  c.__r230Ctx = w;
+  return w;
+}
+function __A_Canvas(p) {
+  if (!__A_ADAPT || !p) return Canvas(p);
+  var o = {}, k;
+  for (k in p) o[k] = p[k];
+  var cw = Math.min(SW, __A_SX(Number(p.width) || 0)), ch = Math.min(SH, __A_SY(Number(p.height) || 0));
+  o.width = cw; o.height = ch; o.style = __A_style(p.style);
+  var fn = p.onDraw;
+  o.onDraw = function (c) {
+    var d = fn(__A_ctx(c));
+    if (!d || typeof d !== 'object') return d;
+    function rect(r) {
+      var x = __A_SX(r.x), y = __A_SY(r.y);
+      return { x: x, y: y, w: Math.min(cw - x, __A_SX(r.w)), h: Math.min(ch - y, __A_SY(r.h)) };
+    }
+    return Array.isArray(d) ? d.map(rect) : rect(d);
+  };
+  return Canvas(o);
+}
+function __A_props(p) {
+  if (!__A_ADAPT || !p || typeof p !== 'object') return p;
+  var o = {}, k;
+  for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  return o;
+}
+function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_Text(p, kids) { return Text(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Image(p, kids) { return Image(__A_props(p), kids); }
+function __A_List(p) {
+  if (!__A_ADAPT || !p) return List(p);
+  var o = __A_props(p);
+  o.itemHeight = __A_SY(p.itemHeight);
+  return List(o);
+}
+
 /*
  * r204: launcher_grid v2 -- 3x4 round-AMOLED launcher translated from
  * artifacts/r201/design/launcher.html with all r201 vision fixes applied:
@@ -202,35 +295,35 @@ function drawIconGlyph(c, app, selected) {
 }
 
 /* ---- UI: round watch bezel + SafeArea 3x4 grid ------------------------- */
-var root = View({ style: { x: 0, y: 0, width: 480, height: 480,
+var root = __A_View({ style: { x: 0, y: 0, width: 480, height: 480,
   padding: 0, gap: 0, background: '#000000', scroll: 'none' } });
 
 /* Subtle outer circular watch bezel (r = 218 <= 220, zero Canvas cost). */
-View({ parent: root, style: { position: 'absolute', x: 22, y: 22, width: 436, height: 436,
+__A_View({ parent: root, style: { position: 'absolute', x: 22, y: 22, width: 436, height: 436,
   borderRadius: 218, background: '#09101B', borderWidth: 1, borderColor: '#1A2636',
   padding: 0, gap: 0, scroll: 'none' } });
 
-var safe = lume.ui.shell.SafeArea({ parent: root, shape: 'round', size: 480, children: [] });
+var safe = lume.ui.shell.SafeArea({ parent: root, shape: 'round', size: SW, children: [] });
 
 /* Top bar inside safe area (local y: 0..48 -> global y: 70..118).
  * Centered SNTP clock (or EDIT status while editing) + discreet EDIT/DONE control. */
-var statusText = Text({ parent: safe,
+var statusText = __A_Text({ parent: safe,
   text: function () { return editing() ? 'EDIT' : clockText(); },
   style: { position: 'absolute', x: 96, y: 12, width: 148, height: 20, fontSize: 14,
     letterSpacing: 1, textAlign: 'center', opacity: 0.85, scroll: 'none' } });
 
 /* 64x48 touch target (>= 48px) wrapping a sleek compact visual pill. */
-var editBtn = View({ parent: safe,
+var editBtn = __A_View({ parent: safe,
   style: { position: 'absolute', x: 264, y: 0, width: 64, height: 48, padding: 0, gap: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none' },
   onPress: function () { setEditing(!editing()); } }, [
-  View({ style: { width: 54, height: 26, borderRadius: 999, padding: 0, gap: 0,
+  __A_View({ style: { width: 54, height: 26, borderRadius: 999, padding: 0, gap: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     background: function () { return editing() ? '#117B69' : '#16202E'; },
     borderWidth: 1,
     borderColor: function () { return editing() ? '#40D8B0' : '#2C3D52'; },
     scroll: 'none' } }, [
-    Text({ text: function () { return editing() ? 'DONE' : 'EDIT'; },
+    __A_Text({ text: function () { return editing() ? 'DONE' : 'EDIT'; },
       style: { fontSize: 14, textAlign: 'center', opacity: 0.9, scroll: 'none' } })
   ])
 ]);
@@ -244,7 +337,7 @@ for (var idx = 0; idx < INITIAL_APPS.length; idx++) {
   (function (slot) {
     var col = slot % COLUMNS;
     var row = Math.floor(slot / COLUMNS);
-    var tile = View({ parent: safe,
+    var tile = __A_View({ parent: safe,
       style: { position: 'absolute', x: GRID_X + col * CELL_W, y: GRID_Y + row * CELL_H,
         width: CELL_W, height: CELL_H, padding: 0, gap: 0, borderRadius: 12,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -265,11 +358,11 @@ for (var idx = 0; idx < INITIAL_APPS.length; idx++) {
         launching.set(app.id);
         onLaunch(app.id);
       } }, [
-      Canvas({ width: ICON_PX, height: ICON_PX, style: { scroll: 'none' }, onDraw: function (c) {
+      __A_Canvas({ width: ICON_PX, height: ICON_PX, style: { scroll: 'none' }, onDraw: function (c) {
         var app = order()[slot];
         drawIconGlyph(c, app, editing() && editPick() === slot);
       } }),
-      Text({ text: function () { return order()[slot].label; },
+      __A_Text({ text: function () { return order()[slot].label; },
         style: { width: 98, height: 18, fontSize: 14, textAlign: 'center',
           opacity: 0.9, scroll: 'none' } }),
     ]);
@@ -278,16 +371,16 @@ for (var idx = 0; idx < INITIAL_APPS.length; idx++) {
 }
 
 /* Bottom 3-dot page indicator inside safe area (local y: 320..334 -> global 390..404). */
-var dotsRow = View({ parent: safe, style: { position: 'absolute', x: 110, y: 320,
+var dotsRow = __A_View({ parent: safe, style: { position: 'absolute', x: 110, y: 320,
   width: 120, height: 14, padding: 0, gap: 8, display: 'flex', flexDirection: 'row',
   alignItems: 'center', justifyContent: 'center', scroll: 'none' } }, [
-  View({ style: { width: function () { return pageIdx() === 0 ? 18 : 6; }, height: 6,
+  __A_View({ style: { width: function () { return pageIdx() === 0 ? 18 : 6; }, height: 6,
     borderRadius: 3, background: function () { return pageIdx() === 0 ? '#40D8B0' : '#5C7794'; },
     padding: 0, gap: 0, scroll: 'none' } }),
-  View({ style: { width: function () { return pageIdx() === 1 ? 18 : 6; }, height: 6,
+  __A_View({ style: { width: function () { return pageIdx() === 1 ? 18 : 6; }, height: 6,
     borderRadius: 3, background: function () { return pageIdx() === 1 ? '#40D8B0' : '#5C7794'; },
     padding: 0, gap: 0, scroll: 'none' } }),
-  View({ style: { width: function () { return pageIdx() === 2 ? 18 : 6; }, height: 6,
+  __A_View({ style: { width: function () { return pageIdx() === 2 ? 18 : 6; }, height: 6,
     borderRadius: 3, background: function () { return pageIdx() === 2 ? '#40D8B0' : '#5C7794'; },
     padding: 0, gap: 0, scroll: 'none' } }),
 ]);

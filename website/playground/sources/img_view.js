@@ -1,3 +1,96 @@
+/* r230 adaptive: app authored on a 480 logical canvas; map to real screen.
+ * At 480 this block is an exact no-op (all wrappers forward unchanged args).
+ * Mechanism mirrors the r227 __A_* shim (13 round flagships + 16 others). */
+var SW = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.w > 0) ? __lumeScreen.w : 480;
+var SH = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.h > 0) ? __lumeScreen.h : 480;
+var __A_ADAPT = SW !== 480 || SH !== 480;
+var __A_KX = SW / 480, __A_KY = SH / 480;
+function __A_SX(v) { return Math.round(v * __A_KX); }
+function __A_SY(v) { return Math.round(v * __A_KY); }
+var __A_XK = ',width,x,borderRadius,borderWidth,gap,margin,marginLeft,marginRight,padding,paddingLeft,paddingRight,minWidth,maxWidth,letterSpacing,translateX,';
+var __A_YK = ',height,y,borderRadius,borderWidth,gap,margin,marginTop,marginBottom,padding,paddingTop,paddingBottom,minHeight,maxHeight,lineHeight,translateY,';
+function __A_style(s) {
+  if (!__A_ADAPT || !s || typeof s !== 'object') return s;
+  var o = {}, k;
+  for (k in s) {
+    var v = s[k];
+    if (typeof v === 'number' && __A_XK.indexOf(',' + k + ',') >= 0) o[k] = __A_SX(v);
+    else if (typeof v === 'number' && __A_YK.indexOf(',' + k + ',') >= 0) o[k] = __A_SY(v);
+    else o[k] = v;
+  }
+  return o;
+}
+function __A_ctx(c) {
+  if (c.__r230Ctx) return c.__r230Ctx;
+  var w = { nodeId: c.nodeId };
+  function pt(p) { return [__A_SX(p[0]), __A_SY(p[1])]; }
+  function sg(s) { return [__A_SX(s[0]), __A_SY(s[1]), __A_SX(s[2]), __A_SY(s[3])]; }
+  w.clear = function () { return c.clear(); };
+  w.fillColor = function (x) { return c.fillColor(x); };
+  w.fillRect = function (x, y, ww, hh) { return c.fillRect(__A_SX(x), __A_SY(y), __A_SX(ww), __A_SY(hh)); };
+  w.line = function (a, b, d, e, col, wd) { return c.line(__A_SX(a), __A_SY(b), __A_SX(d), __A_SY(e), col, wd); };
+  w.polyline = function (p, col, wd) { return c.polyline(p.map(pt), col, wd); };
+  w.retainPath = function (p, col, wd) { return c.retainPath(p.map(pt), col, wd); };
+  w.retainSegments = function (p, col, wd) { return c.retainSegments(p.map(sg), col, wd); };
+  w.drawPath = function (id, dx, dy) { return c.drawPath(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy)); };
+  w.retainImage = function (id, ww, hh, px) {
+    var rw = Math.min(SW, __A_SX(ww)), rh = Math.min(SH, __A_SY(hh));
+    if (rw === ww && rh === hh) return c.retainImage(id, ww, hh, px);
+    var out = new Uint16Array(rw * rh);
+    for (var y = 0; y < rh; y++) {
+      var sy = Math.min(hh - 1, Math.round(y * hh / rh));
+      for (var x = 0; x < rw; x++) {
+        var sx = Math.min(ww - 1, Math.round(x * ww / rw));
+        out[y * rw + x] = px[sy * ww + sx];
+      }
+    }
+    return c.retainImage(id, rw, rh, out);
+  };
+  w.drawImage = function (id, dx, dy, flip) { return c.drawImage(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy), flip); };
+  w.circle = function (x, y, r, col) { return c.circle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillCircle = function (x, y, r, col) { return c.fillCircle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillEllipse = function (x, y, rx, ry, col) { return c.fillEllipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col); };
+  w.ellipse = function (x, y, rx, ry, col, wd) { return c.ellipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col, wd); };
+  w.arc = function (x, y, r, fr, to, wd, col) { return c.arc(__A_SX(x), __A_SY(y), __A_SX(r), fr, to, wd, col); };
+  w.text = function (x, y, str, col, sz) { return c['text'](__A_SX(x), __A_SY(y), str, col, sz); };
+  c.__r230Ctx = w;
+  return w;
+}
+function __A_Canvas(p) {
+  if (!__A_ADAPT || !p) return Canvas(p);
+  var o = {}, k;
+  for (k in p) o[k] = p[k];
+  var cw = Math.min(SW, __A_SX(Number(p.width) || 0)), ch = Math.min(SH, __A_SY(Number(p.height) || 0));
+  o.width = cw; o.height = ch; o.style = __A_style(p.style);
+  var fn = p.onDraw;
+  o.onDraw = function (c) {
+    var d = fn(__A_ctx(c));
+    if (!d || typeof d !== 'object') return d;
+    function rect(r) {
+      var x = __A_SX(r.x), y = __A_SY(r.y);
+      return { x: x, y: y, w: Math.min(cw - x, __A_SX(r.w)), h: Math.min(ch - y, __A_SY(r.h)) };
+    }
+    return Array.isArray(d) ? d.map(rect) : rect(d);
+  };
+  return Canvas(o);
+}
+function __A_props(p) {
+  if (!__A_ADAPT || !p || typeof p !== 'object') return p;
+  var o = {}, k;
+  for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  return o;
+}
+function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_Text(p, kids) { return Text(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Image(p, kids) { return Image(__A_props(p), kids); }
+function __A_List(p) {
+  if (!__A_ADAPT || !p) return List(p);
+  var o = __A_props(p);
+  o.itemHeight = __A_SY(p.itemHeight);
+  return List(o);
+}
+
 /** RGB565 scaling demo: lume.imgscale.scale on one static screen (r136).
  *
  *  A small built-in RGB565 test image is scaled into a caller-owned Uint16Array
@@ -19,9 +112,9 @@
  *  ASCII-only UI copy (r64). Plain global var/function script.
  *  Real-device acceptance (panel output, touch feel) stays deferred.
  */
-var SW = 24, SH = 24;
+var __IMG_SW = 24, __IMG_SH = 24;
 var FACTORS = [2, 4, 8];
-var MAXD = SW * FACTORS[FACTORS.length - 1];
+var MAXD = __IMG_SW * FACTORS[FACTORS.length - 1];
 var SRC = new Uint16Array([
   31,6172,12313,16407,22548,28689,34830,40971,47112,51206,57347,63488,
   0,0,0,0,0,0,0,0,0,0,0,31,
@@ -88,14 +181,14 @@ var theme = { colors: {
 }, radius: 12, spacing: 12, fontScale: 1 };
 lume.theme.set(theme);
 
-var last = { rc: 0, mode: mode, factor: FACTORS[0], sw: SW, sh: SH, dw: 0, dh: 0, dst: DST };
+var last = { rc: 0, mode: mode, factor: FACTORS[0], sw: __IMG_SW, sh: __IMG_SH, dw: 0, dh: 0, dst: DST };
 
 function compute() {
   var f = FACTORS[idx], m = mode;
-  var dw = SW * f, dh = SH * f;
+  var dw = __IMG_SW * f, dh = __IMG_SH * f;
   var dst = DST.subarray(0, dw * dh);
-  var rc = imgscale.scale(SRC, SW, SH, dst, dw, dh, m);
-  last = { rc: rc, mode: m, factor: f, sw: SW, sh: SH, dw: dw, dh: dh, dst: dst };
+  var rc = imgscale.scale(SRC, __IMG_SW, __IMG_SH, dst, dw, dh, m);
+  last = { rc: rc, mode: m, factor: f, sw: __IMG_SW, sh: __IMG_SH, dw: dw, dh: dh, dst: dst };
   return last;
 }
 
@@ -127,40 +220,40 @@ function state() {
   };
 }
 
-var root = View({ style: { width: '100%', height: '100%', background: '#000000', scroll: 'none' } }, [
-  View({ style: {
+var root = __A_View({ style: { width: '100%', height: '100%', background: '#000000', scroll: 'none' } }, [
+  __A_View({ style: {
     position: 'absolute', x: 14, y: 14, width: 452, height: 452,
     borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
     scroll: 'none'
   } }),
-  Text({ text: 'Image Scale', style: {
+  __A_Text({ text: 'Image Scale', style: {
     position: 'absolute', x: 80, y: 78, width: 220, height: 28,
     fontSize: 20, color: '#F2F7FB'
   } }),
-  View({ style: {
+  __A_View({ style: {
     position: 'absolute', x: 320, y: 78, width: 80, height: 24,
     background: '#122A2B', borderColor: '#2E7D6B', borderWidth: 1, borderRadius: 12,
     display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
   } }, [
-    Text({ text: statusDisplay, style: {
+    __A_Text({ text: statusDisplay, style: {
       fontSize: 12, textAlign: 'center',
       color: function () { return statusDisplay() === 'OK' ? '#40D8B0' : '#FF6B79'; }
     } })
   ]),
-  Text({ text: hudDisplay, style: {
+  __A_Text({ text: hudDisplay, style: {
     position: 'absolute', x: 80, y: 322, width: 320, height: 22,
     fontSize: 13, color: '#9EB3C6', textAlign: 'center'
   } }),
-  View({ style: {
+  __A_View({ style: {
     position: 'absolute', x: 80, y: 350, width: 320, height: 48,
     display: 'flex', flexDirection: 'row', gap: 10, scroll: 'none'
   } }, [
-    Button({ title: 'NEXT', onPress: nextScale, style: {
+    __A_Button({ title: 'NEXT', onPress: nextScale, style: {
       flexGrow: 1, height: 48, borderRadius: 12,
       background: '#116354', borderColor: '#40D8B0', borderWidth: 1,
       color: '#F2F7FB', fontSize: 14
     } }),
-    Button({ title: 'MODE', onPress: toggleMode, style: {
+    __A_Button({ title: 'MODE', onPress: toggleMode, style: {
       flexGrow: 1, height: 48, borderRadius: 12,
       background: '#16202E', borderColor: '#233245', borderWidth: 1,
       color: '#F2F7FB', fontSize: 14
@@ -168,7 +261,7 @@ var root = View({ style: { width: '100%', height: '100%', background: '#000000',
   ])
 ]);
 
-Canvas({
+__A_Canvas({
   parent: root, width: CW, height: CH,
   style: { position: 'absolute', x: 138, y: 112, scroll: 'none' },
   onDraw: function (ctx) {

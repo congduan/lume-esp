@@ -1,3 +1,96 @@
+/* r230 adaptive: app authored on a 480 logical canvas; map to real screen.
+ * At 480 this block is an exact no-op (all wrappers forward unchanged args).
+ * Mechanism mirrors the r227 __A_* shim (13 round flagships + 16 others). */
+var SW = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.w > 0) ? __lumeScreen.w : 480;
+var SH = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.h > 0) ? __lumeScreen.h : 480;
+var __A_ADAPT = SW !== 480 || SH !== 480;
+var __A_KX = SW / 480, __A_KY = SH / 480;
+function __A_SX(v) { return Math.round(v * __A_KX); }
+function __A_SY(v) { return Math.round(v * __A_KY); }
+var __A_XK = ',width,x,borderRadius,borderWidth,gap,margin,marginLeft,marginRight,padding,paddingLeft,paddingRight,minWidth,maxWidth,letterSpacing,translateX,';
+var __A_YK = ',height,y,borderRadius,borderWidth,gap,margin,marginTop,marginBottom,padding,paddingTop,paddingBottom,minHeight,maxHeight,lineHeight,translateY,';
+function __A_style(s) {
+  if (!__A_ADAPT || !s || typeof s !== 'object') return s;
+  var o = {}, k;
+  for (k in s) {
+    var v = s[k];
+    if (typeof v === 'number' && __A_XK.indexOf(',' + k + ',') >= 0) o[k] = __A_SX(v);
+    else if (typeof v === 'number' && __A_YK.indexOf(',' + k + ',') >= 0) o[k] = __A_SY(v);
+    else o[k] = v;
+  }
+  return o;
+}
+function __A_ctx(c) {
+  if (c.__r230Ctx) return c.__r230Ctx;
+  var w = { nodeId: c.nodeId };
+  function pt(p) { return [__A_SX(p[0]), __A_SY(p[1])]; }
+  function sg(s) { return [__A_SX(s[0]), __A_SY(s[1]), __A_SX(s[2]), __A_SY(s[3])]; }
+  w.clear = function () { return c.clear(); };
+  w.fillColor = function (x) { return c.fillColor(x); };
+  w.fillRect = function (x, y, ww, hh) { return c.fillRect(__A_SX(x), __A_SY(y), __A_SX(ww), __A_SY(hh)); };
+  w.line = function (a, b, d, e, col, wd) { return c.line(__A_SX(a), __A_SY(b), __A_SX(d), __A_SY(e), col, wd); };
+  w.polyline = function (p, col, wd) { return c.polyline(p.map(pt), col, wd); };
+  w.retainPath = function (p, col, wd) { return c.retainPath(p.map(pt), col, wd); };
+  w.retainSegments = function (p, col, wd) { return c.retainSegments(p.map(sg), col, wd); };
+  w.drawPath = function (id, dx, dy) { return c.drawPath(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy)); };
+  w.retainImage = function (id, ww, hh, px) {
+    var rw = Math.min(SW, __A_SX(ww)), rh = Math.min(SH, __A_SY(hh));
+    if (rw === ww && rh === hh) return c.retainImage(id, ww, hh, px);
+    var out = new Uint16Array(rw * rh);
+    for (var y = 0; y < rh; y++) {
+      var sy = Math.min(hh - 1, Math.round(y * hh / rh));
+      for (var x = 0; x < rw; x++) {
+        var sx = Math.min(ww - 1, Math.round(x * ww / rw));
+        out[y * rw + x] = px[sy * ww + sx];
+      }
+    }
+    return c.retainImage(id, rw, rh, out);
+  };
+  w.drawImage = function (id, dx, dy, flip) { return c.drawImage(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy), flip); };
+  w.circle = function (x, y, r, col) { return c.circle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillCircle = function (x, y, r, col) { return c.fillCircle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillEllipse = function (x, y, rx, ry, col) { return c.fillEllipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col); };
+  w.ellipse = function (x, y, rx, ry, col, wd) { return c.ellipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col, wd); };
+  w.arc = function (x, y, r, fr, to, wd, col) { return c.arc(__A_SX(x), __A_SY(y), __A_SX(r), fr, to, wd, col); };
+  w.text = function (x, y, str, col, sz) { return c['text'](__A_SX(x), __A_SY(y), str, col, sz); };
+  c.__r230Ctx = w;
+  return w;
+}
+function __A_Canvas(p) {
+  if (!__A_ADAPT || !p) return Canvas(p);
+  var o = {}, k;
+  for (k in p) o[k] = p[k];
+  var cw = Math.min(SW, __A_SX(Number(p.width) || 0)), ch = Math.min(SH, __A_SY(Number(p.height) || 0));
+  o.width = cw; o.height = ch; o.style = __A_style(p.style);
+  var fn = p.onDraw;
+  o.onDraw = function (c) {
+    var d = fn(__A_ctx(c));
+    if (!d || typeof d !== 'object') return d;
+    function rect(r) {
+      var x = __A_SX(r.x), y = __A_SY(r.y);
+      return { x: x, y: y, w: Math.min(cw - x, __A_SX(r.w)), h: Math.min(ch - y, __A_SY(r.h)) };
+    }
+    return Array.isArray(d) ? d.map(rect) : rect(d);
+  };
+  return Canvas(o);
+}
+function __A_props(p) {
+  if (!__A_ADAPT || !p || typeof p !== 'object') return p;
+  var o = {}, k;
+  for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  return o;
+}
+function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_Text(p, kids) { return Text(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Image(p, kids) { return Image(__A_props(p), kids); }
+function __A_List(p) {
+  if (!__A_ADAPT || !p) return List(p);
+  var o = __A_props(p);
+  o.itemHeight = __A_SY(p.itemHeight);
+  return List(o);
+}
+
 /** Settings app: WiFi (station / WPA2-PSK), Bluetooth (BLE peripheral) and
  *  general device settings (volume, battery, sleep, power off, storage).
  *
@@ -366,12 +459,12 @@ function kbKey(k) {
 }
 
 function kbRow(children) {
-  return View({ style: {
+  return __A_View({ style: {
     width: '100%', height: 42, display: 'flex', flexDirection: 'row', gap: 4
   } }, children);
 }
 function kbKeyButton(k) {
-  return Button({
+  return __A_Button({
     title: function () { return keyChar(k) === 'space' ? 'space' : keyChar(k); },
     onPress: function () { kbKey(k); },
     style: {
@@ -386,7 +479,7 @@ function kbKeyButton(k) {
   });
 }
 
-var kbDisplay = Text({ text: function () {
+var kbDisplay = __A_Text({ text: function () {
   var title = kbTitle();
   var t = kbText();
   var shown = t;
@@ -402,7 +495,7 @@ var kbChildren = [kbDisplay];
 for (var r = 0; r < KB_ROWS.length; r++) {
   kbChildren.push(kbRow(KB_ROWS[r].map(kbKeyButton)));
 }
-var kbOverlay = View({ style: {
+var kbOverlay = __A_View({ style: {
   position: 'absolute', x: 76, y: 174, width: 328, height: 224,
   background: '#0D1420', borderRadius: 12, borderWidth: 1, borderColor: '#2B3E54',
   display: 'flex', flexDirection: 'column', gap: 4, padding: 8
@@ -762,7 +855,7 @@ function stopPolling() {
 /* ---- shared subpage widgets (r206 round AMOLED language) -------------------- */
 
 function backPill(dest) {
-  return Button({ title: '<', onPress: function () { go(dest); }, style: {
+  return __A_Button({ title: '<', onPress: function () { go(dest); }, style: {
     position: 'absolute', x: 4, y: 2, width: 48, height: 30,
     background: '#16202E', borderColor: '#233245', borderWidth: 1,
     borderRadius: 15, color: '#9EB3C6', fontSize: 16
@@ -772,7 +865,7 @@ function backPill(dest) {
 /* ---- page: menu (r205 round AMOLED design, shared dial bezel) --------------- */
 
 function menuGroupHeader(label, y) {
-  return Canvas({ width: 320, height: 12,
+  return __A_Canvas({ width: 320, height: 12,
     style: { position: 'absolute', x: 4, y: y - 76, scroll: 'none' },
     onDraw: function (c) {
       c.fillColor('#09101A'); c.fillRect(0, 0, 320, 12);
@@ -782,11 +875,11 @@ function menuGroupHeader(label, y) {
 
 function makeMenuRow(y, svgBytes, title, rightNode, isOnFn, action) {
   var children = [];
-  var iconNode = Image({ src: svgBytes, style: { width: 34, height: 34, borderRadius: 17 } });
+  var iconNode = __A_Image({ src: svgBytes, style: { width: 34, height: 34, borderRadius: 17 } });
   if (iconNode > 0) children.push(iconNode);
-  children.push(Text({ text: title, style: { flexGrow: 1, height: 24, fontSize: 16, color: 'text' } }));
+  children.push(__A_Text({ text: title, style: { flexGrow: 1, height: 24, fontSize: 16, color: 'text' } }));
   children.push(rightNode);
-  return View({ onPress: action, style: {
+  return __A_View({ onPress: action, style: {
     position: 'absolute', x: 4, y: y - 76, width: 320, height: 52,
     background: function () { return isOnFn && isOnFn() ? '#14292E' : '#16202E'; },
     borderColor: function () { return isOnFn && isOnFn() ? '#34A88B' : '#233245'; },
@@ -826,25 +919,25 @@ function drawSystemTrailing(c) {
   drawChevron(c, 72, 14, '#5C7794');
 }
 
-var wifiTrailing = Canvas({ width: 66, height: 28, style: { scroll: 'none' },
+var wifiTrailing = __A_Canvas({ width: 66, height: 28, style: { scroll: 'none' },
   onDraw: function (c) {
     var s = wifiLine();
     drawSwitchTrailing(c, s !== 'off' && s !== 'disconnected');
   } });
 
-var btTrailing = Canvas({ width: 66, height: 28, style: { scroll: 'none' },
+var btTrailing = __A_Canvas({ width: 66, height: 28, style: { scroll: 'none' },
   onDraw: function (c) {
     var s = btLine();
     drawSwitchTrailing(c, s !== 'off' && s !== 'idle');
   } });
 
-var volTrailing = Canvas({ width: 118, height: 28, style: { scroll: 'none' },
+var volTrailing = __A_Canvas({ width: 118, height: 28, style: { scroll: 'none' },
   onDraw: function (c) { drawVolumeTrailing(c, volume()); } });
 
-var sysTrailing = Canvas({ width: 82, height: 28, style: { scroll: 'none' },
+var sysTrailing = __A_Canvas({ width: 82, height: 28, style: { scroll: 'none' },
   onDraw: function (c) { drawSystemTrailing(c); } });
 
-var battCompCanvas = Canvas({ width: 68, height: 24,
+var battCompCanvas = __A_Canvas({ width: 68, height: 24,
   style: { position: 'absolute', x: 256, y: 2, scroll: 'none' },
   onDraw: function (c) {
     var p = battPct();
@@ -862,24 +955,24 @@ var battCompCanvas = Canvas({ width: 68, height: 24,
     c.text(26, 5, (p >= 0 ? p + '%' : '--%'), '#40D8B0');
   } });
 
-var dialBezel = View({ style: {
+var dialBezel = __A_View({ style: {
   position: 'absolute', x: 14, y: 14, width: 452, height: 452,
   borderRadius: 226, background: '#09101A', borderWidth: 1, borderColor: '#1E2D3F',
   scroll: 'none'
 } });
 
-var menuPage = View({ style: {
+var menuPage = __A_View({ style: {
   position: 'absolute', x: 76, y: 76, width: 328, height: 328,
   background: '#09101A', scroll: 'none'
 } }, [
-  View({ style: {
+  __A_View({ style: {
     position: 'absolute', x: 4, y: 2, width: 62, height: 24,
     background: '#16202E', borderRadius: 12, borderWidth: 1, borderColor: '#233245',
     display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
   } }, [
-    Text({ text: clockText, style: { fontSize: 13, color: '#9EB3C6', textAlign: 'center' } })
+    __A_Text({ text: clockText, style: { fontSize: 13, color: '#9EB3C6', textAlign: 'center' } })
   ]),
-  Text({ text: 'Settings', style: {
+  __A_Text({ text: 'Settings', style: {
     position: 'absolute', x: 74, y: 0, width: 180, height: 28,
     fontSize: 22, color: 'text', textAlign: 'center'
   } }),
@@ -910,12 +1003,12 @@ function wifiVisualState() {
 }
 
 function netRow(item) {
-  return View({ style: {
+  return __A_View({ style: {
     width: '100%', height: 48, background: '#09101A',
     display: 'flex', flexDirection: 'row', alignItems: 'center',
     gap: 6, paddingTop: 2, paddingBottom: 2, scroll: 'none'
   }, onPress: function () { connectNet(item); } }, [
-    Canvas({ width: 274, height: 44, style: { scroll: 'none' }, onDraw: function (c) {
+    __A_Canvas({ width: 274, height: 44, style: { scroll: 'none' }, onDraw: function (c) {
       var isAuto = autoSsid() === item.ssid;
       c.fillColor('#09101A'); c.fillRect(0, 0, 274, 44);
       drawCardBox(c, 0, 0, 274, 44, isAuto ? '#14292E' : '#16202E', isAuto ? '#34A88B' : '#233245');
@@ -927,14 +1020,14 @@ function netRow(item) {
       }
       drawLockGlyph(c, 252, 16, '#5C7794');
     } }),
-    Button({ title: 'X', onPress: function () { forgetNet(item); }, style: {
+    __A_Button({ title: 'X', onPress: function () { forgetNet(item); }, style: {
       width: 40, height: 44, borderRadius: 10,
       background: '#2A1720', borderColor: '#692C3B', borderWidth: 1, color: '#FF6B79'
     } })
   ]);
 }
 
-var wifiHeaderCanvas = Canvas({ width: 128, height: 30,
+var wifiHeaderCanvas = __A_Canvas({ width: 128, height: 30,
   style: { position: 'absolute', x: 196, y: 2, scroll: 'none' },
   onDraw: function (c) {
     var st = wifiVisualState();
@@ -945,7 +1038,7 @@ var wifiHeaderCanvas = Canvas({ width: 128, height: 30,
     else drawStatusPill(c, 52, 3, 74, 24, 'OFF', '#9EB3C6', '#16202E', '#2A3B4F');
   } });
 
-var wifiHeroCanvas = Canvas({ width: 320, height: 54,
+var wifiHeroCanvas = __A_Canvas({ width: 320, height: 54,
   style: { position: 'absolute', x: 4, y: 38, scroll: 'none' },
   onDraw: function (c) {
     var st = wifiVisualState();
@@ -975,7 +1068,7 @@ var wifiHeroCanvas = Canvas({ width: 320, height: 54,
     }
   } });
 
-var wifiSavedHeaderCanvas = Canvas({ width: 320, height: 14,
+var wifiSavedHeaderCanvas = __A_Canvas({ width: 320, height: 14,
   style: { position: 'absolute', x: 4, y: 150, scroll: 'none' },
   onDraw: function (c) {
     var n = savedNets().length;
@@ -984,31 +1077,31 @@ var wifiSavedHeaderCanvas = Canvas({ width: 320, height: 14,
     c.text(246, 0, n === 0 ? 'EMPTY' : (n + ' SAVED'), '#5C7794');
   } });
 
-var wifiPage = View({ style: {
+var wifiPage = __A_View({ style: {
   position: 'absolute', x: 76, y: 76, width: 328, height: 328,
   background: '#09101A', scroll: 'none'
 } }, [
   backPill('menu'),
-  Text({ text: 'Wi-Fi', style: {
+  __A_Text({ text: 'Wi-Fi', style: {
     position: 'absolute', x: 58, y: 2, width: 132, height: 28,
     fontSize: 20, color: '#F2F7FB', textAlign: 'center'
   } }),
   wifiHeaderCanvas,
   wifiHeroCanvas,
-  Button({ title: 'Scan', onPress: function () { go('scan'); }, style: {
+  __A_Button({ title: 'Scan', onPress: function () { go('scan'); }, style: {
     position: 'absolute', x: 4, y: 98, width: 102, height: 46, borderRadius: 12,
     background: '#116354', borderColor: '#40D8B0', borderWidth: 1, color: '#F2F7FB', fontSize: 14
   } }),
-  Button({ title: 'Add', onPress: addNetwork, style: {
+  __A_Button({ title: 'Add', onPress: addNetwork, style: {
     position: 'absolute', x: 113, y: 98, width: 102, height: 46, borderRadius: 12,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, color: '#F2F7FB', fontSize: 14
   } }),
-  Button({ title: 'Disconnect', onPress: disconnectNet, style: {
+  __A_Button({ title: 'Disconnect', onPress: disconnectNet, style: {
     position: 'absolute', x: 222, y: 98, width: 102, height: 46, borderRadius: 12,
     background: '#2A1720', borderColor: '#692C3B', borderWidth: 1, color: '#FF6B79', fontSize: 13
   } }),
   wifiSavedHeaderCanvas,
-  List({ items: savedNets, itemHeight: 48, overscan: 1,
+  __A_List({ items: savedNets, itemHeight: 48, overscan: 1,
     renderItem: netRow,
     style: { position: 'absolute', x: 4, y: 168, width: 320, height: 156,
       background: '#09101A', scrollbar: 'auto' } })
@@ -1018,11 +1111,11 @@ pageNodes.wifi = wifiPage;
 /* ---- page: wifi scan (r206 round AMOLED design) ----------------------------- */
 
 function scanRow(item) {
-  return View({ style: {
+  return __A_View({ style: {
     width: '100%', height: 48, background: '#09101A',
     paddingTop: 2, paddingBottom: 2, scroll: 'none'
   }, onPress: function () { connectFromScan(item); } }, [
-    Canvas({ width: 320, height: 44, style: { scroll: 'none' }, onDraw: function (c) {
+    __A_Canvas({ width: 320, height: 44, style: { scroll: 'none' }, onDraw: function (c) {
       c.fillColor('#09101A'); c.fillRect(0, 0, 320, 44);
       drawCardBox(c, 0, 0, 320, 44, '#16202E', '#233245');
       var tier = item.rssi >= -58 ? 3 : (item.rssi >= -72 ? 2 : 1);
@@ -1039,7 +1132,7 @@ function scanRow(item) {
   ]);
 }
 
-var scanHeaderCanvas = Canvas({ width: 104, height: 30,
+var scanHeaderCanvas = __A_Canvas({ width: 104, height: 30,
   style: { position: 'absolute', x: 220, y: 2, scroll: 'none' },
   onDraw: function (c) {
     var n = scanResults().length;
@@ -1049,7 +1142,7 @@ var scanHeaderCanvas = Canvas({ width: 104, height: 30,
       n > 0 ? '#122A2B' : '#16202E', n > 0 ? '#2E7D6B' : '#2A3B4F');
   } });
 
-var scanLabelCanvas = Canvas({ width: 320, height: 14,
+var scanLabelCanvas = __A_Canvas({ width: 320, height: 14,
   style: { position: 'absolute', x: 4, y: 92, scroll: 'none' },
   onDraw: function (c) {
     c.fillColor('#09101A'); c.fillRect(0, 0, 320, 14);
@@ -1057,26 +1150,26 @@ var scanLabelCanvas = Canvas({ width: 320, height: 14,
     c.text(130, 0, wifiLine().slice(0, 24), '#9EB3C6');
   } });
 
-var scanPage = View({ style: {
+var scanPage = __A_View({ style: {
   position: 'absolute', x: 76, y: 76, width: 328, height: 328,
   background: '#09101A', scroll: 'none'
 } }, [
   backPill('wifi'),
-  Text({ text: 'Wi-Fi Scan', style: {
+  __A_Text({ text: 'Wi-Fi Scan', style: {
     position: 'absolute', x: 58, y: 2, width: 156, height: 28,
     fontSize: 20, color: '#F2F7FB', textAlign: 'center'
   } }),
   scanHeaderCanvas,
-  Button({ title: 'Rescan', onPress: scanNow, style: {
+  __A_Button({ title: 'Rescan', onPress: scanNow, style: {
     position: 'absolute', x: 4, y: 38, width: 320, height: 46, borderRadius: 12,
     background: '#116354', borderColor: '#40D8B0', borderWidth: 1, color: '#F2F7FB', fontSize: 15
   } }),
   scanLabelCanvas,
-  List({ items: scanResults, itemHeight: 48, overscan: 1,
+  __A_List({ items: scanResults, itemHeight: 48, overscan: 1,
     renderItem: scanRow,
     style: { position: 'absolute', x: 4, y: 110, width: 320, height: 192,
       background: '#09101A', scrollbar: 'auto' } }),
-  Text({ text: 'Tap a network to connect', style: {
+  __A_Text({ text: 'Tap a network to connect', style: {
     position: 'absolute', x: 4, y: 306, width: 320, height: 18,
     fontSize: 12, color: '#5C7794', textAlign: 'center'
   } })
@@ -1092,7 +1185,7 @@ function btVisualState() {
   return 'off';
 }
 
-var btHeaderCanvas = Canvas({ width: 96, height: 30,
+var btHeaderCanvas = __A_Canvas({ width: 96, height: 30,
   style: { position: 'absolute', x: 228, y: 2, scroll: 'none' },
   onDraw: function (c) {
     var st = btVisualState();
@@ -1102,7 +1195,7 @@ var btHeaderCanvas = Canvas({ width: 96, height: 30,
     else drawStatusPill(c, 20, 3, 74, 24, 'OFF', '#9EB3C6', '#16202E', '#2A3B4F');
   } });
 
-var btHeroCanvas = Canvas({ width: 320, height: 112,
+var btHeroCanvas = __A_Canvas({ width: 320, height: 112,
   style: { position: 'absolute', x: 4, y: 42, scroll: 'none' },
   onPress: function () {
     if (btVisualState() === 'off') bleStart(); else bleStop();
@@ -1127,7 +1220,7 @@ var btHeroCanvas = Canvas({ width: 320, height: 112,
     c.text(170, 82, badgeText.slice(0, 16), badgeCol);
   } });
 
-var btIdentityCanvas = Canvas({ width: 320, height: 68,
+var btIdentityCanvas = __A_Canvas({ width: 320, height: 68,
   style: { position: 'absolute', x: 4, y: 162, scroll: 'none' },
   onPress: renameBle,
   onDraw: function (c) {
@@ -1139,26 +1232,26 @@ var btIdentityCanvas = Canvas({ width: 320, height: 68,
     drawChevron(c, 300, 43, '#5C7794');
   } });
 
-var btPage = View({ style: {
+var btPage = __A_View({ style: {
   position: 'absolute', x: 76, y: 76, width: 328, height: 328,
   background: '#09101A', scroll: 'none'
 } }, [
   backPill('menu'),
-  Text({ text: 'Bluetooth', style: {
+  __A_Text({ text: 'Bluetooth', style: {
     position: 'absolute', x: 58, y: 2, width: 164, height: 28,
     fontSize: 20, color: '#F2F7FB', textAlign: 'center'
   } }),
   btHeaderCanvas,
   btHeroCanvas,
   btIdentityCanvas,
-  Button({ title: 'Advertise', onPress: bleStart, style: {
+  __A_Button({ title: 'Advertise', onPress: bleStart, style: {
     position: 'absolute', x: 4, y: 242, width: 156, height: 48, borderRadius: 12,
     background: function () { return btVisualState() === 'off' ? '#116354' : '#1F2C3D'; },
     borderColor: function () { return btVisualState() === 'off' ? '#40D8B0' : '#233245'; },
     borderWidth: 1,
     color: '#F2F7FB', fontSize: 14
   } }),
-  Button({ title: 'Stop', onPress: bleStop, style: {
+  __A_Button({ title: 'Stop', onPress: bleStop, style: {
     position: 'absolute', x: 168, y: 242, width: 156, height: 48, borderRadius: 12,
     background: function () { return btVisualState() === 'off' ? '#16202E' : '#2A1720'; },
     borderColor: function () { return btVisualState() === 'off' ? '#233245' : '#692C3B'; },
@@ -1166,7 +1259,7 @@ var btPage = View({ style: {
     color: function () { return btVisualState() === 'off' ? '#5C7794' : '#FF6B79'; },
     fontSize: 14
   } }),
-  Text({ text: 'Discoverable as Nordic-UART peripheral', style: {
+  __A_Text({ text: 'Discoverable as Nordic-UART peripheral', style: {
     position: 'absolute', x: 4, y: 300, width: 320, height: 20,
     fontSize: 12, color: '#5C7794', textAlign: 'center'
   } })
@@ -1175,7 +1268,7 @@ pageNodes.bt = btPage;
 
 /* ---- page: general (r206 round AMOLED design) ------------------------------- */
 
-var generalHeaderCanvas = Canvas({ width: 72, height: 30,
+var generalHeaderCanvas = __A_Canvas({ width: 72, height: 30,
   style: { position: 'absolute', x: 252, y: 2, scroll: 'none' },
   onDraw: function (c) {
     var p = battPct();
@@ -1184,7 +1277,7 @@ var generalHeaderCanvas = Canvas({ width: 72, height: 30,
     c.text(18, 8, (p >= 0 ? p + '%' : '--%'), '#40D8B0');
   } });
 
-var volSliderCanvas = Canvas({ width: 212, height: 48, style: { scroll: 'none' },
+var volSliderCanvas = __A_Canvas({ width: 212, height: 48, style: { scroll: 'none' },
   onDraw: function (c) {
     var pct = Math.max(0, Math.min(100, volume()));
     c.fillColor('#16202E'); c.fillRect(0, 0, 212, 48);
@@ -1201,7 +1294,7 @@ var volSliderCanvas = Canvas({ width: 212, height: 48, style: { scroll: 'none' }
     c.fillCircle(tx, 33, 3, '#117B69');
   } });
 
-var telemetryCanvas = Canvas({ width: 320, height: 26,
+var telemetryCanvas = __A_Canvas({ width: 320, height: 26,
   style: { position: 'absolute', x: 4, y: 194, scroll: 'none' },
   onDraw: function (c) {
     c.fillColor('#09101A'); c.fillRect(0, 0, 320, 26);
@@ -1211,28 +1304,28 @@ var telemetryCanvas = Canvas({ width: 320, height: 26,
     c.text(184, 6, stText.slice(0, 16), '#9EB3C6');
   } });
 
-var generalPage = View({ style: {
+var generalPage = __A_View({ style: {
   position: 'absolute', x: 76, y: 76, width: 328, height: 328,
   background: '#09101A', scroll: 'none'
 } }, [
   backPill('menu'),
-  Text({ text: 'General', style: {
+  __A_Text({ text: 'General', style: {
     position: 'absolute', x: 58, y: 2, width: 188, height: 28,
     fontSize: 20, color: '#F2F7FB', textAlign: 'center'
   } }),
   generalHeaderCanvas,
-  View({ style: {
+  __A_View({ style: {
     position: 'absolute', x: 4, y: 36, width: 320, height: 56,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', paddingLeft: 6, paddingRight: 6, gap: 4, scroll: 'none'
   } }, [
-    Button({ title: '-', onPress: function () { applyVolume(volume() - 10, true); }, style: {
+    __A_Button({ title: '-', onPress: function () { applyVolume(volume() - 10, true); }, style: {
       width: 44, height: 44, borderRadius: 10, background: '#1F2C3D',
       borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 18
     } }),
     volSliderCanvas,
-    Button({ title: '+', onPress: function () { applyVolume(volume() + 10, true); }, style: {
+    __A_Button({ title: '+', onPress: function () { applyVolume(volume() + 10, true); }, style: {
       width: 44, height: 44, borderRadius: 10, background: '#1F2C3D',
       borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 18
     } })
@@ -1240,36 +1333,36 @@ var generalPage = View({ style: {
   /* r132 OTA ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
    * The Text shows status only; the full token never enters a render path.
    * Kept BEFORE the r129 NTP row so the 3-node NTP slice stays isolated. */
-  View({ style: {
+  __A_View({ style: {
     position: 'absolute', x: 4, y: 98, width: 320, height: 42,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
   } }, [
-    Text({ text: function () {
+    __A_Text({ text: function () {
       return otaLine() + (otaNote() === '' ? '' : ' ' + otaNote());
     }, style: { fontSize: 13, color: function () {
       var s = otaLine();
       return s.indexOf(':') >= 0 ? '#40D8B0' : (s.indexOf('err') >= 0 ? '#FF6B79' : '#9EB3C6');
     } } }),
-    Button({ title: 'New token', onPress: rotateOtaToken, style: {
+    __A_Button({ title: 'New token', onPress: rotateOtaToken, style: {
       width: 104, height: 32, borderRadius: 9, background: '#1F2C3D',
       borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 12
     } })
   ]),
   /* r132 OTA ROW END */
   /* r129: NTP sync row -- exactly 3 new nodes (View + Text + Button). */
-  View({ style: {
+  __A_View({ style: {
     position: 'absolute', x: 4, y: 146, width: 320, height: 42,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
   } }, [
-    Text({ text: function () { return timeSyncLine(); }, style: { fontSize: 13, color: function () {
+    __A_Text({ text: function () { return timeSyncLine(); }, style: { fontSize: 13, color: function () {
       var s = timeSyncLine();
       return s.indexOf('SYNCED') >= 0 ? '#40D8B0' : (s.indexOf('FAILED') >= 0 || s.indexOf('ERR') >= 0 ? '#FF6B79' : '#FFD78E');
     } } }),
-    Button({ title: 'Sync now', onPress: syncTimeNow, style: {
+    __A_Button({ title: 'Sync now', onPress: syncTimeNow, style: {
       width: 96, height: 32, borderRadius: 9, background: '#1F2C3D',
       borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 12
     } })
@@ -1277,31 +1370,31 @@ var generalPage = View({ style: {
   /* r143 REBOOT ROW BEGIN -- exactly 3 new nodes (View + Text + Button).
    * The button opens a shell.Dialog; the Text is status only and the guarded
    * note is the sole feedback when a binding is absent. */
-  View({ style: {
+  __A_View({ style: {
     position: 'absolute', x: 4, y: 226, width: 320, height: 42,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
   } }, [
-    Text({ text: function () {
+    __A_Text({ text: function () {
       return rebootNote() === '' ? 'Restart the device' : rebootNote();
     }, style: { fontSize: 13, color: '#9EB3C6' } }),
-    Button({ title: 'Reboot', onPress: rebootNow, style: {
+    __A_Button({ title: 'Reboot', onPress: rebootNow, style: {
       width: 96, height: 32, borderRadius: 9, background: '#2A2315',
       borderColor: '#745B2A', borderWidth: 1, color: '#FFD78E', fontSize: 12
     } })
   ]),
   /* r143 REBOOT ROW END */
   telemetryCanvas,
-  View({ style: {
+  __A_View({ style: {
     position: 'absolute', x: 4, y: 276, width: 320, height: 48,
     display: 'flex', flexDirection: 'row', gap: 8, scroll: 'none'
   } }, [
-    Button({ title: 'Sleep now', onPress: function () { lume.power.sleepNow(); }, style: {
+    __A_Button({ title: 'Sleep now', onPress: function () { lume.power.sleepNow(); }, style: {
       flexGrow: 1, height: 48, borderRadius: 12, background: '#16202E',
       borderColor: '#233245', borderWidth: 1, color: '#F2F7FB', fontSize: 14
     } }),
-    Button({ title: function () {
+    __A_Button({ title: function () {
       return powerNote() === '' ? 'Power off' : powerNote();
     }, onPress: powerOff, style: {
       flexGrow: 1, height: 48, borderRadius: 12, background: '#2A1720',
@@ -1313,7 +1406,7 @@ pageNodes.general = generalPage;
 
 /* ---- root + lifecycle ---------------------------------------------------------------------- */
 
-var root = View({ style: {
+var root = __A_View({ style: {
   width: '100%', height: '100%', background: 'bg', scroll: 'none'
 } }, [dialBezel, menuPage, wifiPage, btPage, generalPage, scanPage, kbOverlay]);
 

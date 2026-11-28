@@ -1,3 +1,96 @@
+/* r230 adaptive: app authored on a 480 logical canvas; map to real screen.
+ * At 480 this block is an exact no-op (all wrappers forward unchanged args).
+ * Mechanism mirrors the r227 __A_* shim (13 round flagships + 16 others). */
+var SW = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.w > 0) ? __lumeScreen.w : 480;
+var SH = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.h > 0) ? __lumeScreen.h : 480;
+var __A_ADAPT = SW !== 480 || SH !== 480;
+var __A_KX = SW / 480, __A_KY = SH / 480;
+function __A_SX(v) { return Math.round(v * __A_KX); }
+function __A_SY(v) { return Math.round(v * __A_KY); }
+var __A_XK = ',width,x,borderRadius,borderWidth,gap,margin,marginLeft,marginRight,padding,paddingLeft,paddingRight,minWidth,maxWidth,letterSpacing,translateX,';
+var __A_YK = ',height,y,borderRadius,borderWidth,gap,margin,marginTop,marginBottom,padding,paddingTop,paddingBottom,minHeight,maxHeight,lineHeight,translateY,';
+function __A_style(s) {
+  if (!__A_ADAPT || !s || typeof s !== 'object') return s;
+  var o = {}, k;
+  for (k in s) {
+    var v = s[k];
+    if (typeof v === 'number' && __A_XK.indexOf(',' + k + ',') >= 0) o[k] = __A_SX(v);
+    else if (typeof v === 'number' && __A_YK.indexOf(',' + k + ',') >= 0) o[k] = __A_SY(v);
+    else o[k] = v;
+  }
+  return o;
+}
+function __A_ctx(c) {
+  if (c.__r230Ctx) return c.__r230Ctx;
+  var w = { nodeId: c.nodeId };
+  function pt(p) { return [__A_SX(p[0]), __A_SY(p[1])]; }
+  function sg(s) { return [__A_SX(s[0]), __A_SY(s[1]), __A_SX(s[2]), __A_SY(s[3])]; }
+  w.clear = function () { return c.clear(); };
+  w.fillColor = function (x) { return c.fillColor(x); };
+  w.fillRect = function (x, y, ww, hh) { return c.fillRect(__A_SX(x), __A_SY(y), __A_SX(ww), __A_SY(hh)); };
+  w.line = function (a, b, d, e, col, wd) { return c.line(__A_SX(a), __A_SY(b), __A_SX(d), __A_SY(e), col, wd); };
+  w.polyline = function (p, col, wd) { return c.polyline(p.map(pt), col, wd); };
+  w.retainPath = function (p, col, wd) { return c.retainPath(p.map(pt), col, wd); };
+  w.retainSegments = function (p, col, wd) { return c.retainSegments(p.map(sg), col, wd); };
+  w.drawPath = function (id, dx, dy) { return c.drawPath(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy)); };
+  w.retainImage = function (id, ww, hh, px) {
+    var rw = Math.min(SW, __A_SX(ww)), rh = Math.min(SH, __A_SY(hh));
+    if (rw === ww && rh === hh) return c.retainImage(id, ww, hh, px);
+    var out = new Uint16Array(rw * rh);
+    for (var y = 0; y < rh; y++) {
+      var sy = Math.min(hh - 1, Math.round(y * hh / rh));
+      for (var x = 0; x < rw; x++) {
+        var sx = Math.min(ww - 1, Math.round(x * ww / rw));
+        out[y * rw + x] = px[sy * ww + sx];
+      }
+    }
+    return c.retainImage(id, rw, rh, out);
+  };
+  w.drawImage = function (id, dx, dy, flip) { return c.drawImage(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy), flip); };
+  w.circle = function (x, y, r, col) { return c.circle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillCircle = function (x, y, r, col) { return c.fillCircle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillEllipse = function (x, y, rx, ry, col) { return c.fillEllipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col); };
+  w.ellipse = function (x, y, rx, ry, col, wd) { return c.ellipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col, wd); };
+  w.arc = function (x, y, r, fr, to, wd, col) { return c.arc(__A_SX(x), __A_SY(y), __A_SX(r), fr, to, wd, col); };
+  w.text = function (x, y, str, col, sz) { return c['text'](__A_SX(x), __A_SY(y), str, col, sz); };
+  c.__r230Ctx = w;
+  return w;
+}
+function __A_Canvas(p) {
+  if (!__A_ADAPT || !p) return Canvas(p);
+  var o = {}, k;
+  for (k in p) o[k] = p[k];
+  var cw = Math.min(SW, __A_SX(Number(p.width) || 0)), ch = Math.min(SH, __A_SY(Number(p.height) || 0));
+  o.width = cw; o.height = ch; o.style = __A_style(p.style);
+  var fn = p.onDraw;
+  o.onDraw = function (c) {
+    var d = fn(__A_ctx(c));
+    if (!d || typeof d !== 'object') return d;
+    function rect(r) {
+      var x = __A_SX(r.x), y = __A_SY(r.y);
+      return { x: x, y: y, w: Math.min(cw - x, __A_SX(r.w)), h: Math.min(ch - y, __A_SY(r.h)) };
+    }
+    return Array.isArray(d) ? d.map(rect) : rect(d);
+  };
+  return Canvas(o);
+}
+function __A_props(p) {
+  if (!__A_ADAPT || !p || typeof p !== 'object') return p;
+  var o = {}, k;
+  for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  return o;
+}
+function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_Text(p, kids) { return Text(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Image(p, kids) { return Image(__A_props(p), kids); }
+function __A_List(p) {
+  if (!__A_ADAPT || !p) return List(p);
+  var o = __A_props(p);
+  o.itemHeight = __A_SY(p.itemHeight);
+  return List(o);
+}
+
 /*
  * r204: music_player v2 -- Wear OS 4-band radial media player translated from
  * artifacts/r201/design/media.html (8.5/10 benchmark design).
@@ -400,25 +493,25 @@ function drawVolumeCanvas(c) {
 }
 
 /* ---- Now Playing Page (Wear OS 4-band centered radial stage) ----------- */
-var coverCanvas = Canvas({ width: 140, height: 140, style: { position: 'absolute', x: 170, y: 76, scroll: 'none' },
+var coverCanvas = __A_Canvas({ width: 140, height: 140, style: { position: 'absolute', x: 170, y: 76, scroll: 'none' },
   onDraw: drawCoverStage });
-var coverTap = View({ style: { position: 'absolute', x: 170, y: 76, width: 140, height: 140, borderRadius: 70, scroll: 'none' },
+var coverTap = __A_View({ style: { position: 'absolute', x: 170, y: 76, width: 140, height: 140, borderRadius: 70, scroll: 'none' },
   onPress: function () { musicShowPage(true); } });
 
-var transportCanvas = Canvas({ width: 240, height: 72, style: { position: 'absolute', x: 120, y: 270, scroll: 'none' },
+var transportCanvas = __A_Canvas({ width: 240, height: 72, style: { position: 'absolute', x: 120, y: 270, scroll: 'none' },
   onDraw: drawTransportCanvas });
-var btnPrev = View({ style: { position: 'absolute', x: 126, y: 280, width: 52, height: 52, borderRadius: 999, scroll: 'none' },
+var btnPrev = __A_View({ style: { position: 'absolute', x: 126, y: 280, width: 52, height: 52, borderRadius: 999, scroll: 'none' },
   onPress: function () { musicSelect(musicIndex - 1); } });
-var btnPlay = View({ style: { position: 'absolute', x: 207, y: 273, width: 66, height: 66, borderRadius: 999, scroll: 'none' },
+var btnPlay = __A_View({ style: { position: 'absolute', x: 207, y: 273, width: 66, height: 66, borderRadius: 999, scroll: 'none' },
   onPress: musicPause });
-var btnNext = View({ style: { position: 'absolute', x: 302, y: 280, width: 52, height: 52, borderRadius: 999, scroll: 'none' },
+var btnNext = __A_View({ style: { position: 'absolute', x: 302, y: 280, width: 52, height: 52, borderRadius: 999, scroll: 'none' },
   onPress: function () { musicSelect(musicIndex + 1); } });
 
-var volCanvas = Canvas({ width: 276, height: 48, style: { position: 'absolute', x: 102, y: 352, scroll: 'none' },
+var volCanvas = __A_Canvas({ width: 276, height: 48, style: { position: 'absolute', x: 102, y: 352, scroll: 'none' },
   onDraw: drawVolumeCanvas });
-var btnVolDown = View({ style: { position: 'absolute', x: 102, y: 352, width: 52, height: 48, borderRadius: 24, scroll: 'none' },
+var btnVolDown = __A_View({ style: { position: 'absolute', x: 102, y: 352, width: 52, height: 48, borderRadius: 24, scroll: 'none' },
   onPress: function () { musicSetVolume(musicVolume - 10); } });
-var btnVolUp = View({ style: { position: 'absolute', x: 326, y: 352, width: 52, height: 48, borderRadius: 24, scroll: 'none' },
+var btnVolUp = __A_View({ style: { position: 'absolute', x: 326, y: 352, width: 52, height: 48, borderRadius: 24, scroll: 'none' },
   onPress: function () { musicSetVolume(musicVolume + 10); } });
 
 var volDragStart = 70;
@@ -427,17 +520,17 @@ lume.gesture.on(volCanvas, 'pan', function (e) {
   musicSetVolume(volDragStart + (e.dx || 0) * 100 / 180);
 });
 
-var musicNowPage = View({ style: { width: 480, height: 480, background: '#000000', padding: 0, gap: 0, scroll: 'none' } }, [
+var musicNowPage = __A_View({ style: { width: 480, height: 480, background: '#000000', padding: 0, gap: 0, scroll: 'none' } }, [
   /* Ambient circular watch screen bezel (r = 218 <= 220). */
-  View({ style: { position: 'absolute', x: 22, y: 22, width: 436, height: 436,
+  __A_View({ style: { position: 'absolute', x: 22, y: 22, width: 436, height: 436,
     borderRadius: 218, background: '#09131C', borderWidth: 1, borderColor: '#1B2A3B',
     padding: 0, gap: 0, scroll: 'none' } }),
   coverCanvas,
   coverTap,
   /* Track metadata: Title (20px bold) + Artist & Time (14px dim). */
-  Text({ text: musicTitle, style: { position: 'absolute', x: 90, y: 220, width: 300, height: 26,
+  __A_Text({ text: musicTitle, style: { position: 'absolute', x: 90, y: 220, width: 300, height: 26,
     fontSize: 20, textAlign: 'center', longMode: 'dots', scroll: 'none' } }),
-  Text({ text: function () { return musicShort(musicArtist(), 15) + '  |  ' + musicTime(); },
+  __A_Text({ text: function () { return musicShort(musicArtist(), 15) + '  |  ' + musicTime(); },
     style: { position: 'absolute', x: 90, y: 248, width: 300, height: 18,
       fontSize: 14, textAlign: 'center', opacity: 0.72, longMode: 'dots', scroll: 'none' } }),
   /* 3-key transport controls + hit targets (52 / 66 / 52). */
@@ -453,31 +546,31 @@ var musicNowPage = View({ style: { width: 480, height: 480, background: '#000000
 
 /* ---- Secondary Library & Lyrics Drawer Page (safe square [75, 405]) ---- */
 var musicLibraryItems = [
-  View({ style: { position: 'absolute', x: 22, y: 22, width: 436, height: 436,
+  __A_View({ style: { position: 'absolute', x: 22, y: 22, width: 436, height: 436,
     borderRadius: 218, background: '#09131C', borderWidth: 1, borderColor: '#1B2A3B',
     padding: 0, gap: 0, scroll: 'none' } }),
-  Text({ text: 'Library & Lyrics', style: { position: 'absolute', x: 84, y: 80, width: 312, height: 26,
+  __A_Text({ text: 'Library & Lyrics', style: { position: 'absolute', x: 84, y: 80, width: 312, height: 26,
     fontSize: 20, textAlign: 'center', scroll: 'none' } }),
-  Text({ text: musicLineNow, style: { position: 'absolute', x: 84, y: 108, width: 312, height: 20,
+  __A_Text({ text: musicLineNow, style: { position: 'absolute', x: 84, y: 108, width: 312, height: 20,
     fontSize: 14, textAlign: 'center', opacity: 0.85, longMode: 'dots', scroll: 'none' } }),
-  Button({ title: 'Back', style: { position: 'absolute', x: 84, y: 348, width: 72, height: 48,
+  __A_Button({ title: 'Back', style: { position: 'absolute', x: 84, y: 348, width: 72, height: 48,
     background: '#1F2C3D', borderRadius: 999, fontSize: 14 }, onPress: function () { musicShowPage(false); } }),
-  Button({ title: '-0.5', style: { position: 'absolute', x: 162, y: 348, width: 54, height: 48,
+  __A_Button({ title: '-0.5', style: { position: 'absolute', x: 162, y: 348, width: 54, height: 48,
     background: '#16202E', borderRadius: 999, fontSize: 14 }, onPress: function () { musicOffset(-500); } }),
-  Button({ title: '+0.5', style: { position: 'absolute', x: 222, y: 348, width: 54, height: 48,
+  __A_Button({ title: '+0.5', style: { position: 'absolute', x: 222, y: 348, width: 54, height: 48,
     background: '#16202E', borderRadius: 999, fontSize: 14 }, onPress: function () { musicOffset(500); } }),
-  Button({ title: '<', style: { position: 'absolute', x: 284, y: 348, width: 52, height: 48,
+  __A_Button({ title: '<', style: { position: 'absolute', x: 284, y: 348, width: 52, height: 48,
     background: '#1F2C3D', borderRadius: 999, fontSize: 14 }, onPress: function () { musicPageBy(-1); } }),
-  Button({ title: '>', style: { position: 'absolute', x: 344, y: 348, width: 52, height: 48,
+  __A_Button({ title: '>', style: { position: 'absolute', x: 344, y: 348, width: 52, height: 48,
     background: '#1F2C3D', borderRadius: 999, fontSize: 14 }, onPress: function () { musicPageBy(1); } })
 ];
 for (var m = 0; m < 4; m++) (function (index) {
-  musicLibraryItems.push(Button({ title: musicRows[index],
+  musicLibraryItems.push(__A_Button({ title: musicRows[index],
     style: { position: 'absolute', x: 84, y: 136 + index * 52, width: 312, height: 48,
       background: index % 2 ? '#1F2C3D' : '#16202E', borderRadius: 12, fontSize: 14 },
     onPress: function () { if (musicPage * 4 + index < musicFiles.length) musicSelect(musicPage * 4 + index); } }));
 })(m);
-musicLibraryPage = View({ visible: false, style: { width: 480, height: 480, background: '#000000', padding: 0, gap: 0, scroll: 'none' } }, musicLibraryItems);
+musicLibraryPage = __A_View({ visible: false, style: { width: 480, height: 480, background: '#000000', padding: 0, gap: 0, scroll: 'none' } }, musicLibraryItems);
 
 globalThis.musicUi = {
   coverCanvas: coverCanvas,

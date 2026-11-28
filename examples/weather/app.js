@@ -1,3 +1,96 @@
+/* r230 adaptive: app authored on a 480 logical canvas; map to real screen.
+ * At 480 this block is an exact no-op (all wrappers forward unchanged args).
+ * Mechanism mirrors the r227 __A_* shim (13 round flagships + 16 others). */
+var SW = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.w > 0) ? __lumeScreen.w : 480;
+var SH = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.h > 0) ? __lumeScreen.h : 480;
+var __A_ADAPT = SW !== 480 || SH !== 480;
+var __A_KX = SW / 480, __A_KY = SH / 480;
+function __A_SX(v) { return Math.round(v * __A_KX); }
+function __A_SY(v) { return Math.round(v * __A_KY); }
+var __A_XK = ',width,x,borderRadius,borderWidth,gap,margin,marginLeft,marginRight,padding,paddingLeft,paddingRight,minWidth,maxWidth,letterSpacing,translateX,';
+var __A_YK = ',height,y,borderRadius,borderWidth,gap,margin,marginTop,marginBottom,padding,paddingTop,paddingBottom,minHeight,maxHeight,lineHeight,translateY,';
+function __A_style(s) {
+  if (!__A_ADAPT || !s || typeof s !== 'object') return s;
+  var o = {}, k;
+  for (k in s) {
+    var v = s[k];
+    if (typeof v === 'number' && __A_XK.indexOf(',' + k + ',') >= 0) o[k] = __A_SX(v);
+    else if (typeof v === 'number' && __A_YK.indexOf(',' + k + ',') >= 0) o[k] = __A_SY(v);
+    else o[k] = v;
+  }
+  return o;
+}
+function __A_ctx(c) {
+  if (c.__r230Ctx) return c.__r230Ctx;
+  var w = { nodeId: c.nodeId };
+  function pt(p) { return [__A_SX(p[0]), __A_SY(p[1])]; }
+  function sg(s) { return [__A_SX(s[0]), __A_SY(s[1]), __A_SX(s[2]), __A_SY(s[3])]; }
+  w.clear = function () { return c.clear(); };
+  w.fillColor = function (x) { return c.fillColor(x); };
+  w.fillRect = function (x, y, ww, hh) { return c.fillRect(__A_SX(x), __A_SY(y), __A_SX(ww), __A_SY(hh)); };
+  w.line = function (a, b, d, e, col, wd) { return c.line(__A_SX(a), __A_SY(b), __A_SX(d), __A_SY(e), col, wd); };
+  w.polyline = function (p, col, wd) { return c.polyline(p.map(pt), col, wd); };
+  w.retainPath = function (p, col, wd) { return c.retainPath(p.map(pt), col, wd); };
+  w.retainSegments = function (p, col, wd) { return c.retainSegments(p.map(sg), col, wd); };
+  w.drawPath = function (id, dx, dy) { return c.drawPath(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy)); };
+  w.retainImage = function (id, ww, hh, px) {
+    var rw = Math.min(SW, __A_SX(ww)), rh = Math.min(SH, __A_SY(hh));
+    if (rw === ww && rh === hh) return c.retainImage(id, ww, hh, px);
+    var out = new Uint16Array(rw * rh);
+    for (var y = 0; y < rh; y++) {
+      var sy = Math.min(hh - 1, Math.round(y * hh / rh));
+      for (var x = 0; x < rw; x++) {
+        var sx = Math.min(ww - 1, Math.round(x * ww / rw));
+        out[y * rw + x] = px[sy * ww + sx];
+      }
+    }
+    return c.retainImage(id, rw, rh, out);
+  };
+  w.drawImage = function (id, dx, dy, flip) { return c.drawImage(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy), flip); };
+  w.circle = function (x, y, r, col) { return c.circle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillCircle = function (x, y, r, col) { return c.fillCircle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillEllipse = function (x, y, rx, ry, col) { return c.fillEllipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col); };
+  w.ellipse = function (x, y, rx, ry, col, wd) { return c.ellipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col, wd); };
+  w.arc = function (x, y, r, fr, to, wd, col) { return c.arc(__A_SX(x), __A_SY(y), __A_SX(r), fr, to, wd, col); };
+  w.text = function (x, y, str, col, sz) { return c['text'](__A_SX(x), __A_SY(y), str, col, sz); };
+  c.__r230Ctx = w;
+  return w;
+}
+function __A_Canvas(p) {
+  if (!__A_ADAPT || !p) return Canvas(p);
+  var o = {}, k;
+  for (k in p) o[k] = p[k];
+  var cw = Math.min(SW, __A_SX(Number(p.width) || 0)), ch = Math.min(SH, __A_SY(Number(p.height) || 0));
+  o.width = cw; o.height = ch; o.style = __A_style(p.style);
+  var fn = p.onDraw;
+  o.onDraw = function (c) {
+    var d = fn(__A_ctx(c));
+    if (!d || typeof d !== 'object') return d;
+    function rect(r) {
+      var x = __A_SX(r.x), y = __A_SY(r.y);
+      return { x: x, y: y, w: Math.min(cw - x, __A_SX(r.w)), h: Math.min(ch - y, __A_SY(r.h)) };
+    }
+    return Array.isArray(d) ? d.map(rect) : rect(d);
+  };
+  return Canvas(o);
+}
+function __A_props(p) {
+  if (!__A_ADAPT || !p || typeof p !== 'object') return p;
+  var o = {}, k;
+  for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  return o;
+}
+function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_Text(p, kids) { return Text(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Image(p, kids) { return Image(__A_props(p), kids); }
+function __A_List(p) {
+  if (!__A_ADAPT || !p) return List(p);
+  var o = __A_props(p);
+  o.itemHeight = __A_SY(p.itemHeight);
+  return List(o);
+}
+
 /**
  * 示例：天气（examples/weather）
  *
@@ -355,7 +448,7 @@ function wSvgBytes(svg) {
 function wSvgNode(bytes, w, h, extra) {
   var style = { width: w, height: h };
   if (extra) { for (var k in extra) style[k] = extra[k]; }
-  return Image({ src: bytes, style: style });
+  return __A_Image({ src: bytes, style: style });
 }
 
 var SVG_PIN = wSvgBytes(
@@ -399,8 +492,8 @@ function metricPill(x, svgBytes, label, valueOf) {
   var topKids = [];
   var ic = wSvgNode(svgBytes, 13, 13);
   if (ic > 0) topKids.push(ic);
-  topKids.push(Text({ text: label, style: { fontSize: 12, color: 'textDim', borderRadius: 0 } }));
-  return View({
+  topKids.push(__A_Text({ text: label, style: { fontSize: 12, color: 'textDim', borderRadius: 0 } }));
+  return __A_View({
     style: {
       position: 'absolute', x: x, y: 222, width: 100, height: 54,
       background: '#16202E', borderRadius: 12, borderWidth: 1, borderColor: '#253548',
@@ -408,8 +501,8 @@ function metricPill(x, svgBytes, label, valueOf) {
       scroll: 'none',
     },
   }, [
-    View({ style: { display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, scroll: 'none' } }, topKids),
-    Text({
+    __A_View({ style: { display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 4, scroll: 'none' } }, topKids),
+    __A_Text({
       text: valueOf,
       style: { width: 96, height: 20, fontSize: 15, color: 'text', textAlign: 'center', borderRadius: 0 },
     }),
@@ -418,35 +511,35 @@ function metricPill(x, svgBytes, label, valueOf) {
 
 function dayRow(index) {
   var top = 6 + index * 34;
-  return View({
+  return __A_View({
     style: {
       position: 'absolute', x: 10, y: top, width: 296, height: 32,
       borderColor: index > 0 ? '#1E2E40' : '#15202E', borderWidth: 0, scroll: 'none',
     },
   }, [
-    Text({
+    __A_Text({
       text: function () { return dayAt(data(), index).label; },
       style: { position: 'absolute', x: 0, y: 6, width: 42, height: 20, fontSize: 13, color: 'textDim', textAlign: 'left', borderRadius: 0 },
     }),
-    Canvas({
+    __A_Canvas({
       width: 24, height: 24,
       style: { position: 'absolute', x: 44, y: 4 },
       onDraw: function (ctx) {
         return drawWeatherIcon(ctx, weatherOf(dayAt(data(), index).code).icon, 24, '#141E2B');
       },
     }),
-    Text({
+    __A_Text({
       text: function () { return weatherOf(dayAt(data(), index).code).text; },
       style: { position: 'absolute', x: 74, y: 6, width: 68, height: 20, fontSize: 13, color: 'text', textAlign: 'left', borderRadius: 0 },
     }),
     /* Mini temperature range track + bar */
-    View({
+    __A_View({
       style: {
         position: 'absolute', x: 146, y: 13, width: 62, height: 6,
         background: '#1F2C3D', borderRadius: 3, scroll: 'none',
       },
     }, [
-      View({
+      __A_View({
         style: {
           position: 'absolute',
           x: function () {
@@ -465,7 +558,7 @@ function dayRow(index) {
         },
       }),
     ]),
-    Text({
+    __A_Text({
       text: function () {
         var d = dayAt(data(), index);
         return fmtTemp(d.lo) + ' / ' + fmtTemp(d.hi);
@@ -478,7 +571,7 @@ function dayRow(index) {
 var cityRowKids = [];
 var pinIcon = wSvgNode(SVG_PIN, 14, 14);
 if (pinIcon > 0) cityRowKids.push(pinIcon);
-cityRowKids.push(Text({
+cityRowKids.push(__A_Text({
   text: function () { return city.name; },
   style: { fontSize: 20, color: 'text', borderRadius: 0, longMode: 'dots' },
 }));
@@ -486,7 +579,7 @@ cityRowKids.push(Text({
 var offlinePillKids = [];
 var cloudOffIcon = wSvgNode(SVG_CLOUD_OFF, 14, 14, { position: 'absolute', x: 8, y: 4 });
 if (cloudOffIcon > 0) offlinePillKids.push(cloudOffIcon);
-offlinePillKids.push(Text({
+offlinePillKids.push(__A_Text({
   text: headerLine,
   style: { position: 'absolute', x: 26, y: 3, width: 140, height: 18, fontSize: 12, color: function () { return online() ? '#40D8B0' : '#9EB3C6'; }, borderRadius: 0, longMode: 'dots' },
 }));
@@ -494,13 +587,13 @@ offlinePillKids.push(Text({
 var refreshBtnKids = [];
 var refreshIcon = wSvgNode(SVG_REFRESH, 20, 20);
 if (refreshIcon > 0) refreshBtnKids.push(refreshIcon);
-else refreshBtnKids.push(Text({ text: function () { return busy() ? '...' : 'R'; }, style: { fontSize: 16, color: '#40D8B0' } }));
+else refreshBtnKids.push(__A_Text({ text: function () { return busy() ? '...' : 'R'; }, style: { fontSize: 16, color: '#40D8B0' } }));
 
-var root = View({
+var root = __A_View({
   style: { width: 480, height: 480, background: 'bg', scroll: 'none' },
 }, [
   /* Circular AMOLED dial bezel */
-  View({
+  __A_View({
     style: {
       position: 'absolute', x: 14, y: 14, width: 452, height: 452,
       borderRadius: 226, background: '#0A1320', borderWidth: 1, borderColor: '#23364A',
@@ -509,14 +602,14 @@ var root = View({
   }),
 
   /* Top header strictly inside [75, 405]: city + friendly cloud-off demo pill + 48x48 circular refresh */
-  View({
+  __A_View({
     style: {
       position: 'absolute', x: 82, y: 78, width: 220, height: 24,
       display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 6, scroll: 'none',
     },
   }, cityRowKids),
 
-  View({
+  __A_View({
     style: {
       position: 'absolute', x: 82, y: 104, width: 102, height: 22,
       borderRadius: 11,
@@ -524,7 +617,7 @@ var root = View({
     },
   }, offlinePillKids),
 
-  View({
+  __A_View({
     onPress: refresh,
     style: {
       position: 'absolute', x: 350, y: 78, width: 48, height: 48,
@@ -534,12 +627,12 @@ var root = View({
   }, refreshBtnKids),
 
   /* Radial center hero: layered weather icon (no black box) + 44px centered temperature */
-  Canvas({ width: 84, height: 84, onDraw: heroIcon, style: { position: 'absolute', x: 116, y: 130 } }),
-  Text({
+  __A_Canvas({ width: 84, height: 84, onDraw: heroIcon, style: { position: 'absolute', x: 116, y: 130 } }),
+  __A_Text({
     text: function () { return fmtTemp(data().temp); },
     style: { position: 'absolute', x: 212, y: 132, width: 156, height: 48, fontSize: 44, color: 'text', borderRadius: 0 },
   }),
-  Text({
+  __A_Text({
     text: function () {
       var d = dayAt(data(), 0);
       return weatherOf(data().code).text + '  ' + fmtTemp(d.lo) + ' / ' + fmtTemp(d.hi);
@@ -553,7 +646,7 @@ var root = View({
   metricPill(298, SVG_WIND, '风速', function () { return fmtWind(data().wind); }),
 
   /* 3-day forecast card inside [75, 405] */
-  View({
+  __A_View({
     style: {
       position: 'absolute', x: 82, y: 286, width: 316, height: 112,
       background: '#141E2B', borderRadius: 12, borderWidth: 1, borderColor: '#233345',
@@ -561,9 +654,9 @@ var root = View({
     },
   }, [
     dayRow(0),
-    View({ style: { position: 'absolute', x: 12, y: 39, width: 292, height: 1, background: '#203042', scroll: 'none' } }),
+    __A_View({ style: { position: 'absolute', x: 12, y: 39, width: 292, height: 1, background: '#203042', scroll: 'none' } }),
     dayRow(1),
-    View({ style: { position: 'absolute', x: 12, y: 73, width: 292, height: 1, background: '#203042', scroll: 'none' } }),
+    __A_View({ style: { position: 'absolute', x: 12, y: 73, width: 292, height: 1, background: '#203042', scroll: 'none' } }),
     dayRow(2),
   ]),
 ]);
