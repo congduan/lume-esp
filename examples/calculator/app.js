@@ -93,8 +93,8 @@ var C_FN = '#2E3340';      /* operators, backspace */
 var C_AC = '#B3453C';      /* clear */
 var C_EQ = '#2E86FF';      /* equals */
 
-/* Key rows use fixed heights: 64 display + 6 gap + 5x48 + 4x4 = 326 <= 328 safe. */
-var KEY_H = 48;
+/* Key rows use fixed heights: 76 display + 8 gap + 5x56 + 4x6 = 388 <= 392 square [44,436]. */
+var KEY_H = 56;
 
 function key(label, bg, flexGrow, onPress) {
   return Button({
@@ -106,14 +106,14 @@ function key(label, bg, flexGrow, onPress) {
 function digit(d) { return key(d, C_KEY, 1, function () { pressDigit(d); }); }
 
 function keyRow(children) {
-  return View({ style: { display: 'flex', flexDirection: 'row', gap: 6,
+  return View({ style: { display: 'flex', flexDirection: 'row', gap: 8,
                          width: '100%', height: KEY_H } }, children);
 }
 
 /* ---- display: small expression line over seven-segment digits ----
- * Drawn as 7-segment digits on a 312x34 canvas inside [76, 404]: <=13 chars
- * x ~5 rects stays under the ~100-primitive redraw budget. */
-var DISP_W = 312, DISP_H = 34;
+ * Drawn as 7-segment digits on a 376x42 canvas inside [44, 436] (15,792 px):
+ * <=13 chars x ~5 rects stays under the ~100-primitive redraw budget. */
+var DISP_W = 376, DISP_H = 42;
 var SEG_W = 20, SEG_X0 = 3, SEG_H = 26;
 var SEG_RECTS = {
   a: [2, 0, 11, 3], b: [11, 2, 3, 9], c: [11, 14, 3, 9],
@@ -139,7 +139,7 @@ function drawMainDisplay(c) {
   for (var i = 0; i < text.length; i++) total += segAdvance(text[i]);
   var x = DISP_W - 4 - total;
   for (var j = 0; j < text.length; j++) {
-    var ch = text[j], cx = x + SEG_X0, cy = 4;
+    var ch = text[j], cx = x + SEG_X0, cy = 8;
     if (ch === '.') c.fillRect(cx + 8, cy + 21, 4, 4);
     else {
       var segs = SEG_MAP[ch];
@@ -154,10 +154,10 @@ function drawMainDisplay(c) {
 
 View({ style: {
   width: '100%', height: '100%', background: 'primary', scroll: 'none',
-  display: 'flex', flexDirection: 'column', padding: 76, gap: 6
+  display: 'flex', flexDirection: 'column', padding: 44, gap: 8
 } }, [
   View({ style: {
-    width: '100%', height: 64, background: 'surface', borderRadius: 12,
+    width: '100%', height: 76, background: 'surface', borderRadius: 12,
     display: 'flex', flexDirection: 'column', alignItems: 'end',
     justifyContent: 'center', padding: 8, gap: 2, scroll: 'none'
   } }, [
@@ -165,7 +165,7 @@ View({ style: {
     Canvas({ width: DISP_W, height: DISP_H, onDraw: drawMainDisplay })
   ]),
   View({ style: {
-    display: 'flex', flexDirection: 'column', gap: 4, width: '100%',
+    display: 'flex', flexDirection: 'column', gap: 6, width: '100%',
     height: 'auto'
   } }, [
     keyRow([

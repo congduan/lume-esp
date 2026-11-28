@@ -90,10 +90,9 @@ function __A_Image(p, kids) { return Image(__A_style(p), kids); }
  * UI text is ASCII only (firmware font has no decorative Unicode - r64). */
 
 /* ------------------- logic (host harness splits at GAME UI marker) ------ */
-/* r210: 4x4 board + HUD + DEAL all fit the 480-round 329px safe square
- * ([75,405]); the old CELL=88/GAP=8 board (GX=64..440, GY=44..420) and the
- * y=424 DEAL row sat outside it and were unclickable near the bezel. */
-var IW=480, IH=480, CELL=52, GAP=4, COLS=4, ROWS=4, GX=130, GY=132;
+/* r233: square-screen 4x4 board expanded to CELL=90, GAP=8 (384x384 inside
+ * [48,432], TS=10 native 80px art scale) with DEAL moved into the top header. */
+var IW=480, IH=480, CELL=90, GAP=8, COLS=4, ROWS=4, GX=48, GY=78;
 var BG='#141018', FACE_COL='#F2E7C9';
 var PAL={
   A:'#D94F3D', B:'#A33428', C:'#7A1F17', /* berry */
@@ -229,21 +228,18 @@ var canvas=__A_Canvas({parent:root,width:IW,height:IH,style:{position:'absolute'
   painted=true;return [a];
 }});
 
-/* r210: HUD folded from four full-bleed lines (x=8, y=6/26/46) into three
- * lines inside the 480-round safe square ([75,405]). BEST merges into the
- * MV/PAIRS line (no second BEST line = no redundant status). */
-__A_Text({parent:root,text:'MEMORY',style:{position:'absolute',x:80,y:76,fontSize:14,color:'#F2E7C9'}});
-__A_Text({parent:root,text:function(){return 'MV '+movesSig()+'  PAIRS '+matchedSig()+'/8  BEST '+(bestSig()>0?bestSig():'-');},style:{position:'absolute',x:80,y:94,fontSize:14,color:'#D9A21B'}});
+/* r233: square-screen top header with DEAL on the right ([44,436], y=20..68). */
+__A_Text({parent:root,text:'MEMORY',style:{position:'absolute',x:44,y:18,fontSize:15,color:'#F2E7C9'}});
+__A_Text({parent:root,text:function(){return 'MV '+movesSig()+'  PAIRS '+matchedSig()+'/8  BEST '+(bestSig()>0?bestSig():'-');},style:{position:'absolute',x:44,y:38,fontSize:13,color:'#D9A21B'}});
 
 /* Status line: WIN shows moves + best; otherwise the hint note. */
 __A_Text({parent:root,text:function(){
   if(wonSig())return 'CLEARED IN '+movesSig()+' MOVES! TAP DEAL';
   return noteSig()||'TAP TWO CARDS';
-},style:{position:'absolute',x:80,y:112,fontSize:14,color:'#9FD8F0'}});
+},style:{position:'absolute',x:44,y:56,fontSize:12,color:'#9FD8F0'}});
 
-/* r210: DEAL moved from y=424..468 to y=356..404 (48px tall, in safe square). */
-function btn(title,x,fn){return __A_Button({title:title,style:{position:'absolute',x:x,y:356,width:144,height:48,borderRadius:6,background:'#28331F',color:'#E8D46A',fontSize:14},onPress:fn});}
-btn('DEAL',168,function(){newDeal();});
+function btn(title,x,fn){return __A_Button({title:title,style:{position:'absolute',x:x,y:20,width:100,height:48,borderRadius:8,background:'#28331F',color:'#E8D46A',fontSize:14},onPress:fn});}
+btn('DEAL',336,function(){newDeal();});
 
 function newDeal(){
   state=memoryDeal(null);

@@ -5,12 +5,12 @@ var lastActivity=lume._nowMs();
 var state=signal('awake at '+Math.floor(lastActivity));
 var netStatus=lume.net.deinit();
 var touch=function(){lastActivity=lume._nowMs();};
-View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:76,gap:10},onPress:touch},[
+View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:44,gap:12},onPress:touch},[
   View({style:{width:'100%',height:46,display:'flex',flexDirection:'column',padding:0,gap:2}},[
     Text({text:'Power',style:{fontSize:20,color:'text',borderRadius:0}}),
     Text({text:'Sleep and wake status',style:{fontSize:12,color:'textDim',borderRadius:0}})
   ]),
-  View({style:{width:'100%',height:184,background:'surface',borderRadius:12,padding:12,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6}},[
+  View({style:{width:'100%',height:232,background:'surface',borderRadius:12,padding:12,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6}},[
     Text({text:'CURRENT STATE',style:{fontSize:12,color:'textDim',textAlign:'center',borderRadius:0}}),
     Text({text:function(){return state().indexOf('awake')===0?'Awake':state().indexOf('sleep')===0?'Asleep':'Attention';},style:{fontSize:32,color:'success',textAlign:'center',borderRadius:0}}),
     Text({text:function(){return state();},style:{fontSize:12,color:'textDim',longMode:'wrap',textAlign:'center',borderRadius:0}})

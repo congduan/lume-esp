@@ -80,7 +80,7 @@ function pianoSlice(pcm, from, to) {
 }
 function pianoMidiAt(base, semitone) { return base + semitone; }
 /* White key index for an absolute screen x, or -1 outside the keyboard. */
-var KB_X = 79, WHITE_W = 46;
+var KB_X = 44, WHITE_W = 56;
 function pianoKeyAtX(x) {
   var i = Math.floor((x - KB_X) / WHITE_W);
   return i >= 0 && i < WHITE_OFFSETS.length ? i : -1;
@@ -91,10 +91,8 @@ var octaveIndex = 1;            /* default single-octave keyboard C4..B4 */
 var lastMidi = -1, lastNote = signal('--');
 var octaveLabel = signal(OCTAVE_LABELS[octaveIndex]);
 var highlightMidi = -1, highlightRev = signal(0), hlTimer = null;
-/* r219: single octave [79..401, 148..338] fits strictly inside the 480-round
- * safe square [75..405]; white key height 190 px and black key height 114 px
- * both exceed 2*48 px. */
-var KEY_Y = 148, WHITE_H = 190, BLACK_W = 28, BLACK_H = 114;
+/* r233: square-screen single octave [44..436, 112..360] (7 x 56 px = 392 px). */
+var KEY_Y = 112, WHITE_H = 248, BLACK_W = 34, BLACK_H = 148;
 var WHITE_OFF = '#F2F7FB', WHITE_ON = '#FFD166';
 var BLACK_OFF = '#1B2436', BLACK_ON = '#40D8B0';
 /* Text nodes have no color attribute in this prelude (always white), so key
@@ -164,10 +162,10 @@ for (var wi = 0; wi < WHITE_OFFSETS.length; wi++) {
       borderRadius: 6, borderWidth: 1, borderColor: '#9FB0CC',
       background: function () { highlightRev(); return highlightMidi === pianoMidiAt(baseMidi(), WHITE_OFFSETS[i]) ? WHITE_ON : WHITE_OFF; }
     } });
-    View({ parent: root, style: { position: 'absolute', x: KB_X + i * WHITE_W + 11, y: KEY_Y + WHITE_H - 30,
+    View({ parent: root, style: { position: 'absolute', x: KB_X + i * WHITE_W + 16, y: KEY_Y + WHITE_H - 32,
       width: 24, height: 22, borderRadius: 4, background: '#1B2436' } });
     Text({ parent: root, text: NOTE_NAMES[WHITE_OFFSETS[i] % 12], style: {
-      position: 'absolute', x: KB_X + i * WHITE_W + 11, y: KEY_Y + WHITE_H - 28,
+      position: 'absolute', x: KB_X + i * WHITE_W + 16, y: KEY_Y + WHITE_H - 30,
       width: 24, height: 18, fontSize: 12, textAlign: 'center'
     } });
   })(wi);
@@ -185,19 +183,19 @@ for (var bi = 0; bi < BLACK_KEYS.length; bi++) {
 var kbLayer = View({ parent: root, style: {
   position: 'absolute', x: KB_X, y: KEY_Y, width: WHITE_W * WHITE_OFFSETS.length, height: WHITE_H
 } });
-Text({ parent: root, text: 'TOUCH PIANO', style: { position: 'absolute', x: 130, y: 78, width: 220, height: 28,
+Text({ parent: root, text: 'TOUCH PIANO', style: { position: 'absolute', x: 44, y: 40, width: 392, height: 28,
   fontSize: 24, color: '#F2F7FB', textAlign: 'center', borderRadius: 0 } });
 Text({ parent: root, text: function () { return 'OCT ' + octaveLabel() + '   LAST ' + lastNote(); },
-  style: { position: 'absolute', x: 84, y: 112, width: 312, height: 24,
+  style: { position: 'absolute', x: 44, y: 74, width: 392, height: 24,
     fontSize: 16, color: '#FFD78E', textAlign: 'center', borderRadius: 0 } });
-/* All four controls share one 48px-tall safe row (x=84..396, y=348..396). */
+/* All four controls share one 52px-tall square row (x=44..436, y=380..432). */
 Button({ parent: root, title: 'DEMO', onPress: demoStart,
-  style: { position: 'absolute', x: 84, y: 348, width: 72, height: 48,
+  style: { position: 'absolute', x: 44, y: 380, width: 92, height: 52,
     background: '#1F2C3D', borderRadius: 8, fontSize: 14, color: '#F2F7FB' } });
 for (var oi = 0; oi < OCTAVE_LABELS.length; oi++) {
   (function (k) {
     Button({ parent: root, title: OCTAVE_LABELS[k], onPress: function () { setOctave(k); },
-      style: { position: 'absolute', x: 164 + k * 80, y: 348, width: 72, height: 48,
+      style: { position: 'absolute', x: 144 + k * 100, y: 380, width: 92, height: 52,
         background: '#1F2C3D', borderRadius: 8, fontSize: 14, color: '#F2F7FB' } });
   })(oi);
 }

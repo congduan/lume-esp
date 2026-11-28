@@ -10,7 +10,7 @@ function gameSave(name, score, previous) {
   return score;
 }
 
-var TW = 10, TH = 20, CELL = 16;
+var TW = 10, TH = 20, CELL = 20;
 /* Four cells in a 4x4 rotation box, in I O T S Z J L order. */
 var TETRIS_SHAPES = [
   [[0,1],[1,1],[2,1],[3,1]], [[1,0],[2,0],[1,1],[2,1]],
@@ -64,14 +64,13 @@ function tetrisState() {return {board:tetrisBoard(),piece:{type:Math.floor(Math.
 var state=tetrisState(), score=signal(0), best=signal(gameHigh('tetris'));
 var level=signal(1), lines=signal(0), note=signal('DRAG / TAP / SWIPE DOWN');
 var boardRev=signal(0),nextRev=signal(0),dirtyCells=[],fullBoard=true,dirtyArea=0,pendingLine=0;
-/* r201: absolute HUD moved inside the 480-round safe square. The 160x320 play
-   canvas and CELL=16 are harness anchors and stay byte-identical; the side
-   panel now carries title/score/next/level/lines/note in the safe column. */
+/* r233: square-screen layout ([44,436]): play canvas 200x400 (CELL=20) +
+   96x96 preview = 89,216 px <= 230,400 budget; gameplay rules unchanged. */
 var root=View({style:{width:480,height:480,background:'#0D1420',scroll:'none'}});
-Text({parent:root,text:'TETRIS',style:{position:'absolute',x:250,y:80,width:150,fontSize:20,borderRadius:0,color:'#F2F7FB'}});
-Text({parent:root,text:function(){return 'SCORE '+score()+'    BEST '+best();},style:{position:'absolute',x:250,y:106,width:150,fontSize:14,borderRadius:0,color:'#9EB3C6'}});
-View({parent:root,style:{position:'absolute',x:78,y:78,width:164,height:324,background:'#16202E',borderRadius:12}});
-var scene=Canvas({parent:root,width:160,height:320,style:{position:'absolute',x:80,y:80},onDraw:function(ctx){
+Text({parent:root,text:'TETRIS',style:{position:'absolute',x:266,y:44,width:170,fontSize:24,borderRadius:0,color:'#F2F7FB'}});
+Text({parent:root,text:function(){return 'SCORE '+score()+'    BEST '+best();},style:{position:'absolute',x:266,y:78,width:170,fontSize:14,borderRadius:0,color:'#9EB3C6'}});
+View({parent:root,style:{position:'absolute',x:44,y:38,width:204,height:404,background:'#16202E',borderRadius:12}});
+var scene=Canvas({parent:root,width:200,height:400,style:{position:'absolute',x:46,y:40},onDraw:function(ctx){
   boardRev();var cells=dirtyCells,minX=TW,minY=TH,maxX=-1,maxY=-1;
   if(fullBoard){cells=[];for(var y=0;y<TH;y++)for(var x=0;x<TW;x++)cells.push({x:x,y:y});}
   var active=state.over?[]:tetrisCells(state.piece);dirtyArea=0;
@@ -88,16 +87,16 @@ var scene=Canvas({parent:root,width:160,height:320,style:{position:'absolute',x:
   if(pendingLine){lume.log('TETRIS LINE '+pendingLine+' dirty_px='+dirtyArea);pendingLine=0;}
   return [area];
 }});
-Text({parent:root,text:'NEXT',style:{position:'absolute',x:250,y:140,width:150,fontSize:14,borderRadius:0,color:'#9EB3C6'}});
-View({parent:root,style:{position:'absolute',x:252,y:162,width:84,height:84,background:'#1F2C3D',borderRadius:12}});
-var preview=Canvas({parent:root,width:80,height:80,style:{position:'absolute',x:254,y:164},onDraw:function(ctx){
-  nextRev();ctx.fillColor('#111C34');ctx.fillRect(0,0,80,80);
+Text({parent:root,text:'NEXT',style:{position:'absolute',x:266,y:120,width:170,fontSize:14,borderRadius:0,color:'#9EB3C6'}});
+View({parent:root,style:{position:'absolute',x:266,y:144,width:100,height:100,background:'#1F2C3D',borderRadius:12}});
+var preview=Canvas({parent:root,width:96,height:96,style:{position:'absolute',x:268,y:146},onDraw:function(ctx){
+  nextRev();ctx.fillColor('#111C34');ctx.fillRect(0,0,96,96);
   var p={type:state.next,x:0,y:0,rot:0},a=tetrisCells(p);ctx.fillColor(TETRIS_COLORS[state.next]);
-  for(var i=0;i<4;i++)ctx.fillRect(a[i].x*16+8,a[i].y*16+8,14,14);
+  for(var i=0;i<4;i++)ctx.fillRect(a[i].x*20+8,a[i].y*20+8,18,18);
 }});
-Text({parent:root,text:function(){return 'LEVEL '+level();},style:{position:'absolute',x:250,y:258,width:150,fontSize:14,borderRadius:0,color:'#E9ECFF'}});
-Text({parent:root,text:function(){return 'LINES '+lines();},style:{position:'absolute',x:250,y:284,width:150,fontSize:14,borderRadius:0,color:'#E9ECFF'}});
-Text({parent:root,text:function(){return note();},style:{position:'absolute',x:250,y:316,width:150,fontSize:12,borderRadius:0,color:'#40D8B0'}});
+Text({parent:root,text:function(){return 'LEVEL '+level();},style:{position:'absolute',x:266,y:264,width:170,fontSize:16,borderRadius:0,color:'#E9ECFF'}});
+Text({parent:root,text:function(){return 'LINES '+lines();},style:{position:'absolute',x:266,y:294,width:170,fontSize:16,borderRadius:0,color:'#E9ECFF'}});
+Text({parent:root,text:function(){return note();},style:{position:'absolute',x:266,y:336,width:170,fontSize:13,borderRadius:0,color:'#40D8B0'}});
 function mark(cells){for(var i=0;i<cells.length;i++)dirtyCells.push(cells[i]);}
 function refresh(old,result){mark(old);if(result&&result.dirtyRows.length){for(var j=0;j<result.dirtyRows.length;j++)for(var x=0;x<TW;x++)dirtyCells.push({x:x,y:result.dirtyRows[j]});}
   if(result&&result.lines){pendingLine=result.lines;fullBoard=true;}

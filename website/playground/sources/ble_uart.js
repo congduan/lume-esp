@@ -97,12 +97,12 @@ lume.app.onStart(startBle);
 lume.app.onPause(stopBle);
 lume.app.onResume(startBle);
 
-/* ---- UI (480x480 round AMOLED safe square [76, 404]) ---- */
+/* ---- UI (480x480 square AMOLED margin [44, 436]) ---- */
 var COLORS = { bg: '#0B1724', card: '#132436', accent: '#117B69', danger: '#2A1720' };
 
 function row(label, value) {
   return View({ style: {
-    width: '100%', height: 28, background: COLORS.card, borderRadius: 8,
+    width: '100%', height: 32, background: COLORS.card, borderRadius: 8,
     display: 'flex', flexDirection: 'row',
     justifyContent: 'space-between', alignItems: 'center',
     paddingLeft: 10, paddingRight: 10, paddingTop: 0, paddingBottom: 0,
@@ -115,7 +115,7 @@ function row(label, value) {
 /* Pairing flow steps: 'ok' when reached, 'wait' while it is the live step. */
 function stepRow(label, n) {
   return View({ style: {
-    width: '100%', height: 28, background: COLORS.card, borderRadius: 8,
+    width: '100%', height: 32, background: COLORS.card, borderRadius: 8,
     display: 'flex', flexDirection: 'row',
     justifyContent: 'space-between', alignItems: 'center',
     paddingLeft: 10, paddingRight: 10, paddingTop: 0, paddingBottom: 0,
@@ -130,7 +130,7 @@ function stepRow(label, n) {
 View({ style: {
   width: '100%', height: '100%', background: COLORS.bg,
   display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-  padding: 76, gap: 4, scroll: 'none'
+  padding: 44, gap: 6, scroll: 'none'
 } }, [
   Text({ text: 'Bluetooth pairing', style: { fontSize: 14, height: 18, borderRadius: 0 } }),
   row('device', function () { return NAME + ' (peripheral)'; }),

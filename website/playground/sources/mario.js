@@ -124,7 +124,7 @@ function staticScene(ctx,area){
  drawRect(ctx,'#F8FBFF',box(448,82,3,228),area);drawRect(ctx,'#E74949',box(451,84,23,17),area);
 }
 var oldHero=null,oldEnemy=null,changes=[],painted=false,dirtyPixels=0;
-var canvas=__A_Canvas({parent:root,width:MW,height:MH,style:{position:'absolute',x:0,y:64},onDraw:function(ctx){
+var canvas=__A_Canvas({parent:root,width:MW,height:MH,style:{position:'absolute',x:0,y:52},onDraw:function(ctx){
  frame();var h=box(Math.round(hero.x),Math.round(hero.y),16,20),e=box(Math.round(enemy.x),Math.round(enemy.y),16,16),areas=[];
  if(!painted){var all=box(0,0,MW,MH);staticScene(ctx,all);drawSprite(ctx,'stand',h.x,h.y,false,all);drawSprite(ctx,'foe',e.x,e.y,false,all);oldHero=h;oldEnemy=e;painted=true;return;}
  if(oldHero){var travel=union(oldHero,h);if(travel.w*travel.h>2500){areas.push(clip(pad(oldHero,2)));areas.push(clip(pad(h,2)));}else areas.push(clip(pad(travel,2)));}
@@ -135,7 +135,7 @@ var canvas=__A_Canvas({parent:root,width:MW,height:MH,style:{position:'absolute'
  dirtyPixels=0;for(i=0;i<valid.length;i++)dirtyPixels+=valid[i].w*valid[i].h;
  oldHero=h;oldEnemy=enemy.live?e:null;return valid.length?valid:[box(h.x,h.y,1,1)];
 }});
-__A_Text({parent:root,text:function(){return hud();},style:{position:'absolute',x:84,y:80,width:312,textAlign:'center',fontSize:16,borderRadius:0,color:'#F2F7FB'}});
+__A_Text({parent:root,text:function(){return hud();},style:{position:'absolute',x:44,y:18,width:392,textAlign:'center',fontSize:16,borderRadius:0,color:'#F2F7FB'}});
 function resetHero(){hero.x=32;hero.y=290;hero.vx=0;hero.vy=0;move=0;moveTicks=0;invuln=20;}
 function damage(){if(invuln)return;lives--;logEvent('HIT lives='+lives);if(lives<=0){lives=3;score=0;money=0;level=1;logEvent('RESTART');}resetHero();refreshHud();}
 function win(){level++;score+=100;logEvent('LEVEL '+level+' score='+score);for(var i=0;i<coins.length;i++){coins[i].live=true;changes.push(box(coins[i].x,coins[i].y,10,12));}for(i=0;i<platforms.length;i++){if(!platforms[i].live)changes.push(platforms[i]);platforms[i].live=true;}enemy.live=true;enemy.x=348;oldEnemy=null;resetHero();refreshHud();}
@@ -160,10 +160,10 @@ function tick(){var tickStart=Date.now();
 }
 function walk(dir,longer){move=dir;moveTicks=longer?32:14;}
 function jump(high){if(hero.vy===0){hero.vy=high?-12:-9;logEvent('JUMP '+(high?'HIGH':'SHORT'));}}
-function control(x,label,act,hold){var b=__A_Button({parent:root,title:label,style:{position:'absolute',x:x,y:350,width:100,height:48,background:'#1F2C3D',color:'#F2F7FB',borderRadius:8,fontSize:16},onPress:act});lume.gesture.on(b,'longpress',hold);return b;}
-control(84,'LEFT',function(){walk(-1,false);},function(){walk(-1,true);});
-control(190,'RIGHT',function(){walk(1,false);},function(){walk(1,true);});
-var jumpButton=control(296,'JUMP',function(){jump(false);},function(){jump(true);});
+function control(x,label,act,hold){var b=__A_Button({parent:root,title:label,style:{position:'absolute',x:x,y:412,width:124,height:48,background:'#1F2C3D',color:'#F2F7FB',borderRadius:8,fontSize:16},onPress:act});lume.gesture.on(b,'longpress',hold);return b;}
+control(44,'LEFT',function(){walk(-1,false);},function(){walk(-1,true);});
+control(178,'RIGHT',function(){walk(1,false);},function(){walk(1,true);});
+var jumpButton=control(312,'JUMP',function(){jump(false);},function(){jump(true);});
 /* A slight drag starts a held jump immediately; releasing early cuts ascent. */
 lume.gesture.on(jumpButton,'panstart',function(){jump(true);jumpHeld=true;});
 lume.gesture.on(jumpButton,'panend',function(){if(jumpHeld&&hero.vy<0)hero.vy*=0.4;jumpHeld=false;});

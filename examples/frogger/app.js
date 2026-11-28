@@ -6,7 +6,7 @@
  * owns an independent dirty rect. The stock 14px Montserrat font is kept (no
  * pixel font swap -- see the r68 entry in docs/KNOWN-SIMPLIFICATIONS.md). No
  * third-party sprite bitmaps or marks are used. */
-var IW=480, IH=480, CELL=21, COLS=13, ROWS=13, GX=104, GY=124;
+var IW=480, IH=480, CELL=30, COLS=13, ROWS=13, GX=45, GY=62;
 var HOME_COLS=[1,3,5,7,9];
 var PAL={
   A:'#9BD96A',B:'#4E8C3A',R:'#C85A5A',Y:'#D6B25E',U:'#6E92C8',
@@ -78,8 +78,8 @@ function froggerLanes(){
 }
 function froggerState(){var f={row:12,col:6,ox:0,highlight:0};return {frog:f,homes:[false,false,false,false,false],homeCols:HOME_COLS.slice(),lanes:froggerLanes(),score:0,lives:3,level:1,tick:0,frame:0,state:'alive',over:false,events:[]};}
 function froggerEmit(s,msg){s.events.push(msg);}
-function froggerBox(f){return {x:GX+f.col*CELL+2+f.ox,y:GY+f.row*CELL+2,w:16,h:16};}
-function itemBox(lane,item){return {x:item.x,y:GY+lane.row*CELL+2,w:lane.w,h:16};}
+function froggerBox(f){return {x:GX+f.col*CELL+7+f.ox,y:GY+f.row*CELL+7,w:16,h:16};}
+function itemBox(lane,item){return {x:item.x,y:GY+lane.row*CELL+7,w:lane.w,h:16};}
 function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
 function froggerLaneAt(s,row){for(var i=0;i<s.lanes.length;i++)if(s.lanes[i].row===row)return s.lanes[i];return null;}
 function froggerRoadHit(s){var ln=froggerLaneAt(s,s.frog.row);if(!ln||ln.kind!=='road')return false;var fb=froggerBox(s.frog);for(var i=0;i<ln.items.length;i++)if(overlap(fb,itemBox(ln,ln.items[i])))return true;return false;}
@@ -236,7 +236,7 @@ function paintRow(ctx,row,a,s){
   if(row===0){
     for(var h=0;h<s.homeCols.length;h++){var hx=GX+s.homeCols[h]*CELL+1,hy=GY+1;
       drawRect(ctx,BAND.median,box(hx,hy,CELL-2,CELL-2),a);
-      if(s.homes[h])drawSprite(ctx,'frog',hx+1,hy+1,a);
+      if(s.homes[h])drawSprite(ctx,'frog',hx+6,hy+6,a);
     }
   }
   var ln=froggerLaneAt(s,row);
@@ -278,12 +278,11 @@ var canvas=__A_Canvas({parent:root,width:IW,height:IH,style:{position:'absolute'
   prevFrogRow=s.frog.row;prevHomes=s.homes.slice();painted=true;
   return valid.length?valid:undefined;
 }});
-/* r209/r216: HUD/hint and 13x13 playfield grid (GX=104, GY=124, CELL=21 ->
-   [104..377, 124..397]) all sit inside the 480-round safe square [75,405]
-   with zero HUD overlap. */
-__A_Text({parent:root,text:'FROGGER',style:{position:'absolute',x:84,y:80,fontSize:14,color:'#40D8B0',borderRadius:0}});
-__A_Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  LV '+levelSig();},style:{position:'absolute',x:224,y:80,width:172,fontSize:14,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
-__A_Text({parent:root,text:function(){return noteSig()||('HOMES '+homeSig()+'/5   TAP AROUND FROG TO HOP');},style:{position:'absolute',x:84,y:104,width:312,fontSize:13,color:'#FFD78E',borderRadius:0}});
+/* r233: square-screen HUD and 13x13 playfield grid (GX=45, GY=62, CELL=30 ->
+   [45..435, 62..452]) fill 81% width with zero HUD overlap. */
+__A_Text({parent:root,text:'FROGGER',style:{position:'absolute',x:45,y:16,fontSize:14,color:'#40D8B0',borderRadius:0}});
+__A_Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  LV '+levelSig();},style:{position:'absolute',x:215,y:16,width:220,fontSize:14,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
+__A_Text({parent:root,text:function(){return noteSig()||('HOMES '+homeSig()+'/5   TAP AROUND FROG TO HOP');},style:{position:'absolute',x:45,y:38,width:390,fontSize:13,color:'#FFD78E',borderRadius:0}});
 
 function updateSignals(){scoreSig.set(state.score);bestSig.set(gameSave('frogger',state.score,bestSig()));livesSig.set(state.lives);levelSig.set(state.level);homeSig.set(state.homes.filter(Boolean).length);}
 function start(){if(timer===null&&!state.over)timer=lume.system.setInterval(tick,period);}

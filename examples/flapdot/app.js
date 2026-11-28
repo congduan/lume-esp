@@ -391,15 +391,15 @@ var scene = __A_Canvas({ parent: root, width: FW, height: FH,
   } });
 
 /* HUD is native Text nodes above the canvas: zero canvas-pixel cost. */
-/* r202: HUD moved into the 480-round safe square ([84,396]); pipe/flap
-   physics and the full-bleed render canvas are unchanged. */
-__A_Text({ parent: root, text: 'FLAPDOT', style: { position: 'absolute', x: 84, y: 80, fontSize: 14, color: '#40D8B0', borderRadius: 0 } });
+/* r233: square-screen HUD sits in the top bar [44..436, 20..68] above FY=80;
+   pipe/flap physics and the 480x400 render canvas are unchanged. */
+__A_Text({ parent: root, text: 'FLAPDOT', style: { position: 'absolute', x: 44, y: 20, fontSize: 15, color: '#40D8B0', borderRadius: 0 } });
 __A_Text({ parent: root, text: function () { return 'SCORE ' + (scoreSig() || 0); },
-  style: { position: 'absolute', x: 188, y: 80, width: 112, height: 20, fontSize: 14, color: '#F2F7FB', textAlign: 'center', borderRadius: 0 } });
+  style: { position: 'absolute', x: 184, y: 20, width: 112, height: 20, fontSize: 15, color: '#F2F7FB', textAlign: 'center', borderRadius: 0 } });
 __A_Text({ parent: root, text: function () { return bestSig() > 0 ? 'BEST ' + bestSig() : 'BEST -'; },
-  style: { position: 'absolute', x: 296, y: 80, width: 100, height: 20, fontSize: 14, color: '#9EB3C6', textAlign: 'right', borderRadius: 0 } });
+  style: { position: 'absolute', x: 316, y: 20, width: 120, height: 20, fontSize: 15, color: '#9EB3C6', textAlign: 'right', borderRadius: 0 } });
 __A_Text({ parent: root, text: function () { return noteSig() || noteText(); },
-  style: { position: 'absolute', x: 84, y: 104, width: 312, height: 20, fontSize: 13, color: '#FFD78E', borderRadius: 0 } });
+  style: { position: 'absolute', x: 44, y: 48, width: 392, height: 20, fontSize: 13, color: '#FFD78E', textAlign: 'center', borderRadius: 0 } });
 
 /* ---- input -------------------------------------------------------------- */
 var ROOT_ID = 1;

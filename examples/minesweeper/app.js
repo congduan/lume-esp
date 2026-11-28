@@ -251,7 +251,7 @@ function mineBest(){try{var n=lume.storage.kv.get('hisc.mine');
 function mineSave(t){try{lume.storage.kv.set('hisc.mine',t);}catch(e){/* volatile best still works */}return t;}
 
 /* ------------------------------ GAME UI ------------------------------ */
-var IW=480, IH=480, CELL=25, GAP=2, GX=106, GY=132;
+var IW=480, IH=480, CELL=36, GAP=3, GX=46, GY=76;
 var BG='#141018', HID='#3A4150', HID_B='#5A6273', REV='#191520', REV_B='#232A36';
 var BOOM_BG='#3A1F1F', FLAG_BG='#3A4150';
 
@@ -269,19 +269,19 @@ function tileStamp(px,key,ox,oy,scale){var list=SPANS[key];for(var i=0;i<list.le
 function makeTile(bgHex,borderHex,bw,spriteKey,ox,oy){
   var px=new Uint16Array(CELL*CELL),bg=hex565(bgHex),bd=hex565(borderHex);
   tileFill(px,0,0,CELL,CELL,bg);tileFill(px,0,0,CELL,bw,bd);tileFill(px,0,0,bw,CELL,bd);
-  if(spriteKey)tileStamp(px,spriteKey,ox,oy,3);
+  if(spriteKey)tileStamp(px,spriteKey,ox,oy,4);
   return px;
 }
 var TILE_SLOTS={hidden:1,flagged:2,rev0:3,mine:4,boom:5,rev1:6,rev2:7,rev3:8};
 var TILES={
   hidden:makeTile(HID,HID_B,2,null,0,0),
-  flagged:makeTile(FLAG_BG,HID_B,2,'flag',2,2),
+  flagged:makeTile(FLAG_BG,HID_B,2,'flag',4,4),
   rev0:makeTile(REV,REV_B,1,null,0,0),
-  mine:makeTile(REV,REV_B,1,'mine',2,2),
-  boom:makeTile(BOOM_BG,REV_B,1,'mine',2,2),
-  rev1:makeTile(REV,REV_B,1,'1',5,2),
-  rev2:makeTile(REV,REV_B,1,'2',5,2),
-  rev3:makeTile(REV,REV_B,1,'3',5,2)
+  mine:makeTile(REV,REV_B,1,'mine',4,4),
+  boom:makeTile(BOOM_BG,REV_B,1,'mine',4,4),
+  rev1:makeTile(REV,REV_B,1,'1',8,4),
+  rev2:makeTile(REV,REV_B,1,'2',8,4),
+  rev3:makeTile(REV,REV_B,1,'3',8,4)
 };
 var tilesUploaded=false,prevSnap=null;
 function ensureTiles(ctx){if(tilesUploaded)return;for(var k in TILE_SLOTS)ctx.retainImage(TILE_SLOTS[k],CELL,CELL,TILES[k]);tilesUploaded=true;}
@@ -305,7 +305,7 @@ function paintCell(ctx,c,a){
   if(n===2){ctx.drawImage(TILE_SLOTS.rev2,cx,cy,0);return;}
   if(n===3){ctx.drawImage(TILE_SLOTS.rev3,cx,cy,0);return;}
   ctx.drawImage(TILE_SLOTS.rev0,cx,cy,0);
-  drawSprite(ctx,String(n),cx+5,cy+2,3,a);
+  drawSprite(ctx,String(n),cx+8,cy+4,4,a);
 }
 
 var painted=false;
@@ -339,19 +339,18 @@ var canvas=__A_Canvas({parent:root,width:IW,height:IH,style:{position:'absolute'
   return [u];
 }});
 
-/* r201/r216: HUD + RESTART and 10x10 grid (CELL=25, GAP=2, GX=106, GY=132 ->
-   [106..374, 132..400]) all sit inside the 480-round safe square [75,405]
-   with zero HUD overlap. */
-__A_Text({parent:root,text:'MINESWEEPER',style:{position:'absolute',x:84,y:80,width:110,fontSize:14,borderRadius:0,color:'#F2F7FB'}});
-__A_Text({parent:root,text:function(){return hudSig()||'FLAGS '+MINES+'  TIME 000';},style:{position:'absolute',x:194,y:80,width:102,fontSize:11,borderRadius:0,color:'#9EB3C6'}});
+/* r233: square-screen HUD + RESTART and 10x10 grid (CELL=36, GAP=3, GX=46, GY=76 ->
+   [46..433, 76..463]) fill 81% width with zero HUD overlap. */
+__A_Text({parent:root,text:'MINESWEEPER',style:{position:'absolute',x:44,y:18,width:136,fontSize:15,borderRadius:0,color:'#F2F7FB'}});
+__A_Text({parent:root,text:function(){return hudSig()||'FLAGS '+MINES+'  TIME 000';},style:{position:'absolute',x:184,y:19,width:140,fontSize:13,borderRadius:0,color:'#9EB3C6'}});
 __A_Text({parent:root,text:function(){
   if(state.over&&state.won)return 'CLEARED IN '+state.time+'S! TAP RESTART';
   if(state.over)return 'BOOM! TAP RESTART';
   return noteSig()||'TAP TO DIG - HOLD TO FLAG';
-},style:{position:'absolute',x:84,y:100,width:312,fontSize:12,borderRadius:0,color:'#5B9DF7'}});
-__A_Text({parent:root,text:function(){return bestSig()>0?('BEST '+bestSig()+'S'):('BEST -');},style:{position:'absolute',x:84,y:116,width:200,fontSize:11,borderRadius:0,color:'#9EB3C6'}});
+},style:{position:'absolute',x:44,y:38,width:280,fontSize:12,borderRadius:0,color:'#5B9DF7'}});
+__A_Text({parent:root,text:function(){return bestSig()>0?('BEST '+bestSig()+'S'):('BEST -');},style:{position:'absolute',x:44,y:54,width:200,fontSize:11,borderRadius:0,color:'#9EB3C6'}});
 
-__A_Button({title:'RESTART',style:{position:'absolute',x:304,y:78,width:92,height:48,borderRadius:8,background:'#1F2C3D',color:'#F2F7FB',fontSize:12},onPress:function(){newGame();}});
+__A_Button({title:'RESTART',style:{position:'absolute',x:336,y:18,width:100,height:48,borderRadius:8,background:'#1F2C3D',color:'#F2F7FB',fontSize:13},onPress:function(){newGame();}});
 
 function hudText(){
   var flags=0;

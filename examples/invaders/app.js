@@ -7,9 +7,9 @@
  * or marks are used; the alien silhouettes are original approximations of the
  * classic arcade visual language. */
 var IW=480, IH=480, BG='#0F380F';
-var PLAY_L=80, PLAY_R=400, UFO_Y=124, BULLET_TOP=120;
-var COLS=11, ROWS=5, CELL_W=26, CELL_H=26, FORM_X=98, FORM_Y=142;
-var GROUND_Y=396, CANNON_Y=372, CANNON_PX=32, CANNON_H=24;
+var PLAY_L=44, PLAY_R=436, UFO_Y=86, BULLET_TOP=82;
+var COLS=11, ROWS=5, CELL_W=30, CELL_H=30, FORM_X=64, FORM_Y=108;
+var GROUND_Y=436, CANNON_Y=410, CANNON_PX=32, CANNON_H=24;
 var PAL={A:'#9BBC0F',B:'#8BAC0F',C:'#306230'};
 
 /* Two animation frames per alien type; 'A'/'B' are two brightness levels,
@@ -211,11 +211,10 @@ var canvas=__A_Canvas({parent:root,width:IW,height:IH,style:{position:'absolute'
   painted=true;
   return valid.length?valid:undefined;
 }});
-/* r202/r216: HUD/hint and playfield (formation, UFO, cannon, ground) all sit
-   inside the 480-round safe square ([80..400, 80..398]). */
-__A_Text({parent:root,text:'INVADERS',style:{position:'absolute',x:84,y:80,fontSize:14,color:'#40D8B0',borderRadius:0}});
-__A_Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  W'+waveSig();},style:{position:'absolute',x:224,y:80,width:172,fontSize:14,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
-__A_Text({parent:root,text:function(){return noteSig();},style:{position:'absolute',x:84,y:104,width:312,fontSize:13,color:'#FFD78E',borderRadius:0}});
+/* r233: square-screen HUD and playfield inside [44..436]. */
+__A_Text({parent:root,text:'INVADERS',style:{position:'absolute',x:44,y:32,fontSize:14,color:'#40D8B0',borderRadius:0}});
+__A_Text({parent:root,text:function(){return 'S '+scoreSig()+'  HI '+bestSig()+'  L '+livesSig()+'  W'+waveSig();},style:{position:'absolute',x:216,y:32,width:220,fontSize:14,color:'#9EB3C6',textAlign:'right',borderRadius:0}});
+__A_Text({parent:root,text:function(){return noteSig();},style:{position:'absolute',x:44,y:56,width:392,fontSize:13,color:'#FFD78E',borderRadius:0}});
 
 function updateSignals(){scoreSig.set(state.score);bestSig.set(gameSave('invaders',state.score,bestSig()));livesSig.set(state.lives);waveSig.set(state.wave);}
 function start(){if(timer===null&&!state.over&&!state.paused)timer=lume.system.setInterval(tick,period);}

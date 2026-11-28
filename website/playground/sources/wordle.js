@@ -30,11 +30,11 @@ import '../../runtime/shell.js';
 
 /* ------------------- logic (host harness splits at GAME UI marker) ----- */
 
-/* One canvas 320x128 = 40,960 px inside the round safe area; the native HUD
+/* One canvas 392x148 = 58,016 px inside the square [44,436] margin; the native HUD
  * band and shell keyboard are separate nodes. Budget <= 480x480 = 230,400 px. */
-var IW = 320, CANVAS_H = 128, CANVAS_Y = 110;
+var IW = 392, CANVAS_H = 148, CANVAS_Y = 86;
 var WORD_LEN = 5, ROWS = 6;
-var CELL = 19, GAP = 2, GX = 108, GY = 2;
+var CELL = 22, GAP = 2, GX = 137, GY = 3;
 var ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 var KV_BEST = 'hisc.wordle', KV_CUR = 'wordle.cur', KV_DAY = 'wr.day'; /* 11 / 10 / 7 chars */
 var MS_PER_DAY = 86400000;
@@ -315,14 +315,14 @@ function paintGrid(ctx, a) {
       drawRect(ctx, edge, box(cx, cy, 1, CELL), a);
       drawRect(ctx, edge, box(cx, cy + CELL - 1, CELL, 1), a);
       drawRect(ctx, edge, box(cx + CELL - 1, cy, 1, CELL), a);
-      if (ch) drawGlyph(ctx, ch.toUpperCase(), cx + 4, cy + 2, 2, COL.INK, a);
+      if (ch) drawGlyph(ctx, ch.toUpperCase(), cx + 6, cy + 4, 2, COL.INK, a);
     }
   }
 }
 
 var painted = false;
 var canvas = Canvas({ parent: root, width: IW, height: CANVAS_H,
-  style: { position: 'absolute', x: 80, y: CANVAS_Y, scroll: 'none' }, onDraw: function (ctx) {
+  style: { position: 'absolute', x: 44, y: CANVAS_Y, scroll: 'none' }, onDraw: function (ctx) {
     frame();
     var a = !painted ? box(0, 0, IW, CANVAS_H) :
       clip(box(0, GY - 2, IW, CANVAS_H - (GY - 2)));
@@ -333,15 +333,15 @@ var canvas = Canvas({ parent: root, width: IW, height: CANVAS_H,
     return [a];
   } });
 
-/* HUD inside round safe area (global x: 84..396, y: 75..110). */
+/* HUD inside square margin (global x: 44..436, y: 32..80). */
 Text({ parent: root, text: function () { return hudSig(); },
-  style: { position: 'absolute', x: 84, y: 75, width: 248, height: 18,
+  style: { position: 'absolute', x: 44, y: 34, width: 312, height: 20,
     fontSize: 14, borderRadius: 0, color: '#F2F7FB', scroll: 'none' } });
 Text({ parent: root, text: function () {
   if (state.status === 'win') return 'WIN IN ' + state.attempt + ' - TAP NEW';
   if (state.status === 'lose') return 'LOST - ' + state.answer.toUpperCase() + ' - NEW';
   return noteSig();
-}, style: { position: 'absolute', x: 84, y: 94, width: 248, height: 18,
+}, style: { position: 'absolute', x: 44, y: 56, width: 312, height: 20,
   fontSize: 14, borderRadius: 0, color: '#9EB3C6', scroll: 'none' } });
 
 function updateHud() {
@@ -358,8 +358,8 @@ function newRound() {
   flush();
 }
 
-Button({ parent: root, title: 'NEW', style: { position: 'absolute', x: 336, y: 75,
-  width: 60, height: 48, borderRadius: 8, background: '#1F2C3D',
+Button({ parent: root, title: 'NEW', style: { position: 'absolute', x: 364, y: 32,
+  width: 72, height: 48, borderRadius: 8, background: '#1F2C3D',
   borderWidth: 1, borderColor: '#FFD78E', color: '#F2F7FB', fontSize: 14, scroll: 'none' },
   onPress: newRound });
 

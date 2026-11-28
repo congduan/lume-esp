@@ -95,7 +95,7 @@ function __A_Image(p, kids) { return Image(__A_style(p), kids); }
  * HUD text stays ASCII + Chinese: the board font has no symbol glyphs. */
 var W = 480, H = 480;
 var GRID = 16, CELL = 12, SPRITE_PX = GRID * CELL;
-var OX = 144, OY = 120;                 /* sprite origin on the 480x480 canvas */
+var OX = 144, OY = 136;                 /* sprite origin on the 480x480 canvas */
 var BG = '#0D1420';
 
 /* palette indices (0 = transparent) */
@@ -397,21 +397,20 @@ var scene = __A_Canvas({ width: W, height: H, onDraw: function (ctx) {
 } });
 
 /* ---- HUD (native widgets; no canvas, no font-symbol glyphs) ------------- */
-/* r201: HUD moved into the 480-round safe square x,y in [75,405]. Sprite
-   canvas origin (OX/OY) and all state-machine/KV logic are unchanged. */
+/* r233: square-screen HUD layout inside [44,436]; state-machine/KV unchanged. */
 var root = __A_View({ style: { width: W, height: H, background: BG, scroll: 'none' } }, [
   scene,
-  __A_Text({ text: 'LUME PET', style: { position: 'absolute', x: 84, y: 80, width: 200, height: 28, fontSize: 20, borderRadius: 0, color: '#F2F7FB' } }),
-  __A_Text({ text: function () { return stState(); }, style: { position: 'absolute', x: 84, y: 108, width: 200, height: 24, fontSize: 16, borderRadius: 0, color: '#FFD78E' } }),
-  __A_Text({ text: function () { return stSkin(); }, style: { position: 'absolute', x: 288, y: 80, width: 108, height: 24, fontSize: 16, borderRadius: 0, color: '#40D8B0', textAlign: 'right' } }),
+  __A_Text({ text: 'LUME PET', style: { position: 'absolute', x: 44, y: 40, width: 240, height: 28, fontSize: 22, borderRadius: 0, color: '#F2F7FB' } }),
+  __A_Text({ text: function () { return stState(); }, style: { position: 'absolute', x: 44, y: 72, width: 240, height: 24, fontSize: 16, borderRadius: 0, color: '#FFD78E' } }),
+  __A_Text({ text: function () { return stSkin(); }, style: { position: 'absolute', x: 316, y: 40, width: 120, height: 24, fontSize: 16, borderRadius: 0, color: '#40D8B0', textAlign: 'right' } }),
   __A_Text({ text: function () { return 'HUNGER ' + stHunger() + '   HAPPY ' + stHappy(); },
-    style: { position: 'absolute', x: 84, y: 330, width: 312, height: 24, fontSize: 16, borderRadius: 0, color: '#F2F7FB' } }),
+    style: { position: 'absolute', x: 44, y: 364, width: 392, height: 24, fontSize: 16, textAlign: 'center', borderRadius: 0, color: '#F2F7FB' } }),
   __A_Text({ text: 'TAP=PET  HOLD=FEED  FLIP=WAKE',
-    style: { position: 'absolute', x: 84, y: 360, width: 312, height: 20, fontSize: 13, borderRadius: 0, color: '#9EB3C6' } }),
+    style: { position: 'absolute', x: 44, y: 396, width: 392, height: 20, fontSize: 13, textAlign: 'center', borderRadius: 0, color: '#9EB3C6' } }),
   __A_Text({ text: 'TAP SKIN TO SWAP - HOT RELOAD READY',
-    style: { position: 'absolute', x: 84, y: 382, width: 312, height: 20, fontSize: 12, borderRadius: 0, color: '#9EB3C6' } }),
+    style: { position: 'absolute', x: 44, y: 420, width: 392, height: 20, fontSize: 12, textAlign: 'center', borderRadius: 0, color: '#9EB3C6' } }),
   __A_Button({ title: 'SKIN', onPress: function () { selectSkin(skinIndex + 1); },
-    style: { position: 'absolute', x: 288, y: 108, width: 108, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } })
+    style: { position: 'absolute', x: 320, y: 70, width: 116, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } })
 ]);
 
 lume.gesture.on(scene, 'tap', function (e) { doPet(); });

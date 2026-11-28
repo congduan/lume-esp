@@ -155,17 +155,16 @@ function spriteData(s){var n=0;for(var i=0;i<s.enemies.length;i++)if(s.enemies[i
  var a=new Float32Array(n*3),j=0;for(var i=0;i<s.enemies.length;i++){var e=s.enemies[i];if(e.alive){a[j++]=e.x;a[j++]=e.y;a[j++]=e.type==='H'?1:0;}}return a;}
 var root=__A_View({style:{width:480,height:480,background:'#101722',scroll:'none'}});
 var scene=__A_Canvas({parent:root,width:480,height:460,onDraw:function(ctx){revision();lume.raycast.render(ctx.nodeId,game.x,game.y,game.angle,game.hp,spriteData(game));}});
-var mini=__A_Canvas({parent:root,width:96,height:96,style:{position:'absolute',x:84,y:150},onDraw:function(ctx){revision();ctx.fillColor('#16202E');ctx.fillRect(0,0,96,96);
+var mini=__A_Canvas({parent:root,width:96,height:96,style:{position:'absolute',x:44,y:86},onDraw:function(ctx){revision();ctx.fillColor('#16202E');ctx.fillRect(0,0,96,96);
  var size=8;for(var y=0;y<game.h;y++)for(var x=0;x<game.w;x++)if(game.fog[y*game.w+x]){ctx.fillColor(game.map[y*game.w+x]?'#6B7791':'#223C4B');ctx.fillRect(x*size,y*size,size,size);}
  ctx.fillColor('#FFD166');ctx.fillRect(Math.floor(game.x*size)-2,Math.floor(game.y*size)-2,4,4);
  for(var i=0;i<game.enemies.length;i++){var e=game.enemies[i];if(e.alive&&game.fog[Math.floor(e.y)*game.w+Math.floor(e.x)]){ctx.fillColor('#E4656B');ctx.fillRect(Math.floor(e.x*size)-1,Math.floor(e.y*size)-1,3,3);}}
  }});
-/* r202: HUD/banner/footer moved into [84,396] and Text style.background
-   removed -- the playground renderer consumes it as color (dark-on-dark).
-   Nodes are created after the canvases so they stay on top. */
-__A_Text({parent:root,text:function(){return hud();},style:{position:'absolute',x:84,y:80,width:312,height:30,fontSize:16,color:'#F2F7FB',borderRadius:0}});
-__A_Text({parent:root,text:function(){return banner();},style:{position:'absolute',x:84,y:114,width:312,height:26,fontSize:14,color:'#40D8B0',borderRadius:0}});
-__A_Text({parent:root,text:'TAP STEP  |  HOLD FIRE  |  PAN TURN',style:{position:'absolute',x:84,y:372,width:312,height:24,fontSize:12,color:'#9EB3C6',textAlign:'center',borderRadius:0}});
+/* r233: square-screen HUD/banner/minimap/footer inside [44,436]. Canvases
+   stay 480x460 + 96x96 = 230,016 px (within 230,400 budget). */
+__A_Text({parent:root,text:function(){return hud();},style:{position:'absolute',x:44,y:24,width:392,height:28,fontSize:16,color:'#F2F7FB',borderRadius:0}});
+__A_Text({parent:root,text:function(){return banner();},style:{position:'absolute',x:44,y:54,width:392,height:24,fontSize:14,color:'#40D8B0',borderRadius:0}});
+__A_Text({parent:root,text:'TAP STEP  |  HOLD FIRE  |  PAN TURN',style:{position:'absolute',x:44,y:428,width:392,height:24,fontSize:12,color:'#9EB3C6',textAlign:'center',borderRadius:0}});
 function refresh(){var hearts=['','<3','<3 <3','<3 <3 <3'];hud.set('L'+(game.li+1)+'  HP '+hearts[game.hp]+'  SCORE '+game.score);revision.set(revision()+1);}
 function next(){if(game.li===LEVELS.length-1){game.done=true;banner.set('VAULT CLEARED  TAP TO RESTART');}else{var score=game.score;loadLevel(game,game.li+1);game.score=score;lume.raycast.setMap(game.w,game.h,game.map);lume.raycast.setTextures(textures);banner.set(game.li===2?'CLEAR ALL SENTRIES':LEVELS[game.li].name+' / FIND EXIT');}play('win');refresh();}
 function step(){if(game.done){game=state();banner.set('LANTERN VAULT / FIND EXIT');lume.raycast.setMap(game.w,game.h,game.map);lume.raycast.setTextures(textures);refresh();return;}

@@ -288,18 +288,18 @@ var scene = __A_Canvas({ parent: particleRoot, width: PW, height: PH,
     return [area];
   } });
 
-/* r202: HUD and both controls moved into the 480-round safe square
-   ([84,396]); particle simulation and full-bleed canvas are unchanged. */
+/* r233: square-screen HUD and controls inside [44,436]; particle simulation
+   and full-bleed 480x480 canvas are unchanged. */
 __A_Text({ parent: particleRoot, text: 'FLUID PARTICLES',
-  style: { position: 'absolute', x: 84, y: 80, width: 312, height: 28, fontSize: 20, color: '#F2F7FB', borderRadius: 0 } });
+  style: { position: 'absolute', x: 44, y: 32, width: 392, height: 28, fontSize: 20, color: '#F2F7FB', borderRadius: 0 } });
 __A_Text({ parent: particleRoot, text: function () { return pMode() + '  N=' + PN + (pShake() ? '  SHAKE' : ''); },
-  style: { position: 'absolute', x: 84, y: 110, width: 312, height: 24, fontSize: 16, color: '#40D8B0', borderRadius: 0 } });
+  style: { position: 'absolute', x: 44, y: 62, width: 392, height: 24, fontSize: 16, color: '#40D8B0', borderRadius: 0 } });
 __A_Text({ parent: particleRoot, text: 'TAP=BURST  SWIPE=STIR  SHAKE DEVICE',
-  style: { position: 'absolute', x: 84, y: 134, width: 312, height: 22, fontSize: 13, color: '#9EB3C6', borderRadius: 0 } });
+  style: { position: 'absolute', x: 44, y: 86, width: 392, height: 22, fontSize: 13, color: '#9EB3C6', borderRadius: 0 } });
 __A_Button({ parent: particleRoot, title: 'STIR', onPress: function () { stirRandom(); },
-  style: { position: 'absolute', x: 84, y: 348, width: 148, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } });
+  style: { position: 'absolute', x: 44, y: 396, width: 190, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } });
 __A_Button({ parent: particleRoot, title: 'MODE', onPress: function () { cycleMode(); },
-  style: { position: 'absolute', x: 240, y: 348, width: 148, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } });
+  style: { position: 'absolute', x: 246, y: 396, width: 190, height: 48, background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } });
 
 function stirRandom() {
   particlePerturb(pstate, PW / 2, PH / 2,

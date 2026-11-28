@@ -468,15 +468,15 @@ __A_View({ style: { width: '100%', height: '100%', background: COLORS.bg, scroll
   __A_Text({ text: function () {
     var i = stateIdx() + 1;
     return (i < 10 ? '0' : '') + i + ' / ' + STATES.length;
-  }, style: { x: 312, y: 80, width: 84, height: 20, textAlign: 'right', borderRadius: 0 } }),
+  }, style: { x: 352, y: 32, width: 84, height: 20, textAlign: 'right', borderRadius: 0 } }),
   __A_Text({ text: function () { return STATES[stateIdx()].name; },
-    style: { x: 84, y: 298, width: 312, height: 24, fontSize: 16 } }),
+    style: { x: 44, y: 324, width: 392, height: 26, fontSize: 18, textAlign: 'center' } }),
   __A_Text({ text: function () { return STATES[stateIdx()].detail; },
-    style: { x: 84, y: 322, width: 312, height: 24, fontSize: 12 } }),
+    style: { x: 44, y: 352, width: 392, height: 24, fontSize: 13, textAlign: 'center' } }),
   __A_Button({ title: '<', onPress: function () { step(-1); },
-    style: { x: 84, y: 352, width: 80, height: 48, background: COLORS.btn, borderRadius: 10 } }),
+    style: { x: 44, y: 388, width: 96, height: 48, background: COLORS.btn, borderRadius: 10 } }),
   __A_Button({ title: '>', onPress: function () { step(1); },
-    style: { x: 316, y: 352, width: 80, height: 48, background: COLORS.btn, borderRadius: 10 } })
+    style: { x: 340, y: 388, width: 96, height: 48, background: COLORS.btn, borderRadius: 10 } })
 ]);
 
 lume.system.setInterval(tick, 50);

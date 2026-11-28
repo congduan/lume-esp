@@ -9,16 +9,16 @@ function poll(){seconds.set(seconds()+1);var sample=lume.imu.read();motion.set(s
 function startPolling(){if(pollId===null)pollId=lume.system.setInterval(poll,1000);}
 function stopPolling(){if(pollId!==null)lume.system.clearInterval(pollId);pollId=null;}
 lume.app.onStart(startPolling);lume.app.onPause(stopPolling);lume.app.onResume(startPolling);
-function axis(label,value){return View({style:{width:104,height:120,background:'surface',borderRadius:12,padding:10,display:'flex',flexDirection:'column',justifyContent:'center',gap:8}},[
+function axis(label,value){return View({style:{width:124,height:152,background:'surface',borderRadius:12,padding:12,display:'flex',flexDirection:'column',justifyContent:'center',gap:8}},[
   Text({text:label,style:{fontSize:12,color:'textDim',borderRadius:0}}),Text({text:value,style:{fontSize:20,color:'text',borderRadius:0}})
 ]);}
-View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:76,gap:8}},[
+View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',display:'flex',flexDirection:'column',justifyContent:'space-between',padding:44,gap:12}},[
   View({style:{width:'100%',height:44,display:'flex',flexDirection:'column',padding:0,gap:2}},[
     Text({text:'Motion',style:{fontSize:20,color:'text',borderRadius:0}}),
     Text({text:'Live accelerometer',style:{fontSize:12,color:'textDim',borderRadius:0}})
   ]),
-  View({style:{width:'100%',height:178,display:'flex',flexDirection:'column',padding:0,gap:10}},[
-    View({style:{width:'100%',height:120,display:'flex',flexDirection:'row',padding:0,gap:8}},[axis('X  /  m/s2',axisX),axis('Y  /  m/s2',axisY),axis('Z  /  m/s2',axisZ)]),
+  View({style:{width:'100%',height:212,display:'flex',flexDirection:'column',padding:0,gap:12}},[
+    View({style:{width:'100%',height:152,display:'flex',flexDirection:'row',padding:0,gap:10}},[axis('X  /  m/s2',axisX),axis('Y  /  m/s2',axisY),axis('Z  /  m/s2',axisZ)]),
     View({style:{width:'100%',height:48,background:'surfaceAlt',borderRadius:12,padding:12,display:'flex',flexDirection:'column',justifyContent:'center'}},[
       Text({text:function(){return motion();},style:{fontSize:13,color:'textDim',borderRadius:0}})
     ])

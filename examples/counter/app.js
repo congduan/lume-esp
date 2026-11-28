@@ -12,7 +12,7 @@ var count = signal(0);
 var dim = signal(false);
 var darkButton, lightButton;
 var card = View({ style: {
-  width:'100%', height:176, background:'surface', borderRadius:12,
+  width:'100%', height:224, background:'surface', borderRadius:12,
   display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:6,
   opacity:function(){ return dim() ? 0.7 : 1; }
 }}, [
@@ -21,9 +21,9 @@ var card = View({ style: {
   Text({text:'Every touch counts',style:{fontSize:13,color:'textDim',borderRadius:0}})
 ]);
 View({style:{width:'100%',height:'100%',background:'bg',scroll:'none',
-  display:'flex',flexDirection:'column',justifyContent:'space-between',padding:76,gap:10}},[
+  display:'flex',flexDirection:'column',justifyContent:'space-between',padding:44,gap:12}},[
   View({style:{width:'100%',height:52,display:'flex',flexDirection:'row',justifyContent:'space-between',alignItems:'center',padding:0,gap:8}},[
-    View({style:{width:170,height:52,display:'flex',flexDirection:'column',justifyContent:'center',padding:0,gap:2}},[
+    View({style:{width:230,height:52,display:'flex',flexDirection:'column',justifyContent:'center',padding:0,gap:2}},[
       Text({text:'Counter',style:{fontSize:20,color:'text',borderRadius:0}}),
       Text({text:'A little daily tally',style:{fontSize:12,color:'textDim',borderRadius:0}})
     ]),

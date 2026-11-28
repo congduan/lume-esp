@@ -15,9 +15,9 @@ function gameBeep(hz, ms) {
 }
 function gameAabb(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
-/* r201: cell pitch trimmed 16 -> 10 so the 24x24 board (240px) sits inside the
-   480-round safe square; gameplay GRID and step logic are unchanged. */
-var GRID = 24, CELL = 10;
+/* r233: square-screen 24x24 board restored to CELL=16 (384x384 inside [48,432],
+   147,456 px <= 230,400 budget); gameplay GRID and step logic are unchanged. */
+var GRID = 24, CELL = 16;
 /* Board tuning point: adjust threshold and axis signs on the physical board.
  * The QMI8658 reports the raw sensor frame, not the LVGL screen frame. On this
  * board it reads az≈+9.5 lying flat screen-up (+Z out of the panel), and the
@@ -59,14 +59,14 @@ var state={body:[{x:12,y:12},{x:11,y:12},{x:10,y:12}],dir:'right',next:'right',f
 state.food=snakeFood(state,Math.random);
 var best=signal(gameHigh('snake')),score=signal(0),note=signal('SWIPE OR TILT'),redraw=signal(0),dirty=[];
 var root=View({style:{width:480,height:480,background:'#0D1420',scroll:'none'}});
-Text({parent:root,text:'SNAKE',style:{position:'absolute',x:120,y:80,width:240,textAlign:'center',fontSize:24,borderRadius:0,color:'#F2F7FB'}});
-Text({parent:root,text:function(){return 'SCORE '+score()+'  BEST '+best();},style:{position:'absolute',x:120,y:106,width:240,textAlign:'center',fontSize:16,borderRadius:0,color:'#9EB3C6'}});
-Text({parent:root,text:function(){return note();},style:{position:'absolute',x:120,y:376,width:240,textAlign:'center',fontSize:14,borderRadius:0,color:'#40D8B0'}});
-var scene=Canvas({parent:root,width:240,height:240,style:{position:'absolute',x:120,y:128},onDraw:function(ctx){
+Text({parent:root,text:'SNAKE',style:{position:'absolute',x:48,y:16,width:120,textAlign:'left',fontSize:24,borderRadius:0,color:'#F2F7FB'}});
+Text({parent:root,text:function(){return 'SCORE '+score()+'  BEST '+best();},style:{position:'absolute',x:172,y:22,width:260,textAlign:'right',fontSize:16,borderRadius:0,color:'#9EB3C6'}});
+Text({parent:root,text:function(){return note();},style:{position:'absolute',x:48,y:444,width:384,textAlign:'center',fontSize:14,borderRadius:0,color:'#40D8B0'}});
+var scene=Canvas({parent:root,width:384,height:384,style:{position:'absolute',x:48,y:52},onDraw:function(ctx){
   redraw();
   /* Canvas keeps its prior pixels; repaint only head, vacated tail and food. */
   var full=!dirty.length;
-  if(full) {ctx.fillColor('#16202E');ctx.fillRect(0,0,240,240);for(var i=0;i<state.body.length;i++)dirty.push(state.body[i]);if(state.food)dirty.push(state.food);}
+  if(full) {ctx.fillColor('#16202E');ctx.fillRect(0,0,384,384);for(var i=0;i<state.body.length;i++)dirty.push(state.body[i]);if(state.food)dirty.push(state.food);}
   for(var j=0;j<dirty.length;j++){
     var p=dirty[j], body=false;for(var k=0;k<state.body.length;k++)if(state.body[k].x===p.x&&state.body[k].y===p.y)body=true;
     var food=state.food&&state.food.x===p.x&&state.food.y===p.y;

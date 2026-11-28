@@ -131,10 +131,10 @@ function sfDraw(ctx){sfFrame();var i,e,b,p,x,y;ctx.fillColor(SF_BG);ctx.fillRect
  if(!sf.over&&(sf.invuln===0||sf.tick%4<2)){x=Math.round(sf.player.x);y=Math.round(sf.player.y);ctx.fillEllipse(x,y,12,20,SF_CYAN);ctx.fillRect(x-25,y+3,50,8,SF_CYAN);ctx.fillEllipse(x,y-8,5,9,SF_WHITE);ctx.fillRect(x-9,y+18,18,5,'#5B98CC');if(sf.shield){ctx.fillCircle(x,y,28,SF_GREEN);ctx.fillCircle(x,y,26,SF_BG);}}
 }
 __A_Canvas({parent:sfRoot,width:480,height:480,onDraw:sfDraw});
-/* r202: HUD and footer moved into [84,396]; the full-bleed 480x480 render
-   canvas, wave logic and entity pools are unchanged. */
-__A_Text({parent:sfRoot,text:function(){sfFrame();return 'SKYFIRE   '+sf.score+'   L '+sf.lives+'   W '+sf.wave+(sf.shield?'   SHIELD':'');},style:{position:'absolute',x:84,y:80,width:312,height:26,fontSize:14,color:'#F2F7FB',borderRadius:0}});
-__A_Text({parent:sfRoot,text:function(){sfFrame();return sf.over?'GAME OVER   SCORE '+sf.score+'   TAP TO RESTART':(sf.drag?'':'DRAG TO MOVE AND FIRE');},style:{position:'absolute',x:84,y:372,width:312,height:26,fontSize:14,color:'#40D8B0',textAlign:'center',borderRadius:0}});
+/* r233: square-screen HUD and footer inside [44,436]; the full-bleed 480x480
+   render canvas, wave logic and entity pools are unchanged. */
+__A_Text({parent:sfRoot,text:function(){sfFrame();return 'SKYFIRE   '+sf.score+'   L '+sf.lives+'   W '+sf.wave+(sf.shield?'   SHIELD':'');},style:{position:'absolute',x:44,y:24,width:392,height:26,fontSize:14,color:'#F2F7FB',borderRadius:0}});
+__A_Text({parent:sfRoot,text:function(){sfFrame();return sf.over?'GAME OVER   SCORE '+sf.score+'   TAP TO RESTART':(sf.drag?'':'DRAG TO MOVE AND FIRE');},style:{position:'absolute',x:44,y:428,width:392,height:26,fontSize:14,color:'#40D8B0',textAlign:'center',borderRadius:0}});
 var SF_IDLE_DT=100,sfTimer=null,sfTimerDt=0,sfOverPainted=false;
 function sfSchedule(){var dt=sf.over?SF_IDLE_DT:SF_DT;if(sfTimer!==null&&sfTimerDt===dt)return;if(sfTimer!==null)lume.system.clearInterval(sfTimer);sfTimerDt=dt;sfTimer=lume.system.setInterval(sfTick,dt);}
 function sfStart(){sfSchedule();}

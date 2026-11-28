@@ -15,10 +15,10 @@ function gameBeep(hz, ms) {
 }
 function gameAabb(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
-/* r215: playfield and bricks fit inside the 480-round safe square [84,396]
-   so paddle, outer bricks and HUD never clip or overlap. */
-var BW=312,BH=244,BRICK_W=46,BRICK_H=18;
-function breakoutBricks(){var b=[];for(var y=0;y<6;y++)for(var x=0;x<6;x++)b.push({x:8+x*50,y:12+y*22,w:BRICK_W,h:BRICK_H,alive:true});return b;}
+/* r233: square-screen playfield expanded to 392x316 (123,872 px <= 230,400)
+   inside [44,436]; paddle width and bounce physics stay unchanged. */
+var BW=392,BH=316,BRICK_W=58,BRICK_H=22;
+function breakoutBricks(){var b=[];for(var y=0;y<6;y++)for(var x=0;x<6;x++)b.push({x:7+x*64,y:14+y*28,w:BRICK_W,h:BRICK_H,alive:true});return b;}
 function breakoutStep(s){
   if(s.over)return 'over';
   var ball={x:s.x-5,y:s.y-5,w:10,h:10}, oldX=s.x,oldY=s.y;
@@ -37,7 +37,7 @@ function breakoutState(){return {x:BW/2,y:BH-52,vx:2.5,vy:-3,paddle:BW/2-36,bric
 var state=breakoutState(),frame=signal(0),brickRevision=signal(0),score=signal(0),best=signal(gameHigh('brkout')),lives=signal(3),level=signal(1),note=signal('DRAG PADDLE');
 var root=View({style:{width:480,height:480,background:'#0D1420',scroll:'none'}});
 var oldBall=null,oldPaddle=null;
-var scene=Canvas({parent:root,width:BW,height:BH,style:{position:'absolute',x:84,y:106},onDraw:function(ctx){
+var scene=Canvas({parent:root,width:BW,height:BH,style:{position:'absolute',x:44,y:74},onDraw:function(ctx){
  frame();
  var areas=[];
  /* Transparent Canvas is unsupported: repaint only entity trails with board color.
@@ -55,11 +55,11 @@ var scene=Canvas({parent:root,width:BW,height:BH,style:{position:'absolute',x:84
  return clipped.length?clipped:undefined;
 }});
 var bricks=[];
-for(var i=0;i<36;i++)(function(n){var b=state.bricks[n];bricks.push(View({parent:root,style:{position:'absolute',x:84+b.x,y:106+b.y,width:b.w,height:b.h,borderRadius:3,background:function(){brickRevision();return state.bricks[n].alive?['#FF6B79','#FFD78E','#FFD78E','#40D8B0','#5B9DF7','#A48FE8'][Math.floor(n/6)]:'#0D1420';}}}));})(i);
-/* r215: HUD above and below the 312x244 playfield canvas, all inside [84,396]. */
-Text({parent:root,text:'BREAKOUT',style:{position:'absolute',x:84,y:78,fontSize:24,color:'#F2F7FB',borderRadius:0}});
-Text({parent:root,text:function(){return 'S '+score()+'  BEST '+best()+'  L '+lives()+'  LV '+level();},style:{position:'absolute',x:84,y:356,width:312,fontSize:15,color:'#9EB3C6',textAlign:'center',borderRadius:0}});
-Text({parent:root,text:function(){return note();},style:{position:'absolute',x:84,y:380,width:312,fontSize:14,color:'#40D8B0',textAlign:'center',borderRadius:0}});
+for(var i=0;i<36;i++)(function(n){var b=state.bricks[n];bricks.push(View({parent:root,style:{position:'absolute',x:44+b.x,y:74+b.y,width:b.w,height:b.h,borderRadius:3,background:function(){brickRevision();return state.bricks[n].alive?['#FF6B79','#FFD78E','#FFD78E','#40D8B0','#5B9DF7','#A48FE8'][Math.floor(n/6)]:'#0D1420';}}}));})(i);
+/* r233: HUD above and below the 392x316 playfield canvas, inside [44,436]. */
+Text({parent:root,text:'BREAKOUT',style:{position:'absolute',x:44,y:36,fontSize:24,color:'#F2F7FB',borderRadius:0}});
+Text({parent:root,text:function(){return 'S '+score()+'  BEST '+best()+'  L '+lives()+'  LV '+level();},style:{position:'absolute',x:44,y:398,width:392,fontSize:15,color:'#9EB3C6',textAlign:'center',borderRadius:0}});
+Text({parent:root,text:function(){return note();},style:{position:'absolute',x:44,y:422,width:392,fontSize:14,color:'#40D8B0',textAlign:'center',borderRadius:0}});
 var timer=null,lastDx=0;
 function tick(){var event=breakoutStep(state);frame.set(frame()+1);
  if(event==='brick'||event==='level'){score.set(state.score);best.set(gameSave('brkout',state.score,best()));if(event==='brick')lume.setAttr(bricks[state.lastBrick],5,0);else for(var j=0;j<bricks.length;j++)lume.setAttr(bricks[j],5,1);gameBeep(620,20);}
@@ -69,7 +69,7 @@ function tick(){var event=breakoutStep(state);frame.set(frame()+1);
  if(event==='over'){note.set('GAME OVER - TAP');stop();}}
 function start(){if(timer===null&&!state.over)timer=gameLoop(tick,40);}
 function stop(){if(timer!==null)lume.system.clearInterval(timer);timer=null;}
-function placePaddle(x){state.paddle=Math.max(0,Math.min(BW-72,x-84-36));frame.set(frame()+1);}
+function placePaddle(x){state.paddle=Math.max(0,Math.min(BW-72,x-44-36));frame.set(frame()+1);}
 lume.gesture.on(root,'panstart',function(e){placePaddle(e.x);});lume.gesture.on(root,'pan',function(e){placePaddle(e.x);});
 lume.gesture.on(scene,'panstart',function(e){placePaddle(e.x);});lume.gesture.on(scene,'pan',function(e){placePaddle(e.x);});
 function breakoutTap(e){if(state.over){state=breakoutState();score.set(0);lives.set(3);level.set(1);note.set('DRAG PADDLE');for(var j=0;j<bricks.length;j++)lume.setAttr(bricks[j],5,1);start();}else placePaddle(e.x);}

@@ -147,21 +147,21 @@ function scDraw(c){scFrame();var i,e,p,r,x,y,z,t,col,near=false,lead=null,leadZ=
   if(x>=3&&x<477&&y>=3&&y<477)c.circle(x,y,Math.max(2,Math.round(r*.15)),scDepthColor('#FFE4B1',e.z));
  }
  for(i=0;i<sc.particles.length;i++){p=sc.particles[i];if(p.active){col=p.kind===0?(p.life>3?'#FFFFFF':'#FFC26B'):(p.life>7?'#FFAA70':'#B9605E');if(p.x>=8&&p.x<472&&p.y>=8&&p.y<472)c.circle(Math.round(p.x),Math.round(p.y),p.kind===0?Math.max(2,8-p.life):2,col);if(p.kind===1)scLine(c,p.x,p.y,p.x-p.vx*1.5,p.y-p.vy*1.5,col,1);}}
- /* Cockpit, swept wings, twin exhausts and attitude-linked plume (raised to clear bottom safe HUD). */
- scShipLine(c,240,328,54,[0,-.75,.18,-.25,.75,.20,.90,.33,.32,.24,.26,.65,.12,.55,0,.78,-.12,.55,-.26,.65,-.32,.24,-.90,.33,-.75,.20,-.18,-.25,0,-.75],'#78D6DD',3);
- scShipLine(c,240,328,54,[0,-.70,0,.54],SC_WHITE,2);scShipLine(c,240,328,54,[-.11,-.15,0,-.48,.11,-.15,0,.03,-.11,-.15],'#BAF4F3',2);
- for(i=-1;i<=1;i+=2){x=240+i*17;scLine(c,x,360,x+i*sc.roll*.09,369+Math.abs(sc.roll)*.09,'#53D7F1',3);c.circle(x,360,4,'#E7FAFD');}
+ /* Cockpit, swept wings, twin exhausts and attitude-linked plume. */
+ scShipLine(c,240,348,54,[0,-.75,.18,-.25,.75,.20,.90,.33,.32,.24,.26,.65,.12,.55,0,.78,-.12,.55,-.26,.65,-.32,.24,-.90,.33,-.75,.20,-.18,-.25,0,-.75],'#78D6DD',3);
+ scShipLine(c,240,348,54,[0,-.70,0,.54],SC_WHITE,2);scShipLine(c,240,348,54,[-.11,-.15,0,-.48,.11,-.15,0,.03,-.11,-.15],'#BAF4F3',2);
+ for(i=-1;i<=1;i+=2){x=240+i*17;scLine(c,x,380,x+i*sc.roll*.09,389+Math.abs(sc.roll)*.09,'#53D7F1',3);c.circle(x,380,4,'#E7FAFD');}
  var sight=near?21:28,scol=near?SC_RED:SC_GOLD;c.circle(240,240,sight,scol);for(i=0;i<4;i++){var a=i*SC_PI/2;scLine(c,240+Math.cos(a)*(sight+5),240+Math.sin(a)*(sight+5),240+Math.cos(a)*(sight+17),240+Math.sin(a)*(sight+17),scol,2);}
  if(near)c.text(204,194,'LOCKING',SC_RED,14);
  if(lead&&lead.z>750){p=scProject(lead.x,lead.y,lead.z,sc.pitch*5,sc.pitch*3,sc.roll);var a=Math.atan2(p.y-240,p.x-240),ax=240+Math.cos(a)*156,ay=240+Math.sin(a)*148;scShipLine(c,ax,ay,7,[1,0,-.6,-.6,-.3,0,-.6,.6,1,0],SC_RED,2);}
- if(sc.flash)for(i=0;i<2;i++)scLine(c,240+(i?9:-9),304,240,240,SC_GOLD,2);
- /* r200: Top & bottom HUD relocated inside round-screen safe square [84..396] x [76..402]. */
- c.fillColor('#0D1420');c.fillRect(84,76,312,46);
- c.text(92,80,'SKYCOMBAT',SC_WHITE,14);c.text(92,102,'SCORE '+sc.score+'  W'+sc.wave,sc.scorePop?SC_GOLD:SC_WHITE,14);
- c.text(318,80,'LIVES '+sc.lives,SC_GOLD,14);c.text(354,102,sc.sim?'SIM':'IMU',SC_GOLD,14);
- c.fillColor('#0D1420');c.fillRect(108,382,264,22);
- c.text(160,386,sc.over?'GAME OVER - RESTART':'TAP FIRE  TILT TO AIM',SC_WHITE,14);
- if(sc.over){c.fillColor('#0D1420');c.fillRect(85,165,310,128);c.text(154,180,'MISSION OVER',SC_GOLD,14);c.text(130,218,'SCORE '+sc.score+'  WAVE '+sc.wave,SC_WHITE,14);c.text(177,251,'BEST '+sc.best,SC_WHITE,14);}
+ if(sc.flash)for(i=0;i<2;i++)scLine(c,240+(i?9:-9),324,240,240,SC_GOLD,2);
+ /* r233: square-screen HUD bars inside [44..436] x [24..444]. */
+ c.fillColor('#0D1420');c.fillRect(44,24,392,48);
+ c.text(56,30,'SKYCOMBAT',SC_WHITE,14);c.text(56,52,'SCORE '+sc.score+'  W'+sc.wave,sc.scorePop?SC_GOLD:SC_WHITE,14);
+ c.text(344,30,'LIVES '+sc.lives,SC_GOLD,14);c.text(384,52,sc.sim?'SIM':'IMU',SC_GOLD,14);
+ c.fillColor('#0D1420');c.fillRect(44,416,392,28);
+ c.text(160,423,sc.over?'GAME OVER - RESTART':'TAP FIRE  TILT TO AIM',SC_WHITE,14);
+ if(sc.over){c.fillColor('#0D1420');c.fillRect(68,165,344,128);c.text(154,180,'MISSION OVER',SC_GOLD,14);c.text(130,218,'SCORE '+sc.score+'  WAVE '+sc.wave,SC_WHITE,14);c.text(177,251,'BEST '+sc.best,SC_WHITE,14);}
 }
 __A_Canvas({parent:scRoot,width:480,height:480,onDraw:scDraw});
 function scTick(){if(sc.over){scSchedule();return;}var sample=null;try{if(lume.imu&&lume.imu.read)sample=lume.imu.read();}catch(err){}

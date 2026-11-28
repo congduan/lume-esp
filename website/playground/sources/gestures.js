@@ -89,17 +89,17 @@ lume.gesture.on(panCard, 'pan', function (e) {
 });
 lume.gesture.on(panCard, 'panend', function (e) { echo(e); });
 
-/* ---- root: title + 2x2 grid + status bar, all flex inside [76, 404] ---- */
+/* ---- root: title + 2x2 grid + status bar, all flex inside [44, 436] ---- */
 var gridRow = function (a, b) {
   return View({ style: {
     width: '100%', flexGrow: 1,
-    display: 'flex', flexDirection: 'row', gap: 8
+    display: 'flex', flexDirection: 'row', gap: 10
   } }, [a, b]);
 };
 
 View({ style: {
   width: '100%', height: '100%', background: 'bg', scroll: 'none',
-  display: 'flex', flexDirection: 'column', padding: 76, gap: 8
+  display: 'flex', flexDirection: 'column', padding: 44, gap: 10
 } }, [
   Text({ text: 'Gesture lab r21', style: { fontSize: 14, height: 20, borderRadius: 0 } }),
   gridRow(tapCard, swipeCard),
