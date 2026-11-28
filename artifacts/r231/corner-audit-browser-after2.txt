@@ -1,0 +1,4 @@
+watchface: 2 risk(s)
+  face4 PARTIAL_CLIP/CORNER #38 kind-1 "周六" box=(48,371,48x28) near=194 far=249
+  face4 PARTIAL_CLIP/CORNER #39 kind-1 "11月28日" box=(48,408,64x16) near=213 far=266
+TOTAL risks=2 across 37 round apps

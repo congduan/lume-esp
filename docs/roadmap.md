@@ -3663,3 +3663,37 @@ never moved) and an `__A_List` for `itemHeight`.
   accuracy, frame time and PSRAM peak stay deferred to board bring-up; the
   six Playwright shots are browser evidence only. Full record:
   `docs/r230-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r230).
+
+### r231 result — watchface 五面角标圆屏裁切修复 + 角落安全区审计收口（app + test + docs，无真机验收）
+
+The last open registered visual legacy after r226 §3 / r229 §5 / r230 is closed:
+all five `watchface` corner labels (`LUME / DIGITAL`, `ANALOG`, `ACTIVITY`,
+`GOALS`, `MODULAR`) now sit inside the native 466 visible circle via explicit
+`__A_SX/__A_SY` in a new `__A_cornerLabel` helper (raw `Text`, so the values
+are scaled exactly once). The shared `NO WIFI` / `SYNCING` status moved from a
+`FULL_CLIP` corner `(8,8)` to `(300,84)`. Analog and rings labels were lifted
+to `y=72` after screenshots showed the opaque `y=96` dial/rings canvases
+covering the lower half of the text at `y=84`.
+
+- **Screenshot-verified**: five native-466 round Playwright shots in
+  `artifacts/r231/shots/after/`; visual reading: every label's full text is
+  visible with no arc clipping and no overlap with dials, rings, goals or the
+  modular time. Before/after corner audit over all 37 round apps: 13 risks ->
+  2; the only remaining two are the modular `CALENDAR` card's `周六` /
+  `11月28日` text, registered as not-fixed (layout redesign, not one-line
+  coordinates) in `docs/KNOWN-SIMPLIFICATIONS.md` (r231).
+- **Reusable harness**: `tests/round_corner_audit.js` locks the five labels'
+  geometry on the host (no browser needed) and, when Playwright resolves,
+  audits real DOM bboxes of leaf content nodes in all 37 round apps against
+  circle `(233,233,233)` with the `r=160.1875` safe band; the two accepted
+  modular strings are the only exceptions.
+- **Host/browser gates**: 466/480 audits `ok=74 fail=0`; 113 `tests/*.js`
+  0 FAIL; `npm test` 87 pass / 0 fail; `verify.mjs` 18/18 PASS (74 apps at
+  native 466); `check_website.py` four `none`; `lume check --no-emu` PASS for
+  both changed apps; watchface canvas budget assertions unchanged;
+  `git diff origin/main -- firmware/ runtime/ tools/lume/` empty, no
+  `idf.py build`.
+- **Not on-device acceptance**: CO5300 466 visuals, touch feel, frame time
+  and PSRAM peak remain deferred to board bring-up; browser screenshots and
+  host assertions are not hardware verification. Full record:
+  `docs/r231-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r231).

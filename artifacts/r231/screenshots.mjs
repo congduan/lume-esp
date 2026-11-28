@@ -1,0 +1,73 @@
+// r231 evidence: native-466 round screenshots of all five watchface faces.
+// Usage: PLAYWRIGHT_MODULE=/path/to/playwright node artifacts/r231/screenshots.mjs before|after
+// Reuses the r229/r230 screenshots.mjs workflow (serve website/, force round
+// 466, device=466px, no transform), then swipes left through the five faces.
+import { createRequire } from 'node:module';
+import { resolve, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:http';
+import { readFile, mkdir, writeFile } from 'node:fs/promises';
+import { extname } from 'node:path';
+const require = createRequire(import.meta.url);
+const playwright = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const here = dirname(fileURLToPath(import.meta.url));
+const root = resolve(here, '../..');
+const siteRoot = join(root, 'website');
+const phase = process.argv[2] || 'after';
+if (!['before', 'after'].includes(phase)) throw Error('usage: screenshots.mjs before|after');
+const shots = join(here, 'shots', phase);
+await mkdir(shots, { recursive: true });
+const server = createServer(async (req, res) => {
+  try {
+    const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    const file = join(siteRoot, pathname);
+    if (!file.startsWith(siteRoot + '/')) throw Error('invalid path');
+    res.setHeader('Content-Type', ({ '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm' })[extname(file)] || 'application/octet-stream');
+    res.end(await readFile(file));
+  } catch { res.statusCode = 404; res.end('Not found'); }
+});
+await new Promise(r => server.listen(0, '127.0.0.1', r));
+const browser = await playwright.chromium.launch({ headless: true });
+const lines = [];
+try {
+  const page = await browser.newPage({ viewport: { width: 1200, height: 900 }, deviceScaleFactor: 1 });
+  const errors = [];
+  page.on('pageerror', e => errors.push(String(e)));
+  await page.goto(`http://127.0.0.1:${server.address().port}/playground/index.html`);
+  await page.locator('#device .lume-node').first().waitFor();
+  // Force native-466 round mode before selecting the app.
+  await page.locator('[data-screen-shape="round"]').click();
+  await page.locator('[data-app="watchface"]').click();
+  await page.locator('#device .lume-node').first().waitFor();
+  await page.waitForTimeout(400);
+  const faces = ['digital', 'analog', 'rings', 'goals', 'modular'];
+  const box = await page.locator('#device').boundingBox();
+  const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
+  for (let i = 0; i < faces.length; i++) {
+    if (i > 0) {
+      // Fast left swipe across the face root -> faceShow(facePage + 1).
+      await page.mouse.move(cx + 120, cy);
+      await page.mouse.down();
+      for (let s = 1; s <= 6; s++) await page.mouse.move(cx + 120 - s * 40, cy);
+      await page.mouse.up();
+      await page.waitForTimeout(300);
+    }
+    const geo = await page.evaluate(() => {
+      const wrap = document.querySelector('.device-wrap');
+      const device = document.querySelector('#device');
+      return { round: wrap.classList.contains('round'), wrap: wrap.clientWidth,
+        device: getComputedStyle(device).width, transform: getComputedStyle(device).transform,
+        error: document.querySelector('#error').hidden ? '' : document.querySelector('#error').textContent };
+    });
+    if (!geo.round || geo.wrap !== 466 || geo.device !== '466px' ||
+        geo.transform !== 'matrix(1, 0, 0, 1, 0, 0)' || geo.error) throw Error(faces[i] + ': ' + JSON.stringify(geo));
+    const file = join(shots, `${i + 1}-${faces[i]}-round-466.png`);
+    await page.locator('.device-wrap').screenshot({ path: file });
+    const line = `PASS shot face=${i} ${faces[i]} round=true wrap=466 device=466px transform=${geo.transform} -> ${file}`;
+    lines.push(line);
+    console.log(line);
+  }
+  if (errors.length) throw Error('pageerror: ' + errors.join(' | '));
+} finally { await browser.close(); server.close(); }
+const log = lines.join('\n') + '\n';
+await writeFile(join(here, `screenshots-${phase}.log`), log);

@@ -1,0 +1,5 @@
+PASS shot face=0 digital round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r231-wt/artifacts/r231/shots/after/1-digital-round-466.png
+PASS shot face=1 analog round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r231-wt/artifacts/r231/shots/after/2-analog-round-466.png
+PASS shot face=2 rings round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r231-wt/artifacts/r231/shots/after/3-rings-round-466.png
+PASS shot face=3 goals round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r231-wt/artifacts/r231/shots/after/4-goals-round-466.png
+PASS shot face=4 modular round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r231-wt/artifacts/r231/shots/after/5-modular-round-466.png

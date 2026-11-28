@@ -1,0 +1,55 @@
+adc_meter: 1 risk(s)
+  PARTIAL_CLIP #2 kind-0 "" box=(14,14,439x439) near=0 far=311
+archive_view: 1 risk(s)
+  PARTIAL_CLIP #1 kind-0 "" box=(14,14,439x439) near=0 far=311
+clock: 1 risk(s)
+  PARTIAL_CLIP #1 kind-3 "" box=(83,48,300x300) near=0 far=238
+compass: 1 risk(s)
+  PARTIAL_CLIP #1 kind-3 "" box=(60,64,360x360) near=0 far=267
+control_center: 1 risk(s)
+  PARTIAL_CLIP #2 kind-0 "" box=(16,16,435x435) near=0 far=308
+crypto_check: 1 risk(s)
+  PARTIAL_CLIP #1 kind-0 "" box=(14,14,439x439) near=0 far=311
+dashboard: 4 risk(s)
+  PARTIAL_CLIP #2 kind-3 "" box=(40,40,400x360) near=0 far=283
+  PARTIAL_CLIP #4 kind-0 "" box=(0,0,480x348) near=0 far=340
+  PARTIAL_CLIP #25 kind-2 "SYSTEM" box=(298,352,98x48) near=136 far=233
+  PARTIAL_CLIP #27 kind-0 "" box=(201,442,64x24) near=209 far=235
+files: 1 risk(s)
+  PARTIAL_CLIP #1 kind-0 "" box=(14,14,439x439) near=0 far=311
+game_of_life: 1 risk(s)
+  PARTIAL_CLIP #5 kind-1 "TAP seed  SWIPE UP play/" box=(84,382,315x31) near=149 far=245
+golf: 1 risk(s)
+  PARTIAL_CLIP #2 kind-3 "" box=(0,58,466x408) near=0 far=330
+image_gallery: 1 risk(s)
+  PARTIAL_CLIP #17 kind-0 "" box=(14,14,439x439) near=0 far=311
+img_view: 1 risk(s)
+  PARTIAL_CLIP #1 kind-0 "" box=(14,14,439x439) near=0 far=311
+launcher_grid: 3 risk(s)
+  PARTIAL_CLIP #2 kind-0 "" box=(21,21,423x423) near=0 far=300
+  PARTIAL_CLIP #49 kind-0 "" box=(0,0,24x480) near=209 far=340
+  PARTIAL_CLIP #50 kind-0 "" box=(456,0,24x480) near=223 far=349
+music_player: 1 risk(s)
+  PARTIAL_CLIP #10 kind-0 "" box=(21,21,423x423) near=0 far=300
+settings: 1 risk(s)
+  PARTIAL_CLIP #48 kind-0 "" box=(14,14,439x439) near=0 far=311
+shell_demo: 2 risk(s)
+  PARTIAL_CLIP #12 kind-3 "" box=(0,208,24x64) near=209 far=236
+  PARTIAL_CLIP #14 kind-3 "" box=(456,208,24x64) near=223 far=250
+spectrum: 1 risk(s)
+  PARTIAL_CLIP #1 kind-3 "" box=(40,149,400x200) near=0 far=237
+spectrum_music: 1 risk(s)
+  PARTIAL_CLIP #4 kind-2 "COLOR" box=(246,352,150x48) near=120 far=233
+speedometer: 4 risk(s)
+  PARTIAL_CLIP #1 kind-3 "" box=(24,64,432x344) near=0 far=283
+  PARTIAL_CLIP #2 kind-5 "" box=(80,82,320x320) near=0 far=238
+  PARTIAL_CLIP #3 kind-5 "" box=(80,82,320x320) near=0 far=238
+  PARTIAL_CLIP #4 kind-5 "" box=(80,82,320x320) near=0 far=238
+watchface: 2 risk(s)
+  PARTIAL_CLIP #3 kind-1 "LUME / DIGITAL" box=(32,43,107x16) near=198 far=277
+  FULL_CLIP #44 kind-1 "NO WIFI" box=(8,11,52x15) near=270 far=316
+weather: 1 risk(s)
+  PARTIAL_CLIP #6 kind-0 "" box=(14,14,439x439) near=0 far=311
+wordring: 1 risk(s)
+  PARTIAL_CLIP #2 kind-3 "" box=(0,0,466x417) near=0 far=330
+TOTAL risks=32 across 37 round apps

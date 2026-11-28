@@ -1,0 +1,16 @@
+game_of_life: 1 risk(s)
+  PARTIAL_CLIP/EDGE #5 kind-1 "TAP seed  SWIPE UP play/" box=(84,382,315x31) near=149 far=245
+watchface: 12 risk(s)
+  PARTIAL_CLIP/CORNER #3 kind-1 "LUME / DIGITAL" box=(32,43,107x16) near=198 far=277
+  FULL_CLIP/CORNER #44 kind-1 "NO WIFI" box=(8,11,52x15) near=270 far=316
+  face1 PARTIAL_CLIP/CORNER #9 kind-1 "LUME / ANALOG" box=(32,43,111x16) near=196 far=277
+  face1 FULL_CLIP/CORNER #44 kind-1 "NO WIFI" box=(8,11,52x15) near=270 far=316
+  face2 PARTIAL_CLIP/CORNER #13 kind-1 "LUME / ACTIVITY" box=(32,43,115x16) near=194 far=277
+  face2 FULL_CLIP/CORNER #44 kind-1 "NO WIFI" box=(8,11,52x15) near=270 far=316
+  face3 PARTIAL_CLIP/CORNER #18 kind-1 "LUME / GOALS" box=(32,37,100x16) near=207 far=281
+  face3 FULL_CLIP/CORNER #44 kind-1 "NO WIFI" box=(8,11,52x15) near=270 far=316
+  face4 PARTIAL_CLIP/CORNER #25 kind-1 "LUME / MODULAR" box=(32,37,123x16) near=196 far=281
+  face4 PARTIAL_CLIP/CORNER #38 kind-1 "周六" box=(48,371,48x28) near=194 far=249
+  face4 PARTIAL_CLIP/CORNER #39 kind-1 "11月28日" box=(48,408,64x16) near=213 far=266
+  face4 FULL_CLIP/CORNER #44 kind-1 "NO WIFI" box=(8,11,52x15) near=270 far=316
+TOTAL risks=13 across 37 round apps
