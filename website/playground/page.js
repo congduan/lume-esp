@@ -95,10 +95,10 @@
   const wrap = document.querySelector('.device-wrap');
   const shapeButtons = [...document.querySelectorAll('[data-screen-shape]')];
   const safeToggle = document.querySelector('#safe-area-toggle');
-  // r226: All 74 built-in apps author coordinates in a 480x480 logical space
-  // (29/74 create 480px canvases or exceed 466*466*4 canvas budget); round mode
-  // scales the 480x480 logical viewport cleanly into the 466px circular frame.
-  const logicalScreen = { w: 480, h: 480 };
+  // r229: round mode now injects a native 466x466 __lumeScreen (r227 migrated
+  // all 29 apps that cannot run at 466); square mode keeps 480x480. This is the
+  // single screen state read by resize(), dispatch() and startScript().
+  let logicalScreen = { w: 480, h: 480 };
   let savedShape = 'square';
   try { savedShape = localStorage.getItem('lume-screen-shape') === 'round' ? 'round' : 'square'; } catch (error) { /* storage disabled */ }
   let currentShape = savedShape;
@@ -113,6 +113,7 @@
     const changed = next !== currentShape;
     currentShape = next;
     const round = next === 'round';
+    logicalScreen = round ? { w: 466, h: 466 } : { w: 480, h: 480 };
     wrap.classList.toggle('round', round);
     shapeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.screenShape === next)));
     device.setAttribute('aria-label', round ? 'Lume round screen' : 'Lume rounded square screen');
@@ -197,7 +198,13 @@
   }
   const gestures = new Set();
   function showError(error) { errorBox.hidden = false; errorBox.textContent = error?.stack || String(error); }
-  function resize() { device.style.transform = `scale(${wrap.clientWidth / logicalScreen.w})`; }
+  function resize() {
+    device.style.width = logicalScreen.w + 'px';
+    device.style.height = logicalScreen.h + 'px';
+    // Native viewport == native canvas in round mode (466 / 466 = 1): this is
+    // only a responsive fit factor for narrower viewports, not a 466/480 map.
+    device.style.transform = `scale(${wrap.clientWidth / logicalScreen.w})`;
+  }
   new ResizeObserver(resize).observe(wrap); setShape(savedShape, { persist: false, restart: false });
   function startScript(script) {
     generation++;
