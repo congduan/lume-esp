@@ -1,10 +1,91 @@
+
+/* r227 adaptive: app authored on a 480 logical canvas; map to real screen.
+ * At 480 this block is an exact no-op (all wrappers forward unchanged args). */
+var SW = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.w > 0) ? __lumeScreen.w : 480;
+var SH = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.h > 0) ? __lumeScreen.h : 480;
+var __A_ADAPT = SW !== 480 || SH !== 480;
+var __A_KX = SW / 480, __A_KY = SH / 480;
+function __A_SX(v) { return Math.round(v * __A_KX); }
+function __A_SY(v) { return Math.round(v * __A_KY); }
+var __A_XK = ',width,x,borderRadius,borderWidth,gap,margin,marginLeft,marginRight,padding,paddingLeft,paddingRight,minWidth,maxWidth,letterSpacing,translateX,';
+var __A_YK = ',height,y,borderRadius,borderWidth,gap,margin,marginTop,marginBottom,padding,paddingTop,paddingBottom,minHeight,maxHeight,lineHeight,translateY,';
+function __A_style(s) {
+  if (!__A_ADAPT || !s || typeof s !== 'object') return s;
+  var o = {}, k;
+  for (k in s) {
+    var v = s[k];
+    if (typeof v === 'number' && __A_XK.indexOf(',' + k + ',') >= 0) o[k] = __A_SX(v);
+    else if (typeof v === 'number' && __A_YK.indexOf(',' + k + ',') >= 0) o[k] = __A_SY(v);
+    else o[k] = v;
+  }
+  return o;
+}
+function __A_ctx(c) {
+  if (c.__r227Ctx) return c.__r227Ctx;
+  var w = { nodeId: c.nodeId };
+  function pt(p) { return [__A_SX(p[0]), __A_SY(p[1])]; }
+  function sg(s) { return [__A_SX(s[0]), __A_SY(s[1]), __A_SX(s[2]), __A_SY(s[3])]; }
+  w.clear = function () { return c.clear(); };
+  w.fillColor = function (x) { return c.fillColor(x); };
+  w.fillRect = function (x, y, ww, hh) { return c.fillRect(__A_SX(x), __A_SY(y), __A_SX(ww), __A_SY(hh)); };
+  w.line = function (a, b, d, e, col, wd) { return c.line(__A_SX(a), __A_SY(b), __A_SX(d), __A_SY(e), col, wd); };
+  w.polyline = function (p, col, wd) { return c.polyline(p.map(pt), col, wd); };
+  w.retainPath = function (p, col, wd) { return c.retainPath(p.map(pt), col, wd); };
+  w.retainSegments = function (p, col, wd) { return c.retainSegments(p.map(sg), col, wd); };
+  w.drawPath = function (id, dx, dy) { return c.drawPath(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy)); };
+  w.retainImage = function (id, ww, hh, px) {
+    var rw = Math.min(SW, __A_SX(ww)), rh = Math.min(SH, __A_SY(hh));
+    if (rw === ww && rh === hh) return c.retainImage(id, ww, hh, px);
+    var out = new Uint16Array(rw * rh);
+    for (var y = 0; y < rh; y++) {
+      var sy = Math.min(hh - 1, Math.round(y * hh / rh));
+      for (var x = 0; x < rw; x++) {
+        var sx = Math.min(ww - 1, Math.round(x * ww / rw));
+        out[y * rw + x] = px[sy * ww + sx];
+      }
+    }
+    return c.retainImage(id, rw, rh, out);
+  };
+  w.drawImage = function (id, dx, dy, flip) { return c.drawImage(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy), flip); };
+  w.circle = function (x, y, r, col) { return c.circle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillCircle = function (x, y, r, col) { return c.fillCircle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillEllipse = function (x, y, rx, ry, col) { return c.fillEllipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col); };
+  w.ellipse = function (x, y, rx, ry, col, wd) { return c.ellipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col, wd); };
+  w.arc = function (x, y, r, fr, to, wd, col) { return c.arc(__A_SX(x), __A_SY(y), __A_SX(r), fr, to, wd, col); };
+  w.text = function (x, y, str, col, sz) { return c.text(__A_SX(x), __A_SY(y), str, col, sz); };
+  c.__r227Ctx = w;
+  return w;
+}
+function __A_Canvas(p) {
+  if (!__A_ADAPT || !p) return Canvas(p);
+  var o = {}, k;
+  for (k in p) o[k] = p[k];
+  var cw = Math.min(SW, __A_SX(Number(p.width) || 0)), ch = Math.min(SH, __A_SY(Number(p.height) || 0));
+  o.width = cw; o.height = ch; o.style = __A_style(p.style);
+  var fn = p.onDraw;
+  o.onDraw = function (c) {
+    var d = fn(__A_ctx(c));
+    if (!d || typeof d !== 'object') return d;
+    function rect(r) {
+      var x = __A_SX(r.x), y = __A_SY(r.y);
+      return { x: x, y: y, w: Math.min(cw - x, __A_SX(r.w)), h: Math.min(ch - y, __A_SY(r.h)) };
+    }
+    return Array.isArray(d) ? d.map(rect) : rect(d);
+  };
+  return Canvas(o);
+}
+function __A_View(p, kids) { return View(__A_style(p), kids); }
+function __A_Text(p, kids) { return Text(__A_style(p), kids); }
+function __A_Button(p, kids) { return Button(__A_style(p), kids); }
+function __A_Image(p, kids) { return Image(__A_style(p), kids); }
+
 /* Single-screen platform game. Coordinates below are local to the 480x352 canvas. */
 var MW=480, MH=352, SKY='#83D9F5', SOIL='#8B4A2B', TOP='#60B84C';
 var hud=signal(''), frame=signal(0);
 /* r201: HUD and control buttons pulled into the 480-round safe square; the
    480x352 game world canvas and all physics constants stay unchanged.
    The HUD Text is created AFTER the canvas so it stacks above the game world. */
-var root=View({style:{width:480,height:480,background:'#0D1420',scroll:'none'}});
+var root=__A_View({style:{width:480,height:480,background:'#0D1420',scroll:'none'}});
 var ground=[{x:0,y:310,w:212,h:42},{x:270,y:310,w:210,h:42}];
 var platforms=[{x:108,y:250,w:66,h:12,brick:true,live:true},{x:190,y:190,w:78,h:12,brick:false,live:true},{x:300,y:190,w:76,h:12,brick:false,live:true}];
 var coins=[{x:141,y:218,live:true},{x:224,y:241,live:true},{x:335,y:202,live:true}];
@@ -43,7 +124,7 @@ function staticScene(ctx,area){
  drawRect(ctx,'#F8FBFF',box(448,82,3,228),area);drawRect(ctx,'#E74949',box(451,84,23,17),area);
 }
 var oldHero=null,oldEnemy=null,changes=[],painted=false,dirtyPixels=0;
-var canvas=Canvas({parent:root,width:MW,height:MH,style:{position:'absolute',x:0,y:64},onDraw:function(ctx){
+var canvas=__A_Canvas({parent:root,width:MW,height:MH,style:{position:'absolute',x:0,y:64},onDraw:function(ctx){
  frame();var h=box(Math.round(hero.x),Math.round(hero.y),16,20),e=box(Math.round(enemy.x),Math.round(enemy.y),16,16),areas=[];
  if(!painted){var all=box(0,0,MW,MH);staticScene(ctx,all);drawSprite(ctx,'stand',h.x,h.y,false,all);drawSprite(ctx,'foe',e.x,e.y,false,all);oldHero=h;oldEnemy=e;painted=true;return;}
  if(oldHero){var travel=union(oldHero,h);if(travel.w*travel.h>2500){areas.push(clip(pad(oldHero,2)));areas.push(clip(pad(h,2)));}else areas.push(clip(pad(travel,2)));}
@@ -54,7 +135,7 @@ var canvas=Canvas({parent:root,width:MW,height:MH,style:{position:'absolute',x:0
  dirtyPixels=0;for(i=0;i<valid.length;i++)dirtyPixels+=valid[i].w*valid[i].h;
  oldHero=h;oldEnemy=enemy.live?e:null;return valid.length?valid:[box(h.x,h.y,1,1)];
 }});
-Text({parent:root,text:function(){return hud();},style:{position:'absolute',x:84,y:80,width:312,textAlign:'center',fontSize:16,borderRadius:0,color:'#F2F7FB'}});
+__A_Text({parent:root,text:function(){return hud();},style:{position:'absolute',x:84,y:80,width:312,textAlign:'center',fontSize:16,borderRadius:0,color:'#F2F7FB'}});
 function resetHero(){hero.x=32;hero.y=290;hero.vx=0;hero.vy=0;move=0;moveTicks=0;invuln=20;}
 function damage(){if(invuln)return;lives--;logEvent('HIT lives='+lives);if(lives<=0){lives=3;score=0;money=0;level=1;logEvent('RESTART');}resetHero();refreshHud();}
 function win(){level++;score+=100;logEvent('LEVEL '+level+' score='+score);for(var i=0;i<coins.length;i++){coins[i].live=true;changes.push(box(coins[i].x,coins[i].y,10,12));}for(i=0;i<platforms.length;i++){if(!platforms[i].live)changes.push(platforms[i]);platforms[i].live=true;}enemy.live=true;enemy.x=348;oldEnemy=null;resetHero();refreshHud();}
@@ -79,7 +160,7 @@ function tick(){var tickStart=Date.now();
 }
 function walk(dir,longer){move=dir;moveTicks=longer?32:14;}
 function jump(high){if(hero.vy===0){hero.vy=high?-12:-9;logEvent('JUMP '+(high?'HIGH':'SHORT'));}}
-function control(x,label,act,hold){var b=Button({parent:root,title:label,style:{position:'absolute',x:x,y:350,width:100,height:48,background:'#1F2C3D',color:'#F2F7FB',borderRadius:8,fontSize:16},onPress:act});lume.gesture.on(b,'longpress',hold);return b;}
+function control(x,label,act,hold){var b=__A_Button({parent:root,title:label,style:{position:'absolute',x:x,y:350,width:100,height:48,background:'#1F2C3D',color:'#F2F7FB',borderRadius:8,fontSize:16},onPress:act});lume.gesture.on(b,'longpress',hold);return b;}
 control(84,'LEFT',function(){walk(-1,false);},function(){walk(-1,true);});
 control(190,'RIGHT',function(){walk(1,false);},function(){walk(1,true);});
 var jumpButton=control(296,'JUMP',function(){jump(false);},function(){jump(true);});

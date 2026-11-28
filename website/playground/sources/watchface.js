@@ -1,3 +1,84 @@
+
+/* r227 adaptive: app authored on a 480 logical canvas; map to real screen.
+ * At 480 this block is an exact no-op (all wrappers forward unchanged args). */
+var SW = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.w > 0) ? __lumeScreen.w : 480;
+var SH = (typeof __lumeScreen !== 'undefined' && __lumeScreen && __lumeScreen.h > 0) ? __lumeScreen.h : 480;
+var __A_ADAPT = SW !== 480 || SH !== 480;
+var __A_KX = SW / 480, __A_KY = SH / 480;
+function __A_SX(v) { return Math.round(v * __A_KX); }
+function __A_SY(v) { return Math.round(v * __A_KY); }
+var __A_XK = ',width,x,borderRadius,borderWidth,gap,margin,marginLeft,marginRight,padding,paddingLeft,paddingRight,minWidth,maxWidth,letterSpacing,translateX,';
+var __A_YK = ',height,y,borderRadius,borderWidth,gap,margin,marginTop,marginBottom,padding,paddingTop,paddingBottom,minHeight,maxHeight,lineHeight,translateY,';
+function __A_style(s) {
+  if (!__A_ADAPT || !s || typeof s !== 'object') return s;
+  var o = {}, k;
+  for (k in s) {
+    var v = s[k];
+    if (typeof v === 'number' && __A_XK.indexOf(',' + k + ',') >= 0) o[k] = __A_SX(v);
+    else if (typeof v === 'number' && __A_YK.indexOf(',' + k + ',') >= 0) o[k] = __A_SY(v);
+    else o[k] = v;
+  }
+  return o;
+}
+function __A_ctx(c) {
+  if (c.__r227Ctx) return c.__r227Ctx;
+  var w = { nodeId: c.nodeId };
+  function pt(p) { return [__A_SX(p[0]), __A_SY(p[1])]; }
+  function sg(s) { return [__A_SX(s[0]), __A_SY(s[1]), __A_SX(s[2]), __A_SY(s[3])]; }
+  w.clear = function () { return c.clear(); };
+  w.fillColor = function (x) { return c.fillColor(x); };
+  w.fillRect = function (x, y, ww, hh) { return c.fillRect(__A_SX(x), __A_SY(y), __A_SX(ww), __A_SY(hh)); };
+  w.line = function (a, b, d, e, col, wd) { return c.line(__A_SX(a), __A_SY(b), __A_SX(d), __A_SY(e), col, wd); };
+  w.polyline = function (p, col, wd) { return c.polyline(p.map(pt), col, wd); };
+  w.retainPath = function (p, col, wd) { return c.retainPath(p.map(pt), col, wd); };
+  w.retainSegments = function (p, col, wd) { return c.retainSegments(p.map(sg), col, wd); };
+  w.drawPath = function (id, dx, dy) { return c.drawPath(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy)); };
+  w.retainImage = function (id, ww, hh, px) {
+    var rw = Math.min(SW, __A_SX(ww)), rh = Math.min(SH, __A_SY(hh));
+    if (rw === ww && rh === hh) return c.retainImage(id, ww, hh, px);
+    var out = new Uint16Array(rw * rh);
+    for (var y = 0; y < rh; y++) {
+      var sy = Math.min(hh - 1, Math.round(y * hh / rh));
+      for (var x = 0; x < rw; x++) {
+        var sx = Math.min(ww - 1, Math.round(x * ww / rw));
+        out[y * rw + x] = px[sy * ww + sx];
+      }
+    }
+    return c.retainImage(id, rw, rh, out);
+  };
+  w.drawImage = function (id, dx, dy, flip) { return c.drawImage(id, dx === undefined ? 0 : __A_SX(dx), dy === undefined ? 0 : __A_SY(dy), flip); };
+  w.circle = function (x, y, r, col) { return c.circle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillCircle = function (x, y, r, col) { return c.fillCircle(__A_SX(x), __A_SY(y), __A_SX(r), col); };
+  w.fillEllipse = function (x, y, rx, ry, col) { return c.fillEllipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col); };
+  w.ellipse = function (x, y, rx, ry, col, wd) { return c.ellipse(__A_SX(x), __A_SY(y), __A_SX(rx), __A_SY(ry), col, wd); };
+  w.arc = function (x, y, r, fr, to, wd, col) { return c.arc(__A_SX(x), __A_SY(y), __A_SX(r), fr, to, wd, col); };
+  w.text = function (x, y, str, col, sz) { return c.text(__A_SX(x), __A_SY(y), str, col, sz); };
+  c.__r227Ctx = w;
+  return w;
+}
+function __A_Canvas(p) {
+  if (!__A_ADAPT || !p) return Canvas(p);
+  var o = {}, k;
+  for (k in p) o[k] = p[k];
+  var cw = Math.min(SW, __A_SX(Number(p.width) || 0)), ch = Math.min(SH, __A_SY(Number(p.height) || 0));
+  o.width = cw; o.height = ch; o.style = __A_style(p.style);
+  var fn = p.onDraw;
+  o.onDraw = function (c) {
+    var d = fn(__A_ctx(c));
+    if (!d || typeof d !== 'object') return d;
+    function rect(r) {
+      var x = __A_SX(r.x), y = __A_SY(r.y);
+      return { x: x, y: y, w: Math.min(cw - x, __A_SX(r.w)), h: Math.min(ch - y, __A_SY(r.h)) };
+    }
+    return Array.isArray(d) ? d.map(rect) : rect(d);
+  };
+  return Canvas(o);
+}
+function __A_View(p, kids) { return View(__A_style(p), kids); }
+function __A_Text(p, kids) { return Text(__A_style(p), kids); }
+function __A_Button(p, kids) { return Button(__A_style(p), kids); }
+function __A_Image(p, kids) { return Image(__A_style(p), kids); }
+
 /* Five swipeable watch faces. Time is the device's Date clock. */
 var WATCHFACE_START_PAGE = 0; /* 0 digital, 1 analog, 2 info rings, 3 goals, 4 modular */
 var faceTheme = { colors: { primary: '#08121C', bg: '#08121C', surface: '#132435', surfaceAlt: '#1C3449', text: '#F4F8FA', textDim: '#92AAB6', accent: '#40D8B0', danger: '#FF7081', success: '#40D8B0' }, radius: 16, spacing: 12 };
@@ -144,42 +225,42 @@ function faceSyncNtp() {
 }
 /* ---- r130: SNTP sync END ---- */
 
-var faceRoot = View({ style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' } });
+var faceRoot = __A_View({ style: { width: '100%', height: '100%', background: 'bg', scroll: 'none' } });
 var facePages = [];
-function facePanel() { return View({ parent: faceRoot, style: { position: 'absolute', x: 0, y: 0, width: 480, height: 480, background: 'bg', scroll: 'none' } }); }
+function facePanel() { return __A_View({ parent: faceRoot, style: { position: 'absolute', x: 0, y: 0, width: 480, height: 480, background: 'bg', scroll: 'none' } }); }
 var digital = facePanel(); facePages.push(digital);
-Text({ parent: digital, text: 'LUME / DIGITAL', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
-Text({ parent: digital, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 160, width: 416, height: 70, textAlign: 'center', fontSize: 48, color: 'text' } });
-Text({ parent: digital, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 246, width: 416, height: 36, textAlign: 'center', fontSize: 14, color: 'textDim' } });
-Canvas({ parent: digital, width: 12, height: 12, style: { position: 'absolute', x: 210, y: 329 }, onDraw: function (c) { c.circle(6, 6, 5, '#40D8B0'); } });
-Text({ parent: digital, text: function () { return faceTwo(faceNow().getSeconds()); }, style: { position: 'absolute', x: 228, y: 320, width: 48, height: 32, textAlign: 'left', fontSize: 20, color: 'accent' } });
+__A_Text({ parent: digital, text: 'LUME / DIGITAL', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+__A_Text({ parent: digital, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 160, width: 416, height: 70, textAlign: 'center', fontSize: 48, color: 'text' } });
+__A_Text({ parent: digital, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 246, width: 416, height: 36, textAlign: 'center', fontSize: 14, color: 'textDim' } });
+__A_Canvas({ parent: digital, width: 12, height: 12, style: { position: 'absolute', x: 210, y: 329 }, onDraw: function (c) { c.circle(6, 6, 5, '#40D8B0'); } });
+__A_Text({ parent: digital, text: function () { return faceTwo(faceNow().getSeconds()); }, style: { position: 'absolute', x: 228, y: 320, width: 48, height: 32, textAlign: 'left', fontSize: 20, color: 'accent' } });
 var analog = facePanel(); facePages.push(analog);
-Text({ parent: analog, text: 'LUME / ANALOG', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
-var analogCanvas = Canvas({ parent: analog, width: 300, height: 300, style: { position: 'absolute', x: 90, y: 96 }, onDraw: analogDraw });
-Text({ parent: analog, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 407, width: 416, height: 30, textAlign: 'center', fontSize: 14, color: 'textDim' } });
+__A_Text({ parent: analog, text: 'LUME / ANALOG', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+var analogCanvas = __A_Canvas({ parent: analog, width: 300, height: 300, style: { position: 'absolute', x: 90, y: 96 }, onDraw: analogDraw });
+__A_Text({ parent: analog, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 407, width: 416, height: 30, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 var rings = facePanel(); facePages.push(rings);
-Text({ parent: rings, text: 'LUME / ACTIVITY', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
-var ringCanvas = Canvas({ parent: rings, width: 300, height: 300, style: { position: 'absolute', x: 90, y: 96 }, onDraw: ringDraw });
-Text({ parent: rings, text: function () { return faceTime(); }, style: { position: 'absolute', x: 152, y: 214, width: 176, height: 52, textAlign: 'center', fontSize: 32, color: 'text' } });
-Text({ parent: rings, text: function () { return faceBatt() + '%  ·  ' + faceSteps() + ' 步'; }, style: { position: 'absolute', x: 48, y: 409, width: 384, height: 28, textAlign: 'center', fontSize: 14, color: 'textDim' } });
+__A_Text({ parent: rings, text: 'LUME / ACTIVITY', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+var ringCanvas = __A_Canvas({ parent: rings, width: 300, height: 300, style: { position: 'absolute', x: 90, y: 96 }, onDraw: ringDraw });
+__A_Text({ parent: rings, text: function () { return faceTime(); }, style: { position: 'absolute', x: 152, y: 214, width: 176, height: 52, textAlign: 'center', fontSize: 32, color: 'text' } });
+__A_Text({ parent: rings, text: function () { return faceBatt() + '%  ·  ' + faceSteps() + ' 步'; }, style: { position: 'absolute', x: 48, y: 409, width: 384, height: 28, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 var goals = facePanel(); facePages.push(goals);
-Text({ parent: goals, text: 'LUME / GOALS', style: { position: 'absolute', x: 32, y: 34, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
-var goalCanvas = Canvas({ parent: goals, width: 220, height: 220, style: { position: 'absolute', x: 130, y: 132 }, onDraw: goalDraw });
-Text({ parent: goals, text: function () { return faceTime(); }, style: { position: 'absolute', x: 175, y: 198, width: 130, height: 50, textAlign: 'center', fontSize: 32, color: 'text' } });
-Text({ parent: goals, text: function () { var v = goalValues(); return v[0] + ' kcal'; }, style: { position: 'absolute', x: 185, y: 249, width: 110, height: 22, textAlign: 'center', fontSize: 14, color: 'danger' } });
-Text({ parent: goals, text: function () { var v = goalValues(); return v[1] + ' 分钟 / ' + v[2] + ' 次'; }, style: { position: 'absolute', x: 165, y: 272, width: 150, height: 22, textAlign: 'center', fontSize: 14, color: 'text' } });
-Text({ parent: goals, text: function () { return (goalMotion ? 'IMU 步数估算' : 'DEMO 动画') + ' / 电量 ' + faceBatt() + '%' + (faceBattLive() ? '' : ' DEMO'); }, style: { position: 'absolute', x: 60, y: 413, width: 360, height: 24, textAlign: 'center', fontSize: 14, color: 'textDim' } });
+__A_Text({ parent: goals, text: 'LUME / GOALS', style: { position: 'absolute', x: 32, y: 34, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+var goalCanvas = __A_Canvas({ parent: goals, width: 220, height: 220, style: { position: 'absolute', x: 130, y: 132 }, onDraw: goalDraw });
+__A_Text({ parent: goals, text: function () { return faceTime(); }, style: { position: 'absolute', x: 175, y: 198, width: 130, height: 50, textAlign: 'center', fontSize: 32, color: 'text' } });
+__A_Text({ parent: goals, text: function () { var v = goalValues(); return v[0] + ' kcal'; }, style: { position: 'absolute', x: 185, y: 249, width: 110, height: 22, textAlign: 'center', fontSize: 14, color: 'danger' } });
+__A_Text({ parent: goals, text: function () { var v = goalValues(); return v[1] + ' 分钟 / ' + v[2] + ' 次'; }, style: { position: 'absolute', x: 165, y: 272, width: 150, height: 22, textAlign: 'center', fontSize: 14, color: 'text' } });
+__A_Text({ parent: goals, text: function () { return (goalMotion ? 'IMU 步数估算' : 'DEMO 动画') + ' / 电量 ' + faceBatt() + '%' + (faceBattLive() ? '' : ' DEMO'); }, style: { position: 'absolute', x: 60, y: 413, width: 360, height: 24, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 /* The other four faces already reserve 228,544 of 230,400 canvas pixels.
  * This face uses retained native widgets only; each value owns its Text effect. */
 var modular = facePanel(); facePages.push(modular);
-Text({ parent: modular, text: 'LUME / MODULAR', style: { position: 'absolute', x: 32, y: 34, width: 300, height: 24, fontSize: 14, color: 'textDim' } });
-Text({ parent: modular, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 82, width: 416, height: 76, textAlign: 'center', fontSize: 48, color: 'text' } });
-Text({ parent: modular, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 160, width: 416, height: 30, textAlign: 'center', fontSize: 14, color: 'textDim' } });
+__A_Text({ parent: modular, text: 'LUME / MODULAR', style: { position: 'absolute', x: 32, y: 34, width: 300, height: 24, fontSize: 14, color: 'textDim' } });
+__A_Text({ parent: modular, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 82, width: 416, height: 76, textAlign: 'center', fontSize: 48, color: 'text' } });
+__A_Text({ parent: modular, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 160, width: 416, height: 30, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 function modularCard(x, y, label, value, detail, color) {
-  var card = View({ parent: modular, style: { position: 'absolute', x: x, y: y, width: 202, height: 104, background: 'surface', borderRadius: faceTheme.radius, scroll: 'none' } });
-  Text({ parent: card, text: label, style: { position: 'absolute', x: 16, y: 12, width: 170, height: 23, fontSize: 14, color: 'textDim' } });
-  var valueNode = Text({ parent: card, text: value, style: { position: 'absolute', x: 16, y: 39, width: 170, height: 38, fontSize: 24, color: color || 'text' } });
-  Text({ parent: card, text: detail, style: { position: 'absolute', x: 16, y: 79, width: 170, height: 20, fontSize: 14, color: 'textDim' } });
+  var card = __A_View({ parent: modular, style: { position: 'absolute', x: x, y: y, width: 202, height: 104, background: 'surface', borderRadius: faceTheme.radius, scroll: 'none' } });
+  __A_Text({ parent: card, text: label, style: { position: 'absolute', x: 16, y: 12, width: 170, height: 23, fontSize: 14, color: 'textDim' } });
+  var valueNode = __A_Text({ parent: card, text: value, style: { position: 'absolute', x: 16, y: 39, width: 170, height: 38, fontSize: 24, color: color || 'text' } });
+  __A_Text({ parent: card, text: detail, style: { position: 'absolute', x: 16, y: 79, width: 170, height: 20, fontSize: 14, color: 'textDim' } });
   return { card: card, value: valueNode };
 }
 var modularWeatherCard = modularCard(32, 210, 'WEATHER', function () { return modularWeather(); }, 'LOCAL', 'accent');
@@ -189,7 +270,7 @@ var modularStepsCard = modularCard(246, 326, 'STEPS', function () { return modul
 /* r130: one native Text corner status on the shared root (NO canvas added --
  * the other four faces already use 228,544/230,400 canvas px). Last child so
  * it renders above every face; empty once the wall clock is trusted. */
-Text({ parent: faceRoot, text: function () {
+__A_Text({ parent: faceRoot, text: function () {
   return faceWallValid ? '' : faceSyncStatus();
 }, style: { position: 'absolute', x: 8, y: 8, width: 140, height: 22,
   fontSize: 13, color: 'textDim' } });
