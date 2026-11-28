@@ -21,8 +21,10 @@ assert.equal(h.messages.filter(m => m[0] === 'attr' && m[2] === 5).at(-1)[3], 1)
 console.log('PASS watchface five-page swipe cycle');
 
 const canvases = h.messages.filter(m => m[0] === 'create' && m[2] === 3);
-/* r225: createNode flags bit 0 marks a 1x singleBuffer canvas; the prelude
- * charges half the 2x pool cost for those. */
+/* r225/r228: createNode flags bit 0 marks a 1x singleBuffer canvas; the prelude
+ * charges half the 2x pool cost for those. 480-unit truth = r227's 480 sizes
+ * with digital 12x12 + analog 300x300 on 1x, measured (not copied): 183,472
+ * weighted px = 72 + 45,000 (single) + 90,000 + 48,400 (double). */
 const isSingle = m => ((m[6] || 0) & 1) === 1;
 const canvasPixels = canvases.reduce((sum, m) => sum + m[4] * m[5] * (isSingle(m) ? 0.5 : 1), 0);
 assert.equal(canvases.length, 4);
@@ -35,7 +37,7 @@ const singleCanvases = canvases.filter(isSingle);
 assert.deepEqual(singleCanvases.map(m => [m[4], m[5]]), [[12, 12], [300, 300]]);
 assert.equal(singleCanvases.reduce((s, m) => s + m[4] * m[5], 0), 90144);
 assert.equal(canvases.filter(m => !isSingle(m)).reduce((s, m) => s + m[4] * m[5], 0), 138400);
-console.log(`PASS watchface canvas budget ${canvasPixels}/230400 px (1x: digital 12x12 + analog 300x300); modular uses zero canvas`);
+console.log(`PASS watchface 480 1x canvas budget ${canvasPixels}/230400 px (digital 12x12 + analog 300x300 singleBuffer); modular uses zero canvas`);
 
 assert.equal(evalJs('faceTheme.spacing'), 12);
 assert.equal(evalJs('modularBatteryCard.card') !== evalJs('modularWeatherCard.card'), true);
@@ -134,15 +136,21 @@ const noRings = source.replace(/if \(!c\.bgRings\) \{[\s\S]*?for \(var i = 0; i 
 assert.throws(() => assertRetainedSource(noRings), /background ring 136 retained/);
 console.log('PASS watchface retained-path mutation guards (ticks, rings)');
 
-/* r227: the same source must fit the smaller 466x466 round framebuffer. The
- * in-app adaptive shim scales all four authored canvases; the summed
- * double-buffered bytes may not exceed 466*466*4 (868,624). */
+/* r227/r228: the same source must fit the smaller 466x466 round framebuffer.
+ * __A_Canvas min-shrinks authored 300x300 to 291x291; singleBuffer forwards
+ * through its for-in copy. 466-unit truth = measured 1x bytes
+ * (sum w*h*2*[single?1:2]) = 691,558, well under the 868,624 double-buffer
+ * ceiling (r227's old 2x-all value was 861,208 B). Both budgets coexist:
+ * 480 = 1x px, 466 = 1x bytes. */
 {
   const h466 = runApp(source, { screen: { w: 466, h: 466 } });
   const cs466 = h466.messages.filter(m => m[0] === 'create' && m[2] === 3);
-  const px466 = cs466.reduce((sum, m) => sum + m[4] * m[5], 0);
+  const bytes466 = cs466.reduce((sum, m) => sum + m[4] * m[5] * 2 * (isSingle(m) ? 1 : 2), 0);
   assert.equal(cs466.length, 4);
-  assert.ok(px466 * 4 <= 466 * 466 * 4, `466 budget ${px466 * 4} > ${466 * 466 * 4}`);
+  assert.equal(bytes466, 691558);
+  assert.ok(bytes466 <= 466 * 466 * 4, `466 budget ${bytes466} > ${466 * 466 * 4}`);
   assert.ok(cs466.every(m => m[4] <= 466 && m[5] <= 466));
-  console.log(`PASS watchface 466 canvas budget ${px466 * 4}/${466 * 466 * 4} B`);
+  /* passthrough under __A_ADAPT (for-in copy path), not just the 480 no-op path */
+  assert.deepEqual(cs466.filter(isSingle).map(m => [m[4], m[5]]), [[12, 12], [291, 291]]);
+  console.log(`PASS watchface 466 1x canvas budget ${bytes466}/${466 * 466 * 4} B (digital 12x12 + analog 291x291 singleBuffer)`);
 }
