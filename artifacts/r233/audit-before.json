@@ -1,0 +1,891 @@
+[
+  {
+    "name": "counter",
+    "rootPad": "76px/76px/76px/76px",
+    "bbox": [
+      76,
+      74,
+      404,
+      404
+    ],
+    "margins": {
+      "L": 76,
+      "T": 74,
+      "R": 76,
+      "B": 76
+    },
+    "canvases": [],
+    "srcPads": [
+      76,
+      0
+    ],
+    "hasTest": false
+  },
+  {
+    "name": "games_snake",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      120,
+      80,
+      360,
+      400
+    ],
+    "margins": {
+      "L": 120,
+      "T": 80,
+      "R": 120,
+      "B": 80
+    },
+    "canvases": [
+      {
+        "x": 120,
+        "y": 128,
+        "w": 240,
+        "h": 240
+      }
+    ],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "games_2048",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      120,
+      80,
+      360,
+      412
+    ],
+    "margins": {
+      "L": 120,
+      "T": 80,
+      "R": 120,
+      "B": 68
+    },
+    "canvases": [],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "games_breakout",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      78,
+      396,
+      404
+    ],
+    "margins": {
+      "L": 84,
+      "T": 78,
+      "R": 84,
+      "B": 76
+    },
+    "canvases": [
+      {
+        "x": 84,
+        "y": 106,
+        "w": 312,
+        "h": 244
+      }
+    ],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "mario",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      398
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 82
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 64,
+        "w": 480,
+        "h": 352
+      }
+    ],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "calculator",
+    "rootPad": "76px/76px/76px/76px",
+    "bbox": [
+      76,
+      76,
+      404,
+      402
+    ],
+    "margins": {
+      "L": 76,
+      "T": 76,
+      "R": 76,
+      "B": 78
+    },
+    "canvases": [
+      {
+        "x": 84,
+        "y": 99,
+        "w": 312,
+        "h": 34
+      }
+    ],
+    "srcPads": [
+      76,
+      8
+    ],
+    "hasTest": false
+  },
+  {
+    "name": "storybook",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      80,
+      78,
+      400,
+      396
+    ],
+    "margins": {
+      "L": 80,
+      "T": 78,
+      "R": 80,
+      "B": 84
+    },
+    "canvases": [],
+    "srcPads": [
+      0
+    ],
+    "hasTest": true
+  },
+  {
+    "name": "gravity_ball",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": null,
+    "margins": null,
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "typewriter",
+    "rootPad": "28px/28px/28px/28px",
+    "bbox": [
+      28,
+      28,
+      452,
+      452
+    ],
+    "margins": {
+      "L": 28,
+      "T": 28,
+      "R": 28,
+      "B": 28
+    },
+    "canvases": [],
+    "srcPads": [
+      28,
+      20
+    ],
+    "hasTest": false
+  },
+  {
+    "name": "power_demo",
+    "rootPad": "76px/76px/76px/76px",
+    "bbox": [
+      76,
+      76,
+      404,
+      404
+    ],
+    "margins": {
+      "L": 76,
+      "T": 76,
+      "R": 76,
+      "B": 76
+    },
+    "canvases": [],
+    "srcPads": [
+      76,
+      0,
+      12
+    ],
+    "hasTest": false
+  },
+  {
+    "name": "games_tetris",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      78,
+      78,
+      400,
+      402
+    ],
+    "margins": {
+      "L": 78,
+      "T": 78,
+      "R": 80,
+      "B": 78
+    },
+    "canvases": [
+      {
+        "x": 80,
+        "y": 80,
+        "w": 160,
+        "h": 320
+      },
+      {
+        "x": 254,
+        "y": 164,
+        "w": 80,
+        "h": 80
+      }
+    ],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "pet",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      402
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 78
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "async_demo",
+    "rootPad": "24px/24px/24px/24px",
+    "bbox": [
+      24,
+      176,
+      456,
+      304
+    ],
+    "margins": {
+      "L": 24,
+      "T": 176,
+      "R": 24,
+      "B": 176
+    },
+    "canvases": [],
+    "srcPads": [
+      24
+    ],
+    "hasTest": false
+  },
+  {
+    "name": "piano",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      79,
+      78,
+      401,
+      396
+    ],
+    "margins": {
+      "L": 79,
+      "T": 78,
+      "R": 79,
+      "B": 84
+    },
+    "canvases": [],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "skyfire",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      398
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 82
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "skycombat",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": null,
+    "margins": null,
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "invaders",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      126
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 354
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "frogger",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      126
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 354
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "abc123",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      80,
+      64,
+      400,
+      404
+    ],
+    "margins": {
+      "L": 80,
+      "T": 64,
+      "R": 80,
+      "B": 76
+    },
+    "canvases": [],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "sokoban",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      78,
+      396,
+      400
+    ],
+    "margins": {
+      "L": 84,
+      "T": 78,
+      "R": 84,
+      "B": 80
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "memory",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      80,
+      76,
+      312,
+      404
+    ],
+    "margins": {
+      "L": 80,
+      "T": 76,
+      "R": 168,
+      "B": 76
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "minesweeper",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      78,
+      396,
+      134
+    ],
+    "margins": {
+      "L": 84,
+      "T": 78,
+      "R": 84,
+      "B": 346
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "scroller",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      76,
+      396,
+      396
+    ],
+    "margins": {
+      "L": 84,
+      "T": 76,
+      "R": 84,
+      "B": 84
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 56,
+        "w": 480,
+        "h": 352
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "raycast",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      396
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 84
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 460
+      },
+      {
+        "x": 84,
+        "y": 150,
+        "w": 96,
+        "h": 96
+      }
+    ],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "fishtank",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": null,
+    "margins": null,
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "particles",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      396
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 84
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 480
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "voice_assistant",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      76,
+      396,
+      400
+    ],
+    "margins": {
+      "L": 84,
+      "T": 76,
+      "R": 84,
+      "B": 80
+    },
+    "canvases": [
+      {
+        "x": 80,
+        "y": 168,
+        "w": 320,
+        "h": 160
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "ble_uart",
+    "rootPad": "76px/76px/76px/76px",
+    "bbox": [
+      76,
+      76,
+      404,
+      404
+    ],
+    "margins": {
+      "L": 76,
+      "T": 76,
+      "R": 76,
+      "B": 76
+    },
+    "canvases": [],
+    "srcPads": [
+      76
+    ],
+    "hasTest": false
+  },
+  {
+    "name": "svg_icon",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      200,
+      200,
+      280,
+      280
+    ],
+    "margins": {
+      "L": 200,
+      "T": 200,
+      "R": 200,
+      "B": 200
+    },
+    "canvases": [],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "gestures",
+    "rootPad": "76px/76px/76px/76px",
+    "bbox": [
+      76,
+      76,
+      404,
+      404
+    ],
+    "margins": {
+      "L": 76,
+      "T": 76,
+      "R": 76,
+      "B": 76
+    },
+    "canvases": [],
+    "srcPads": [
+      10,
+      76
+    ],
+    "hasTest": true
+  },
+  {
+    "name": "flapdot",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      124
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 356
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 80,
+        "w": 480,
+        "h": 400
+      }
+    ],
+    "srcPads": [],
+    "hasTest": true
+  },
+  {
+    "name": "keyboard_demo",
+    "rootPad": "12px/12px/12px/12px",
+    "bbox": [
+      11,
+      80,
+      469,
+      422
+    ],
+    "margins": {
+      "L": 11,
+      "T": 80,
+      "R": 11,
+      "B": 58
+    },
+    "canvases": [],
+    "srcPads": [
+      8
+    ],
+    "hasTest": true
+  },
+  {
+    "name": "wordle",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      16,
+      75,
+      464,
+      440
+    ],
+    "margins": {
+      "L": 16,
+      "T": 75,
+      "R": 16,
+      "B": 40
+    },
+    "canvases": [
+      {
+        "x": 80,
+        "y": 110,
+        "w": 320,
+        "h": 128
+      }
+    ],
+    "srcPads": [
+      0
+    ],
+    "hasTest": true
+  },
+  {
+    "name": "mochi",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      80,
+      396,
+      400
+    ],
+    "margins": {
+      "L": 84,
+      "T": 80,
+      "R": 84,
+      "B": 80
+    },
+    "canvases": [
+      {
+        "x": 0,
+        "y": 0,
+        "w": 480,
+        "h": 400
+      }
+    ],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "sparkline_demo",
+    "rootPad": "12px/12px/12px/12px",
+    "bbox": [
+      84,
+      88,
+      396,
+      388
+    ],
+    "margins": {
+      "L": 84,
+      "T": 88,
+      "R": 84,
+      "B": 92
+    },
+    "canvases": [
+      {
+        "x": 84,
+        "y": 152,
+        "w": 312,
+        "h": 44
+      },
+      {
+        "x": 84,
+        "y": 218,
+        "w": 312,
+        "h": 44
+      },
+      {
+        "x": 84,
+        "y": 284,
+        "w": 312,
+        "h": 40
+      }
+    ],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "app_manager",
+    "rootPad": "0px/0px/0px/0px",
+    "bbox": [
+      84,
+      84,
+      396,
+      396
+    ],
+    "margins": {
+      "L": 84,
+      "T": 84,
+      "R": 84,
+      "B": 84
+    },
+    "canvases": [],
+    "srcPads": [],
+    "hasTest": false
+  },
+  {
+    "name": "imu_poll",
+    "rootPad": "76px/76px/76px/76px",
+    "bbox": [
+      76,
+      76,
+      404,
+      404
+    ],
+    "margins": {
+      "L": 76,
+      "T": 76,
+      "R": 76,
+      "B": 76
+    },
+    "canvases": [],
+    "srcPads": [
+      10,
+      76,
+      0,
+      12
+    ],
+    "hasTest": false
+  }
+]
