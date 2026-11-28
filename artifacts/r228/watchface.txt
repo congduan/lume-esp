@@ -1,0 +1,10 @@
+PASS watchface five-page swipe cycle
+PASS watchface 480 1x canvas budget 183472/230400 px (digital 12x12 + analog 300x300 singleBuffer); modular uses zero canvas
+PASS watchface weather updates only its own complication text
+PASS watchface weather WiFi-down fallback --°
+PASS watchface six native AA arcs; dirty area 46656 px
+PASS watchface progress clamps 0..100
+PASS watchface retained-path static contract (ticks + 3 bg rings)
+PASS watchface retained paths defined once, replayed on every redraw
+PASS watchface retained-path mutation guards (ticks, rings)
+PASS watchface 466 1x canvas budget 691558/868624 B (digital 12x12 + analog 291x291 singleBuffer)

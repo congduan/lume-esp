@@ -1,0 +1,37 @@
+BEFORE canvases: [["digital",12,12,0],["analog",300,300,0],["rings",300,300,0],["goals",220,220,0]]
+AFTER  canvases: [["digital",12,12,1],["analog",300,300,1],["rings",300,300,0],["goals",220,220,0]]
+RAW message count before/after: 637/637
+RAW differences: 2
+  DIFF[42] before=["create",6,3,2,12,12] after=["create",6,3,2,12,12,1]
+  DIFF[74] before=["create",10,3,8,300,300] after=["create",10,3,8,300,300,1]
+All raw differences are createNode singleBuffer flags only: true
+NORMALIZED stream IDENTICAL: true
+  before sha256: b47a270814b12ffaa60fa547f7a925305d2bdac58b37e455cdd901e044d84feb
+  after  sha256: b47a270814b12ffaa60fa547f7a925305d2bdac58b37e455cdd901e044d84feb
+RGB565 pixel diff lines:
+  digital-frame0: 0/144 px diff
+  analog-frame0: 0/90000 px diff
+  rings-frame0: 0/90000 px diff
+  goals-frame0: 0/48400 px diff
+  digital-frame1: 0/144 px diff
+  analog-frame1: 0/90000 px diff
+  rings-frame1: 0/90000 px diff
+  goals-frame1: 0/48400 px diff
+  digital-frame2: 0/144 px diff
+  analog-frame2: 0/90000 px diff
+  rings-frame2: 0/90000 px diff
+  goals-frame2: 0/48400 px diff
+  digital-frame3: 0/144 px diff
+  analog-frame3: 0/90000 px diff
+  rings-frame3: 0/90000 px diff
+  goals-frame3: 0/48400 px diff
+  digital-frame4: 0/144 px diff
+  analog-frame4: 0/90000 px diff
+  rings-frame4: 0/90000 px diff
+  goals-frame4: 0/48400 px diff
+  digital-frame5: 0/144 px diff
+  analog-frame5: 0/90000 px diff
+  rings-frame5: 0/90000 px diff
+  goals-frame5: 0/48400 px diff
+TOTAL RGB565 diff: 0 / 1371264 px (IDENTICAL)
+PASS 480px message stream + pixels IDENTICAL

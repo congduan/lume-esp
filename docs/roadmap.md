@@ -3576,3 +3576,30 @@ are untouched; no `idf.py build`.
 - **Not on-device acceptance**: 466 CO5300 round visuals, touch, frame time,
   PSRAM peak and double-buffer behaviour remain deferred to board bring-up.
   Full record: `docs/r227-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r227).
+
+### r228 result — 合并 r225 悬尾分支（r226/r227 watchface 双线收敛，纯 app + test + docs，无真机验收）
+
+Merges the never-landed `r225-singlebuffer-consumers` (`785abf3`) into the
+r226/r227 mainline (`0ce2c7b`). `git merge --no-ff` produced 5 conflicts,
+resolved as two-sided stacking: r227's `__A_*` adaptive shim stays verbatim,
+and r225's `singleBuffer: true` is added back only at the digital 12x12 and
+analog 300x300 `__A_Canvas` call sites (for-in copy forwards the flag; no shim
+change). goals 220x220 and rings 300x300 stay double-buffered.
+
+- **Budget assertions converge, both kept**: 480 = **183,472 weighted 1x px**
+  (r227 480 identity + singleBuffer half-cost); 466 = **691,558 B 1x bytes**
+  (measured `sum w*h*2*[single?1:2]`, `__A_Canvas` min-shrinks 300->291 and
+  220->214; r227's old all-double value was 861,208 B, ceiling 868,624 B
+  unchanged). Truths measured before writing assertions.
+- **480 equivalence**: 637/637 messages before/after; only 2 raw differences,
+  both the `createNode` `flags=1` element (digital node 6, analog node 10).
+  Normalized stream sha256 identical; 24 face-frames RGB565 0/1,371,264 px
+  diff (`artifacts/r228/equivalence.txt`). No publish-behaviour or message-count
+  change.
+- **Verification**: 112 `tests/*.js` 0 FAIL; `npm test --prefix tools/lume`
+  87 pass / 0 fail; playground build idempotent; `check_website.py` four `none`;
+  `playground/verify.mjs` all PASS (74 apps load); `git diff origin/main --
+  firmware/ runtime/` empty, no `idf.py build`.
+- **Not on-device acceptance**: PSRAM peak, singleBuffer tearing feel and
+  asynchronous IMU trigger behaviour remain deferred to board bring-up.
+  Full record: `docs/r228-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r228).
