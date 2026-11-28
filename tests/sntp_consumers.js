@@ -107,7 +107,7 @@ const checks = [
   ['settings General page has the live status Text bound to timeSyncLine',
     [settingsSyncRow, s => /Text\(\{ text: function \(\) \{ return timeSyncLine\(\); \}/.test(s)]],
   ['settings sync row adds at most 3 nodes (View + Text + Button)',
-    [settingsSyncRow, s => (s.match(/\b(?:View|Text|Button)\s*\(/g) || []).length === 3]],
+    [settingsSyncRow, s => (s.match(/\b(?:__A_)?(?:View|Text|Button)\s*\(/g) || []).length === 3]],
   ['settings status copy covers SYNCED / OFFLINE / FAILED / NO WIFI',
     [settings, s => ['Time  SYNCED', 'Time  OFFLINE',
                      'Time  FAILED', 'Time  NO WIFI']
@@ -175,8 +175,8 @@ must('settings unbinds the status Text from timeSyncLine',
   s => s.replace('return timeSyncLine();', "return '';"),
   'settings General page has the live status Text bound to timeSyncLine', settingsSyncRow);
 must('settings adds a fourth node to the sync row',
-  s => s.replace("    Button({ title: 'Sync now', onPress: syncTimeNow,",
-                 "    Text({ text: 'extra', style: {} }),\n    Button({ title: 'Sync now', onPress: syncTimeNow,"),
+  s => s.replace("    __A_Button({ title: 'Sync now', onPress: syncTimeNow,",
+                 "    __A_Text({ text: 'extra', style: {} }),\n    __A_Button({ title: 'Sync now', onPress: syncTimeNow,"),
   'settings sync row adds at most 3 nodes (View + Text + Button)', settingsSyncRow);
 must('settings drops the FAILED copy',
   s => s.replace("'Time  FAILED'", "'Time  FAIL'"),

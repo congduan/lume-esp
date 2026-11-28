@@ -122,7 +122,7 @@ const asciiOnly = s => {
   return lits.length > 0 && lits.every(v => /^[\x00-\x7F]*$/.test(v));
 };
 const errBranch = s => s.includes("rc < 0 ? 'ERR ' + rc : 'OK'") && !/\brc \?/.test(s);
-const realScale = s => s.includes('imgscale.scale(SRC, SW, SH, dst, dw, dh, m)');
+const realScale = s => s.includes('imgscale.scale(SRC, __IMG_SW, __IMG_SH, dst, dw, dh, m)');
 const budgetDecl = s => /LUME_MAX_NODES = 128/.test(s) && /NODE BUDGET/.test(s);
 const plainGlobal = s => !/\bimport\b|\bexport\b/.test(s);
 function gitChanged(paths) {
@@ -264,7 +264,7 @@ check('MUTATION non-ASCII UI literal -> ASCII predicate FAILS', () => {
   assert.equal(asciiOnly(mutated), false);
 });
 check('MUTATION fake scale result -> real-scale predicate and pixel compare FAIL', () => {
-  const mutated = source.replace('imgscale.scale(SRC, SW, SH, dst, dw, dh, m)',
+  const mutated = source.replace('imgscale.scale(SRC, __IMG_SW, __IMG_SH, dst, dw, dh, m)',
     '(dst.fill(0), 0)');
   assert.notEqual(mutated, source);
   assert.equal(realScale(mutated), false);

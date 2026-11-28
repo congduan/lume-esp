@@ -93,7 +93,7 @@ const checks = [
     (s.match(/^\s*import\s/gm) || []).length === 1]],
 
   ['round SafeArea and vector Canvas icons (no single-letter c.text glyphs)', [source, s =>
-    s.includes("lume.ui.shell.SafeArea({ parent: root, shape: 'round', size: 480") &&
+    s.includes("lume.ui.shell.SafeArea({ parent: root, shape: 'round', size: SW") &&
     s.includes('function drawIconGlyph(') && !s.includes('c.text(')]],
 
   ['explicit 12-app literal list rendered in 3x4 grid, all real examples', [source, s => {

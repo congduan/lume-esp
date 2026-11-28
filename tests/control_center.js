@@ -87,7 +87,7 @@ const checks = [
     (s.match(/^\s*import\s/gm) || []).length === 1]],
 
   ['SafeArea consumed as the round-screen safe container', [source, s =>
-    s.includes("lume.ui.shell.SafeArea({ parent: outerRoot, shape: 'round', size: 480, children: [] })")]],
+    s.includes("lume.ui.shell.SafeArea({ parent: outerRoot, shape: 'round', size: SW, children: [] })")]],
 
   ['Card consumed by four setting cards', [source, s =>
     (s.match(/lume\.ui\.shell\.Card\(\{/g) || []).length === 4]],
