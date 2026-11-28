@@ -3631,3 +3631,35 @@ change). goals 220x220 and rings 300x300 stay double-buffered.
   frame time and PSRAM peak stay deferred to board bring-up; the pre-existing
   `watchface` label clipping (r226 §3) is unchanged and registered, not fixed.
   Full record: `docs/r229-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r229).
+
+### r230 result — 11 个 (240,240) 锚点圆屏 app 原生 466 对齐（app only，无真机验收）
+
+The r227 "not touched this round" / r229 §2 legacy is now closed: all 11
+hard-anchored round apps (`files`, `settings`, `weather`, `music_player`,
+`control_center`, `launcher_grid`, `image_gallery`, `adc_meter`, `crypto_check`,
+`archive_view`, `img_view`) carry the same inline per-app `__A_*` adaptive shim
+family as r227, with a corrected `__A_props(p)` that actually scales
+`p.style` (r227's original forwarded the whole props object, so DOM anchors
+never moved) and an `__A_List` for `itemHeight`.
+
+- **Anchor fix measured, not assumed**: `__A_SX/SY(240)=233`, `75->73`,
+  `405->393`; outer round containers move from center `(240,240)` to
+  `(233.5,233.5)` and the two SafeArea apps now use `size:SW` (466 ->
+  `329x329@(68,68)`, center `(232.5,232.5)`). The `+7px,+7px` offset
+  registered in r229 is eliminated; safe guide alignment error `<=0.2px`.
+- **Special cases handled as written**: `img_view`'s source-image `SW/SH=24`
+  renamed to `__IMG_SW/__IMG_SH` to avoid colliding with the shim's screen
+  `SW/SH`; sprite `retainImage` nearest-neighbour downsampling at 466 (fast
+  path at 480). Four harnesses with source-text locks were synced only after
+  reproducing each failure.
+- **480 identity is the hard gate**: frozen-clock native stream comparison
+  `TOTAL=11 IDENTICAL=11 DIFFERENT=0` (boot + 3 ticks, real prelude); both
+  466 and 480 full audits `ok=74 fail=0`; 112 `tests/*.js` 0 FAIL;
+  `npm test` 87 pass / 0 fail; `verify.mjs` 18/18 PASS (74 apps load at
+  native 466); `check_website.py` four `none`; added non-ASCII lines 0;
+  `git diff origin/main -- firmware/ runtime/ tools/lume/` empty, no
+  `idf.py build`.
+- **Not on-device acceptance**: native 466 CO5300 visuals, touch hit
+  accuracy, frame time and PSRAM peak stay deferred to board bring-up; the
+  six Playwright shots are browser evidence only. Full record:
+  `docs/r230-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r230).

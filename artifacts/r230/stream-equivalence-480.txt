@@ -1,0 +1,12 @@
+IDENTICAL files             msgs=341/341 sha256/16=6055afa035d3b55b / 6055afa035d3b55b
+IDENTICAL settings          msgs=1309/1309 sha256/16=a5766f8da1284832 / a5766f8da1284832
+IDENTICAL weather           msgs=518/518 sha256/16=402ecc350321e3e6 / 402ecc350321e3e6
+IDENTICAL music_player      msgs=365/365 sha256/16=eaeb9cea54beb686 / eaeb9cea54beb686
+IDENTICAL control_center    msgs=247/247 sha256/16=4823fc07d3aa2126 / 4823fc07d3aa2126
+IDENTICAL launcher_grid     msgs=591/591 sha256/16=0dfb2a4f0e6cbdd2 / 0dfb2a4f0e6cbdd2
+IDENTICAL image_gallery     msgs=180/180 sha256/16=729f89d8c097df38 / 729f89d8c097df38
+IDENTICAL adc_meter         msgs=214/214 sha256/16=38ba5a0b5bc43556 / 38ba5a0b5bc43556
+IDENTICAL crypto_check      msgs=189/189 sha256/16=622f58e97e7987ca / 622f58e97e7987ca
+IDENTICAL archive_view      msgs=166/166 sha256/16=85151319c982ee28 / 85151319c982ee28
+IDENTICAL img_view          msgs=104/104 sha256/16=9c8a46d171e9033d / 9c8a46d171e9033d
+TOTAL=11 IDENTICAL=11 DIFFERENT=0

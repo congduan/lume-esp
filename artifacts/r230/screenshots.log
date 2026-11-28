@@ -1,0 +1,6 @@
+PASS shot launcher_grid round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r230-wt/artifacts/r230/shots/launcher_grid-round-466.png
+PASS shot weather round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r230-wt/artifacts/r230/shots/weather-round-466.png
+PASS shot music_player round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r230-wt/artifacts/r230/shots/music_player-round-466.png
+PASS shot control_center round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r230-wt/artifacts/r230/shots/control_center-round-466.png
+PASS shot files round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r230-wt/artifacts/r230/shots/files-round-466.png
+PASS shot img_view round=true wrap=466 device=466px transform=matrix(1, 0, 0, 1, 0, 0) -> /tmp/lume-r230-wt/artifacts/r230/shots/img_view-round-466.png
