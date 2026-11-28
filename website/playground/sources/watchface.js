@@ -151,11 +151,15 @@ var digital = facePanel(); facePages.push(digital);
 Text({ parent: digital, text: 'LUME / DIGITAL', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
 Text({ parent: digital, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 160, width: 416, height: 70, textAlign: 'center', fontSize: 48, color: 'text' } });
 Text({ parent: digital, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 246, width: 416, height: 36, textAlign: 'center', fontSize: 14, color: 'textDim' } });
-Canvas({ parent: digital, width: 12, height: 12, style: { position: 'absolute', x: 210, y: 329 }, onDraw: function (c) { c.circle(6, 6, 5, '#40D8B0'); } });
+/* r225: static second dot -- its onDraw reads no signal, so it never publishes
+ * after boot. singleBuffer is safe and refunds the work buffer (1x budget). */
+Canvas({ parent: digital, width: 12, height: 12, singleBuffer: true, style: { position: 'absolute', x: 210, y: 329 }, onDraw: function (c) { c.circle(6, 6, 5, '#40D8B0'); } });
 Text({ parent: digital, text: function () { return faceTwo(faceNow().getSeconds()); }, style: { position: 'absolute', x: 228, y: 320, width: 48, height: 32, textAlign: 'left', fontSize: 20, color: 'accent' } });
 var analog = facePanel(); facePages.push(analog);
 Text({ parent: analog, text: 'LUME / ANALOG', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
-var analogCanvas = Canvas({ parent: analog, width: 300, height: 300, style: { position: 'absolute', x: 90, y: 96 }, onDraw: analogDraw });
+/* r225: full-canvas repaint once per 1 Hz faceNow tick (FULL invalidate), so a
+ * partial publish is always covered by the next tick; singleBuffer halves cost. */
+var analogCanvas = Canvas({ parent: analog, width: 300, height: 300, singleBuffer: true, style: { position: 'absolute', x: 90, y: 96 }, onDraw: analogDraw });
 Text({ parent: analog, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 407, width: 416, height: 30, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 var rings = facePanel(); facePages.push(rings);
 Text({ parent: rings, text: 'LUME / ACTIVITY', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
@@ -169,8 +173,9 @@ Text({ parent: goals, text: function () { return faceTime(); }, style: { positio
 Text({ parent: goals, text: function () { var v = goalValues(); return v[0] + ' kcal'; }, style: { position: 'absolute', x: 185, y: 249, width: 110, height: 22, textAlign: 'center', fontSize: 14, color: 'danger' } });
 Text({ parent: goals, text: function () { var v = goalValues(); return v[1] + ' 分钟 / ' + v[2] + ' 次'; }, style: { position: 'absolute', x: 165, y: 272, width: 150, height: 22, textAlign: 'center', fontSize: 14, color: 'text' } });
 Text({ parent: goals, text: function () { return (goalMotion ? 'IMU 步数估算' : 'DEMO 动画') + ' / 电量 ' + faceBatt() + '%' + (faceBattLive() ? '' : ' DEMO'); }, style: { position: 'absolute', x: 60, y: 413, width: 360, height: 24, textAlign: 'center', fontSize: 14, color: 'textDim' } });
-/* The other four faces already reserve 228,544 of 230,400 canvas pixels.
- * This face uses retained native widgets only; each value owns its Text effect. */
+/* The other four faces reserve 183,472/230,400 canvas pixels after r225
+ * (analog + digital moved to 1x singleBuffer). This face uses retained native
+ * widgets only; each value owns its Text effect. */
 var modular = facePanel(); facePages.push(modular);
 Text({ parent: modular, text: 'LUME / MODULAR', style: { position: 'absolute', x: 32, y: 34, width: 300, height: 24, fontSize: 14, color: 'textDim' } });
 Text({ parent: modular, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 82, width: 416, height: 76, textAlign: 'center', fontSize: 48, color: 'text' } });
@@ -187,7 +192,7 @@ var modularBatteryCard = modularCard(246, 210, 'BATTERY', function () { return f
 var modularCalendarCard = modularCard(32, 326, 'CALENDAR', function () { var d = faceNow(); return FACE_DAYS[d.getDay()]; }, function () { var d = faceNow(); return (d.getMonth() + 1) + '月' + d.getDate() + '日'; });
 var modularStepsCard = modularCard(246, 326, 'STEPS', function () { return modularSteps() + ' 步'; }, 'IMU EST.', 'accent');
 /* r130: one native Text corner status on the shared root (NO canvas added --
- * the other four faces already use 228,544/230,400 canvas px). Last child so
+ * the other four faces use 183,472/230,400 canvas px after r225). Last child so
  * it renders above every face; empty once the wall clock is trusted. */
 Text({ parent: faceRoot, text: function () {
   return faceWallValid ? '' : faceSyncStatus();
