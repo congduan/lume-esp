@@ -78,6 +78,14 @@ function __A_View(p, kids) { return View(__A_style(p), kids); }
 function __A_Text(p, kids) { return Text(__A_style(p), kids); }
 function __A_Button(p, kids) { return Button(__A_style(p), kids); }
 function __A_Image(p, kids) { return Image(__A_style(p), kids); }
+/* r231: corner labels live inside the native 466 round screen. Use raw Text
+ * with explicit __A_SX/__A_SY once -- routing these through __A_Text would
+ * scale a second time inside __A_style. Coordinates are 480-logical. */
+function __A_cornerLabel(parent, text, x, y, width) {
+  return Text({ parent: parent, text: text,
+    style: { position: 'absolute', x: __A_SX(x), y: __A_SY(y),
+      width: __A_SX(width), height: __A_SY(24), fontSize: 14, color: 'textDim' } });
+}
 
 /* Five swipeable watch faces. Time is the device's Date clock. */
 var WATCHFACE_START_PAGE = 0; /* 0 digital, 1 analog, 2 info rings, 3 goals, 4 modular */
@@ -229,7 +237,7 @@ var faceRoot = __A_View({ style: { width: '100%', height: '100%', background: 'b
 var facePages = [];
 function facePanel() { return __A_View({ parent: faceRoot, style: { position: 'absolute', x: 0, y: 0, width: 480, height: 480, background: 'bg', scroll: 'none' } }); }
 var digital = facePanel(); facePages.push(digital);
-__A_Text({ parent: digital, text: 'LUME / DIGITAL', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+__A_cornerLabel(digital, 'LUME / DIGITAL', 80, 84, 280);
 __A_Text({ parent: digital, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 160, width: 416, height: 70, textAlign: 'center', fontSize: 48, color: 'text' } });
 __A_Text({ parent: digital, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 246, width: 416, height: 36, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 /* r225: static second dot -- its onDraw reads no signal, so it never publishes
@@ -238,19 +246,19 @@ __A_Text({ parent: digital, text: function () { return faceDate(); }, style: { p
 __A_Canvas({ parent: digital, width: 12, height: 12, singleBuffer: true, style: { position: 'absolute', x: 210, y: 329 }, onDraw: function (c) { c.circle(6, 6, 5, '#40D8B0'); } });
 __A_Text({ parent: digital, text: function () { return faceTwo(faceNow().getSeconds()); }, style: { position: 'absolute', x: 228, y: 320, width: 48, height: 32, textAlign: 'left', fontSize: 20, color: 'accent' } });
 var analog = facePanel(); facePages.push(analog);
-__A_Text({ parent: analog, text: 'LUME / ANALOG', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+__A_cornerLabel(analog, 'LUME / ANALOG', 80, 72, 280); /* above the dial canvas at y=96 */
 /* r225: full-canvas repaint once per 1 Hz faceNow tick (FULL invalidate), so a
  * partial publish is always covered by the next tick; singleBuffer halves cost.
  * r228: stays on __A_Canvas; for-in copy forwards singleBuffer to Canvas(o). */
 var analogCanvas = __A_Canvas({ parent: analog, width: 300, height: 300, singleBuffer: true, style: { position: 'absolute', x: 90, y: 96 }, onDraw: analogDraw });
 __A_Text({ parent: analog, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 407, width: 416, height: 30, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 var rings = facePanel(); facePages.push(rings);
-__A_Text({ parent: rings, text: 'LUME / ACTIVITY', style: { position: 'absolute', x: 32, y: 40, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+__A_cornerLabel(rings, 'LUME / ACTIVITY', 80, 72, 280); /* above the rings canvas at y=96 */
 var ringCanvas = __A_Canvas({ parent: rings, width: 300, height: 300, style: { position: 'absolute', x: 90, y: 96 }, onDraw: ringDraw });
 __A_Text({ parent: rings, text: function () { return faceTime(); }, style: { position: 'absolute', x: 152, y: 214, width: 176, height: 52, textAlign: 'center', fontSize: 32, color: 'text' } });
 __A_Text({ parent: rings, text: function () { return faceBatt() + '%  ·  ' + faceSteps() + ' 步'; }, style: { position: 'absolute', x: 48, y: 409, width: 384, height: 28, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 var goals = facePanel(); facePages.push(goals);
-__A_Text({ parent: goals, text: 'LUME / GOALS', style: { position: 'absolute', x: 32, y: 34, width: 280, height: 24, fontSize: 14, color: 'textDim' } });
+__A_cornerLabel(goals, 'LUME / GOALS', 80, 78, 280);
 var goalCanvas = __A_Canvas({ parent: goals, width: 220, height: 220, style: { position: 'absolute', x: 130, y: 132 }, onDraw: goalDraw });
 __A_Text({ parent: goals, text: function () { return faceTime(); }, style: { position: 'absolute', x: 175, y: 198, width: 130, height: 50, textAlign: 'center', fontSize: 32, color: 'text' } });
 __A_Text({ parent: goals, text: function () { var v = goalValues(); return v[0] + ' kcal'; }, style: { position: 'absolute', x: 185, y: 249, width: 110, height: 22, textAlign: 'center', fontSize: 14, color: 'danger' } });
@@ -260,7 +268,7 @@ __A_Text({ parent: goals, text: function () { return (goalMotion ? 'IMU 步数�
  * (analog + digital moved to 1x singleBuffer; r228 keeps r227 __A_ wrappers).
  * This face uses retained native widgets only; each value owns its Text effect. */
 var modular = facePanel(); facePages.push(modular);
-__A_Text({ parent: modular, text: 'LUME / MODULAR', style: { position: 'absolute', x: 32, y: 34, width: 300, height: 24, fontSize: 14, color: 'textDim' } });
+__A_cornerLabel(modular, 'LUME / MODULAR', 80, 78, 300);
 __A_Text({ parent: modular, text: function () { return faceTime(); }, style: { position: 'absolute', x: 32, y: 82, width: 416, height: 76, textAlign: 'center', fontSize: 48, color: 'text' } });
 __A_Text({ parent: modular, text: function () { return faceDate(); }, style: { position: 'absolute', x: 32, y: 160, width: 416, height: 30, textAlign: 'center', fontSize: 14, color: 'textDim' } });
 function modularCard(x, y, label, value, detail, color) {
@@ -277,9 +285,11 @@ var modularStepsCard = modularCard(246, 326, 'STEPS', function () { return modul
 /* r130: one native Text corner status on the shared root (NO canvas added --
  * the other four faces use 183,472/230,400 canvas px after r225). Last child so
  * it renders above every face; empty once the wall clock is trusted. */
+/* r231: the sync status shares every face, so it sits in the same safe band
+ * as the corner labels but on the right (logical x/y scale via __A_style). */
 __A_Text({ parent: faceRoot, text: function () {
   return faceWallValid ? '' : faceSyncStatus();
-}, style: { position: 'absolute', x: 8, y: 8, width: 140, height: 22,
+}, style: { position: 'absolute', x: 300, y: 84, width: 140, height: 22,
   fontSize: 13, color: 'textDim' } });
 function modularPollWeather() {
   /* wttr.in chooses the current location; no city is assumed by the example.

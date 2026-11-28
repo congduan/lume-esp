@@ -231,11 +231,12 @@ var root = View({ style: { width: 480, height: 480, background: BG, scroll: 'non
   Text({ text: function () { return 'GEN ' + stGen() + '   ALIVE ' + stAlive() + '   ' + stSpeed() + 'MS  ' + stRun(); },
     style: { position: 'absolute', x: 84, y: 106, width: 312, height: 22,
       fontSize: 13, color: '#40D8B0', borderRadius: 0, textAlign: 'center' } }),
+  /* r231: bottom controls lifted into the native 466 round arc (pure coords). */
   Button({ title: 'PATTERN', onPress: function () { applyPattern(patternIndex + 1); },
-    style: { position: 'absolute', x: 170, y: 330, width: 140, height: 48,
+    style: { position: 'absolute', x: 170, y: 310, width: 140, height: 48,
       background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } }),
   Text({ text: 'TAP seed  SWIPE UP play/pause  SWIPE L/R speed  HOLD clear',
-    style: { position: 'absolute', x: 84, y: 380, width: 312, height: 18,
+    style: { position: 'absolute', x: 84, y: 360, width: 312, height: 18,
       fontSize: 11, color: '#9EB3C6', borderRadius: 0, textAlign: 'center' } })
 ]);
 
