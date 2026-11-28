@@ -74,20 +74,24 @@ function __A_Canvas(p) {
   };
   return Canvas(o);
 }
-function __A_props(p) {
+function __A_props(p, minTouch) {
   if (!__A_ADAPT || !p || typeof p !== 'object') return p;
   var o = {}, k;
   for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  if (minTouch && p.style && o.style) {
+    if (typeof p.style.width === 'number' && p.style.width >= 48 && o.style.width < 48) o.style.width = 48;
+    if (typeof p.style.height === 'number' && p.style.height >= 48 && o.style.height < 48) o.style.height = 48;
+  }
   return o;
 }
-function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_View(p, kids) { return View(__A_props(p, !!(p && p.onPress)), kids); }
 function __A_Text(p, kids) { return Text(__A_props(p), kids); }
-function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p, true), kids); }
 function __A_Image(p, kids) { return Image(__A_props(p), kids); }
 function __A_List(p) {
   if (!__A_ADAPT || !p) return List(p);
   var o = __A_props(p);
-  o.itemHeight = __A_SY(p.itemHeight);
+  o.itemHeight = (typeof p.itemHeight === 'number' && p.itemHeight >= 48) ? Math.max(48, __A_SY(p.itemHeight)) : __A_SY(p.itemHeight);
   return List(o);
 }
 
@@ -460,7 +464,7 @@ function kbKey(k) {
 
 function kbRow(children) {
   return __A_View({ style: {
-    width: '100%', height: 42, display: 'flex', flexDirection: 'row', gap: 4
+    width: '100%', height: 48, display: 'flex', flexDirection: 'row', gap: 4
   } }, children);
 }
 function kbKeyButton(k) {
@@ -468,7 +472,7 @@ function kbKeyButton(k) {
     title: function () { return keyChar(k) === 'space' ? 'space' : keyChar(k); },
     onPress: function () { kbKey(k); },
     style: {
-      flexGrow: k[2] || 2, height: 42,
+      flexGrow: k[2] || 2, height: 48,
       background: function () {
         var label = keyChar(k);
         return (label === 'DEL' || label === 'ESC' || label === 'OK' ||
@@ -496,7 +500,7 @@ for (var r = 0; r < KB_ROWS.length; r++) {
   kbChildren.push(kbRow(KB_ROWS[r].map(kbKeyButton)));
 }
 var kbOverlay = __A_View({ style: {
-  position: 'absolute', x: 76, y: 174, width: 328, height: 224,
+  position: 'absolute', x: 76, y: 146, width: 328, height: 252,
   background: '#0D1420', borderRadius: 12, borderWidth: 1, borderColor: '#2B3E54',
   display: 'flex', flexDirection: 'column', gap: 4, padding: 8
 } }, kbChildren);
@@ -856,9 +860,9 @@ function stopPolling() {
 
 function backPill(dest) {
   return __A_Button({ title: '<', onPress: function () { go(dest); }, style: {
-    position: 'absolute', x: 4, y: 2, width: 48, height: 30,
+    position: 'absolute', x: 4, y: 0, width: 48, height: 48,
     background: '#16202E', borderColor: '#233245', borderWidth: 1,
-    borderRadius: 15, color: '#9EB3C6', fontSize: 16
+    borderRadius: 12, color: '#9EB3C6', fontSize: 16
   } });
 }
 
@@ -1004,31 +1008,31 @@ function wifiVisualState() {
 
 function netRow(item) {
   return __A_View({ style: {
-    width: '100%', height: 48, background: '#09101A',
+    width: '100%', height: 52, background: '#09101A',
     display: 'flex', flexDirection: 'row', alignItems: 'center',
     gap: 6, paddingTop: 2, paddingBottom: 2, scroll: 'none'
   }, onPress: function () { connectNet(item); } }, [
-    __A_Canvas({ width: 274, height: 44, style: { scroll: 'none' }, onDraw: function (c) {
+    __A_Canvas({ width: 264, height: 44, style: { scroll: 'none' }, onDraw: function (c) {
       var isAuto = autoSsid() === item.ssid;
-      c.fillColor('#09101A'); c.fillRect(0, 0, 274, 44);
-      drawCardBox(c, 0, 0, 274, 44, isAuto ? '#14292E' : '#16202E', isAuto ? '#34A88B' : '#233245');
+      c.fillColor('#09101A'); c.fillRect(0, 0, 264, 44);
+      drawCardBox(c, 0, 0, 264, 44, isAuto ? '#14292E' : '#16202E', isAuto ? '#34A88B' : '#233245');
       drawSignalBars(c, 12, 15, isAuto ? 3 : 2, '#40D8B0');
       c.text(36, 14, item.ssid.slice(0, 14), '#F2F7FB');
       if (isAuto) {
-        drawCapsule(c, 196, 12, 46, 20, '#133334', '#285E5C');
-        c.text(204, 15, 'AUTO', '#40D8B0');
+        drawCapsule(c, 186, 12, 46, 20, '#133334', '#285E5C');
+        c.text(194, 15, 'AUTO', '#40D8B0');
       }
-      drawLockGlyph(c, 252, 16, '#5C7794');
+      drawLockGlyph(c, 242, 16, '#5C7794');
     } }),
-    __A_Button({ title: 'X', onPress: function () { forgetNet(item); }, style: {
-      width: 40, height: 44, borderRadius: 10,
+    __A_Button({ title: 'DEL', onPress: function () { forgetNet(item); }, style: {
+      width: 48, height: 48, borderRadius: 10, fontSize: 12,
       background: '#2A1720', borderColor: '#692C3B', borderWidth: 1, color: '#FF6B79'
     } })
   ]);
 }
 
 var wifiHeaderCanvas = __A_Canvas({ width: 128, height: 30,
-  style: { position: 'absolute', x: 196, y: 2, scroll: 'none' },
+  style: { position: 'absolute', x: 196, y: 9, scroll: 'none' },
   onDraw: function (c) {
     var st = wifiVisualState();
     c.fillColor('#09101A'); c.fillRect(0, 0, 128, 30);
@@ -1038,38 +1042,38 @@ var wifiHeaderCanvas = __A_Canvas({ width: 128, height: 30,
     else drawStatusPill(c, 52, 3, 74, 24, 'OFF', '#9EB3C6', '#16202E', '#2A3B4F');
   } });
 
-var wifiHeroCanvas = __A_Canvas({ width: 320, height: 54,
-  style: { position: 'absolute', x: 4, y: 38, scroll: 'none' },
+var wifiHeroCanvas = __A_Canvas({ width: 320, height: 52,
+  style: { position: 'absolute', x: 4, y: 52, scroll: 'none' },
   onDraw: function (c) {
     var st = wifiVisualState();
     var line = wifiLine();
     var busy = wifiBusy();
     var auto = autoSsid();
-    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 54);
+    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 52);
     var fill = st === 'connected' ? '#12262B' : (st === 'connecting' ? '#241E14' : '#16202E');
     var brd = st === 'connected' ? '#34A88B' : (st === 'connecting' ? '#8A6B30' : '#233245');
-    drawCardBox(c, 0, 0, 320, 54, fill, brd);
+    drawCardBox(c, 0, 0, 320, 52, fill, brd);
     var icCol = st === 'connected' ? '#40D8B0' : (st === 'connecting' ? '#FFD78E' : '#5C7794');
     var icBg = st === 'connected' ? '#133334' : (st === 'connecting' ? '#332914' : '#1B2838');
     var icRing = st === 'connected' ? '#285E5C' : (st === 'connecting' ? '#6B5326' : '#2A3B4F');
-    drawWifiGlyph(c, 28, 27, icCol, icBg, icRing);
+    drawWifiGlyph(c, 28, 26, icCol, icBg, icRing);
     var title = busy !== '' ? busy.slice(0, 16) : (auto !== '' ? auto.slice(0, 16) : 'Wi-Fi Radio');
-    c.text(56, 10, title, '#F2F7FB');
+    c.text(56, 9, title, '#F2F7FB');
     var sub = st === 'off' ? 'Disconnected - tap Scan' : line.slice(0, 26);
-    c.text(56, 30, sub, st === 'connected' ? '#40D8B0' : (st === 'connecting' ? '#FFD78E' : '#9EB3C6'));
+    c.text(56, 29, sub, st === 'connected' ? '#40D8B0' : (st === 'connecting' ? '#FFD78E' : '#9EB3C6'));
     if (st === 'connected') {
-      c.fillCircle(296, 27, 12, '#163D38');
-      c.line(291, 27, 295, 31, '#40D8B0', 2);
-      c.line(295, 31, 302, 23, '#40D8B0', 2);
+      c.fillCircle(296, 26, 12, '#163D38');
+      c.line(291, 26, 295, 30, '#40D8B0', 2);
+      c.line(295, 30, 302, 22, '#40D8B0', 2);
     } else if (st === 'connecting') {
-      c.arc(296, 27, 9, 0, 270, 2, '#FFD78E');
+      c.arc(296, 26, 9, 0, 270, 2, '#FFD78E');
     } else {
-      c.fillCircle(296, 27, 5, '#3A4E66');
+      c.fillCircle(296, 26, 5, '#3A4E66');
     }
   } });
 
 var wifiSavedHeaderCanvas = __A_Canvas({ width: 320, height: 14,
-  style: { position: 'absolute', x: 4, y: 150, scroll: 'none' },
+  style: { position: 'absolute', x: 4, y: 160, scroll: 'none' },
   onDraw: function (c) {
     var n = savedNets().length;
     c.fillColor('#09101A'); c.fillRect(0, 0, 320, 14);
@@ -1083,27 +1087,27 @@ var wifiPage = __A_View({ style: {
 } }, [
   backPill('menu'),
   __A_Text({ text: 'Wi-Fi', style: {
-    position: 'absolute', x: 58, y: 2, width: 132, height: 28,
+    position: 'absolute', x: 58, y: 10, width: 132, height: 28,
     fontSize: 20, color: '#F2F7FB', textAlign: 'center'
   } }),
   wifiHeaderCanvas,
   wifiHeroCanvas,
   __A_Button({ title: 'Scan', onPress: function () { go('scan'); }, style: {
-    position: 'absolute', x: 4, y: 98, width: 102, height: 46, borderRadius: 12,
+    position: 'absolute', x: 4, y: 108, width: 102, height: 48, borderRadius: 12,
     background: '#116354', borderColor: '#40D8B0', borderWidth: 1, color: '#F2F7FB', fontSize: 14
   } }),
   __A_Button({ title: 'Add', onPress: addNetwork, style: {
-    position: 'absolute', x: 113, y: 98, width: 102, height: 46, borderRadius: 12,
+    position: 'absolute', x: 113, y: 108, width: 102, height: 48, borderRadius: 12,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, color: '#F2F7FB', fontSize: 14
   } }),
   __A_Button({ title: 'Disconnect', onPress: disconnectNet, style: {
-    position: 'absolute', x: 222, y: 98, width: 102, height: 46, borderRadius: 12,
+    position: 'absolute', x: 222, y: 108, width: 102, height: 48, borderRadius: 12,
     background: '#2A1720', borderColor: '#692C3B', borderWidth: 1, color: '#FF6B79', fontSize: 13
   } }),
   wifiSavedHeaderCanvas,
-  __A_List({ items: savedNets, itemHeight: 48, overscan: 1,
+  __A_List({ items: savedNets, itemHeight: 52, overscan: 1,
     renderItem: netRow,
-    style: { position: 'absolute', x: 4, y: 168, width: 320, height: 156,
+    style: { position: 'absolute', x: 4, y: 178, width: 320, height: 150,
       background: '#09101A', scrollbar: 'auto' } })
 ]);
 pageNodes.wifi = wifiPage;
@@ -1133,7 +1137,7 @@ function scanRow(item) {
 }
 
 var scanHeaderCanvas = __A_Canvas({ width: 104, height: 30,
-  style: { position: 'absolute', x: 220, y: 2, scroll: 'none' },
+  style: { position: 'absolute', x: 220, y: 9, scroll: 'none' },
   onDraw: function (c) {
     var n = scanResults().length;
     c.fillColor('#09101A'); c.fillRect(0, 0, 104, 30);
@@ -1143,7 +1147,7 @@ var scanHeaderCanvas = __A_Canvas({ width: 104, height: 30,
   } });
 
 var scanLabelCanvas = __A_Canvas({ width: 320, height: 14,
-  style: { position: 'absolute', x: 4, y: 92, scroll: 'none' },
+  style: { position: 'absolute', x: 4, y: 104, scroll: 'none' },
   onDraw: function (c) {
     c.fillColor('#09101A'); c.fillRect(0, 0, 320, 14);
     drawMicroLabel(c, 'NEARBY', 4, 3, '#5C7794');
@@ -1156,21 +1160,21 @@ var scanPage = __A_View({ style: {
 } }, [
   backPill('wifi'),
   __A_Text({ text: 'Wi-Fi Scan', style: {
-    position: 'absolute', x: 58, y: 2, width: 156, height: 28,
+    position: 'absolute', x: 58, y: 10, width: 156, height: 28,
     fontSize: 20, color: '#F2F7FB', textAlign: 'center'
   } }),
   scanHeaderCanvas,
   __A_Button({ title: 'Rescan', onPress: scanNow, style: {
-    position: 'absolute', x: 4, y: 38, width: 320, height: 46, borderRadius: 12,
+    position: 'absolute', x: 4, y: 52, width: 320, height: 48, borderRadius: 12,
     background: '#116354', borderColor: '#40D8B0', borderWidth: 1, color: '#F2F7FB', fontSize: 15
   } }),
   scanLabelCanvas,
   __A_List({ items: scanResults, itemHeight: 48, overscan: 1,
     renderItem: scanRow,
-    style: { position: 'absolute', x: 4, y: 110, width: 320, height: 192,
+    style: { position: 'absolute', x: 4, y: 122, width: 320, height: 184,
       background: '#09101A', scrollbar: 'auto' } }),
   __A_Text({ text: 'Tap a network to connect', style: {
-    position: 'absolute', x: 4, y: 306, width: 320, height: 18,
+    position: 'absolute', x: 4, y: 308, width: 320, height: 18,
     fontSize: 12, color: '#5C7794', textAlign: 'center'
   } })
 ]);
@@ -1186,7 +1190,7 @@ function btVisualState() {
 }
 
 var btHeaderCanvas = __A_Canvas({ width: 96, height: 30,
-  style: { position: 'absolute', x: 228, y: 2, scroll: 'none' },
+  style: { position: 'absolute', x: 228, y: 9, scroll: 'none' },
   onDraw: function (c) {
     var st = btVisualState();
     c.fillColor('#09101A'); c.fillRect(0, 0, 96, 30);
@@ -1196,7 +1200,7 @@ var btHeaderCanvas = __A_Canvas({ width: 96, height: 30,
   } });
 
 var btHeroCanvas = __A_Canvas({ width: 320, height: 112,
-  style: { position: 'absolute', x: 4, y: 42, scroll: 'none' },
+  style: { position: 'absolute', x: 4, y: 52, scroll: 'none' },
   onPress: function () {
     if (btVisualState() === 'off') bleStart(); else bleStop();
   },
@@ -1221,7 +1225,7 @@ var btHeroCanvas = __A_Canvas({ width: 320, height: 112,
   } });
 
 var btIdentityCanvas = __A_Canvas({ width: 320, height: 68,
-  style: { position: 'absolute', x: 4, y: 162, scroll: 'none' },
+  style: { position: 'absolute', x: 4, y: 168, scroll: 'none' },
   onPress: renameBle,
   onDraw: function (c) {
     c.fillColor('#09101A'); c.fillRect(0, 0, 320, 68);
@@ -1238,21 +1242,21 @@ var btPage = __A_View({ style: {
 } }, [
   backPill('menu'),
   __A_Text({ text: 'Bluetooth', style: {
-    position: 'absolute', x: 58, y: 2, width: 164, height: 28,
+    position: 'absolute', x: 58, y: 10, width: 164, height: 28,
     fontSize: 20, color: '#F2F7FB', textAlign: 'center'
   } }),
   btHeaderCanvas,
   btHeroCanvas,
   btIdentityCanvas,
   __A_Button({ title: 'Advertise', onPress: bleStart, style: {
-    position: 'absolute', x: 4, y: 242, width: 156, height: 48, borderRadius: 12,
+    position: 'absolute', x: 4, y: 244, width: 156, height: 48, borderRadius: 12,
     background: function () { return btVisualState() === 'off' ? '#116354' : '#1F2C3D'; },
     borderColor: function () { return btVisualState() === 'off' ? '#40D8B0' : '#233245'; },
     borderWidth: 1,
     color: '#F2F7FB', fontSize: 14
   } }),
   __A_Button({ title: 'Stop', onPress: bleStop, style: {
-    position: 'absolute', x: 168, y: 242, width: 156, height: 48, borderRadius: 12,
+    position: 'absolute', x: 168, y: 244, width: 156, height: 48, borderRadius: 12,
     background: function () { return btVisualState() === 'off' ? '#16202E' : '#2A1720'; },
     borderColor: function () { return btVisualState() === 'off' ? '#233245' : '#692C3B'; },
     borderWidth: 1,
@@ -1269,7 +1273,7 @@ pageNodes.bt = btPage;
 /* ---- page: general (r206 round AMOLED design) ------------------------------- */
 
 var generalHeaderCanvas = __A_Canvas({ width: 72, height: 30,
-  style: { position: 'absolute', x: 252, y: 2, scroll: 'none' },
+  style: { position: 'absolute', x: 252, y: 9, scroll: 'none' },
   onDraw: function (c) {
     var p = battPct();
     c.fillColor('#09101A'); c.fillRect(0, 0, 72, 30);
@@ -1277,31 +1281,31 @@ var generalHeaderCanvas = __A_Canvas({ width: 72, height: 30,
     c.text(18, 8, (p >= 0 ? p + '%' : '--%'), '#40D8B0');
   } });
 
-var volSliderCanvas = __A_Canvas({ width: 212, height: 48, style: { scroll: 'none' },
+var volSliderCanvas = __A_Canvas({ width: 204, height: 48, style: { scroll: 'none' },
   onDraw: function (c) {
     var pct = Math.max(0, Math.min(100, volume()));
-    c.fillColor('#16202E'); c.fillRect(0, 0, 212, 48);
+    c.fillColor('#16202E'); c.fillRect(0, 0, 204, 48);
     c.text(4, 4, 'VOLUME', '#9EB3C6');
-    c.text(168, 4, pct + '%', '#40D8B0');
-    drawCapsule(c, 4, 28, 204, 10, '#1F2C3D', '#32455A');
-    var fw = Math.round(196 * pct / 100);
+    c.text(160, 4, pct + '%', '#40D8B0');
+    drawCapsule(c, 4, 28, 196, 10, '#1F2C3D', '#32455A');
+    var fw = Math.round(188 * pct / 100);
     if (fw > 4) {
       drawCapsule(c, 5, 29, Math.max(8, fw), 8, '#40D8B0', null);
     }
-    var tx = Math.max(14, Math.min(198, 6 + fw));
+    var tx = Math.max(14, Math.min(190, 6 + fw));
     c.fillCircle(tx, 33, 11, '#40D8B0');
     c.fillCircle(tx, 33, 9, '#F2F7FB');
     c.fillCircle(tx, 33, 3, '#117B69');
   } });
 
-var telemetryCanvas = __A_Canvas({ width: 320, height: 26,
-  style: { position: 'absolute', x: 4, y: 194, scroll: 'none' },
+var telemetryCanvas = __A_Canvas({ width: 320, height: 24,
+  style: { position: 'absolute', x: 4, y: 204, scroll: 'none' },
   onDraw: function (c) {
-    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 26);
-    drawCardBox(c, 0, 0, 320, 26, '#121B28', '#233245');
-    c.text(10, 6, ('Batt ' + battLine()).slice(0, 18), '#9EB3C6');
+    c.fillColor('#09101A'); c.fillRect(0, 0, 320, 24);
+    drawCardBox(c, 0, 0, 320, 24, '#121B28', '#233245');
+    c.text(10, 5, ('Batt ' + battLine()).slice(0, 18), '#9EB3C6');
     var stText = storeLine() + (volNote() === '' ? '' : ' ' + volNote());
-    c.text(184, 6, stText.slice(0, 16), '#9EB3C6');
+    c.text(184, 5, stText.slice(0, 16), '#9EB3C6');
   } });
 
 var generalPage = __A_View({ style: {
@@ -1310,23 +1314,23 @@ var generalPage = __A_View({ style: {
 } }, [
   backPill('menu'),
   __A_Text({ text: 'General', style: {
-    position: 'absolute', x: 58, y: 2, width: 188, height: 28,
+    position: 'absolute', x: 58, y: 10, width: 188, height: 28,
     fontSize: 20, color: '#F2F7FB', textAlign: 'center'
   } }),
   generalHeaderCanvas,
   __A_View({ style: {
-    position: 'absolute', x: 4, y: 36, width: 320, height: 56,
+    position: 'absolute', x: 4, y: 50, width: 320, height: 52,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'space-between', paddingLeft: 6, paddingRight: 6, gap: 4, scroll: 'none'
+    justifyContent: 'space-between', paddingLeft: 4, paddingRight: 4, gap: 4, scroll: 'none'
   } }, [
     __A_Button({ title: '-', onPress: function () { applyVolume(volume() - 10, true); }, style: {
-      width: 44, height: 44, borderRadius: 10, background: '#1F2C3D',
+      width: 48, height: 48, borderRadius: 10, background: '#1F2C3D',
       borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 18
     } }),
     volSliderCanvas,
     __A_Button({ title: '+', onPress: function () { applyVolume(volume() + 10, true); }, style: {
-      width: 44, height: 44, borderRadius: 10, background: '#1F2C3D',
+      width: 48, height: 48, borderRadius: 10, background: '#1F2C3D',
       borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 18
     } })
   ]),
@@ -1334,10 +1338,10 @@ var generalPage = __A_View({ style: {
    * The Text shows status only; the full token never enters a render path.
    * Kept BEFORE the r129 NTP row so the 3-node NTP slice stays isolated. */
   __A_View({ style: {
-    position: 'absolute', x: 4, y: 98, width: 320, height: 42,
+    position: 'absolute', x: 4, y: 104, width: 320, height: 48,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
+    alignItems: 'center', paddingLeft: 10, paddingRight: 0, gap: 6, scroll: 'none'
   } }, [
     __A_Text({ text: function () {
       return otaLine() + (otaNote() === '' ? '' : ' ' + otaNote());
@@ -1346,24 +1350,24 @@ var generalPage = __A_View({ style: {
       return s.indexOf(':') >= 0 ? '#40D8B0' : (s.indexOf('err') >= 0 ? '#FF6B79' : '#9EB3C6');
     } } }),
     __A_Button({ title: 'New token', onPress: rotateOtaToken, style: {
-      width: 104, height: 32, borderRadius: 9, background: '#1F2C3D',
+      width: 104, height: 48, borderRadius: 10, background: '#1F2C3D',
       borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 12
     } })
   ]),
   /* r132 OTA ROW END */
   /* r129: NTP sync row -- exactly 3 new nodes (View + Text + Button). */
   __A_View({ style: {
-    position: 'absolute', x: 4, y: 146, width: 320, height: 42,
+    position: 'absolute', x: 4, y: 154, width: 320, height: 48,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
+    alignItems: 'center', paddingLeft: 10, paddingRight: 0, gap: 6, scroll: 'none'
   } }, [
     __A_Text({ text: function () { return timeSyncLine(); }, style: { fontSize: 13, color: function () {
       var s = timeSyncLine();
       return s.indexOf('SYNCED') >= 0 ? '#40D8B0' : (s.indexOf('FAILED') >= 0 || s.indexOf('ERR') >= 0 ? '#FF6B79' : '#FFD78E');
     } } }),
     __A_Button({ title: 'Sync now', onPress: syncTimeNow, style: {
-      width: 96, height: 32, borderRadius: 9, background: '#1F2C3D',
+      width: 96, height: 48, borderRadius: 10, background: '#1F2C3D',
       borderColor: '#32455A', borderWidth: 1, color: '#F2F7FB', fontSize: 12
     } })
   ]),
@@ -1371,23 +1375,23 @@ var generalPage = __A_View({ style: {
    * The button opens a shell.Dialog; the Text is status only and the guarded
    * note is the sole feedback when a binding is absent. */
   __A_View({ style: {
-    position: 'absolute', x: 4, y: 226, width: 320, height: 42,
+    position: 'absolute', x: 4, y: 230, width: 320, height: 48,
     background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 12,
     display: 'flex', flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingLeft: 10, paddingRight: 8, gap: 6, scroll: 'none'
+    alignItems: 'center', paddingLeft: 10, paddingRight: 0, gap: 6, scroll: 'none'
   } }, [
     __A_Text({ text: function () {
       return rebootNote() === '' ? 'Restart the device' : rebootNote();
     }, style: { fontSize: 13, color: '#9EB3C6' } }),
     __A_Button({ title: 'Reboot', onPress: rebootNow, style: {
-      width: 96, height: 32, borderRadius: 9, background: '#2A2315',
+      width: 96, height: 48, borderRadius: 10, background: '#2A2315',
       borderColor: '#745B2A', borderWidth: 1, color: '#FFD78E', fontSize: 12
     } })
   ]),
   /* r143 REBOOT ROW END */
   telemetryCanvas,
   __A_View({ style: {
-    position: 'absolute', x: 4, y: 276, width: 320, height: 48,
+    position: 'absolute', x: 4, y: 280, width: 320, height: 48,
     display: 'flex', flexDirection: 'row', gap: 8, scroll: 'none'
   } }, [
     __A_Button({ title: 'Sleep now', onPress: function () { lume.power.sleepNow(); }, style: {

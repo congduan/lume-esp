@@ -74,20 +74,24 @@ function __A_Canvas(p) {
   };
   return Canvas(o);
 }
-function __A_props(p) {
+function __A_props(p, minTouch) {
   if (!__A_ADAPT || !p || typeof p !== 'object') return p;
   var o = {}, k;
   for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  if (minTouch && p.style && o.style) {
+    if (typeof p.style.width === 'number' && p.style.width >= 48 && o.style.width < 48) o.style.width = 48;
+    if (typeof p.style.height === 'number' && p.style.height >= 48 && o.style.height < 48) o.style.height = 48;
+  }
   return o;
 }
-function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_View(p, kids) { return View(__A_props(p, !!(p && p.onPress)), kids); }
 function __A_Text(p, kids) { return Text(__A_props(p), kids); }
-function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p, true), kids); }
 function __A_Image(p, kids) { return Image(__A_props(p), kids); }
 function __A_List(p) {
   if (!__A_ADAPT || !p) return List(p);
   var o = __A_props(p);
-  o.itemHeight = __A_SY(p.itemHeight);
+  o.itemHeight = (typeof p.itemHeight === 'number' && p.itemHeight >= 48) ? Math.max(48, __A_SY(p.itemHeight)) : __A_SY(p.itemHeight);
   return List(o);
 }
 
@@ -420,7 +424,7 @@ const root = __A_View({ style: {
         }),
         __A_Text({
           text: statusLabel,
-          style: { width: '100%', height: 16, fontSize: 11, color: '#40D8B0', longMode: 'dots' }
+          style: { width: '100%', height: 16, fontSize: 12, color: '#40D8B0', longMode: 'dots' }
         })
       ])
     ]),
@@ -445,7 +449,7 @@ const root = __A_View({ style: {
           style: {
             width: 48, height: 48, borderRadius: 8,
             background: '#2A1720', borderColor: '#692C3B', borderWidth: 1,
-            color: '#FF6B79', fontSize: 11
+            color: '#FF6B79', fontSize: 12
           },
           onPress: function () { askDelete(e.name); }
         }));

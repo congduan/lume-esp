@@ -74,15 +74,19 @@ function __A_Canvas(p) {
   };
   return Canvas(o);
 }
-function __A_props(p) {
+function __A_props(p, minTouch) {
   if (!__A_ADAPT || !p || typeof p !== 'object') return p;
   var o = {}, k;
   for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  if (minTouch && p.style && o.style) {
+    if (typeof p.style.width === 'number' && p.style.width >= 48 && o.style.width < 48) o.style.width = 48;
+    if (typeof p.style.height === 'number' && p.style.height >= 48 && o.style.height < 48) o.style.height = 48;
+  }
   return o;
 }
-function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_View(p, kids) { return View(__A_props(p, !!(p && p.onPress)), kids); }
 function __A_Text(p, kids) { return Text(__A_props(p), kids); }
-function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p, true), kids); }
 function __A_Image(p, kids) { return Image(__A_props(p), kids); }
 function __A_List(p) {
   if (!__A_ADAPT || !p) return List(p);
@@ -587,7 +591,7 @@ offlinePillKids.push(__A_Text({
 var refreshBtnKids = [];
 var refreshIcon = wSvgNode(SVG_REFRESH, 20, 20);
 if (refreshIcon > 0) refreshBtnKids.push(refreshIcon);
-else refreshBtnKids.push(__A_Text({ text: function () { return busy() ? '...' : 'R'; }, style: { fontSize: 16, color: '#40D8B0' } }));
+else refreshBtnKids.push(__A_Text({ text: function () { return busy() ? '...' : 'SYNC'; }, style: { fontSize: 12, color: '#40D8B0' } }));
 
 var root = __A_View({
   style: { width: 480, height: 480, background: 'bg', scroll: 'none' },

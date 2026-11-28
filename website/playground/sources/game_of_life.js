@@ -237,7 +237,7 @@ var root = View({ style: { width: 480, height: 480, background: BG, scroll: 'non
       background: '#1F2C3D', borderRadius: 8, fontSize: 16, color: '#F2F7FB' } }),
   Text({ text: 'TAP seed  SWIPE UP play/pause  SWIPE L/R speed  HOLD clear',
     style: { position: 'absolute', x: 84, y: 360, width: 312, height: 18,
-      fontSize: 11, color: '#9EB3C6', borderRadius: 0, textAlign: 'center' } })
+      fontSize: 12, color: '#9EB3C6', borderRadius: 0, textAlign: 'center' } })
 ]);
 
 lume.gesture.on(scene, 'tap', function (e) {

@@ -74,15 +74,19 @@ function __A_Canvas(p) {
   };
   return Canvas(o);
 }
-function __A_props(p) {
+function __A_props(p, minTouch) {
   if (!__A_ADAPT || !p || typeof p !== 'object') return p;
   var o = {}, k;
   for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  if (minTouch && p.style && o.style) {
+    if (typeof p.style.width === 'number' && p.style.width >= 48 && o.style.width < 48) o.style.width = 48;
+    if (typeof p.style.height === 'number' && p.style.height >= 48 && o.style.height < 48) o.style.height = 48;
+  }
   return o;
 }
-function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_View(p, kids) { return View(__A_props(p, !!(p && p.onPress)), kids); }
 function __A_Text(p, kids) { return Text(__A_props(p), kids); }
-function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p, true), kids); }
 function __A_Image(p, kids) { return Image(__A_props(p), kids); }
 function __A_List(p) {
   if (!__A_ADAPT || !p) return List(p);
@@ -235,7 +239,7 @@ function main() {
           }, [
             entry.node,
             __A_Text({ text: entry.name + '  ' + entry.meta, style: {
-              width: 140, height: 18, fontSize: 11, color: '#9EB3C6', textAlign: 'center'
+              width: 140, height: 18, fontSize: 12, color: '#9EB3C6', textAlign: 'center'
             } })
           ]));
         } else {
@@ -264,7 +268,7 @@ function main() {
       } }, [
         __A_Text({
           text: card ? card : (galleryStatus + ' ready'),
-          style: { fontSize: 11, color: '#40D8B0', textAlign: 'center', longMode: 'dots' }
+          style: { fontSize: 12, color: '#40D8B0', textAlign: 'center', longMode: 'dots' }
         })
       ])
     ];

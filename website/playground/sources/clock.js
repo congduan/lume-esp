@@ -15,7 +15,7 @@
  * degrades to device-uptime time. */
 var clockTheme = { colors: {
   primary: '#0B0F14', surface: '#141A22', accent: '#2E86FF', text: '#E8EEF6'
-}, radius: 14, fontScale: 1 };
+}, radius: 12, fontScale: 1 };
 lume.theme.set(clockTheme);
 
 var C_FACE = '#141A22';

@@ -147,8 +147,8 @@ var scene = Canvas({ width: CW, height: CH,
 var root = View({ style: { width: 480, height: 480, background: '#0D1420', scroll: 'none' } }, [scene]);
 Text({ parent: root, text: 'INERTIAL HEADING DIAL', style: { position: 'absolute', x: 84, y: 80,
   width: 312, height: 24, fontSize: 18, borderRadius: 0, color: '#F2F7FB', textAlign: 'center' } });
-Text({ parent: root, text: 'relative estimate - no magnetometer (drag to nudge)', style: { position: 'absolute', x: 84, y: 106,
-  width: 312, height: 20, fontSize: 11, borderRadius: 0, color: '#9EB3C6', textAlign: 'center' } });
+Text({ parent: root, text: 'relative estimate - no magnetometer (drag to nudge)', style: { position: 'absolute', x: 68, y: 106,
+  width: 344, height: 20, fontSize: 12, borderRadius: 0, color: '#9EB3C6', textAlign: 'center' } });
 Text({ parent: root, text: function () { return headingText(); }, style: { position: 'absolute',
   x: CANVAS_X + CX - 70, y: CANVAS_Y + CY - 23, width: 140, height: 46,
   borderRadius: 0, fontSize: 32, textAlign: 'center' } });

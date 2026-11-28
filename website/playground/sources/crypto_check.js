@@ -74,15 +74,19 @@ function __A_Canvas(p) {
   };
   return Canvas(o);
 }
-function __A_props(p) {
+function __A_props(p, minTouch) {
   if (!__A_ADAPT || !p || typeof p !== 'object') return p;
   var o = {}, k;
   for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  if (minTouch && p.style && o.style) {
+    if (typeof p.style.width === 'number' && p.style.width >= 48 && o.style.width < 48) o.style.width = 48;
+    if (typeof p.style.height === 'number' && p.style.height >= 48 && o.style.height < 48) o.style.height = 48;
+  }
   return o;
 }
-function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_View(p, kids) { return View(__A_props(p, !!(p && p.onPress)), kids); }
 function __A_Text(p, kids) { return Text(__A_props(p), kids); }
-function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p, true), kids); }
 function __A_Image(p, kids) { return Image(__A_props(p), kids); }
 function __A_List(p) {
   if (!__A_ADAPT || !p) return List(p);
@@ -224,7 +228,7 @@ function diagCard(y, h, label, sig, colFn) {
     paddingLeft: 12, paddingRight: 12, paddingTop: 6, paddingBottom: 6,
     display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 2, scroll: 'none'
   } }, [
-    __A_Text({ text: label, style: { fontSize: 11, color: '#5C7794' } }),
+    __A_Text({ text: label, style: { fontSize: 12, color: '#5C7794' } }),
     __A_Text({ text: sig, style: { fontSize: 13, color: colFn, longMode: 'dots' } })
   ]);
 }

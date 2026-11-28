@@ -74,15 +74,19 @@ function __A_Canvas(p) {
   };
   return Canvas(o);
 }
-function __A_props(p) {
+function __A_props(p, minTouch) {
   if (!__A_ADAPT || !p || typeof p !== 'object') return p;
   var o = {}, k;
   for (k in p) o[k] = (k === 'style') ? __A_style(p[k]) : p[k];
+  if (minTouch && p.style && o.style) {
+    if (typeof p.style.width === 'number' && p.style.width >= 48 && o.style.width < 48) o.style.width = 48;
+    if (typeof p.style.height === 'number' && p.style.height >= 48 && o.style.height < 48) o.style.height = 48;
+  }
   return o;
 }
-function __A_View(p, kids) { return View(__A_props(p), kids); }
+function __A_View(p, kids) { return View(__A_props(p, !!(p && p.onPress)), kids); }
 function __A_Text(p, kids) { return Text(__A_props(p), kids); }
-function __A_Button(p, kids) { return Button(__A_props(p), kids); }
+function __A_Button(p, kids) { return Button(__A_props(p, true), kids); }
 function __A_Image(p, kids) { return Image(__A_props(p), kids); }
 function __A_List(p) {
   if (!__A_ADAPT || !p) return List(p);
@@ -232,7 +236,7 @@ __A_View({ style: { width: '100%', height: '100%', background: '#000000', scroll
       background: '#16202E', borderColor: '#233245', borderWidth: 1, borderRadius: 11,
       display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
     } }, [
-      __A_Text({ text: '4 Hz', style: { fontSize: 11, color: '#9EB3C6', textAlign: 'center' } })
+      __A_Text({ text: '4 Hz', style: { fontSize: 12, color: '#9EB3C6', textAlign: 'center' } })
     ]),
     __A_View({ style: {
       position: 'absolute', x: 242, y: 3, width: 82, height: 22,
@@ -242,7 +246,7 @@ __A_View({ style: { width: '100%', height: '100%', background: '#000000', scroll
       display: 'flex', alignItems: 'center', justifyContent: 'center', scroll: 'none'
     } }, [
       __A_Text({ text: cfgDisplay, style: {
-        fontSize: 11, textAlign: 'center',
+        fontSize: 12, textAlign: 'center',
         color: function () { return cfgDisplay() === 'CFG OK' ? '#40D8B0' : '#FF6B79'; }
       } })
     ]),
@@ -263,7 +267,7 @@ __A_View({ style: { width: '100%', height: '100%', background: '#000000', scroll
       } }),
       __A_Text({ text: '0-3300 mV', style: {
         position: 'absolute', x: 216, y: 42, width: 90, height: 16,
-        fontSize: 11, color: '#9EB3C6', textAlign: 'right'
+        fontSize: 12, color: '#9EB3C6', textAlign: 'right'
       } }),
       __A_Text({ text: 'RAW 0..4095', style: {
         position: 'absolute', x: 14, y: 76, width: 130, height: 20,
