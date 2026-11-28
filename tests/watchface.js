@@ -125,3 +125,16 @@ const noRings = source.replace(/if \(!c\.bgRings\) \{[\s\S]*?for \(var i = 0; i 
   "for (var i = 0; i < 3; i++) faceArc(c, 0, 360, 136 - i * 25, '#1C3449', 8);");
 assert.throws(() => assertRetainedSource(noRings), /background ring 136 retained/);
 console.log('PASS watchface retained-path mutation guards (ticks, rings)');
+
+/* r227: the same source must fit the smaller 466x466 round framebuffer. The
+ * in-app adaptive shim scales all four authored canvases; the summed
+ * double-buffered bytes may not exceed 466*466*4 (868,624). */
+{
+  const h466 = runApp(source, { screen: { w: 466, h: 466 } });
+  const cs466 = h466.messages.filter(m => m[0] === 'create' && m[2] === 3);
+  const px466 = cs466.reduce((sum, m) => sum + m[4] * m[5], 0);
+  assert.equal(cs466.length, 4);
+  assert.ok(px466 * 4 <= 466 * 466 * 4, `466 budget ${px466 * 4} > ${466 * 466 * 4}`);
+  assert.ok(cs466.every(m => m[4] <= 466 && m[5] <= 466));
+  console.log(`PASS watchface 466 canvas budget ${px466 * 4}/${466 * 466 * 4} B`);
+}
