@@ -4,7 +4,7 @@
 Three catalogs are read-only inputs and must describe the same app set:
 
   tools/playground/build.mjs   authoritative app id list (the `apps` array)
-  website/playground/page.js   per-app display metadata (6-tuple in `examples`)
+  website/playground/page.js   per-app display metadata (7-tuple in `examples`)
   website/playground/sources.js generated LUME_SOURCES catalog (cross-check)
 
 Drift between any two is a hard error, so the gallery cannot silently show a
@@ -66,7 +66,7 @@ def catalog():
     if not block:
         raise SystemExit('gen_examples_gallery: page.js examples[] not found')
     rows = re.findall(
-        r"\['([^']+)','([^']*)','([^']+)','([^']*)','([^']*)','([^']*)'\]",
+        r"\['([^']+)','([^']*)','([^']+)','([^']*)','([^']*)','([^']*)','(round|square)'\]",
         block.group(1))
     meta = {row[0]: row for row in rows}
     if len(meta) != len(rows):
@@ -88,14 +88,14 @@ def catalog():
 
 
 def needs_hardware(entry):
-    _, _, _, _, desc_en, desc_zh = entry
+    _, _, _, _, desc_en, desc_zh, _ = entry
     if STUB_TERMS.search(desc_en) or STUB_TERMS.search(desc_zh):
         return False
     return bool(HW_TERMS.search(desc_en) or HW_TERMS.search(desc_zh))
 
 
 def card(index, app_id, entry):
-    _, icon, en, cn, desc_en, desc_zh = entry
+    _, icon, en, cn, desc_en, desc_zh, _ = entry
     title = f'{en} / {cn}' if cn and cn != en else en
     esc = html.escape
     hw = needs_hardware(entry)

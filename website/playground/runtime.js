@@ -416,7 +416,10 @@
     },
   };
 
-    const __lumeScreen = { w: 480, h: 480 };
+    const screen = options.screen && Number(options.screen.w) > 0 && Number(options.screen.h) > 0
+      ? { w: Number(options.screen.w), h: Number(options.screen.h) }
+      : { w: 480, h: 480 };
+    const __lumeScreen = { w: screen.w, h: screen.h };
     // Prelude and app share one function scope, like the firmware global script.
     // The only injected names are the native bindings and screen size.
     const evaluate = new Function('lume', 'Fs', '__lumeScreen', 'setTimeout', 'clearTimeout',
@@ -431,6 +434,7 @@
     }, 20);
     return {
       messages,
+      screen: { w: screen.w, h: screen.h },
       press: id => alive && api.press(Number(id)),
       scroll: (id, y) => alive && api.scroll(Number(id), Number(y)),
       gesture: (id, kind, x, y, t, dir = 0, cancelled = 0) =>
