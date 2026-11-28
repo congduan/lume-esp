@@ -1,0 +1,2113 @@
+PASS 62 SVG outlines and 26 Aa pairs have valid structure
+PASS 36-card deck, words and digit dot counts
+PASS static black root and single Image glyph node
+PASS page advance, Z-to-0 transition and Image bounce
+PASS four-mode cycle, random bag and vertical Aa source
+PASS static background across all cards and modes
+ALL ABC123 HARNESS CASES PASSED
+PASS default stub renders raw=2048, mv=1650, CFG OK and draws the bar
+PASS pin/atten buttons reconfigure and wrap 1..10 / 0..3
+PASS no free() call: no app close hook, slot state is engine-persistent
+PASS negative readMv/readRaw/config render as err <code> numerically
+PASS 0 sample is NOT treated as an error (numeric, not truthy, branch)
+PASS out-of-range raw 4096 is rejected, so the normal-render proof FAILS
+  adc_meter max draw calls/refresh=9 (budget <=240)
+PASS r206 frame draw-call budget: full 16-sample sparkline refresh <= 240 draw calls
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 error discrimination present, no truthy if(r)/if(m)
+PASS config/readRaw/readMv calls bound to pin, no token-class strings
+PASS header declares the LUME_MAX_NODES budget
+PASS playground manifest includes adc_meter
+PASS generated playground source is byte-identical to the example
+PASS firmware/ and runtime/ byte-identical to baseline 3514c76
+PASS MUTATION delete numeric error branch -> predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION touch a tracked firmware file -> diff predicate FAILS
+PASS MUTATION raw=4096 -> normal render predicate FAILS (already shown live)
+PASS adc_meter harness: all live, static and mutation checks green
+request construction + key storage: PASS
+HTTP error + timeout + bad JSON + truncation: PASS
+Node local POST round trip: PASS
+setup: calls=69 net=167632 live=54
+inject: armed-at=83 window=1
+engine: exception=InternalError: out of memory
+inject: denied=1 calls=83
+resume: malloc-after-window ok net=167720 live=55
+teardown: net=0 live=0
+RESULT: PASS
+PASS alloc_inject: countdown OOM -> deterministic failure, counter consistent, no crash
+PASS initial transition value uses SET_ATTR
+PASS transition signal.set emits ANIMATE with omitted from and ease-out
+PASS ANIMATE_CANCEL path
+PASS onComplete registered and dispatched through reverse event hook
+PASS same-property replacement discards old completion
+PASS color animation rejected
+PASS apps entries merges meta.json and falls back per field
+PASS apps entries tolerates a store without native metadata
+PASS apps entries ignores malformed meta instead of throwing
+PASS apps current() reports the running app id
+PASS apps launch/home/remove return the native status codes
+PASS apps setBoot pins independently of launch and home, then clears
+PASS apps setBoot reports invalid ids and storage errors
+PASS apps launcher pins itself and its edit exit clears the pin before home
+PASS apps Launcher defaults to the installed app set
+PASS apps Launcher tap launches the app by default (no host callback)
+PASS apps explicit apps + onLaunch still override the store
+PASS apps Launcher rejects a non-array app list
+PASS apps embedded home renders a clock and one tile per installed app
+PASS apps embedded home launches a tile and keeps BACK at the root
+PASS apps embedded home shows an empty state with no apps
+PASS 15 multi-app cases
+PASS payload 1 zlib: real inflate text, byte counts, ratio and ZLIB label
+PASS payload 2 raw: real inflate text, byte counts, ratio and RAW label
+PASS payload 3 truncated zlib is a REAL -2 (not -1), rendered as ERR -2
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS NEXT cycles three payloads and wraps; format labels follow the cycle
+PASS default host stub (no options.compress) renders ERR -3, no fake success
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real inflate call present
+PASS text truncation to 120 chars + "..." is declared and implemented
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest includes archive_view
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76
+PASS MUTATION delete <0 error branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake inflate result -> real-inflate predicate and live FAIL
+PASS MUTATION drop text truncation -> truncation predicate FAILS
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS archive_view harness: all live, static and mutation checks green
+async jobs host prelude: PASS
+PASS centers, 20 Hz speed cap, 60 s idle drift x0.3 and wake
+PASS palette lookup interpolates only precomputed colors
+PASS clock text changes on minute boundary only
+PASS prelude/no IMU, per-frame draw calls max=11, ripple <=35 (budget <=240)
+ALL AURORA CLOCK CASES PASSED
+PASS lume.ble wiring (header, CMake, sdkconfig, natives, types, docs)
+PASS onStart advertises; first poll of a live link sends HELLO
+PASS poll drains one RX packet, verifies the link and acks it
+PASS Ping Button press sends a ping
+PASS Ping counter Text reflects the press
+PASS negative read() status is handled by the app
+PASS onPause / shutdown stops advertising
+PASS failed start() is surfaced without starting the poll timer
+PASS header defines four op typedefs
+PASS struct has four ops then board_id
+PASS header declares lume_board_get singleton
+PASS header states profile-is-source-of-truth division of labour
+PASS impl defines a single not_supported stub
+PASS impl default singleton uses generic board id
+PASS impl points all four ops at not_supported faces
+PASS header declares registration API and invalid-arg code
+PASS impl copies the board and keeps a stable current pointer
+PASS lume-board registers real drivers with the profile board name
+PASS touch_read drift documented: no standalone driver point-read API
+PASS dependency points lume-board -> lume-board-hal, never the reverse
+PASS zero-diff guard: no changes outside board components and r148 surfaces
+PASS lume_board_get returns a non-NULL singleton
+PASS lume_board_get is a stable process-wide singleton
+PASS board_id == "generic"
+PASS all four op pointers are populated
+PASS all four ops return -1 (not supported) before registration
+PASS invalid registrations rejected; generic stub still current
+PASS registered board queryable: four non-NULL ops + board_id
+PASS registry copies the struct and stays stable
+PASS registered ops dispatch to the host fake with correct args
+PASS board_abi: 4-op layout + stub + registration/query semantics
+PASS board_abi.c compiled and ran with exit 0
+board_abi: ALL CHECKS PASSED
+PASS board_id: d.ts declares readonly board: string in lume.system
+PASS board_id: d.ts documents compile-time macro value domain and HAL source
+PASS board_id: d.ts documents no setter and both stub return values honestly
+PASS board_id: engine includes the board HAL header
+PASS board_id: C native reads board_id from lume_board_get and copies into JS
+PASS board_id: C registers _systemBoard as a zero-arg native
+PASS board_id: board native stays in flash (no IRAM attribute)
+PASS board_id: engine REQUIRES lume-board-hal (consumer -> registry, no reverse edge)
+PASS board_id: prelude exposes a getter (not a function) that calls the native
+PASS board_id: host runner stubs _systemBoard with an injectable string default
+PASS board_id: playground runtime stubs _systemBoard with an honest browser string
+PASS board_id: generated playground prelude carries the getter
+PASS board_id mutation: drop the .d.ts board declaration -> FAIL as expected
+PASS board_id mutation: change the .d.ts board type to number -> FAIL as expected
+PASS board_id mutation: drop the prelude board getter -> FAIL as expected
+PASS board_id mutation: drop the C _systemBoard registration -> FAIL as expected
+PASS board_id mutation: change the C native to a non-string return -> FAIL as expected
+PASS board_id mutation: change the host stub default to a number -> FAIL as expected
+PASS board_id mutation: change the browser stub to a number -> FAIL as expected
+PASS board_id live: getter exists, typeof string, value == injected stub
+PASS board_id live: default host-stub value is a string
+PASS board_id live: app assignment cannot mutate the board getter
+PASS board_id live mutation: number stub -> type check FAIL as expected
+PASS board_id live mutation: native deleted -> getter FAIL as expected
+ALL BOARD_ID HARNESS CASES PASSED
+PASS canvas create dimensions and fixed wire kind
+PASS drawing command order and final invalidate
+PASS r48 native arc emits one LUME_DRAW_ARC (opcode 5) with normalised args
+PASS r48 native arc rounds fractional degrees and rejects bad angles
+PASS optional dirty rectangles preserve local coordinates
+PASS signal change redraws once; equal value stays idle
+PASS canvas is adopted into flex layout flow at fixed size
+PASS dimensions/coordinates/color/text/point bounds reject
+PASS injected 390x390 screen governs canvas size, budget and draw bounds
+PASS counter example retains count and theme behavior
+SAMPLE messages (first 12): [["create",1,0],["attr",1,0,"taps: 0"],["create",0,0],["attr",2,1,2377581],["attr",2,16,100],["attr",2,3,120],["attr",2,7,1],["attr",2,8,2],["attr",2,9,2],["attr",2,11,6],["attr",2,12,12],["attr",2,15,255]]
+SAMPLE totals: {"create":7,"attr":41,"press":3}
+PASS 33 contiguous lines split at 32
+CANVAS 240 points: old=239 messages / 27724 queue bytes; new=8 messages / 928 queue bytes + 3824 payload bytes
+PASS 240-point polyline uses eight batches
+CANVAS retained path: 2 segments uploaded once, 2 draws / 1 upload
+PASS retained path uploads geometry once and replays from C
+PASS retainSegments uploads independent segments
+PASS retained sprite uploads pixels once and replays from C
+PASS sprite argument validation matches the native contract
+PASS sprite slot redefinition re-uploads (animation frame swap)
+PASS r221 singleBuffer: false/omitted preserves exact 4-arg create and 2x budget
+PASS r221 singleBuffer: true emits create flag 1 and halves PSRAM pool cost (1x)
+PASS r221 singleBuffer: runApp stream, injected screen, validation and dispose refund
+PASS r221 singleBuffer: mixed-pool refund is exact and repeat removal is a no-op
+PASS r221 singleBuffer: removing the 1x member of a mixed pool frees exactly 1x
+PASS r221 singleBuffer: C engine and bridge wire work==front and 1x budget
+PASS prelude emits fillCircle/fillEllipse/ellipse draw records
+PASS Playground prelude snapshot matches firmware source
+PASS clickwheel angle, taps, sparse trajectory, independent mounts and dispose
+PASS clock_round pure angles, prelude, 17 calls/frame, 60-second tick smoke
+PASS color_demo compact picker canvas 210x252
+PASS color_demo live selection tints circle rectangle and text and HEX; mutation FAIL as expected
+PASS color_demo SAVE writes KV; next launch restores selection; mutation FAIL as expected
+ALL COLOR_DEMO CASES PASSED
+PASS colorpicker 12 RGB round trips; mutation FAIL as expected
+PASS colorpicker ring angles and strips; mutation FAIL as expected
+PASS colorpicker outside areas ignored; mutation FAIL as expected
+PASS colorpicker pan throttle and final flush; mutation FAIL as expected
+PASS colorpicker invalid initialHex warns and defaults; mutation FAIL as expected
+PASS colorpicker one canvas, 24 arc segments, dispose; mutation FAIL as expected
+PASS colorpicker confirm, dismiss, and pause cleanup; mutation FAIL as expected
+PASS colorpicker callbacks validated before mounting; mutation FAIL as expected
+ALL COLORPICKER CASES PASSED
+PASS compass heading wraps 0-360
+PASS compass demo mode angular speed (18 deg/s)
+PASS compass gyro-Z integration wraps and scales by dt
+PASS compass retained ring: 36 segments + 2 paths uploaded once
+PASS compass DRIFT badge condition (IMU mode, |spin|>30deg)
+PASS compass no-IMU fallback to demo (honest, no crash)
+PASS compass serial smoke: COMPASS HDG <deg> mode=<demo|imu>
+PASS compass IMU mode integrates gz and shows DRIFT badge
+PASS compass mode toggle returns to demo, badge clears
+PASS compass honest wording: inertial/relative only, no north promise in UI
+PASS compass host harness: 10/10 assertions
+PASS correctness: empty / repetitive text / RLE / random stored / >64KiB dynamic (raw+zlib, byte-exact)
+PASS default format (omitted/null) is raw
+PASS damaged streams rejected (truncated / bad header / reserved BTYPE / Adler mismatch)
+PASS out-too-small -> -3 with no out-of-bounds write
+PASS subarray/byteOffset views on src and out with guards intact
+PASS error contract: -1 type / -2 data / -3 length, no exceptions
+PERF native inflate 200x 111530B: 23ms (sink=22306000, NOT ESP32-S3)
+ALL OK
+PERF Node zlib.inflateSync baseline 200x 111530B: 42ms (sink=22306000, native C, host only)
+FIXTURES raw/zlib sizes: text=69/75B random=70025B big=5391B big-zlib=5397B
+PASS confirm_sweep: power off opens a Dialog with title, message, plain Cancel and danger button
+PASS confirm_sweep: powerOff binding guard sits inside the danger onPress
+PASS confirm_sweep: power off Dialog guard degrades to an ASCII note
+PASS confirm_sweep: BLE gate opens a Dialog with a plain Cancel and danger start/stop button
+PASS confirm_sweep: BLE binding guard sits inside the danger onPress
+PASS confirm_sweep: BLE Dialog guard degrades to an ASCII note
+PASS confirm_sweep: no two-stage confirm signal survives in any example app
+PASS confirm_sweep: both buttons are free of the confirm flip; BLE title is a static-anchorable expression
+PASS confirm_sweep: all UI string literals ASCII-only in both apps and this harness
+PASS confirm_sweep: firmware/ runtime/ identical to the r164 feat commit
+PASS confirm_sweep mutation: delete the power off Dialog call -> FAIL as expected
+PASS confirm_sweep mutation: give power Cancel an onPress -> FAIL as expected
+PASS confirm_sweep mutation: move powerOff() before the binding guard -> FAIL as expected
+PASS confirm_sweep mutation: delete the BLE Dialog call -> FAIL as expected
+PASS confirm_sweep mutation: give BLE Cancel an onPress -> FAIL as expected
+PASS confirm_sweep mutation: drop the BLE binding guard -> FAIL as expected
+PASS confirm_sweep mutation: resurrect the powerConfirm signal -> FAIL as expected
+PASS confirm_sweep mutation: resurrect the toggleArm signal -> FAIL as expected
+PASS confirm_sweep mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS confirm_sweep mutation: a firmware file changes vs the feat commit -> FAIL as expected
+PASS confirm_sweep live: power Cancel -> 0 powerOff
+PASS confirm_sweep live: power mask -> 0 powerOff
+PASS confirm_sweep live: power danger -> 1 powerOff
+PASS confirm_sweep live: power binding stub -> power off n/a, 0 actions
+PASS confirm_sweep live: power Dialog stub -> ASCII note, 0 actions
+PASS confirm_sweep live: BLE Cancel -> 0 start/stop
+PASS confirm_sweep live: BLE danger idle -> 1 startAdv
+PASS confirm_sweep live: BLE danger advertising -> 1 stopAdv
+PASS confirm_sweep live: BLE binding stub -> BLE n/a, 0 actions
+PASS confirm_sweep live: BLE Dialog stub -> ASCII note, 0 actions
+PASS confirm_sweep live mutation: power Cancel with onPress -> FAIL as expected
+PASS confirm_sweep live mutation: BLE Cancel with onPress -> FAIL as expected
+ALL CONFIRM SWEEP HARNESS CASES PASSED
+PASS control_center static: shell.js imported by the documented relative path
+PASS control_center static: SafeArea consumed as the round-screen safe container
+PASS control_center static: Card consumed by four setting cards
+PASS control_center static: capsule switches, knob shadow approximation, group labels and Reset All pill
+PASS control_center static: all four values live in signals
+PASS control_center static: KV key block uses the four documented <=15-char keys
+PASS control_center static: flag KV get wrapped in try/catch, accepts only 0 or 1
+PASS control_center static: step KV get wrapped in try/catch, accepts only legal integer steps
+PASS control_center static: KV set wrapped in try/catch (NVS failure is volatile)
+PASS control_center static: startup reads every key back into its signal
+PASS control_center static: volume wraps 10 -> 0 and brightness wraps 5 -> 1
+PASS control_center static: RESET restores all four defaults through kvSave
+PASS control_center static: entire app file is ASCII-only (r64)
+PASS control_center static: UI string literals ASCII-only (r64)
+PASS control_center static: Text fontSize limited to bundled 14/20/32 faces
+PASS control_center static: static tree within the node budget
+PASS control_center static: playground sources/control_center.js byte-identical to the example
+PASS control_center static: control_center is in the 74-app playground manifest
+PASS control_center static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS control_center mutation: drop the shell import -> FAIL as expected
+PASS control_center mutation: app stops consuming SafeArea -> FAIL as expected
+PASS control_center mutation: app stops consuming Card -> FAIL as expected
+PASS control_center mutation: group labels dropped -> FAIL as expected
+PASS control_center mutation: a value escapes the signal graph -> FAIL as expected
+PASS control_center mutation: KV key exceeds the NVS cap -> FAIL as expected
+PASS control_center mutation: flag KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: step KV get loses try/catch -> FAIL as expected
+PASS control_center mutation: KV set loses try/catch -> FAIL as expected
+PASS control_center mutation: startup forgets to read a key back -> FAIL as expected
+PASS control_center mutation: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center mutation: RESET forgets brightness -> FAIL as expected
+PASS control_center mutation: a non-ASCII byte slips into file -> FAIL as expected
+PASS control_center mutation: a CJK UI literal slips in -> FAIL as expected
+PASS control_center mutation: font size escapes bundled faces -> FAIL as expected
+PASS control_center mutation: playground generated source drifts -> FAIL as expected
+PASS control_center mutation: playground manifest drops control_center -> FAIL as expected
+PASS control_center mutation: a firmware/runtime/CLI file changes after 3514c76 -> FAIL as expected
+PASS control_center live: handles, safe square, node budget and canvas budget
+PASS control_center live: Wi-Fi card tap toggles WiFi and writes KV
+PASS control_center live: Bluetooth card tap toggles Bluetooth and writes KV
+PASS control_center live: volume card cycles 0..10 and persists
+PASS control_center live: brightness card cycles 1..5 and persists
+PASS control_center live: Reset All restores every default and rewrites all four keys
+PASS control_center live: KV load rejects illegal values and a throwing NVS degrades
+PASS control_center live: shutdown clears effects and timers
+PASS control_center live mutation: live: WiFi card stops toggling -> FAIL as expected
+PASS control_center live mutation: live: volume stops wrapping at 10 -> FAIL as expected
+PASS control_center live mutation: live: RESET forgets brightness -> FAIL as expected
+ALL CONTROL CENTER HARNESS CASES PASSED
+PASS controls_demo: all three components registered on lume.ui.shell
+PASS controls_demo: controlled mode: value read at event time, onChange is the only output
+PASS controls_demo: 40 px touch floor enforced on Switch and Slider heights
+PASS controls_demo: every node registered for cleanup, dispose idempotent
+PASS controls_demo: gesture unsubscribers run on Slider dispose
+PASS controls_demo: Progress updates only fill width ATTR_WIDTH via a bound numeric style
+PASS controls_demo: app wires all three values through signals (controlled consumers)
+PASS controls_demo: all UI string literals ASCII-only (r64)
+PASS controls_demo: playground sources/controls_demo.js byte-identical to example
+PASS controls_demo: controls_demo is in the playground manifest
+PASS controls_demo: firmware/ and runtime/ identical to the r176 feat commit
+PASS controls_demo: firmware/ identical to the r176 feat commit except r173 companion P1
+PASS controls_demo: prelude lume_scripts.c unchanged since 3514c76
+PASS controls_demo live: three components return nodes and are callable from the app
+PASS controls_demo live: Switch press routes onChange(!value) through the signal
+PASS controls_demo live: Slider pan maps dx back into range and quantises to step
+PASS controls_demo live: Slider clamps to [min,max] on an over-range drag
+PASS controls_demo live: Slider onChange fires once per changed step, not per pan frame
+PASS controls_demo live: Progress clamps value and updates fill ATTR_WIDTH only
+PASS controls_demo live: signals drive native re-render (Switch bg attr, Slider canvas draw)
+PASS controls_demo live: dispose removes every node once; second call is a no-op
+PASS controls_demo live: dispose unsubscribes gestures: no onChange after teardown
+PASS controls_demo live: uncontrolled use proves the component holds no state
+PASS controls_demo mutation: drop the Progress registration -> FAIL as expected
+PASS controls_demo mutation: drop the Switch onChange dispatch -> FAIL as expected
+PASS controls_demo mutation: lower the touch floor on one component -> FAIL as expected
+PASS controls_demo mutation: drop the Canvas cleanup registration -> FAIL as expected
+PASS controls_demo mutation: drop the gesture unsubscriber call -> FAIL as expected
+PASS controls_demo mutation: make Progress re-create its fill on every value change -> FAIL as expected
+PASS controls_demo mutation: app stops forwarding slider changes -> FAIL as expected
+PASS controls_demo mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS controls_demo mutation: playground generated source drifts from the example -> FAIL as expected
+PASS controls_demo mutation: playground manifest drops controls_demo -> FAIL as expected
+PASS controls_demo mutation: a runtime file changes after the feat commit -> FAIL as expected
+PASS controls_demo mutation: a firmware file changes vs the r176 feat commit -> FAIL as expected
+PASS controls_demo mutation: the prelude changes vs 3514c76 -> FAIL as expected
+ALL CONTROLS DEMO HARNESS CASES PASSED
+PASS: create-failed notice disposes signal effects and warns once
+PASS: Canvas failure latches dead id and native attrs become no-op
+PASS CRC-32 table cross-checks against zlib.crc32 (independent reference)
+PASS default payload Lume: SHA/HMAC hex matches node:crypto, AES loopback OK
+PASS rendered text stream carries the computed digest, not just ctx state
+PASS NEXT button cycles 3 payloads and wraps; empty payload does not crash
+PASS negative codes render numerically: ERR -2 / ERR -1, never ERR 0
+PASS -3 from any primitive renders UNSUPPORTED (host/playground stub reality)
+PASS default no-crypto host stub shows UNSUPPORTED for all four rows
+PASS CRC-32 u32: 4294967295 is VALID, not ERR -1; seed chaining used once
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / !== 0 error discrimination, no truthy branch
+PASS digest truncation to 16 bytes + "..." in both SHA and HMAC rows
+PASS CRC unsigned String(c2 >>> 0) with negative-only guard
+PASS header declares LUME_MAX_NODES budget and app is plain global script
+PASS static tree <= 20 nodes
+PASS playground manifest includes crypto_check
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76
+PASS MUTATION delete -3/UNSUPPORTED branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake/full digest (drop truncation) -> predicate FAILS
+PASS MUTATION signed CRC render -> unsigned predicate FAILS
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS crypto_check harness: all live, static and mutation checks green
+PASS SHA-256 NIST vectors: empty / abc / 56-byte two-block
+PASS HMAC-SHA256 RFC 4231 cases 1/2/3
+PASS CRC-32 0xCBF43926 + JS reference cross-check (seed/no-seed)
+PASS AES-128/256-CTR SP 800-38A F.5 vectors + CTR symmetry + in-place
+PASS subarray/byteOffset views for all four primitives
+PASS error contract: -1 type / -2 length, no exceptions
+PERF host single sample (20000x 60B): native=14ms js=817ms ratio=58.4x (sink=1966913649, NOT ESP32-S3)
+ALL OK
+PASS dashboard_round SIM prelude, 81 calls/frame (<=240)
+PASS dashboard_round IMU prelude, 88 calls/frame (<=240)
+PASS dashboard_round relative heading, 360-deg cardinals, and linear level mapping
+PASS 1x1 PNG -> {1,1,Uint16Array(1)}, red 0xf800, LE bytes 00 f8
+PASS 2x2 PNG exact RGB565 0xf800 0x07e0 0x001f 0xffff; A8 plane discarded
+PASS decode 2x2 -> 4x4 nearest + -> 1x1 centre tap
+PASS decode pixels fed into lume.imgscale.scale, bits preserved
+PASS error codes -1/-2 (type, dimensions, 480 cap, corrupt input)
+PASS catalog has 74 apps (37 round + 37 square)
+PASS self-check catches all 4 violation types and passes compliant fixture
+PASS audited all 74 apps via real prelude
+ACCEPTED [square] counter examples/counter/app.js:L39 (View#15/View#14/Text#13) font-size: got=11px req=>=12px text="TAP TO INCREMENT" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] typewriter examples/typewriter/app.js:L78 (View#5/View#4) card-radius: got=borderRadius=20 (autoxauto) req=<=12px text="TYPEWRITER | tap to skip" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1) card-radius: got=borderRadius=16 (autoxauto) req=<=12px text="LUME / DIGITAL 16:24 11月" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#2) card-radius: got=borderRadius=16 (480x480) req=<=12px text="LUME / DIGITAL 16:24 11月" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#8) card-radius: got=borderRadius=16 (480x480) req=<=12px text="LUME / ANALOG 11月28日  周六" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#12) card-radius: got=borderRadius=16 (480x480) req=<=12px text="LUME / ACTIVITY 16:24 78" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#17) card-radius: got=borderRadius=16 (480x480) req=<=12px text="LUME / GOALS 16:24 120 k" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#24) card-radius: got=borderRadius=16 (480x480) req=<=12px text="LUME / MODULAR 16:24 11月" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#24/View#28) card-radius: got=borderRadius=16 (202x104) req=<=12px text="WEATHER --° LOCAL" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#24/View#32) card-radius: got=borderRadius=16 (202x104) req=<=12px text="BATTERY 78% DEMO" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#24/View#36) card-radius: got=borderRadius=16 (202x104) req=<=12px text="CALENDAR 周六 11月28日" -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [round] watchface examples/watchface/app.js:L92 (View#1/View#24/View#40) card-radius: got=borderRadius=16 (202x104) req=<=12px text="STEPS 0 步 IMU EST." -- watchface off-limits in r234 (r232 dedicated knife in flight)
+ACCEPTED [square] minesweeper examples/minesweeper/app.js:L351 (View#1/Text#6) font-size: got=11px req=>=12px text="BEST -" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] voice_assistant examples/voice_assistant/app.js:L764 (View#1/Text#4) font-size: got=10px req=>=12px -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] voice_assistant examples/voice_assistant/app.js:L781 (View#1/Text#8) font-size: got=11px req=>=12px text="TAP TALK / TAP SEND / TAP INTERR" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] ble_uart examples/ble_uart/app.js:L162 (View#28/Text#27) font-size: got=11px req=>=12px text="NUS BLE console: reply HELLO to " -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#2) touch-target: got=26x48 req=>=48x48 text="q" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#2) letter-icon: got="q" req=non-placeholder icon or descriptive label text="q" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#3) touch-target: got=26x48 req=>=48x48 text="w" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#3) letter-icon: got="w" req=non-placeholder icon or descriptive label text="w" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#4) touch-target: got=26x48 req=>=48x48 text="e" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#4) letter-icon: got="e" req=non-placeholder icon or descriptive label text="e" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#5) touch-target: got=26x48 req=>=48x48 text="r" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#5) letter-icon: got="r" req=non-placeholder icon or descriptive label text="r" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#6) touch-target: got=26x48 req=>=48x48 text="t" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#6) letter-icon: got="t" req=non-placeholder icon or descriptive label text="t" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#7) touch-target: got=26x48 req=>=48x48 text="y" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L422 (View#117/View#42/View#12/Button#7) letter-icon: got="y" req=non-placeholder icon or descriptive label text="y" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L423 (View#117/View#42/View#12/Button#8) touch-target: got=26x48 req=>=48x48 text="u" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L423 (View#117/View#42/View#12/Button#8) letter-icon: got="u" req=non-placeholder icon or descriptive label text="u" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L423 (View#117/View#42/View#12/Button#9) touch-target: got=26x48 req=>=48x48 text="i" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L423 (View#117/View#42/View#12/Button#9) letter-icon: got="i" req=non-placeholder icon or descriptive label text="i" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L423 (View#117/View#42/View#12/Button#10) touch-target: got=26x48 req=>=48x48 text="o" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L423 (View#117/View#42/View#12/Button#10) letter-icon: got="o" req=non-placeholder icon or descriptive label text="o" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L423 (View#117/View#42/View#12/Button#11) touch-target: got=26x48 req=>=48x48 text="p" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L423 (View#117/View#42/View#12/Button#11) letter-icon: got="p" req=non-placeholder icon or descriptive label text="p" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#13) touch-target: got=24x48 req=>=48x48 text="a" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#13) letter-icon: got="a" req=non-placeholder icon or descriptive label text="a" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#14) touch-target: got=24x48 req=>=48x48 text="s" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#14) letter-icon: got="s" req=non-placeholder icon or descriptive label text="s" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#15) touch-target: got=24x48 req=>=48x48 text="d" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#15) letter-icon: got="d" req=non-placeholder icon or descriptive label text="d" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#16) touch-target: got=24x48 req=>=48x48 text="f" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#16) letter-icon: got="f" req=non-placeholder icon or descriptive label text="f" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#17) touch-target: got=24x48 req=>=48x48 text="g" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#17) letter-icon: got="g" req=non-placeholder icon or descriptive label text="g" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#18) touch-target: got=24x48 req=>=48x48 text="h" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#23/Button#18) letter-icon: got="h" req=non-placeholder icon or descriptive label text="h" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L425 (View#117/View#42/View#23/Button#19) touch-target: got=24x48 req=>=48x48 text="j" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L425 (View#117/View#42/View#23/Button#19) letter-icon: got="j" req=non-placeholder icon or descriptive label text="j" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L425 (View#117/View#42/View#23/Button#20) touch-target: got=24x48 req=>=48x48 text="k" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L425 (View#117/View#42/View#23/Button#20) letter-icon: got="k" req=non-placeholder icon or descriptive label text="k" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L425 (View#117/View#42/View#23/Button#21) touch-target: got=24x48 req=>=48x48 text="l" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L425 (View#117/View#42/View#23/Button#21) letter-icon: got="l" req=non-placeholder icon or descriptive label text="l" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L426 (View#117/View#42/View#33/Button#25) touch-target: got=27x48 req=>=48x48 text="z" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L426 (View#117/View#42/View#33/Button#25) letter-icon: got="z" req=non-placeholder icon or descriptive label text="z" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L426 (View#117/View#42/View#33/Button#26) touch-target: got=27x48 req=>=48x48 text="x" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L426 (View#117/View#42/View#33/Button#26) letter-icon: got="x" req=non-placeholder icon or descriptive label text="x" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L426 (View#117/View#42/View#33/Button#27) touch-target: got=27x48 req=>=48x48 text="c" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L426 (View#117/View#42/View#33/Button#27) letter-icon: got="c" req=non-placeholder icon or descriptive label text="c" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L426 (View#117/View#42/View#33/Button#28) touch-target: got=27x48 req=>=48x48 text="v" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L426 (View#117/View#42/View#33/Button#28) letter-icon: got="v" req=non-placeholder icon or descriptive label text="v" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L427 (View#117/View#42/View#33/Button#29) touch-target: got=27x48 req=>=48x48 text="b" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L427 (View#117/View#42/View#33/Button#29) letter-icon: got="b" req=non-placeholder icon or descriptive label text="b" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L427 (View#117/View#42/View#33/Button#30) touch-target: got=27x48 req=>=48x48 text="n" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L427 (View#117/View#42/View#33/Button#30) letter-icon: got="n" req=non-placeholder icon or descriptive label text="n" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L427 (View#117/View#42/View#33/Button#31) touch-target: got=27x48 req=>=48x48 text="m" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L427 (View#117/View#42/View#33/Button#31) letter-icon: got="m" req=non-placeholder icon or descriptive label text="m" -- QWERTY keyboard letter input key (a-z), not an icon placeholder
+ACCEPTED [round] settings examples/settings/app.js:L427 (View#117/View#42/View#33/Button#32) touch-target: got=27x48 req=>=48x48 text="." -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L1327 (View#117/View#42/View#41/Button#34) touch-target: got=29x48 req=>=48x48 text="-" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L428 (View#117/View#42/View#41/Button#35) touch-target: got=29x48 req=>=48x48 text="_" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L424 (View#117/View#42/View#41/Button#36) touch-target: got=29x48 req=>=48x48 text="@" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L427 (View#117/View#42/View#41/Button#37) touch-target: got=29x48 req=>=48x48 text="." -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L429 (View#117/View#42/View#41/Button#39) touch-target: got=43x48 req=>=48x48 text="OK" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [round] settings examples/settings/app.js:L429 (View#117/View#42/View#41/Button#40) touch-target: got=43x48 req=>=48x48 text="ESC" -- 10-col QWERTY key width inside 328px round safe width (height locked >=48px)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#8) touch-target: got=44x48 req=>=48x48 text="Q" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#8) letter-icon: got="Q" req=non-placeholder icon or descriptive label text="Q" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#9) touch-target: got=44x48 req=>=48x48 text="W" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#9) letter-icon: got="W" req=non-placeholder icon or descriptive label text="W" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#10) touch-target: got=44x48 req=>=48x48 text="E" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#10) letter-icon: got="E" req=non-placeholder icon or descriptive label text="E" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#11) touch-target: got=44x48 req=>=48x48 text="R" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#11) letter-icon: got="R" req=non-placeholder icon or descriptive label text="R" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#12) touch-target: got=44x48 req=>=48x48 text="T" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#12) letter-icon: got="T" req=non-placeholder icon or descriptive label text="T" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#13) touch-target: got=44x48 req=>=48x48 text="Y" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#13) letter-icon: got="Y" req=non-placeholder icon or descriptive label text="Y" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#14) touch-target: got=44x48 req=>=48x48 text="U" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#14) letter-icon: got="U" req=non-placeholder icon or descriptive label text="U" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#15) touch-target: got=44x48 req=>=48x48 text="I" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#15) letter-icon: got="I" req=non-placeholder icon or descriptive label text="I" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#16) touch-target: got=44x48 req=>=48x48 text="O" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#16) letter-icon: got="O" req=non-placeholder icon or descriptive label text="O" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#17) touch-target: got=44x48 req=>=48x48 text="P" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#7/Button#17) letter-icon: got="P" req=non-placeholder icon or descriptive label text="P" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#19) touch-target: got=44x48 req=>=48x48 text="A" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#19) letter-icon: got="A" req=non-placeholder icon or descriptive label text="A" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#20) touch-target: got=44x48 req=>=48x48 text="S" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#20) letter-icon: got="S" req=non-placeholder icon or descriptive label text="S" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#21) touch-target: got=44x48 req=>=48x48 text="D" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#21) letter-icon: got="D" req=non-placeholder icon or descriptive label text="D" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#22) touch-target: got=44x48 req=>=48x48 text="F" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#22) letter-icon: got="F" req=non-placeholder icon or descriptive label text="F" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#23) touch-target: got=44x48 req=>=48x48 text="G" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#23) letter-icon: got="G" req=non-placeholder icon or descriptive label text="G" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#24) touch-target: got=44x48 req=>=48x48 text="H" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#24) letter-icon: got="H" req=non-placeholder icon or descriptive label text="H" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#25) touch-target: got=44x48 req=>=48x48 text="J" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#25) letter-icon: got="J" req=non-placeholder icon or descriptive label text="J" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#26) touch-target: got=44x48 req=>=48x48 text="K" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#26) letter-icon: got="K" req=non-placeholder icon or descriptive label text="K" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#27) touch-target: got=44x48 req=>=48x48 text="L" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#18/Button#27) letter-icon: got="L" req=non-placeholder icon or descriptive label text="L" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#29) touch-target: got=44x48 req=>=48x48 text="Z" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#29) letter-icon: got="Z" req=non-placeholder icon or descriptive label text="Z" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#30) touch-target: got=44x48 req=>=48x48 text="X" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#30) letter-icon: got="X" req=non-placeholder icon or descriptive label text="X" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#31) touch-target: got=44x48 req=>=48x48 text="C" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#31) letter-icon: got="C" req=non-placeholder icon or descriptive label text="C" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#32) touch-target: got=44x48 req=>=48x48 text="V" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#32) letter-icon: got="V" req=non-placeholder icon or descriptive label text="V" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#33) touch-target: got=44x48 req=>=48x48 text="B" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#33) letter-icon: got="B" req=non-placeholder icon or descriptive label text="B" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#34) touch-target: got=44x48 req=>=48x48 text="N" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#34) letter-icon: got="N" req=non-placeholder icon or descriptive label text="N" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#35) touch-target: got=44x48 req=>=48x48 text="M" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] keyboard_demo examples/keyboard_demo/app.js (View#1/View#6/View#28/Button#35) letter-icon: got="M" req=non-placeholder icon or descriptive label text="M" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#8) touch-target: got=44x48 req=>=48x48 text="Q" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#8) letter-icon: got="Q" req=non-placeholder icon or descriptive label text="Q" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#9) touch-target: got=44x48 req=>=48x48 text="W" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#9) letter-icon: got="W" req=non-placeholder icon or descriptive label text="W" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#10) touch-target: got=44x48 req=>=48x48 text="E" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#10) letter-icon: got="E" req=non-placeholder icon or descriptive label text="E" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#11) touch-target: got=44x48 req=>=48x48 text="R" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#11) letter-icon: got="R" req=non-placeholder icon or descriptive label text="R" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#12) touch-target: got=44x48 req=>=48x48 text="T" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#12) letter-icon: got="T" req=non-placeholder icon or descriptive label text="T" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js:L191 (View#1/View#6/View#7/Button#13) touch-target: got=44x48 req=>=48x48 text="Y" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js:L191 (View#1/View#6/View#7/Button#13) letter-icon: got="Y" req=non-placeholder icon or descriptive label text="Y" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#14) touch-target: got=44x48 req=>=48x48 text="U" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#14) letter-icon: got="U" req=non-placeholder icon or descriptive label text="U" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#15) touch-target: got=44x48 req=>=48x48 text="I" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#15) letter-icon: got="I" req=non-placeholder icon or descriptive label text="I" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#16) touch-target: got=44x48 req=>=48x48 text="O" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#16) letter-icon: got="O" req=non-placeholder icon or descriptive label text="O" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#17) touch-target: got=44x48 req=>=48x48 text="P" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#7/Button#17) letter-icon: got="P" req=non-placeholder icon or descriptive label text="P" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#19) touch-target: got=44x48 req=>=48x48 text="A" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#19) letter-icon: got="A" req=non-placeholder icon or descriptive label text="A" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#20) touch-target: got=44x48 req=>=48x48 text="S" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#20) letter-icon: got="S" req=non-placeholder icon or descriptive label text="S" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#21) touch-target: got=44x48 req=>=48x48 text="D" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#21) letter-icon: got="D" req=non-placeholder icon or descriptive label text="D" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#22) touch-target: got=44x48 req=>=48x48 text="F" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#22) letter-icon: got="F" req=non-placeholder icon or descriptive label text="F" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js:L185 (View#1/View#6/View#18/Button#23) touch-target: got=44x48 req=>=48x48 text="G" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js:L185 (View#1/View#6/View#18/Button#23) letter-icon: got="G" req=non-placeholder icon or descriptive label text="G" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#24) touch-target: got=44x48 req=>=48x48 text="H" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#24) letter-icon: got="H" req=non-placeholder icon or descriptive label text="H" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#25) touch-target: got=44x48 req=>=48x48 text="J" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#25) letter-icon: got="J" req=non-placeholder icon or descriptive label text="J" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#26) touch-target: got=44x48 req=>=48x48 text="K" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#26) letter-icon: got="K" req=non-placeholder icon or descriptive label text="K" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#27) touch-target: got=44x48 req=>=48x48 text="L" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#18/Button#27) letter-icon: got="L" req=non-placeholder icon or descriptive label text="L" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#29) touch-target: got=44x48 req=>=48x48 text="Z" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#29) letter-icon: got="Z" req=non-placeholder icon or descriptive label text="Z" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js:L183 (View#1/View#6/View#28/Button#30) touch-target: got=44x48 req=>=48x48 text="X" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js:L183 (View#1/View#6/View#28/Button#30) letter-icon: got="X" req=non-placeholder icon or descriptive label text="X" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#31) touch-target: got=44x48 req=>=48x48 text="C" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#31) letter-icon: got="C" req=non-placeholder icon or descriptive label text="C" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#32) touch-target: got=44x48 req=>=48x48 text="V" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#32) letter-icon: got="V" req=non-placeholder icon or descriptive label text="V" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#33) touch-target: got=44x48 req=>=48x48 text="B" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#33) letter-icon: got="B" req=non-placeholder icon or descriptive label text="B" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#34) touch-target: got=44x48 req=>=48x48 text="N" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#34) letter-icon: got="N" req=non-placeholder icon or descriptive label text="N" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#35) touch-target: got=44x48 req=>=48x48 text="M" -- shell.Keyboard 10-col QWERTY key width 44px (height 48px; square app deferred)
+ACCEPTED [square] wordle examples/wordle/app.js (View#1/View#6/View#28/Button#35) letter-icon: got="M" req=non-placeholder icon or descriptive label text="M" -- shell.Keyboard QWERTY letter input key (A-Z), not an icon placeholder
+ACCEPTED [square] sparkline_demo examples/sparkline_demo/app.js:L30 (View#1/Text#3) font-size: got=11px req=>=12px text="shell.Sparkline / Canvas mini ch" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] sparkline_demo examples/sparkline_demo/app.js:L30 (View#1/Text#4) font-size: got=11px req=>=12px text="STATIC / 3 SERIES" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] sparkline_demo examples/sparkline_demo/app.js:L30 (View#1/Text#6) font-size: got=11px req=>=12px text="LIVE / TIMER PUSH 300MS" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] sparkline_demo examples/sparkline_demo/app.js:L30 (View#1/Text#7) font-size: got=11px req=>=12px text="N=8" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] sparkline_demo examples/sparkline_demo/app.js:L30 (View#1/Text#9) font-size: got=11px req=>=12px text="FILLED / MIN 0 MAX 100" -- square app registered-only in r234 (deferred to square token round)
+ACCEPTED [square] sparkline_demo examples/sparkline_demo/app.js:L30 (View#1/Text#12) font-size: got=11px req=>=12px text="Lume shell.Sparkline / pure JS" -- square app registered-only in r234 (deferred to square token round)
+PASS zero unaccepted DESIGN-TOKENS violations
+AUDIT apps=74 violations=0 (round=0 square=0) accepted=185 (round=69 square=116)
+PASS examples_gallery: gallery card count equals manifest app count
+PASS examples_gallery: one card per app, in manifest order
+PASS examples_gallery: every card title / description / link comes from page.js metadata
+PASS examples_gallery: every card description keeps bilingual data-en / data-zh attributes
+PASS examples_gallery: no stale "Seven" headline or meta description remains
+PASS examples_gallery: hardware badge appears exactly where metadata states a board dependency
+PASS examples_gallery mutation: one card disappears -> FAIL as expected
+PASS examples_gallery mutation: a card drifts out of manifest order -> FAIL as expected
+PASS examples_gallery mutation: a card invents a title -> FAIL as expected
+PASS examples_gallery mutation: a card loses its bilingual attributes -> FAIL as expected
+PASS examples_gallery mutation: the old Seven headline returns -> FAIL as expected
+PASS examples_gallery mutation: a hardware badge is dropped from a dependency card -> FAIL as expected
+ALL EXAMPLES GALLERY CASES PASSED (74 apps / 74 cards)
+PASS 8/16-point known DFT, Float32 bit patterns, packed magnitude
+PASS 1kHz peak bin 64/1024 and Parseval
+PASS 4096-point inclusive upper bound
+PASS offset views, guards, split magnitude
+PASS error codes for type, length, non-power-of-two, limit, overlap
+PERF 1024-point mean over 1000 calls: JS butterflies=2.0740 ms native=0.0260 ms (host single sample; not ESP32-S3)
+PASS files before: DEL -> status confirmation -> DEL -> remove
+PASS files after: DEL -> Dialog -> Delete -> remove -> Toast
+PASS files r206 frame budget: 1000-entry list draw calls=0 (budget <=240)
+PASS 60 s smoke: six fish bounded, finite, continuous, capped turn; eaten=40
+PASS food pursuit changes heading and position
+PASS eating removes pellet and accelerates swimming/tail
+PASS size tiers 6/5/6 stations; 15 Hz dirty-rect paint (max 7 rects), 11 plant sway frames, tap feeding, no errors, max draw calls/frame=135 (limit 250)
+ALL FISHTANK HARNESS CASES PASSED
+PASS fitness static: shell.js imported by documented relative path
+PASS fitness static: triple concentric rings drawn at r=207/187/167 with fine 12-o-clock tick lines
+PASS fitness static: companion cards display target/context values (ZONE2 avg and 410/500 kcal)
+PASS fitness static: honest SIM battery fallback (85% SIM when lume.system.battery absent)
+PASS fitness static: thousands formatter and IMU step threshold algorithm present
+PASS fitness static: entire app file is ASCII-only (r64)
+PASS fitness static: UI string literals ASCII-only (r64)
+PASS fitness static: playground sources/fitness.js byte-identical to example
+PASS fitness static: fitness is in the 74-app playground manifest
+PASS fitness static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS fitness mutation: drop shell import -> FAIL as expected
+PASS fitness mutation: inner ring dropped -> FAIL as expected
+PASS fitness mutation: ZONE2 avg target removed -> FAIL as expected
+PASS fitness mutation: SIM label removed from battery readout -> FAIL as expected
+PASS fitness mutation: thousands formatter dropped -> FAIL as expected
+PASS fitness mutation: playground source drifts -> FAIL as expected
+PASS fitness mutation: manifest drops fitness -> FAIL as expected
+PASS fitness live: ring fractions, thousands formatting, SIM battery and <= 240 frame draws
+PASS fitness live: companion cards toggle hero focus between STEPS / HEART / BURN
+PASS fitness live: IMU peak-threshold step counter increments steps with debounce
+PASS fitness live: shutdown clears all effects and timers
+PASS fitness live mutation: live: fmtThousands drops comma -> FAIL as expected
+PASS fitness live mutation: live: IMU debounce removed -> FAIL as expected
+ALL FITNESS HARNESS CASES PASSED
+PASS flapdot UI strings are ASCII-only (r64 font rule)
+PASS flapdot pipe geometry deterministic, gaps sane, ramp stepwise
+PASS flapdot pipe window covers exactly the visible pipes
+PASS flapdot scoring gate at pipe right edge
+PASS flapdot collision: pipes/ground kill, gap passes, top clamps
+PASS flapdot physics: gravity/flap/terminal, no NaN
+PASS flapdot state machine ready/run/dead/restart
+PASS flapdot course winnable: scripted policy cleared 135 pipes
+PASS flapdot boots in ready mode with HUD and full first paint
+PASS flapdot tap -> run through the gesture pipeline
+PASS flapdot dirty-band discipline + canvas pixel budget (max inc 20680 px)
+PASS flapdot eight-tick frame skip clears full bird path; old union misses 43 vertical px; draw calls=57
+PASS flapdot death + restart through the real prelude
+PASS flapdot 60 s smoke (draws=97893, paints=4951, phase=run, score=0)
+PASS flapdot r185 idle gate: 12 ticks -> 2 bird-only paints (draws=10), tap repaints full canvas immediately
+ALL flapdot harness checks passed
+PASS frogger four-direction hop + boundary clamp
+PASS frogger vehicle collision
+PASS frogger log carry displacement
+PASS frogger water death
+PASS frogger home fill + level up
+PASS frogger difficulty speed-up
+PASS frogger high-score KV + graceful failure
+PASS frogger sprite spans precomputed once, stable across ticks
+PASS frogger game over restart
+PASS frogger canvas/events + tap-direction hops
+EVIDENCE frogger active max 16 draws / 53 total ops (<=240), over 0 ops in 10 ticks, 8 spriteDefine
+PASS frogger r212 frame-budget and idle 0-draw discipline
+ALL FROGGER HARNESS CASES PASSED
+PASS life budget: GRID<=60, 9px cells, single canvas <=300x300
+PASS life B3 birth: dead cell with exactly 3 live neighbours comes alive
+PASS life B3/S23 survival 2-3, death 0-1 and 4+
+PASS life stable 2x2 block is unchanged
+PASS life torus edges wrap neighbour counts across all four borders
+EVIDENCE game_of_life initial 1 full paint/7 calls; idle subinterval 0 paints
+PASS life boot: glider seeded, RUN at 350ms, LIFE READY logged
+PASS life STATIC layer: retainSegments uploaded exactly once (72 segments)
+PASS life LIVE layer: each generation logs LIFE GEN and invalidates <30% of frame
+PASS life glider translates while conserving 5 live cells
+PASS life tap: empty cell plants glider; live cell toggles off
+PASS life swipe up toggles play/pause; left/right cycle 200/350/500ms
+PASS life longpress clears the grid
+PASS life PATTERN cycles GLIDER -> LWSS -> PULSAR(48) -> RANDOM
+life harness: 13 cases passed
+PASS 2048 left
+PASS 2048 right
+PASS 2048 up
+PASS 2048 down
+PASS 2048 no change
+PASS 2048 game over
+PASS snake turns
+PASS snake eats
+PASS snake wall
+PASS snake body
+PASS snake IMU threshold and axis sign
+PASS 2048 high score KV key
+PASS snake high score KV key
+PASS brkout high score KV key
+PASS breakout wall rebound
+PASS breakout brick
+PASS breakout level
+PASS breakout game over
+PASS tetris clockwise wall kick
+PASS tetris line clear, score and speed floor
+PASS tetris lock scores cleared row
+PASS tetris high score KV and graceful failure
+PASS tetris canvas, tap rotation, pan follow, soft and hard drop, line log
+PASS gateway e2e auth: no headers: HTTP 401, ws-client onError(1), no upgrade
+PASS gateway e2e auth: wrong Bearer: HTTP 401, ws-client onError(1), no session
+PASS gateway e2e auth: correct Bearer: HTTP 101 + hello-ack with correct device token
+PASS gateway e2e auth: correct Bearer + wrong device token: hello gate rejects (unauthorized)
+PASS gateway e2e auth: x-gateway-token compatibility form: HTTP 101 + hello-ack
+PASS gateway e2e auth: ?token= compatibility form: HTTP 101 + hello-ack
+PASS gateway e2e auth: r197: Bearer=device-token (wrong handshake) -> HTTP 401, no upgrade
+PASS gateway e2e auth: r197: Bearer=handshake + hello=handshake (wrong device token) -> unauthorized/1008
+ALL GATEWAY E2E AUTH CASES PASSED
+no token: HTTP 401
+wrong token: HTTP 401
+correct query token: HTTP 101
+correct Bearer token: HTTP 101
+PASS happy path: hello -> 60ms PCM -> text delta -> audio -> close
+PASS negative: uplink before hello -> not_hello + 1008
+PASS negative: non-hello text first -> not_hello + 1008
+PASS negative: broken JSON -> bad_json + 1002
+PASS negative: 1920-byte mono frame -> bad_audio_frame + 1009
+PASS negative: unmasked WS frame rejected at WS layer + 1002
+PASS negative: upstream disconnect -> upstream_closed + 1011
+PASS negative: hello v=2 -> unsupported_version + 1008
+PASS device close: gateway releases upstream and echoes 1000
+PASS control: unknown_type is non-fatal, ping gets pong
+PASS r117: transcript seq independent of text/audio, single final
+PASS r119: open mode + hello without auth -> full round unchanged
+PASS r119: locked + hello without token -> unauthorized + 1008 + zero upstream calls
+PASS r119: locked + wrong token -> unauthorized + 1008 + zero upstream calls
+PASS r119: locked + correct token -> full round, upstream engaged
+PASS r119: locked + audio before hello -> not_hello wins over token gate
+PASS r120: two turns carry user+assistant history; close clears; reconnect fresh
+PASS r120: history-limit=0 degrades to single-turn (r119 body)
+PASS r120: window keeps only the most recent N pairs (oldest dropped first)
+PASS r122: close retires history; reconnect with resume restores it
+PASS r122: unknown resume id degrades to a fresh session
+PASS r122: locked + wrong token + resume -> unauthorized, zero restore, zero upstream
+PASS r122: expired resume snapshot degrades to a fresh session
+ALL GATEWAY HARNESS CASES PASSED (23 cases)
+PASS stt: multipart WAV header, downmix, model + auth
+PASS chat: model + system/user messages + transcript + auth
+PASS chat: OPENAI_CHAT_BASE_URL overrides LLM endpoint only
+PASS tts: one request per sentence + model/voice/format/auth
+PASS tts: per-sentence 24k->16k resample + 3840-byte frame sequence
+PASS delta: one-per-SSE-chunk + single final marker + exact reassembly
+PASS turn: thinking -> speaking -> idle + close(1000, done)
+PASS sendText: device text folded into chat user message
+PASS negative: stt 401 -> no retry, idle + non-fatal error
+PASS negative: chat 5xx -> 1 retry cap, idle + fatal error
+PASS negative: tts timeout -> 1 retry, idle + upstream_closed, no hang
+PASS retry: 429 -> success on second attempt, full turn completes
+PASS negative: tts 5xx -> retry cap, idle, no audio
+PASS helpers: wav/resample/chunk/split/joinUrl invariants
+PASS zero-audio: stop -> idle, no HTTP, no close (advisory stop)
+PASS stop: idempotent, never cancels in-flight response
+PASS sse: split-line chunks + CRLF + comment + [DONE] + accumulated TTS text
+PASS sse: mid-stream disconnect -> deltas kept + final + non-fatal + no retry
+PASS sse: stop() aborts active read, keeps prior deltas, no error/hang
+PASS sse: non-SSE 200 -> upstream_error, no fallback deltas
+PASS splitter: stateful boundaries, CJK/ASCII, ellipsis, quotes, residual
+PASS streaming: first audio before chat SSE end + final delta
+PASS streaming: sentence order + serial TTS + 51-frame sequence
+PASS streaming: single sentence TTS failure skipped, rest continue
+PASS streaming: chat break -> queued sentences played + truncated final
+PASS streaming: stop abort in-flight TTS + drop queue + clean close
+PASS streaming: stop after chat sealed aborts TTS -> clean close, no error
+PASS asr: interim deltas + independent seq + single final before chat
+PASS asr: 3x3840B frames forwarded on arrival, before stop + commit
+PASS fallback: no hello.caps -> one-shot REST, no transcript (r113 intact)
+PASS fallback: config off -> r113 REST + chat + TTS unchanged
+PASS asr: stop mid-stream aborts WS, no duplicate final, clean close
+PASS asr: stream error -> REST fallback + one final, chat/TTS intact
+PASS asr: end before handshake queues commit, final without timeout
+PASS r120: two turns on one session inject prior user+assistant into chat body
+PASS r120: history-limit=0 keeps r119 single-turn body (real adapter)
+PASS r122: real adapter injects resumed user+assistant across disconnect
+ALL GATEWAY UPSTREAM CASES PASSED (37 cases)
+PASS: DOWN MOVE UP retain FIFO order
+PASS: MOVE pressure reserves capacity and UP reaches queue tail
+PASS tap: short press with small displacement -> one tap with end coords
+PASS tap boundary: displacement >= tapMovePx(10) is NOT a tap
+PASS tap boundary: duration >= tapMaxMs(400) is NOT a tap (becomes longpress)
+PASS longpress boundary: fires while still down once t-start >= 400ms
+PASS longpress suppresses tap AND swipe on release (no double-fire)
+EVIDENCE pan stream types=["panstart","pan","pan","panend"] final dx/dy=35/2
+PASS pan stream: panstart -> pan* -> panend, with dx/dy from press start
+PASS swipe: LVGL gesture-dir hint (right=2) wins over axis inference
+PASS swipe: axis fallback when no LVGL dir hint (vertical -> down)
+PASS swipe speed gate: a 5s STATIONARY hold is a longpress, never a swipe
+PASS r21-fix: a SLOW drag held past 400ms is pan, NEVER longpress (movement gate)
+PASS r21-fix: a slow drag that ends fast stays swipe-eligible (no longpress steal)
+PASS r21-fix: slow long drag (dist>=50px, vel<min) is neither longpress nor swipe
+PASS swipeMinVel is a real, tunable gate (raise it -> slow drag stops swiping)
+PASS scroll-cancelled UP: a List scroll wins, no tap/swipe/longpress
+PASS tuning is centralized and tunable: swipeMinPx can be raised at runtime
+PASS on() enables LVGL events once per node and rejects bad type/callback
+PASS  dispatched GestureEvent reaches the right callback with coordinates
+PASS unregister function is idempotent and stops future delivery
+PASS longpress then release: no tap delivered; onPress (CLICKED) suppressed
+PASS normal tap: onPress AND gesture tap both fire (no longpress latch)
+PASS dispose clears per-node gesture state (removed node stops dispatching)
+EVIDENCE demo tap -> status="tap (61,100)" taps=1
+PASS examples/gestures/app.js evaluates and its tap counter responds
+PASS example swipe changes page and longpress toggles color
+PASS 20 r21 gesture cases
+PASS golf UI strings are ASCII-only (r64 font rule)
+PASS golf seeded generation deterministic, safe, water/sand/slope spread
+PASS golf terrain classification (tee managed ground, hole green)
+PASS golf straight drive rolls and stops on managed grass
+PASS golf sand friction kills the roll
+PASS golf water splash detection deterministic
+PASS golf hole capture speed gate
+PASS golf swing peak -> power ramp clamps and monotonic
+PASS golf all 10 holes solvable by grid search, round total=18
+PASS golf water penalty +1 and reset to pre-shot spot
+PASS golf strike guards (rolling/holed rejected, wild input finite)
+PASS golf boots in demo mode with HUD
+PASS golf tap aim + demo strike through the gesture pipeline
+EVIDENCE golf ready 0 paints/20 ticks; max 26 draw calls/paint
+PASS golf dirty-rect discipline + canvas pixel budget
+PASS golf round completion + restart through the real prelude
+ALL golf harness checks passed
+PASS gravity_ball gravity accelerates and displaces
+PASS gravity_ball the screen edge clamps and reflects normal velocity
+PASS gravity_ball tilting the other way reverses the fall direction
+PASS gravity_ball dt cap limits delayed tick
+PASS gravity_ball a hard tilt keeps the ball inside the screen
+PASS gravity_ball the first frame paints the canvas once and invalidates all of it
+PASS gravity_ball no frame falls back to the whole canvas
+PASS gravity_ball per-frame raster stays far below a full repaint
+EVIDENCE gravity_ball 36/40 visible-movement paints in 2000 ms; <= 50 draw calls/paint
+PASS gravity_ball the dirty rect tracks the ball and stays small
+PASS gravity_ball stationary ball skips canvas drawing for a full second
+PASS gravity_ball the canvas holds exactly one ball and no ghost
+PASS gravity_ball disc span cache static contract
+PASS gravity_ball one disc frame: 0 sqrt, 49 cached row spans
+PASS gravity_ball span-cache mutation guard
+PASS hr_monitor: defensive guard typeof lume.ble !== undefined degrades to ASCII note
+PASS hr_monitor: status() negative-number error discriminated via typeof === object
+PASS hr_monitor: shell.Dialog gate: Cancel is plain, danger calls startAdv/stopAdv
+PASS hr_monitor: both lume.ble.start and lume.ble.stop are wired through the gate
+PASS hr_monitor: HR telemetry throttled by a >=1 s setInterval
+PASS hr_monitor: HR writes only while CONNECTED and subscribed, ASCII fixed width
+PASS hr_monitor: inbound command truncated to <=20 B ASCII
+PASS hr_monitor: status HUD renders state / subscribed / pending / mtu
+PASS hr_monitor: all UI string literals ASCII-only (r64)
+PASS hr_monitor: playground sources/hr_monitor.js byte-identical to example
+PASS hr_monitor: hr_monitor is in the playground manifest
+PASS hr_monitor: firmware/ runtime/ CLI tooling identical to 3514c76
+PASS hr_monitor mutation: drop the typeof lume.ble guard -> FAIL as expected
+PASS hr_monitor mutation: truthy test replaces typeof === object discrimination -> FAIL as expected
+PASS hr_monitor mutation: drop the BLE Dialog gate -> FAIL as expected
+PASS hr_monitor mutation: stop() no longer wired through the gate -> FAIL as expected
+PASS hr_monitor mutation: throttle drops from 1000 ms to 100 ms -> FAIL as expected
+PASS hr_monitor mutation: HR write loses its CONNECTED+subscribed precondition -> FAIL as expected
+PASS hr_monitor mutation: inbound command loses its 20-byte truncation -> FAIL as expected
+PASS hr_monitor mutation: HUD drops the mtu row -> FAIL as expected
+PASS hr_monitor mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS hr_monitor mutation: playground generated source drifts from the example -> FAIL as expected
+PASS hr_monitor mutation: playground manifest drops hr_monitor -> FAIL as expected
+PASS hr_monitor mutation: a firmware file changes vs 27541bb -> FAIL as expected
+ALL HR MONITOR HARNESS CASES PASSED
+PASS Image create/source/size message order
+PASS Image participates in View flex child adoption
+PASS Image preserves aspect ratio for one explicit dimension
+PASS Image forwards two explicit raster dimensions
+PASS Image propagates decoder error and removes failed node
+PASS Image rejects invalid input and propagates header error
+PASS embedded PNG 1x1 decodes to exact opaque red RGBA bytes
+PASS nearest 2x upsample, exact RGB565 bits: 0xf800 0xf800 0x07e0 0x07e0 ...
+PASS nearest 2x downsample, centre taps = 0x0006 0x0008 0x000e 0x0010
+PASS bilinear hand case 3x1->2x1 = 0xb800 0x05e0
+PASS bilinear 2x2->3x3, centre=0x8410 (channel separation)
+PASS bilinear 5x4->9x7 reference + omitted-mode defaults to nearest
+PASS subarray offset views, guards intact
+PASS error codes -1/-2 and identical-view in-place allowance
+PERF 64x64->128x128 bilinear mean over 200 calls: JS=17.8950 ms native=0.3900 ms (host single sample; not ESP32-S3)
+PASS default: 2x nearest, HUD/dims/OK, sprite pixels = independent nearest
+PASS NEXT cycles 2x -> 4x -> 8x -> 2x; every grid matches independent nearest
+PASS MODE toggles nearest <-> bilinear at every zoom; bilinear differs from nearest
+PASS both Buttons are wired: press NEXT changes zoom, press MODE flips sampling
+PASS injected -1 / -2 / -3 render numerically; 0 is OK, never ERR 0
+PASS scale() spy: app passes SRC, correct dims and the exact mode string
+PASS all UI string literals ASCII-only (r64)
+PASS numeric < 0 / no truthy branch; real scale() call present
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 12 nodes
+PASS playground manifest includes img_view
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76
+PASS MUTATION delete <0 error branch -> error predicate FAILS
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake scale result -> real-scale predicate and pixel compare FAIL
+PASS MUTATION fake reference -> pixel comparison FAILS (comparator load-bearing)
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS img_view harness: all live, static and mutation checks green
+PASS invaders formation direction flip at right edge
+PASS invaders edge contact descends one row
+PASS invaders bullet hit removes member + score
+PASS invaders player hit loses lives / game over
+PASS invaders UFO adds bonus score
+PASS invaders wave speed-up and formation reset
+PASS invaders last kill enters next wave
+PASS invaders high-score KV + graceful failure
+PASS invaders sprite spans precomputed once, stable across ticks
+PASS invaders game over restart
+PASS invaders canvas/dirty budget, pan follow, tap fire, swipe pause
+EVIDENCE invaders active max 5 draws / 62 total ops (<=240), paused/over 0 ops in 10 ticks, 8 spriteDefine
+PASS invaders r212 frame-budget and idle 0-draw discipline
+ALL INVADERS HARNESS CASES PASSED
+PASS ipod_music list, select, play demo, scrub, pause, next, previous, menu
+PASS keyboard_demo: Keyboard registered on lume.ui.shell via the existing attach point
+PASS keyboard_demo: all three callbacks validated through the shell callback() helper
+PASS keyboard_demo: three QWERTY rows plus SPACE / BKSP / ENTER, all ASCII
+PASS keyboard_demo: 40 px touch floor and theme.spacing-derived key sizing
+PASS keyboard_demo: onKey / onBackspace / onSubmit dispatch into the app callbacks
+PASS keyboard_demo: cleanup registered on the root through the existing dispose chain
+PASS keyboard_demo: app wires onKey / onBackspace / onSubmit to its signals
+PASS keyboard_demo: native nodes carry the 26 letters + SPACE + BKSP + ENTER labels
+PASS keyboard_demo: all UI string literals ASCII-only (r64)
+PASS keyboard_demo: playground sources/keyboard_demo.js byte-identical to example
+PASS keyboard_demo: keyboard_demo is in the playground manifest
+PASS keyboard_demo: firmware/ and runtime/ identical to 3514c76
+PASS keyboard_demo: prelude lume_scripts.c unchanged since 3514c76
+PASS keyboard_demo live: Keyboard returns a root node and is callable from the app
+PASS keyboard_demo live: mounts exactly 4 row Views and 29 Buttons under the keyboard root
+PASS keyboard_demo live: every key keeps a >=40 px touch target; SPACE is wider
+PASS keyboard_demo live: onKey routes letter and SPACE presses through the signal
+PASS keyboard_demo live: onBackspace removes exactly one character
+PASS keyboard_demo live: onSubmit freezes the line and resets the input
+PASS keyboard_demo live: non-function callbacks are rejected before any node is built
+PASS keyboard_demo live: dispose removes all 33 keyboard nodes once, second call is a no-op
+PASS keyboard_demo mutation: drop the shell.Keyboard registration -> FAIL as expected
+PASS keyboard_demo mutation: drop onSubmit validation -> FAIL as expected
+PASS keyboard_demo mutation: shrink QWERTY to two rows -> FAIL as expected
+PASS keyboard_demo mutation: drop the ENTER control key -> FAIL as expected
+PASS keyboard_demo mutation: lower the touch target floor below 40 px -> FAIL as expected
+PASS keyboard_demo mutation: drop theme.spacing derivation -> FAIL as expected
+PASS keyboard_demo mutation: drop onBackspace dispatch -> FAIL as expected
+PASS keyboard_demo mutation: drop SPACE dispatch -> FAIL as expected
+PASS keyboard_demo mutation: drop the cleanup registration -> FAIL as expected
+PASS keyboard_demo mutation: app stops forwarding onKey -> FAIL as expected
+PASS keyboard_demo mutation: a key label drifts from QWERTY -> FAIL as expected
+PASS keyboard_demo mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS keyboard_demo mutation: playground generated source drifts from the example -> FAIL as expected
+PASS keyboard_demo mutation: playground manifest drops keyboard_demo -> FAIL as expected
+PASS keyboard_demo mutation: a firmware/runtime file changes after the feat commit -> FAIL as expected
+PASS keyboard_demo mutation: the prelude changes vs 3514c76 -> FAIL as expected
+ALL KEYBOARD DEMO HARNESS CASES PASSED
+PASS keyboard_states static: three-state tint table maps Wordle verdicts to green/yellow/grey
+PASS keyboard_states static: keyStates validated as object or signal function before any node
+PASS keyboard_states static: each letter key binds its own per-key background getter
+PASS keyboard_states static: absent keyStates returns the exact r148 colour helper
+PASS keyboard_states static: SPACE / BKSP / ENTER keep their fixed control backgrounds
+PASS keyboard_states static: cleanup chain still removes every keyboard node idempotently
+PASS keyboard_states static: lume.d.ts declares the three states and the keyStates prop
+PASS keyboard_states static: firmware/ runtime/ tools/lume/ identical to the feat commit
+PASS keyboard_states static: prelude lume_scripts.c unchanged since 3514c76
+PASS keyboard_states mutation: recolour the present verdict -> FAIL as expected
+PASS keyboard_states mutation: drop keyStates type validation -> FAIL as expected
+PASS keyboard_states mutation: query the wrong (uppercase) key name -> FAIL as expected
+PASS keyboard_states mutation: drop the absent-prop r148 fallback -> FAIL as expected
+PASS keyboard_states mutation: tint the ENTER control key -> FAIL as expected
+PASS keyboard_states mutation: drop keyStates from the type contract -> FAIL as expected
+PASS keyboard_states mutation: a firmware/runtime/CLI file changes after the feat commit -> FAIL as expected
+PASS keyboard_states mutation: the prelude changes vs 3514c76 -> FAIL as expected
+PASS keyboard_states live: hit / present / miss tint the matching key caps only
+PASS keyboard_states live: unknown map keys and uppercase keys are ignored
+PASS keyboard_states live: absent keyStates keeps every r148 letter colour and control key
+PASS keyboard_states live: a plain getter (non-signal) also supplies the tint
+PASS keyboard_states live: publishing a new state map rewrites only key backgrounds, no nodes
+PASS keyboard_states live: dispose then re-mount applies fresh state; dispose stays idempotent
+PASS keyboard_states live: non-object / non-function keyStates is rejected before nodes are built
+PASS keyboard_states live mutation: wrong key name loses every cap tint -> FAIL as expected
+PASS keyboard_states live mutation: dropping the verdict mapping paints no cap -> FAIL as expected
+ALL KEYBOARD STATES HARNESS CASES PASSED
+PASS launcher_grid static: shell.js imported by the documented relative path
+PASS launcher_grid static: round SafeArea and vector Canvas icons (no single-letter c.text glyphs)
+PASS launcher_grid static: explicit 12-app literal list rendered in 3x4 grid, all real examples
+PASS launcher_grid static: 12 distinct vector icons with staggered greens and unified tonal rings
+PASS launcher_grid static: SNTP wall clock falls back honestly to --:-- when unsynced
+PASS launcher_grid static: EdgeNavigation indicator disabled (canvas lock)
+PASS launcher_grid static: canvas budget constants are explicit and correct (12 x 48x48 = 27648 <= 230400)
+PASS launcher_grid static: onLaunch host callback records id and updates status
+PASS launcher_grid static: onBack host handler returns true (editing-state fallback)
+PASS launcher_grid static: status header shows EDIT when editing and clock otherwise
+PASS launcher_grid static: shell.Launcher setEditing notifies onEditingChange at both change points
+PASS launcher_grid static: LauncherProps declares the onEditingChange callback
+PASS launcher_grid static: app wires edit toggle, tile swap, and back-out into editing signal
+PASS launcher_grid static: custom theme sets primary / surface / accent / text
+PASS launcher_grid static: entire app file is ASCII-only (r64)
+PASS launcher_grid static: entire harness file is ASCII-only (r64)
+PASS launcher_grid static: UI string literals ASCII-only (r64)
+PASS launcher_grid static: Text fontSize limited to bundled 14/20/32 faces
+PASS launcher_grid static: playground sources/launcher_grid.js byte-identical to the example
+PASS launcher_grid static: launcher_grid is in the 74-app playground manifest
+PASS launcher_grid static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS launcher_grid mutation: drop the shell import -> FAIL as expected
+PASS launcher_grid mutation: letter placeholder returns -> FAIL as expected
+PASS launcher_grid mutation: nonexistent fake app slips into list -> FAIL as expected
+PASS launcher_grid mutation: three greens collapse to one shade -> FAIL as expected
+PASS launcher_grid mutation: unsynced wall clock fallback removed -> FAIL as expected
+PASS launcher_grid mutation: indicator re-enabled (two extra edge canvases) -> FAIL as expected
+PASS launcher_grid mutation: icon size drifts off 48 -> FAIL as expected
+PASS launcher_grid mutation: drop onLaunch host callback -> FAIL as expected
+PASS launcher_grid mutation: drop onBack host handler -> FAIL as expected
+PASS launcher_grid mutation: status stops following EDIT/clock -> FAIL as expected
+PASS launcher_grid mutation: shell drops onEditingChange notification -> FAIL as expected
+PASS launcher_grid mutation: LauncherProps drops onEditingChange declaration -> FAIL as expected
+PASS launcher_grid mutation: app drops back-out edit reset -> FAIL as expected
+PASS launcher_grid mutation: custom theme is dropped -> FAIL as expected
+PASS launcher_grid mutation: a non-ASCII byte slips into file -> FAIL as expected
+PASS launcher_grid mutation: a non-ASCII byte slips into harness -> FAIL as expected
+PASS launcher_grid mutation: a CJK UI literal slips in -> FAIL as expected
+PASS launcher_grid mutation: font size escapes bundled faces -> FAIL as expected
+PASS launcher_grid mutation: playground generated source drifts -> FAIL as expected
+PASS launcher_grid mutation: playground manifest drops launcher_grid -> FAIL as expected
+PASS launcher_grid mutation: a firmware/runtime/CLI file changes after 3514c76 -> FAIL as expected
+PASS launcher_grid live: root node exists with an exact 12-icon canvas budget (27648 px <= 230400 px)
+PASS launcher_grid live: SNTP wall clock displays HH:MM when synced and --:-- when unsynced
+PASS launcher_grid live: tile onPress drives onLaunch host callback for all 12 real apps
+PASS launcher_grid live: edit mode swaps two tiles and EdgeNavigation back exits edit mode
+PASS launcher_grid live: shutdown clears all effects and timers
+PASS launcher_grid live mutation: live: indicator re-enabled -> two extra canvases -> FAIL as expected
+PASS launcher_grid live mutation: live: onLaunch host callback dropped -> status stays READY -> FAIL as expected
+PASS launcher_grid live mutation: live: tile swap disabled in edit mode -> FAIL as expected
+ALL LAUNCHER GRID HARNESS CASES PASSED
+PASS lcd ghost geometry bounded (A=124, B=99) + lit/ghost split
+PASS lcd dual state machines independent
+PASS lcd bread catch + score
+PASS lcd MISS count + 3-miss game over
+PASS lcd bread 3-stage fall + phase wrap
+PASS lcd lane collision = one-hit game over
+PASS lcd lane clamp + dodge scoring
+PASS lcd MODE switch cleanup + score preservation + reset
+PASS lcd score KV (<=15 char key, graceful failure)
+PASS lcd canvas/ghost-once/dirty budget, A+B swipes, MODE button
+ALL LCD_DUAL HARNESS CASES PASSED
+PASS registration, unregistration and start/pause/resume sequence
+PASS onBack unregistered selects default
+PASS onBack false selects default
+PASS onBack true intercepts
+PASS timeout once and interval skips missed periods
+PASS timer clear is idempotent
+PASS paused timer waits and resumes without catch-up burst
+PASS hot replacement disposes effect, canvas onDraw, animation and timer
+PASS shutdown clears lifecycle and timer registries
+PASS replacement starts fresh app without old callbacks
+EVIDENCE 1000 items / 12 visible: actual created nodes=17 (15 rows + container + spacer)
+PASS 1000 items, 12 visible: initial 15 rows, 17 total nodes
+EVIDENCE 1000 items / 12 visible: middle window live nodes=20 (18 rows + 2 fixed)
+PASS scroll maps to 18-row middle window
+PASS scroll window reclaims old rows before creating replacements
+PASS small scroll within same window does not churn nodes
+PASS same-length items replacement rebuilds window and keeps offset
+PASS length change rebuilds and resets scroll to top
+PASS removed row loses press callback and signal effects
+PASS 1000-item traversal stays within the 127-node table
+PASS bridge throttle and overflow policy are present
+EVIDENCE files seedTestEntries(): 1000 entries, 18 new nodes
+PASS files example seeds 1000 entries without creating 1000 rows
+PASS 10 list virtualization cases
+PASS context --json exits 0 with parseable stdout and all required fields
+PASS mutation: deleting head turns the must-have-fields check red
+PASS --json is a single compact line with absolute repo and semver version
+PASS manifest mirrors build.mjs with at least 73 apps
+PASS unregistered is the source-grounded examples-minus-manifest set (mutation -> FAIL)
+INFO unregistered count: 9 (brief expected 0; source is truth)
+PASS head matches independent git rev-parse (b5fb271)
+PASS harnesses include this harness; api lists real lume namespaces
+PASS sentinel check green, no block errors, env.node is a v-prefixed version
+PASS --skip-check records run:false + skipReason and keeps every other block
+PASS --strict exits 0 when every block is green
+ALL LUME CONTEXT HARNESS CASES PASSED
+PASS luna: phase 2024-04-08; mutation proof
+PASS luna: phase 2024-02-24; mutation proof
+PASS luna: phase 2025-01-13; mutation proof
+PASS luna: 2000 new-moon epoch; mutation proof
+PASS luna: eight phase boundaries; mutation proof
+PASS luna: distance April perigee window; mutation proof
+PASS luna: terminator longitude wrap; mutation proof
+PASS luna: texture wrap and nonflat albedo; mutation proof
+PASS luna: latitude compression; mutation proof
+PASS luna: inertia ends within 20 frames; mutation proof
+PASS luna: frame call cap; mutation proof
+PASS luna: idle tick causes zero draws; mutation proof
+PASS luna: unset clock is labelled and uses example phase; mutation proof
+PASS luna: pan and double tap reset; mutation proof
+PASS memory deal: 16 cards, 8 faces x2
+PASS memory shuffle: deterministic under injected rnd, true permutation
+PASS memory single flip: one-open, moves not yet counted
+PASS memory match: pair removed, counter advanced
+PASS memory miss: face-up window, flipback on tick, cards stay in play
+PASS memory negative: no double-flip, no third-card flip
+PASS memory negative: range/matched/won guards
+PASS memory full game: 8-pair clear, WIN event, best=8 saved
+PASS memory best: worse keeps / fewer overwrites / equal keeps
+PASS memory spans: 8 faces decoded, palette refs all valid
+PASS memory canvas budget: 230400 px single canvas, grid in square margin
+PASS memory solvability: 20 random deals all contain exactly 8 pairs
+ALL tests/memory.js PASS
+PASS minesweeper deal: fresh board, mines pending first tap
+PASS minesweeper neighbors: corner=3 edge=5 interior=8, in bounds
+PASS minesweeper placement: 15 mines, first-tap 3x3 safe, counts correct (10 boards)
+PASS minesweeper first tap: always digs, placement deterministic under seed
+PASS minesweeper flood: zero region opens, boundary counts stay closed
+PASS minesweeper flood vs flags: flagged cells are not auto-opened
+PASS minesweeper flag: toggle + guards on revealed/out-of-range
+PASS minesweeper dig-vs-flag: flag blocks the dig, unflag re-opens
+PASS minesweeper boom: round over, mines revealed, hit cell marked
+PASS minesweeper win: 85 safe cells, WIN event, best time saved
+PASS minesweeper best: worse keeps / lower overwrites / equal keeps
+PASS minesweeper tick: clock runs only between start and end
+PASS minesweeper spans: 10 sprites decoded, palette refs all valid
+PASS minesweeper canvas budget: 230400 px single canvas, grid in square margin
+PASS minesweeper solvability: 20 random boards all diggable to a win
+EVIDENCE minesweeper boot 101 ops, flag 1 op, dig 49 ops (<=240), idle 0 ops in 10 ticks, 8 spriteDefine
+PASS minesweeper r212 frame-budget and idle 0-draw discipline
+ALL tests/minesweeper.js PASS
+PASS minigolf UI strings ASCII-only (r64 font rule)
+PASS minigolf power mapping (threshold/dead-zone/clamp, shared curve)
+PASS minigolf turn flow + shot gating (rolling/rejected putt)
+PASS minigolf physics (friction stop, slope deflection, OOB clamp, guard bounce)
+PASS minigolf cup capture / lip-out / hazard penalty reset
+EVIDENCE L1 OPEN PUTT solvable@par hole-in-one {"angle":90,"power":8,"speed":268}
+EVIDENCE L2 SLOPE solvable@par hole-in-one {"angle":90,"power":7,"speed":246}
+EVIDENCE L3 ONE GUARD solvable@par hole-in-one {"angle":75,"power":8,"speed":268}
+EVIDENCE L4 TWO GUARDS solvable@par hole-in-one {"angle":75,"power":9,"speed":291}
+EVIDENCE L5 BUNKERS solvable@par hole-in-one {"angle":70,"power":8,"speed":268}
+EVIDENCE L6 GAUNTLET solvable@par hole-in-one {"angle":105,"power":11,"speed":335}
+PASS minigolf all 6 procedural holes solvable at par (angle x power search)
+PASS minigolf hiscore KV (9-char key, strict-min, graceful failure)
+PASS minigolf boot + retained paths + first paint + canvas budget
+PASS minigolf demo/imu degradation + stationary no-putt
+PASS minigolf IMU swing threshold + one-putt debounce + weak-swing negative
+EVIDENCE minigolf ready 0 paints/20 ticks; max 5 calls/paint
+PASS minigolf drag -> aim -> HIT + dirty budget (max inc 9044 px) + pathDraw replay
+PASS minigolf RESET/NEXT navigation + 1800-tick finite smoke
+ALL MINIGOLF HARNESS CASES PASSED (12 cases)
+LRC normal: PASS
+LRC skip untimed: PASS
+LRC sort: PASS
+LRC bad GBK bytes: PASS
+Scheduler: ticks=7 decoded=5 sent=4 retry=2 PASS
+Radial UI: draws=24/240 canvasPx=50128 skip=52 play=66 PASS
+Scheduler: stop and negative-index wrap PASS
+Lyrics: five-line window and missing LRC PASS
+Library: recursive scan, ID3 title order, last track and offset KV PASS
+Restart: last track and LRC offset restored, playback starts at zero PASS
+[1] CRC-32 + encoder field-by-field vs CLI
+  ok  : crc32("123456789") == 0xcbf43926
+  ok  : encode length == 12 + 9
+  ok  : C encoder emits byte-for-byte the CLI/USB frame (LUME|len|crc|payload)
+  ok  : offset 0..3 magic LUME
+  ok  : offset 4..7 total_len u32 LE == payload bytes (9)
+  ok  : offset 8..11 crc32 u32 LE == crc(payload)
+  ok  : offset 12.. payload verbatim
+[2] frame protocol reuse (OTA decoder == USB/CLI wire format)
+  ok  : CLI frame -> exactly one DATA event, no ERR
+  ok  : DATA len == 9
+  ok  : DATA payload matches source
+  ok  : single-byte streaming parse OK
+  ok  : encode->decode round trip OK
+[3] aligned 4-byte control frames
+  ok  : BACK event
+  ok  : PAUS event
+  ok  : RESM event
+  ok  : controls emit no DATA/ERR
+[4] reject reasons, lengths and LUME resync
+  ok  : bad magic -> ERR bad-magic
+  ok  : resync: valid frame after noise still parses
+  ok  : total_len 0 -> ERR empty
+  ok  : total_len > 256KiB -> ERR too-large (drop+resync)
+  ok  : corrupted payload -> ERR bad-crc (len=9)
+  ok  : encoder accepts a 1 KiB payload
+  ok  : 1 KiB frame decode OK
+[4b] r43b bytecode frame kind
+  ok  : encode_bytecode length == 12 + payload
+  ok  : bytecode frame magic == "LUMB"
+  ok  : LUMB decodes as EV_BYTECODE (not DATA/CMD) and round-trips
+  ok  : LUME/LUMC/LUMB interleave in one parser with no resync
+[5] token auth (correct / wrong token)
+  ok  : auth_parse("AUTH <token>\n") extracts token
+  ok  : RIGHT token: token_equal == true (auth OK path)
+  ok  : WRONG token (1 char off): token_equal == false (auth ERR path)
+  ok  : empty token rejected
+  ok  : 31-char token rejected (length)
+  ok  : wrong prefix -> auth_parse false
+  ok  : empty token line -> auth_parse false
+  ok  : space in token -> auth_parse false
+[5b] r96 HMAC-SHA256 challenge-response auth
+  ok  : mbedTLS SHA-256 HMAC primitive available
+  ok  : RFC 4231 case 1 HMAC vector matches
+  ok  : hex_valid: 32 hex OK
+  ok  : hex_valid: non-hex rejected
+  ok  : hex_decode: odd nhex rejected
+  ok  : hex_decode: first/last byte correct
+  ok  : hex_valid: 64 hex MAC OK
+  ok  : hex_equal: identical MAC matches
+  ok  : hex_equal: 1-char-off MAC rejected
+  ok  : challenge line format == "CHALLENGE <32hex>\n"
+  ok  : RIGHT MAC: mac_verify == 0 (auth OK path)
+  ok  : WRONG MAC: mac_verify == -4 (auth ERR path)
+  ok  : replay with a different challenge -> mac_verify -4
+  ok  : malformed challenge hex -> mac_verify -2
+  ok  : auth_parse extracts a 64-hex MAC
+[6] RELOAD reply lines
+  ok  : OK line == "RELOAD OK 9\n"
+  ok  : ERR line == "RELOAD ERR bad-crc\n"
+[7] listener gate (WiFi not connected -> no OTA server)
+  ok  : WiFi DOWN + token ready -> can_serve FALSE (refuse to start)
+  ok  : WiFi DOWN + no token -> FALSE
+  ok  : WiFi UP + no token -> FALSE
+  ok  : WiFi UP (GOT_IP) + token ready -> TRUE (auto-start)
+[8] r222 byte-drop / insert / bit-flip fuzz + resync recovery
+  fuzz stats (seed=0x222cafe1): flip=200/200 drop=200/200 ins=200/200 stream=100/100 bad_delivered=0 allocs=1481 frees=1481
+  ok  : fuzz: CRC layer NEVER delivers a corrupted payload across 700 trials
+  ok  : fuzz: 200/200 bit-flip trials resync and deliver subsequent valid frame
+  ok  : fuzz: 200/200 1..64B burst byte-drop trials resync and deliver valid frame
+  ok  : fuzz: 200/200 1..32B byte-insertion trials resync and deliver valid frame
+  ok  : fuzz: 100/100 chaotic multi-frame streams recover final valid frame
+  ok  : idle-timeout reset frees stalled ST_BODY buffer and delivers next frame
+  ok  : fuzz: zero payload buffer leaks (alloc_count == free_count)
+
+63 checks, 0 failures -> PASS
+PASS ota_consumers: OTA helper reads lume.ota.status() locally
+PASS ota_consumers: number return discriminated via typeof === object, ASCII err code
+PASS ota_consumers: four flags + port rendered; .token / [token] never read in either app
+PASS ota_consumers: OTA row is exactly View + Text + Button (3 nodes)
+PASS ota_consumers: row Text shows only status; New-token opens a Dialog
+PASS ota_consumers: setToken sits in the danger Rotate onPress of a Dialog
+PASS ota_consumers: Dialog guard degrades to an ASCII note; no 3 s arm timer remains
+PASS ota_consumers: replacement token is 32 lowercase hex chars from Math.random
+PASS ota_consumers: setToken failure renders ASCII code; success refreshes status
+PASS ota_consumers: 600 ms poll refreshes OTA status
+PASS ota_consumers: header registers Math.random as NOT cryptographically secure
+PASS ota_consumers: dashboard SYSTEM reads status() with typeof === object discrimination
+PASS ota_consumers: dashboard publishes OTA row with 9 separators inside safe area
+PASS ota_consumers: dashboard OTA line never reads token
+PASS ota_consumers: playground sources/dashboard.js byte-identical to example
+PASS ota_consumers: dashboard is in the playground manifest
+PASS ota_consumers: all UI string literals ASCII-only (r64)
+PASS ota_consumers: firmware/ runtime/ CLI tooling identical to 674684a
+PASS ota_consumers mutation: drop the lume.ota.status() read -> FAIL as expected
+PASS ota_consumers mutation: truthy test replaces typeof === object discrimination -> FAIL as expected
+PASS ota_consumers mutation: render the full token straight into the status text -> FAIL as expected
+PASS ota_consumers mutation: drop the OTA row Text -> FAIL as expected
+PASS ota_consumers mutation: New-token button no longer opens a Dialog -> FAIL as expected
+PASS ota_consumers mutation: danger Rotate button downgraded -> FAIL as expected
+PASS ota_consumers mutation: Dialog guard hardened (no ASCII fallback) -> FAIL as expected
+PASS ota_consumers mutation: token length shrinks from 32 to 16 hex chars -> FAIL as expected
+PASS ota_consumers mutation: setToken failure loses its ASCII return code -> FAIL as expected
+PASS ota_consumers mutation: poll no longer refreshes OTA status -> FAIL as expected
+PASS ota_consumers mutation: header drops the non-CSPRNG registration -> FAIL as expected
+PASS ota_consumers mutation: dashboard truthy test replaces typeof === object -> FAIL as expected
+PASS ota_consumers mutation: dashboard separators revert to 8 -> FAIL as expected
+PASS ota_consumers mutation: dashboard renders the full token on canvas -> FAIL as expected
+PASS ota_consumers mutation: playground generated source drifts from the example -> FAIL as expected
+PASS ota_consumers mutation: playground manifest drops dashboard -> FAIL as expected
+PASS ota_consumers mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS ota_consumers mutation: a firmware file changes vs d85e69a -> FAIL as expected
+ALL OTA CONSUMERS HARNESS CASES PASSED
+PASS particle count 220 in [200,300]; array length 880
+PASS IMU m/s^2 mapping, null fallback and m/s^2 shake deviation
+PASS 30 s demo smoke: bounded/finite, constant length, moved=220/220
+PASS touch velocity field: touched=119 vx=31.5 vy=-0.2
+PASS prelude integration: draw calls/frame 221..221 (<250), dirty rects, no IMU -> demo
+PASS gesture swipe+tap inject velocity: target 209 vx 22.0 -> 308.8
+ALL PARTICLES HARNESS CASES PASSED
+PASS pet app loads: IDLE, skin 0, precomputed sprite spans and one full paint
+PASS pet buildSpans merges runs and covers exactly the non-empty cells
+EVIDENCE PET PET happy=77 state=HAPPY | state=HAPPY
+PASS pet tap = pet: happy rises, state -> HAPPY (via gesture dispatch)
+EVIDENCE PET FEED hunger=15 state=IDLE | state=IDLE
+PASS pet longpress = feed: hunger drops (via gesture dispatch)
+PASS pet IMU magnitude spike = startle: -> SURPRISED, then decays back
+PASS pet time decay drives hunger into HUNGRY and feeding resolves it
+PASS pet sleep is timer-driven; wake()/startle resumes, sleeping decays slowly
+EVIDENCE skin KV keys=["pet.skin"]
+PASS pet skin switch writes pet.skin (<=15 chars) and wraps modulo 2
+PASS pet a fresh runtime restores the persisted skin on boot
+PASS pet bad KV values fall back to skin 0 (no negative-number discriminator)
+EVIDENCE idle dirty rects=24 widths=72,84,96,96,72,84,96,96,72,84,96,96,72,84,96,96,72,84,96,96,72,84,96,96
+EVIDENCE pet idle 10 paints/s, sleep 0 paints/s; max 6 draw calls/paint
+PASS pet idle animation repaints only the eye rows (<=96px wide, 12px tall)
+EVIDENCE sleep 40 ticks -> draws=0 invalidates=0
+PASS pet sleeping never repaints the canvas across many ticks
+PASS 12 pet host cases
+PASS piano note->frequency and note-name table
+PASS piano envelope sample count, attack budget and stream chunking
+PASS piano envelope continuity at handoff and decay shape
+PASS piano stereo 16-bit LE PCM, L=R, soft attack
+PASS piano 7x56px white row + 5 black seam keys fit square [44,436]
+PASS piano tap injection emits PIANO KEY C4 and C#4
+PASS piano highlight is ATTR_BG_COLOR change, no node rebuild
+PASS piano pan glissando crosses keys with per-key dedupe
+PASS piano octave switch maps C4->C3/C5 (12-semitone steps)
+PASS piano demo melody starts/stops and plays notes
+PASS piano host harness: 10/10 assertions
+PASS motion bounds 6000 ticks, speed 2.55 -> 0.16 px/tick
+PASS palette lookup, IMU direction/fallback, idle wake and ripple expiry
+PASS concentric three-ring ellipses; real prelude <=60 calls/frame (normal max 46; overlap+ripple 47), no-IMU fallback, gesture
+EVIDENCE plasma 50ms timer = 20 scheduled paints/s; max 46 calls/paint; colors precomputed
+ALL PLASMA HARNESS CASES PASSED
+PASS playground manifest 74 apps match generated sources and examples; removal/addition mutation caught
+PASS wake registration, unregister, and success-only dispatch
+PASS touch feeds idle timer and wake resets activity
+PASS shutdown clears wake callbacks
+PASS three rectangular levels and bounded map values
+PASS BFS reaches exit or every enemy spawn in all stages
+PASS three textures carry exactly 768 in-range indices
+PASS 16x16 brick and portal texels are distinct
+PASS collision blocks wall with player radius
+PASS collision admits open corridor
+PASS step moves forward and reveals fog
+PASS closed door opens and becomes passable
+PASS pickup grants 100 only once
+PASS patrol reverses at a wall
+PASS hunter changes to chase only with line of sight
+PASS wall blocks line of sight
+PASS shoot rejects occluded or off-axis target
+PASS shoot clears aligned visible target and scores
+PASS exit cell completes stages one and two
+PASS arena requires every enemy cleared
+PASS damage has cooldown and resets current stage on death
+PASS four sound heads remain within 48 ms stereo PCM
+raycast game: 18 cases PASS
+PASS reboot_consumers: Dialog confirmation replaces the 3 s arm gate
+PASS reboot_consumers: no two-stage confirm signal or arm timer remains
+PASS reboot_consumers: typeof guard precedes reboot; stub without binding degrades to ASCII note
+PASS reboot_consumers: row is exactly View + Text + Button; Reboot opens a Dialog
+PASS reboot_consumers: row status is the guarded ASCII default or the note
+PASS reboot_consumers: all UI string literals ASCII-only (r64)
+PASS reboot_consumers: playground sources/settings.js byte-identical to example
+PASS reboot_consumers: settings is in the playground manifest
+PASS reboot_consumers: firmware/ runtime/ CLI tooling untouched vs 3514c76 (shell.js/types only)
+PASS reboot_consumers mutation: drop the reboot Dialog -> FAIL as expected
+PASS reboot_consumers mutation: downgrade the Reboot button to plain -> FAIL as expected
+PASS reboot_consumers mutation: resurrect the two-stage reboot signal -> FAIL as expected
+PASS reboot_consumers mutation: drop the typeof guard -> FAIL as expected
+PASS reboot_consumers mutation: Reboot button no longer opens a Dialog -> FAIL as expected
+PASS reboot_consumers mutation: row status drops its guarded ASCII default -> FAIL as expected
+PASS reboot_consumers mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS reboot_consumers mutation: playground generated source drifts from the example -> FAIL as expected
+PASS reboot_consumers mutation: playground manifest drops settings -> FAIL as expected
+PASS reboot_consumers mutation: a firmware file changes vs 92b6f29 -> FAIL as expected
+ALL REBOOT CONSUMERS HARNESS CASES PASSED
+PASS: A post failure frees only A; B posts latest frame with pending set
+PASS: successful post coalesces replacement and preserves latest frame
+PASS: REPL frame layout magic/len/crc/payload
+PASS: parser emits LUME_FRAME_EV_REPL
+PASS: bad CRC rejected
+PASS: empty payload rejected
+PASS: overlong length rejected
+PASS: REPL output clamp/truncation marker
+PASS: UTF-8 expression round trip
+ALL REPL PROTOCOL CASES PASSED
+PASS round catalog has 37 apps
+PASS watchface labels use explicit __A_SX/__A_SY once
+  LUME / DIGITAL@(78,82) near=143 far=216
+  LUME / ANALOG@(78,70) near=157 far=225
+  LUME / ACTIVITY@(78,70) near=152 far=225
+  LUME / GOALS@(78,76) near=154 far=221
+  LUME / MODULAR@(78,76) near=149 far=221
+PASS watchface labels inside native 466 visible circle (host geometry)
+SKIP browser round audit: Playwright unavailable (set PLAYWRIGHT_MODULE)
+PASS safearea square insets are zero and children stay in full-size view
+PASS safearea round 466 uses a centered inscribed 329 px square
+PASS safearea oversized direct View children warn once without throwing
+PASS safearea fitting direct children do not warn
+PASS safearea invalid shape and size throw TypeError
+PASS 5 safearea cases
+PASS scroller camera advance + 20-tick dash/crouch
+PASS scroller jump impulse + gravity landing
+PASS scroller one-shot coin pickup + score
+PASS scroller spike collision + invulnerability window
+PASS scroller game over + restart reset
+PASS scroller KV hiscore (13-char key) + offline fallback
+PASS scroller sprite spans -> Uint16Array precomputed once
+PASS scroller integration: 8 uploads (idempotent), 2327 blits, 0 fillRect, 4 rects / 63872 px
+PASS scroller tap jump + swipe-down dash + 2 buttons
+ALL SCROLLER HARNESS CASES PASSED
+PASS sdcard: wiring (component/engine/boards/sdkconfig/d.ts)
+PASS sdcard: never-format + lazy-mount policy locked
+PASS sdcard: error-code parity with lume.storage.Fs
+PASS sdcard: prelude unchanged (natives self-register)
+ALL SD HARNESS CASES PASSED
+PASS sd_files: Sd defensively resolved from lume.storage
+PASS sd_files: browse gated on Sd.mounted() === true
+PASS sd_files: SD/ virtual root entry appended only in Fs root when ready
+PASS sd_files: SD/ entry flagged and handled as SD mode entry
+PASS sd_files: Sd.list dispatch with Fs fallback
+PASS sd_files: Sd.read dispatch for text preview
+PASS sd_files: Sd remove/mkdir/exists dispatch (delete semantics reuse Fs recursion)
+PASS sd_files: sdOrFs falls back to Fs same path on negative code or throw
+PASS sd_files: isDirPath degrades on native throw
+PASS sd_files: loadDir degrades per operation (list failure -> empty dir)
+PASS sd_files: loadDir failure branch clears selected + preview
+PASS sd_files: removeTree degrades per operation (JS recursion, try/catch)
+PASS sd_files: previewSelected degrades on read failure
+PASS sd_files: makeDir degrades on exists/mkdir throw
+PASS sd_files: SD/ virtual entry cannot be deleted
+PASS sd_files: single shared delete Dialog (no duplicate flow)
+PASS sd_files: HUD queries Sd.statvfs()
+PASS sd_files: statvfs number error code discriminated via typeof === object
+PASS sd_files: statvfs error code renders NO CARD
+PASS sd_files: card free bytes floored to integer MB
+PASS sd_files: status label switches to card info only in SD mode
+PASS sd_files: SD root BACK exits SD mode instead of launcher
+PASS sd_files: all app string literals (UI copy) ASCII-only (r64)
+PASS sd_files: firmware/ runtime/ differ from 4a2bd29 only in known files
+PASS sd_files: playground manifest lists image_gallery and files
+PASS sd_files mutation: drop Sd resolution -> FAIL as expected
+PASS sd_files mutation: drop mounted gate -> FAIL as expected
+PASS sd_files mutation: drop SD/ root entry -> FAIL as expected
+PASS sd_files mutation: force Sd.list dispatch back to Fs -> FAIL as expected
+PASS sd_files mutation: force Sd.read dispatch back to Fs -> FAIL as expected
+PASS sd_files mutation: drop sdOrFs fallback on negative code -> FAIL as expected
+PASS sd_files mutation: drop sdOrFs fallback on native throw -> FAIL as expected
+PASS sd_files mutation: drop loadDir failure preview clear -> FAIL as expected
+PASS sd_files mutation: drop loadDir try/catch -> FAIL as expected
+PASS sd_files mutation: drop removeTree try/catch -> FAIL as expected
+PASS sd_files mutation: drop statvfs call -> FAIL as expected
+PASS sd_files mutation: drop typeof discrimination -> FAIL as expected
+PASS sd_files mutation: drop NO CARD -> FAIL as expected
+PASS sd_files mutation: drop integer MB floor -> FAIL as expected
+PASS sd_files mutation: inject CJK UI copy -> FAIL as expected
+PASS sd_files mutation: drop image_gallery from playground manifest -> FAIL as expected
+ALL SD FILES HARNESS CASES PASSED
+PASS sd_gallery: Sd-first read path wired before Fs fallback
+PASS sd_gallery: per-image try/catch degrades one image only
+PASS sd_gallery: Fs fallback + embedded red PNG intact
+PASS sd_gallery: statvfs error-code discrimination + integer MB HUD
+PASS sd_gallery: all app string literals ASCII-only (r64)
+PASS sd_gallery: firmware/ runtime/ differ only in known files vs 0d1111c
+ALL SD GALLERY HARNESS CASES PASSED
+PASS settings_dialog: shell.js imported once by the documented relative path
+PASS settings_dialog: rotate opens shell.Dialog with title + message
+PASS settings_dialog: Rotate is a danger button; setToken lives in its onPress only
+PASS settings_dialog: Cancel is plain with no onPress, ordered before the danger button
+PASS settings_dialog: reboot opens a Dialog with a danger Reboot button
+PASS settings_dialog: reboot() sits inside the danger onPress, after the typeof guard
+PASS settings_dialog: all three Dialog guards degrade to ASCII notes (no silent dangerous fallback)
+PASS settings_dialog: no two-stage confirm signals or arm timers survive
+PASS settings_dialog: OTA row stays View+Text+Button with a static New token title
+PASS settings_dialog: reboot row stays View+Text+Button with a static Reboot title
+PASS settings_dialog: playground sources/settings.js byte-identical to example
+PASS settings_dialog: settings is in the 74-app playground manifest
+PASS settings_dialog: all UI string literals ASCII-only (r64)
+PASS settings_dialog: firmware/ runtime/ identical to 3514c76 (pure app layer)
+PASS settings_dialog mutation: delete the rotate Dialog call -> FAIL as expected
+PASS settings_dialog mutation: downgrade Rotate from danger to plain -> FAIL as expected
+PASS settings_dialog mutation: give Cancel an onPress (Cancel would execute) -> FAIL as expected
+PASS settings_dialog mutation: delete the reboot Dialog danger Reboot button -> FAIL as expected
+PASS settings_dialog mutation: move reboot() before the typeof guard -> FAIL as expected
+PASS settings_dialog mutation: harden the Dialog guard (drop all three fallbacks) -> FAIL as expected
+PASS settings_dialog mutation: resurrect the two-stage confirm signal -> FAIL as expected
+PASS settings_dialog mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS settings_dialog mutation: a firmware file changes vs 3514c76 -> FAIL as expected
+PASS settings_dialog live: rotate Cancel -> no setToken
+PASS settings_dialog live: rotate Rotate -> setToken(32hex)
+PASS settings_dialog live: setToken failure -> ASCII err note
+PASS settings_dialog live: reboot Cancel -> no reboot
+PASS settings_dialog live: reboot Reboot -> one reboot
+PASS settings_dialog live: reboot binding stub -> reboot n/a
+PASS settings_dialog live: Dialog stub -> ASCII notes, no auto action
+PASS settings_dialog live mutation: Cancel with onPress -> FAIL as expected
+PASS settings_dialog r206: 5-page navigation + static nodes=114 (<=128)
+ALL SETTINGS DIALOG HARNESS CASES PASSED
+PASS shell Card and IconButton expose watch-sized defaults
+PASS shell StatusBar getter follows signal
+PASS shell StatusBar clock timer and disposal
+PASS shell EdgeNavigation true handles back
+PASS shell EdgeNavigation false forwards page swipe
+PASS shell indicator draws and rebounds, mask toggles
+PASS shell Launcher creates bounded virtual grid
+PASS shell Launcher round shape inscribes defaults in the 466 safe square
+PASS shell Launcher rejects an unknown shape
+PASS shell app press and edge gesture route independently
+PASS shell dispose unregisters gestures and app close clears resources
+PASS shell spacing injects missing View padding and gap and follows theme changes
+PASS shell explicit spacing wins and invalid token is atomic
+PASS shell Dialog opens and close is idempotent
+PASS shell Dialog stack ignores covered button and closes top first
+PASS shell Dialog lifecycle pause removes overlays
+PASS shell danger button follows theme danger token
+PASS shell primary button follows theme primary token
+PASS shell Toast replaces current and resets timer
+PASS shell Toast fades then removes itself
+PASS 20 shell component cases
+PASS shell_keyboard default native message stream matches r217 golden (44x48 keys, 3x SPACE)
+PASS shell_keyboard mutation proof: golden stream rejects a default-path change
+PASS shell_keyboard default keyHeight enforces 48 px floor and tracks keySize above 48
+PASS shell_keyboard controlKeyRatio 1.5 widens only BKSP / ENTER to 66 px
+PASS shell_keyboard keyHeight decouples height from keySize without changing widths
+PASS shell_keyboard new params validate without touching the default path
+PASS 6 shell Keyboard cases
+PASS shell_slider default draw stream draws round thumb (r=18) matching ROUND_GOLDEN
+PASS shell_slider explicit roundThumb:false preserves pre-r203 square draw stream byte-for-byte
+PASS shell_slider mutation proof: golden streams reject default and legacy path changes
+PASS shell_slider default round thumb fits inside minimum 40px height track
+PASS shell_slider knobDiameter tunes the radius within the track height on default path
+PASS shell_slider params validate without corrupting the default path
+PASS shell_slider roundThumb keeps the canvas gesture target and step quantisation
+PASS 7 shell Slider cases
+PASS shell_sparkline single series mounts one canvas and draws a full-width polyline; mutation FAIL as expected
+PASS shell_sparkline auto min/max maps extremes to inset rows; mutation FAIL as expected
+PASS shell_sparkline explicit min/max overrides auto and validates the domain; mutation FAIL as expected
+PASS shell_sparkline series takes precedence over data and palette colours cycle; mutation FAIL as expected
+PASS shell_sparkline per-series color / strokeWidth and colors[] fallback are respected; mutation FAIL as expected
+PASS shell_sparkline flat sequence degenerates to centre with no divide-by-zero; mutation FAIL as expected
+PASS shell_sparkline empty data and a single point do not crash; mutation FAIL as expected
+PASS shell_sparkline fillArea paints vertical columns in surfaceAlt and toggles off; mutation FAIL as expected
+PASS shell_sparkline showDots and showLast place the expected circles; mutation FAIL as expected
+PASS shell_sparkline showDots is independently switchable; mutation FAIL as expected
+PASS shell_sparkline non-finite samples are skipped and long series are downsampled; mutation FAIL as expected
+PASS shell_sparkline live signal data repaints through the owned onDraw effect; mutation FAIL as expected
+PASS shell_sparkline dispose removes the canvas and is idempotent; mutation FAIL as expected
+PASS shell_sparkline invalid props throw before mounting; mutation FAIL as expected
+ALL SHELL SPARKLINE CASES PASSED (14 cases)
+[tx-retry]
+  ok  : immediate write succeeds
+  ok  : fast path performs 0 drains and 0 backoff delays
+  ok  : transient TX ring stall recovers within retry budget
+  ok  : drain=true skips backoff delay; drain=false triggers backoff delay
+  ok  : recovered bytes match input verbatim
+  ok  : persistent stall fails after bounded retries
+  ok  : write attempts strictly bounded to 1 + LUME_TX_USB_MAX_RETRIES
+  ok  : each retry checks drain and backs off when still full
+  ok  : partial TCP writes advance to full message
+  ok  : reassembled partial TCP bytes match verbatim
+  ok  : fatal write error (<0) fails immediately
+  ok  : fatal error performs 0 retries
+[shot-stream]
+  ok  : happy path returns LUME_SHOT_OK
+  ok  : happy path emits 3 S64 lines, 1 SHOT OK, 0 CMD ERR
+  ok  : SHOT, S64 and SHOT OK lines use leading newline boundary
+  ok  : mid-stream TX failure returns LUME_SHOT_ERR_TX
+  ok  : failed_offset points at failed chunk (240)
+  ok  : streaming stops immediately after failed chunk (no chunk 3)
+  ok  : TX failure emits CMD ERR shot-tx
+  ok  : TX failure NEVER emits false SHOT OK
+  ok  : header TX failure returns LUME_SHOT_ERR_TX
+  ok  : header TX failure emits CMD ERR shot-tx with 0 S64 and no SHOT OK
+  ok  : transient TX stall recovers via bounded retry and emits SHOT OK
+  ok  : exhausted TX retry aborts with CMD ERR shot-tx and no SHOT OK
+  ok  : encode failure aborts with CMD ERR shot-encode and no SHOT OK
+
+SUMMARY: 25 checks, 0 failures
+PASS projection, integration, drift re-zero, hit range, wave count
+PASS lerpColor and 70% sky blend at z=2000
+EVIDENCE skycombat combat <=31 scheduled frames/s, over 0 draws in 10 polls, <=240 calls/paint
+PASS real prelude SIM, full redraw after 8 skipped ticks, max 232/240
+PASS collision, waves, upgrade cycle, invulnerability, player limits
+EVIDENCE skyfire active max 70/240, over 0 draws in 10 ticks, dt 33->100->33
+PASS real prelude, 60s smoke, draw max 70/240, fixed pools, idle 0-draw
+ALL SKYFIRE HARNESS CASES PASSED
+PASS sntp_consumers2: clock_round: GOT_IP-gated setTimeNtp call in sync block
+PASS sntp_consumers2: clock_round: only setTimeNtp()===0 sets clockWallValid=true (enables wall rendering)
+PASS sntp_consumers2: clock_round: status Text gated by clockWallValid and bound to clockSyncStatus()
+PASS sntp_consumers2: clock_round: failure copy ASCII (SYNCING/NO WIFI/NO SYNC)
+PASS sntp_consumers2: clock_round: sync cadence-gated in tick via clockNextSyncMs
+PASS sntp_consumers2: aurora_clock: GOT_IP-gated setTimeNtp call in sync block
+PASS sntp_consumers2: aurora_clock: only setTimeNtp()===0 sets acWallValid=true (enables wall rendering)
+PASS sntp_consumers2: aurora_clock: status Text gated by acWallValid and bound to acSyncStatus()
+PASS sntp_consumers2: aurora_clock: failure copy ASCII (SYNCING/NO WIFI/NO SYNC)
+PASS sntp_consumers2: aurora_clock: sync cadence-gated in tick via acNextSyncMs
+PASS sntp_consumers2: watchface: GOT_IP-gated setTimeNtp call in sync block
+PASS sntp_consumers2: watchface: only setTimeNtp()===0 sets faceWallValid=true (enables wall rendering)
+PASS sntp_consumers2: watchface: status Text gated by faceWallValid and bound to faceSyncStatus()
+PASS sntp_consumers2: watchface: failure copy ASCII (SYNCING/NO WIFI/NO SYNC)
+PASS sntp_consumers2: watchface: sync cadence-gated in tick via faceNextSyncMs
+PASS sntp_consumers2: all three migrated apps are in the playground manifest
+PASS sntp_consumers2: worldclock absent (no example dir, not in manifest)
+PASS sntp_consumers2: firmware/ runtime/ CLI tooling identical to 3514c76 (manifest excluded)
+PASS sntp_consumers2 mutation: clock_round: drop the GOT_IP gate -> FAIL as expected
+PASS sntp_consumers2 mutation: clock_round: success branch no longer requires r===0 -> FAIL as expected
+PASS sntp_consumers2 mutation: clock_round: unbind status Text from the wallValid flag -> FAIL as expected
+PASS sntp_consumers2 mutation: clock_round: inject non-ASCII failure copy -> FAIL as expected
+PASS sntp_consumers2 mutation: clock_round: call setTimeNtp on every tick -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: drop the GOT_IP gate -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: success branch no longer requires r===0 -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: unbind status Text from the wallValid flag -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: inject non-ASCII failure copy -> FAIL as expected
+PASS sntp_consumers2 mutation: aurora_clock: call setTimeNtp on every tick -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: drop the GOT_IP gate -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: success branch no longer requires r===0 -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: unbind status Text from the wallValid flag -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: inject non-ASCII failure copy -> FAIL as expected
+PASS sntp_consumers2 mutation: watchface: call setTimeNtp on every tick -> FAIL as expected
+PASS sntp_consumers2 mutation: playground manifest drops clock_round -> FAIL as expected
+PASS sntp_consumers2 mutation: playground manifest gains worldclock -> FAIL as expected
+PASS sntp_consumers2 mutation: a firmware file changes vs ffdd757 -> FAIL as expected
+ALL SNTP CONSUMERS2 HARNESS CASES PASSED
+PASS sntp_consumers: clock tries setTimeNtp() first with default args, before the HTTP list
+PASS sntp_consumers: clock NTP success resets epochOffsetMs=0 and returns before any httpGet
+PASS sntp_consumers: clock keeps the -2/-3 HTTP fallback list (httpGet over TIME_SOURCES)
+PASS sntp_consumers: clock guards a missing/throwing setTimeNtp API
+PASS sntp_consumers: clock epochOffsetMs=0 identity: wallDate reads Date.now()
+PASS sntp_consumers: clock HTTP path still persists clock.tzMin in kv
+PASS sntp_consumers: clock re-sync cadence SYNC_OK_MS / SYNC_RETRY_MS unchanged
+PASS sntp_consumers: settings General page has a Sync now Button wired to syncTimeNow
+PASS sntp_consumers: settings General page has the live status Text bound to timeSyncLine
+PASS sntp_consumers: settings sync row adds at most 3 nodes (View + Text + Button)
+PASS sntp_consumers: settings status copy covers SYNCED / OFFLINE / FAILED / NO WIFI
+PASS sntp_consumers: settings syncTimeNow gates on GOT_IP before calling setTimeNtp()
+PASS sntp_consumers: settings maps setTimeNtp 0 / -2 / -3 to the status strings
+PASS sntp_consumers: settings status heuristic reads both lume.system.time() and Date.now()
+PASS sntp_consumers: clock string literals are ASCII-only
+PASS sntp_consumers: settings string literals are ASCII-only
+PASS sntp_consumers: firmware/ runtime/ differ from 3514c76 only in the (empty) r129 allowlist
+PASS sntp_consumers mutation: clock drops the setTimeNtp-first call -> FAIL as expected
+PASS sntp_consumers mutation: clock skips the offset reset on NTP success -> FAIL as expected
+PASS sntp_consumers mutation: clock drops the HTTP fallback loop -> FAIL as expected
+PASS sntp_consumers mutation: clock drops the missing-API guard -> FAIL as expected
+PASS sntp_consumers mutation: clock reverts wallDate to the monotonic _nowMs anchor -> FAIL as expected
+PASS sntp_consumers mutation: clock stops persisting clock.tzMin -> FAIL as expected
+PASS sntp_consumers mutation: clock shortens the re-sync cadence -> FAIL as expected
+PASS sntp_consumers mutation: settings drops the Sync now button -> FAIL as expected
+PASS sntp_consumers mutation: settings unbinds the status Text from timeSyncLine -> FAIL as expected
+PASS sntp_consumers mutation: settings adds a fourth node to the sync row -> FAIL as expected
+PASS sntp_consumers mutation: settings drops the FAILED copy -> FAIL as expected
+PASS sntp_consumers mutation: settings drops the GOT_IP gate -> FAIL as expected
+PASS sntp_consumers mutation: settings drops the -2 -> SYNC FAILED mapping -> FAIL as expected
+PASS sntp_consumers mutation: settings status heuristic stops reading system.time() -> FAIL as expected
+PASS sntp_consumers mutation: clock UI copy gains a non-ASCII string -> FAIL as expected
+PASS sntp_consumers mutation: settings UI copy gains a non-ASCII string -> FAIL as expected
+PASS sntp_consumers mutation: a firmware file changes vs 0d1111c -> FAIL as expected
+ALL SNTP CONSUMER HARNESS CASES PASSED
+PASS sntp: d.ts declares time() with unix-ms unit
+PASS sntp: d.ts declares setTimeNtp(server?, timeoutMs?)
+PASS sntp: d.ts documents the unsynced 1970 value honestly
+PASS sntp: d.ts locks error codes -1 / -2 / -3
+PASS sntp: d.ts states setTimeNtp BLOCKING semantics
+PASS sntp: d.ts pins the default SNTP server and timeout bounds
+PASS sntp: d.ts documents idempotent re-sync
+PASS sntp: engine includes esp_netif_sntp.h and sys/time.h
+PASS sntp: C registers _systemTime native
+PASS sntp: C registers _systemSetTimeNtp native
+PASS sntp: time() reads gettimeofday and returns unix ms (JS_NewInt64)
+PASS sntp: setTimeNtp uses esp_netif_sntp bounded wait + teardown
+PASS sntp: setTimeNtp gates on WiFi having an IP (-3)
+PASS sntp: setTimeNtp maps arg / transport failures to -1 / -2
+PASS sntp: C comment states engine task blocking (httpGet precedent)
+PASS sntp: C comment pins default server and bounds
+PASS sntp: no IRAM attribute added (code stays in flash)
+PASS sntp: engine links esp_netif
+PASS sntp: sdkconfig.defaults enables one SNTP server slot
+PASS sntp: firmware prelude wraps both natives into lume.system
+PASS sntp: host prelude runner stubs both natives
+PASS sntp: playground runtime stubs both natives with browser semantics
+PASS sntp: generated playground prelude carries the wrappers
+PASS sntp: generated API docs carry both entries
+PASS sntp mutation: drop d.ts time() declaration -> FAIL as expected
+PASS sntp mutation: drop d.ts setTimeNtp() declaration -> FAIL as expected
+PASS sntp mutation: flip error code -3 to -4 in d.ts -> FAIL as expected
+PASS sntp mutation: drop _systemTime native registration -> FAIL as expected
+PASS sntp mutation: drop the SNTP sync wait call -> FAIL as expected
+PASS sntp mutation: change the default server away from pool.ntp.org -> FAIL as expected
+PASS sntp mutation: drop SNTP server slot from sdkconfig.defaults -> FAIL as expected
+PASS sntp mutation: drop the prelude setTimeNtp wrapper -> FAIL as expected
+PASS sntp mutation: drop the host _systemTime stub -> FAIL as expected
+ALL SNTP HARNESS CASES PASSED
+PASS sokoban single-box push + move counter
+PASS sokoban no two-box push / no wall walk
+PASS sokoban box cannot be pushed into wall
+PASS sokoban goal coverage + all-boxes-home win
+PASS sokoban corner deadlock + goal exemption
+PASS sokoban all 10 levels BFS-solvable at stated par (data integrity)
+PASS sokoban progress KV (<=15 char key, clamp, graceful failure)
+PASS sokoban unlock + next/prev/restart navigation
+PASS sokoban sprite spans precomputed once, stable across moves
+PASS sokoban canvas/events, dirty budget, swipe push, tap push, reset button
+EVIDENCE sokoban boot 81 ops, move 2 draws / 82 ops (<=240), idle 0 ops in 10 ticks, 6 spriteDefine
+PASS sokoban r212 frame-budget and idle 0-draw discipline
+ALL SOKOBAN HARNESS CASES PASSED
+PASS spectrum single sine peak ±1 bin
+PASS spectrum two tones produce two peaks
+PASS spectrum Hann coherent gain normalization
+PASS spectrum log groups strictly advance
+PASS spectrum 256 FFT and 32 bars bounded
+PASS spectrum tap starts one 1024-frame stream
+PASS spectrum callback does not redraw canvas
+PASS spectrum timer signal drives 400x200 dirty rect
+PASS spectrum drop count and SPEC serial event
+PASS spectrum stopStream clears callback and capture
+PASS Hann window finite, coherent sum=511.50
+PASS prelude starts DEMO after microphone error
+PASS native-API stub FFT finite; sine peak bin=32 band=20
+PASS radial index to angle linear
+PASS DEMO audible PCM and visible FFT, draw calls=51
+PASS MIC callback defers analysis and drawing
+BENCH host prelude FFT+window+magnitude+bands 1024: median 2.380 ms/analysis, 5x100
+ALL SPECTRUM MUSIC CASES PASSED
+PASS statusbar-round 2.16 square 480 keeps legacy 432 wide at (24,24) - no regression
+PASS statusbar-round 1.8 square 368 clamps the bar to the screen - no overflow
+PASS statusbar-round 1.75C round 466 bar stays 8px inside the SafeArea inscribed square
+PASS statusbar-round 480 round bar stays strictly inside [75,405] safe box and R<=240
+PASS statusbar-round custom x/y still override derived geometry
+PASS statusbar-round invalid shape throws TypeError (square and round are the only shapes)
+PASS statusbar-round round bar keeps signal getters and clock disposal behaviour
+PASS 7 statusbar-round cases
+PASS pack: sorted pages, optional meta and audio-only page
+PASS mutation page order
+PASS mutation optional meta
+PASS MP3 EOF advances only in automatic mode and within bounds
+PASS mutation EOF gate
+PASS mutation auto gate
+PASS mutation last page bound
+PASS hotspot circle inside, edge, outside
+PASS mutation hotspot boundary
+PASS mutation hotspot outside
+PASS KV continuation roundtrip and rejection of stale page
+PASS mutation KV page value
+PASS missing TF directory activates labelled three-page sample
+PASS mutation empty-library fallback
+PASS host prelude loads the actual app with a three-page sample
+PASS live sample ticks advance all three pages and stop at THE END
+PASS playback failure switches the live reader to MUTE
+PASS mutation sample has three pages
+PASS column + dimensions + color: [[1,728639],[16,100],[17,50],[7,1]]
+PASS row: [[7,0]]
+PASS row wrap: [[7,2]]
+PASS column wrap: [[7,3]]
+PASS justify start: [[8,0]]
+PASS justify end: [[8,1]]
+PASS justify center: [[8,2]]
+PASS justify space-between: [[8,3]]
+PASS justify space-around: [[8,4]]
+PASS justify space-evenly: [[8,5]]
+PASS stretch + gap + padding: [[9,3],[10,16],[11,8]]
+PASS radius + border + opacity: [[12,12],[13,2],[14,11259375],[15,128]]
+PASS pixel + legacy bg: [[1,1122867],[2,240],[3,120]]
+PASS vertical scroll + auto scrollbar: [[20,1],[21,1]]
+PASS horizontal scroll + on scrollbar: [[20,2],[21,2]]
+PASS scroll disabled + scrollbar off: [[20,0],[21,0]]
+PASS per-side padding overrides box shorthand: [[10,8],[30,2],[31,4],[32,6],[33,10]]
+PASS margin box + per-side margin: [[34,4],[38,12]]
+PASS margin sides only: [[35,2],[36,3],[37,5],[38,7]]
+PASS flex grow inside a flex row: [[7,0],[39,1]]
+PASS auto sizing: [[43,1],[44,1]]
+PASS min/max size bounds: [[45,10],[46,200],[47,20],[48,40]]
+PASS absolute position escapes the flow: [[23,1],[18,4],[19,8]]
+PASS relative position sends nothing: []
+PASS translate px + percent: [[49,6],[52,50]]
+PASS text align + long mode: [[53,1],[54,1]]
+PASS align string + alignTo + alignOffset: [[40,5],[41,-8],[42,-4],[4,6]]
+PASS align center: [[4,0]]
+PASS align top-left: [[4,1]]
+PASS align top-mid: [[4,2]]
+PASS align top-right: [[4,3]]
+PASS align bottom-mid: [[4,4]]
+PASS align bottom-left: [[4,5]]
+PASS align bottom-right: [[4,6]]
+PASS align left-mid: [[4,7]]
+PASS align right-mid: [[4,8]]
+PASS align numeric constant: [[4,4]]
+PASS aligned to parent with an offset: [[40,0],[42,12],[4,2]]
+PASS outside align below a base node: [[40,7],[4,13]]
+PASS outside align above a base node: [[40,7],[4,10]]
+PASS outside align right of a base node: [[40,7],[4,19]]
+PASS outside align corner: [[40,7],[41,4],[4,18]]
+PASS outside align numeric constant: [[4,20]]
+PASS invalid align/alignTo/alignOffset/flexGrow/margin/position/translate/text rejected in prelude
+PASS Row presets flex row: [[7,0]]
+PASS Column presets flex column: [[16,100],[7,1]]
+PASS fontSize/letterSpacing/lineHeight: [[55,20],[56,1],[57,-2]]
+PASS fontSize snaps + scales via theme.fontScale: [[55,18]]
+PASS fontScale below 1 keeps faces in range: [[55,22]]
+PASS invalid percentage/metric/color/opacity rejected in prelude
+PASS all style mapping cases
+PASS embedded demo and refreshed counter both register buttons
+PASS engine gates cache with lume_svg_detect (SVG only)
+PASS cache is reset on every runtime teardown
+PASS cache source uses SPIRAM caps and FNV-1a
+PASS component registers the new source
+PASS: cold entry is a miss
+PASS: put A 320x320 ok
+PASS: one entry after put
+PASS: byte budget tracks RGB565A8 raster
+PASS: hit returns the exact raster bytes
+PASS: hit returns correct dimensions/alpha
+PASS: hit returns the exact raster bytes
+PASS: second hit after freeing first copy (copy-on-hit, no shared buffer)
+PASS: put A 64x64
+PASS: different source bytes = miss
+PASS: put B 64x64
+PASS: hit returns the exact raster bytes
+PASS: B hits after put
+PASS: hit returns the exact raster bytes
+PASS: A still hits (distinct key)
+PASS: put A at 320x320
+PASS: same source, different tw/th = miss
+PASS: put A at 160x160
+PASS: two size variants coexist
+PASS: put small A
+PASS: put small B
+PASS: put small C
+PASS: put small D
+PASS: hit returns the exact raster bytes
+PASS: touch A (now most recent)
+PASS: put small E
+PASS: entry cap holds at 4
+PASS: LRU (B) evicted
+PASS: hit returns the exact raster bytes
+PASS: touched A survives
+PASS: hit returns the exact raster bytes
+PASS: newest E present
+PASS: full A
+PASS: full B
+PASS: full C
+PASS: full D triggers eviction
+PASS: byte budget caps at 3 full-size rasters
+PASS: resident bytes <= 1 MiB
+PASS: oldest full raster evicted
+PASS: hit returns the exact raster bytes
+PASS: newest full raster present
+PASS: reset empties the cache
+PASS: post-reset lookup is a miss
+PASS: no SPIRAM bytes leaked after reset (allocs=36 frees=36)
+PASS: zero-length source is a miss
+PASS: zero-size raster is rejected
+svg_cache_test: ALL CHECKS PASSED (allocs=36 frees=36 live=0)
+PASS svg_cache_test.c compiled and ran with exit 0
+svg_cache: 5 checks green
+PASS line-clear frame: rect=[0,0,200,400] cells=200 redrawn=200 (rect subset of redraw)
+PASS normal-drop frame: rect=[100,100,40,60] cells=6 redrawn=6 (still a tight dirty rect)
+ALL PASS: tetris dirty-rect coverage invariant holds
+PASS: 240-byte Chinese and 256-byte ASCII text accepted; 257 bytes rejected
+PASS: external text payload has sender rollback and receiver release paths
+PASS set/get returns an isolated snapshot
+PASS named background and borderColor resolve
+PASS hex literals remain valid
+PASS Text without borderRadius does not inherit theme.radius
+PASS explicit borderRadius still applies on Text
+dark→light ATTR messages: [[1,1,15332090],[1,12,16],[1,14,2310751]]
+PASS theme.set invalidates every named color and implicit radius
+PASS unreferenced literal colors and explicit radius post no messages
+PASS removing default radius clears inherited radius
+PASS invalid theme is atomic
+PASS disposed node stops receiving theme updates
+PASS unknown token falls through to literal parser
+demo dark→light ATTR messages: [[2,1,16777215],[7,1,15332090]]
+PASS demo buttons recolor card, controls and full-screen root
+PASS timer_kit static: shell.js imported by the documented relative path
+PASS timer_kit static: radial Canvas dial with retained 60 ticks and round SafeArea
+PASS timer_kit static: monospace vector 48px digit renderer prevents horizontal jitter
+PASS timer_kit static: four countdown states with state-machine button visibility
+PASS timer_kit static: running +/- edit lock defaults locked and requires explicit toggle
+PASS timer_kit static: clock is lume.system.time() (no nonexistent system.now)
+PASS timer_kit static: countdown advances from an absolute-time difference
+PASS timer_kit static: pause snapshots remaining then re-anchors on resume
+PASS timer_kit static: stopwatch pause accumulates absolute delta then re-anchors
+PASS timer_kit static: KV get wrapped in try/catch, accepts only non-negative finite number
+PASS timer_kit static: KV set wrapped in try/catch (failure silent)
+PASS timer_kit static: bell synthesised PCM under try/catch, 40 ms budget
+PASS timer_kit static: KV keys within the 15-char NVS cap
+PASS timer_kit static: LAP_LIMIT is three and laps keep only the last three
+PASS timer_kit static: all source literals ASCII-only (r64)
+PASS timer_kit static: Text fontSize limited to bundled 14/20/32 faces
+PASS timer_kit static: canvas budget locked: single 480x480 radial dial <= 230400 px and <= 240 draws
+PASS timer_kit static: playground sources/timer_kit.js byte-identical to the example
+PASS timer_kit static: timer_kit is in the playground manifest
+PASS timer_kit static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS timer_kit mutation: drop the shell import -> FAIL as expected
+PASS timer_kit mutation: radial ticks dropped -> FAIL as expected
+PASS timer_kit mutation: monospace digit renderer removed -> FAIL as expected
+PASS timer_kit mutation: state-machine button visibility breaks -> FAIL as expected
+PASS timer_kit mutation: running edit lock starts unlocked -> FAIL as expected
+PASS timer_kit mutation: clock drifts back to nonexistent system.now -> FAIL as expected
+PASS timer_kit mutation: countdown becomes decrementing counter -> FAIL as expected
+PASS timer_kit mutation: pause forgets the snapshot -> FAIL as expected
+PASS timer_kit mutation: stopwatch pause discards accumulated time -> FAIL as expected
+PASS timer_kit mutation: KV get loses try/catch -> FAIL as expected
+PASS timer_kit mutation: KV set loses try/catch -> FAIL as expected
+PASS timer_kit mutation: bell loses guarded PCM path -> FAIL as expected
+PASS timer_kit mutation: KV key exceeds NVS cap -> FAIL as expected
+PASS timer_kit mutation: lap rows grow without bound -> FAIL as expected
+PASS timer_kit mutation: a CJK UI literal slips in -> FAIL as expected
+PASS timer_kit mutation: font size escapes bundled faces -> FAIL as expected
+PASS timer_kit mutation: canvas budget rises past 230400 px -> FAIL as expected
+PASS timer_kit mutation: playground generated source drifts -> FAIL as expected
+PASS timer_kit mutation: playground manifest drops timer_kit -> FAIL as expected
+PASS timer_kit mutation: a firmware/runtime/CLI file changes after 3514c76 -> FAIL as expected
+PASS timer_kit live: controls exposed, single 480x480 canvas, draw calls <= 240
+PASS timer_kit live: READY +/- steppers adjust minutes; RUNNING locks +/- until unlocked
+PASS timer_kit live: header press toggles COUNTDOWN / STOPWATCH mode
+PASS timer_kit live: countdown advances by absolute now difference
+PASS timer_kit live: pause freezes wall time and resume excludes it
+PASS timer_kit live: zero transitions to FINISHED, rings, persists best, and supports RESTART/RESET
+PASS timer_kit live: stopwatch reports centiseconds and appends only three laps
+PASS timer_kit live: stopwatch pause excludes wall time
+PASS timer_kit live: KV load rejects negative codes / wrong types; save survives throws
+PASS timer_kit live: dispose and shutdown clear gestures, timers and effects
+PASS timer_kit live mutation: live: countdown reverts to a counter -> FAIL as expected
+PASS timer_kit live mutation: live: pause loses its snapshot -> FAIL as expected
+PASS timer_kit live mutation: live: lap rows stop evicting the oldest -> FAIL as expected
+ALL TIMER KIT HARNESS CASES PASSED
+--- SMOKE gateway side (raw) ---
+[GW] hello {"sessionId":"s1","device":"{\"model\":\"lume\",\"fw\":\"r108\",\"app\":\"voice_assistant\"}","streamTranscript":true}
+[GW] uplink.pcm {"sessionId":"s1","bytes":3840,"frames":1}
+[GW] uplink.pcm {"sessionId":"s1","bytes":3840,"frames":2}
+[GW] uplink.pcm {"sessionId":"s1","bytes":3840,"frames":3}
+[GW] turn.end {"sessionId":"s1"}
+[GW] session.close {"sessionId":"s1","code":1000}
+--- SMOKE device side (raw) ---
+[DEV] VA MODE GATEWAY
+[DEV] VA WS CONNECT ws://127.0.0.1:44447/
+[DEV] VA WS AUTH SPLIT=0
+[DEV] VA WS HELLO
+[DEV] VA WS MIC START
+[DEV] VA WS ACK fmt=pcm_s16le_16000_2ch
+[DEV] VA WS STATE thinking
+[DEV] VA WS UPLINK frames=1
+[DEV] VA WS UPLINK frames=2
+[DEV] VA WS UPLINK frames=3
+[DEV] VA WS MIC STOP
+[DEV] VA WS SEND END
+[DEV] VA WS DELTA n=0 chars=1
+[DEV] VA WS DELTA n=1 chars=2
+[DEV] VA WS DELTA n=2 chars=3
+[DEV] VA WS DELTA n=3 chars=4
+[DEV] VA WS DELTA n=4 chars=5
+[DEV] VA WS DELTA n=5 chars=6
+[DEV] VA WS DELTA n=6 chars=7
+[DEV] VA WS DELTA n=7 chars=8
+[DEV] VA WS STATE speaking
+[DEV] VA WS AUDIO hdr=1/1/1/16000/2/16 seq=0 bytes=3840
+[DEV] VA WS AUDIO hdr=1/1/1/16000/2/16 seq=1 bytes=3840
+[DEV] VA WS AUDIO hdr=1/1/1/16000/2/16 seq=2 bytes=3840
+[DEV] VA WS STATE idle
+[DEV] VA WS CLOSE
+[DEV] VA WS REPLY chars=8 audio=3 deltas=9
+--- SMOKE reassembled answer: "HI LUME." (gateway answer "HI LUME.") ---
+PASS happy: hello -> 3x3840B uplink -> end -> 9 deltas -> 3 audio -> idle/close -> IDLE
+PASS negative 1: gateway refuse -> IDLE, no uplink, not hung
+PASS negative 2: mid-stream upstream disconnect -> partial text, IDLE, no hang
+PASS negative 3: gateway fatal upstream_error -> IDLE, no hang
+PASS barge-in: SPEAK -> IDLE, end frame delivered, mic stopped, upstream released
+PASS fallback: no gateway -> legacy canned; vaSetTransport(non-fn) restores legacy
+PASS r117: transcript consumed into signal, answer intact, final before chat delta
+PASS r119: device KV token -> hello.auth -> locked gateway full round
+PASS r119: app token mismatch -> fatal error -> IDLE, no upstream, not hung
+PASS r121: 2 turns / 1 connection / 1 hello, history carries, no close
+PASS r122: close retires history, reconnect resumes it + re-sends token, no log leak
+PASS r121: wrong token blocked on initial + reconnect, upstream never created
+PASS r122: barge-in close -> reconnect with resume -> history of prior turns still continues
+PASS r195: URL query redacted in log, full URL connected, header still sent
+PASS r197: split keys -> Bearer=handshake, hello.auth=device-token, full round
+PASS r197: single-KV fallback -> r195 header+hello bytes, SPLIT=0
+PASS r197: both keys empty -> open LAN: no headers, no auth, SPLIT=0
+ALL VA WS HARNESS CASES PASSED (17 cases)
+PASS default: N24/G40, HUD+OK, 9 nodes, no math error at boot
+PASS all four math APIs are actually called per step (spy forwards to real stub)
+PASS 30 steps match the independent reference integrator strictly (vx/vy/px/py/energy)
+PASS bounce constraint: 200 hard steps keep every particle inside the canvas
+PASS NEXT cycles gravity levels 0->1->2->0 and publishes the HUD
+PASS injected throwing vecAdd presents MATH ERR and freezes physics (defensive branch)
+PASS NEXT still switches level while frozen (button remains wired)
+PASS stub semantics: vecAdd returns a, mutates in place, honours byteOffset
+PASS stub semantics: vecScale returns a and mutates with double->f32 rounding
+PASS stub semantics: dot is a double accumulation equal to an independent sum
+PASS stub semantics: integrate uses interleaved acc and returns undefined
+PASS stub contract: non-Float32Array -> TypeError, length mismatch -> RangeError
+PASS all UI string literals ASCII-only (r64)
+PASS try/catch error branch and four real math calls present
+PASS header declares LUME_MAX_NODES budget and app is a plain global script
+PASS static tree <= 12 nodes
+PASS playground manifest includes vec_demo
+PASS generated playground source is byte-identical to the example
+PASS firmware/ runtime/ tools/lume/ byte-identical to baseline 3514c76
+PASS MUTATION delete try/catch error branch -> predicate and live MATH ERR FAIL
+PASS MUTATION non-ASCII UI literal -> ASCII predicate FAILS
+PASS MUTATION fake app physics -> independent reference comparison FAILS
+PASS MUTATION fake reference -> comparison FAILS (comparator load-bearing)
+PASS MUTATION touch firmware/ -> diff predicate FAILS (then restored)
+PASS MUTATION touch runtime/ -> diff predicate FAILS (then restored)
+PASS vec_demo harness: all live, known-answer, static and mutation checks green
+PASS boot IDLE + honest DEMO badge (no key / no IP)
+PASS state table: 6 legal edges, illegal jumps rejected + logged
+PASS IDLE->LISTEN->THINK->(next frame)transport->SPEAK + play
+PASS barge-in SPEAK->IDLE, repeat tap is harmless no-op
+PASS LISTEN timeout -> IDLE; watchdog inert outside LISTEN
+PASS DEMO canned replies rotate across 6 turns (wrap at 4, start=1)
+PASS typewriter advances 1 char/tick, clamps at 45 (no wall-clock)
+PASS canvas budget 70560/230400 px, 18 draw calls/frame, dirty rect
+PASS UI text pure ASCII (134 bound strings)
+PASS transport slot: fake drives THINK->SPEAK; error path -> IDLE
+PASS LIVE detection + legacy lume.ai.chat delegation through transport
+PASS record() -3 degrades to demo level; real PCM drives bounded VU
+PASS waveform level bounded [0,1] in IDLE and LISTEN over 240 ticks
+PASS r124: panstart opens LISTEN+mic, panend sends end -> THINK/SPEAK
+PASS r124: <400 ms hold discarded -> IDLE, no end, mic stopped
+PASS r124: 15 s watchdog force-sends (end frame) instead of hanging
+PASS r124: panend fires before swipe:up (not swallowed); down drag = panend only
+PASS r124: two holds / one connection / one hello, mic reopens on hold 2
+PASS r124: DEMO mode unaffected (pan no-op, tap still works)
+ALL VOICE ASSISTANT HARNESS CASES PASSED
+PASS watchface five-page swipe cycle
+PASS watchface 480 1x canvas budget 183472/230400 px (digital 12x12 + analog 300x300 singleBuffer); modular uses zero canvas
+PASS watchface weather updates only its own complication text
+PASS watchface weather WiFi-down fallback --°
+PASS watchface six native AA arcs; dirty area 46656 px
+PASS watchface progress clamps 0..100
+PASS watchface retained-path static contract (ticks + 3 bg rings)
+PASS watchface retained paths defined once, replayed on every redraw
+PASS watchface retained-path mutation guards (ticks, rings)
+PASS watchface 466 1x canvas budget 691558/868624 B (digital 12x12 + analog 291x291 singleBuffer)
+PASS weather WMO codes map to descriptions and icon kinds
+PASS weather formatters degrade to -- instead of NaN
+PASS weather weekDay parses the ISO date in UTC
+PASS weather parseForecast keeps current values and caps the forecast at three days
+PASS weather parseForecast rejects bodies it cannot use
+PASS weather parseForecast survives a missing daily block and short arrays
+PASS weather buildUrl asks for current + daily with auto timezone
+PASS weather parseCity validates the Kv JSON
+PASS weather dayAt falls back for out-of-range indexes
+PASS weather icons issue the expected raster commands and repaint the whole canvas
+PASS 10 weather logic cases
+PASS weather refresh replaces the demo data
+PASS weather request failure keeps the app usable
+PASS weather non-200 response is reported
+PASS 13 weather cases (10 logic + 3 UI)
+PASS weather_sntp: SNTP call sits in the refresh path before the HTTPS request
+PASS weather_sntp: wall-clock-unset gate compares time() against the clock threshold
+PASS weather_sntp: clock threshold is 2026-01-01T00:00:00Z (1767225600000 ms)
+PASS weather_sntp: only r===0 continues; failure aborts with DEMO data (no HTTPS burned)
+PASS weather_sntp: skipTls bypass kept: insecure users never enter the sync gate
+PASS weather_sntp: fetchForecast still offers the insecure httpsInsecure escape hatch
+PASS weather_sntp: failed sync is throttled 60 s via _nowMs-domain lastSyncFailMs
+PASS weather_sntp: throttle window constant is 60000 ms
+PASS weather_sntp: failure copy is a Chinese short text carrying the ASCII return code
+PASS weather_sntp: old "TLS 需校时" -2 copy removed, transport reading installed
+PASS weather_sntp: header no longer claims there is no SNTP / set-time API
+PASS weather_sntp: SNTP and https share ONE setTimeout callback
+PASS weather_sntp: playground sources/weather.js byte-identical to examples/weather/app.js
+PASS weather_sntp: weather is in the playground manifest
+PASS weather_sntp: firmware/ runtime/ CLI tooling untouched vs 3514c76 (shell.js/types only) (manifest excluded)
+PASS weather_sntp mutation: drop the setTimeNtp call from the refresh path -> FAIL as expected
+PASS weather_sntp mutation: wall clock is never checked before the sync call -> FAIL as expected
+PASS weather_sntp mutation: clock threshold is moved off 2026-01-01 -> FAIL as expected
+PASS weather_sntp mutation: success branch no longer requires r===0 -> FAIL as expected
+PASS weather_sntp mutation: insecure users are forced through the sync gate -> FAIL as expected
+PASS weather_sntp mutation: insecure httpsInsecure escape hatch removed -> FAIL as expected
+PASS weather_sntp mutation: drop the lastSyncFailMs throttle read -> FAIL as expected
+PASS weather_sntp mutation: throttle window changed away from 60 s -> FAIL as expected
+PASS weather_sntp mutation: failure copy loses its ASCII return code -> FAIL as expected
+PASS weather_sntp mutation: restore the old "TLS 需校时" -2 copy -> FAIL as expected
+PASS weather_sntp mutation: restore the old "no SNTP API" header claim -> FAIL as expected
+PASS weather_sntp mutation: split SNTP and https into two setTimeout callbacks -> FAIL as expected
+PASS weather_sntp mutation: playground generated source drifts from the example -> FAIL as expected
+PASS weather_sntp mutation: playground manifest drops weather -> FAIL as expected
+PASS weather_sntp mutation: a firmware file changes vs 1dc7c76 -> FAIL as expected
+ALL WEATHER SNTP HARNESS CASES PASSED
+PASS default closed and token required
+PASS start, URL, and duplicate start
+PASS token gate before JS dispatch
+PASS exact route, welcome fallback, 404
+PASS query decode and response framing
+PASS 8 KiB request body cap and full POST to KV
+PASS stop lifecycle
+PASS built-in welcome and handler exception
+webserver: 8 cases PASS
+PASS wordle UI strings ASCII-only (r64)
+PASS wordle dictionary 300 unique five-letter ASCII words, all self-green
+PASS wordle 26 five-by-seven glyphs decoded to valid spans
+PASS wordle verdict green/yellow/grey, inputs immutable
+PASS wordle repeated letters: two-pass count, no over-awarding
+PASS wordle new game defaults + KV load + event
+PASS wordle letter input: lowercase, full/space/ignore guards, backspace
+PASS wordle submit guards: short / non-dictionary / duplicate
+PASS wordle win: verdict all green, streak + best persisted
+PASS wordle loss: 6 tries, streak reset, board fully locked
+PASS wordle streak transitions: best is the longest run
+PASS wordle letter marks: highest feedback priority G > Y > X
+PASS wordle KV keys <= 15 chars, storage failures non-fatal
+PASS wordle canvas budget 58016/230400 px, grid in bounds
+PASS wordle r165 wdDayIndex + deterministic daily pick (no random path)
+PASS wordle r165 streak gap: 2+ days since last win breaks the run
+EVIDENCE wordle idle 0 paints/tick; first paint 302 calls on 392x148 canvas
+PASS wordle prelude boot: paint + HUD + 4 keyboard rows / 29 keys
+PASS wordle keyboard injection: onKey -> state, BKSP, SPACE ignored, ENTER submit
+PASS wordle feedback colors reach draw stream after a submitted guess
+PASS wordle NEW button resets board after win
+PASS wordle shell.dispose removes 33 nodes once
+PASS wordle ~60 s smoke (keys=120, submits=39, restarts=14, draws=24374, paints=134)
+PASS wordle ~60 s smoke: bounded state, draws and invalidates in canvas
+PASS wordle r165 live: same clock same word, +1 day new word, DAY #N in HUD
+PASS wordle static: Keyboard registered on lume.ui.shell
+PASS wordle static: app wires onKey/onBackspace/onSubmit into game logic
+PASS wordle static: Keyboard geometry: 44 px key, gap 0, x 16, y 240
+PASS wordle static: keyStates consume wdLetterMarks (r153 tint replaces the letter bar)
+PASS wordle static: native nodes carry QWERTY + SPACE/BKSP/ENTER
+PASS wordle static: all UI string literals ASCII-only (r64)
+PASS wordle static: playground sources/wordle.js byte-identical to example
+PASS wordle static: wordle is in the playground manifest
+PASS wordle static: firmware/ runtime/ tools/lume/ identical to 3514c76
+PASS wordle static: prelude lume_scripts.c unchanged since 3514c76
+PASS wordle static: r165 wdDayIndex derives the ordinal from lume.system.time()
+PASS wordle static: r165 wdPick is deterministic day % WORDS.length, no random path
+PASS wordle static: r165 KV_DAY key fits the 15-char NVS cap
+PASS wordle static: r165 HUD renders DAY #N
+PASS wordle mutation: drop shell.Keyboard registration -> FAIL as expected
+PASS wordle mutation: app stops forwarding onKey -> FAIL as expected
+PASS wordle mutation: shrink the keyboard touch target -> FAIL as expected
+PASS wordle mutation: keyStates drop feedback marks -> FAIL as expected
+PASS wordle mutation: a key label drifts from QWERTY -> FAIL as expected
+PASS wordle mutation: a non-ASCII UI literal slips in -> FAIL as expected
+PASS wordle mutation: playground generated source drifts from the example -> FAIL as expected
+PASS wordle mutation: playground manifest drops wordle -> FAIL as expected
+PASS wordle mutation: a firmware/runtime/CLI file changes after the feat commit -> FAIL as expected
+PASS wordle mutation: the prelude changes vs 3514c76 -> FAIL as expected
+PASS wordle mutation: wdPick falls back to random pick -> FAIL as expected
+PASS wordle mutation: wdDayIndex ignores the wall clock -> FAIL as expected
+PASS wordle mutation: KV_DAY grows past the NVS cap -> FAIL as expected
+PASS wordle mutation: HUD drops the DAY #N label -> FAIL as expected
+ALL WORDLE HARNESS CASES PASSED
+PASS wordring UI strings ASCII-only (r64 font rule)
+PASS wordring dictionary: 743 unique five-letter ASCII words, all self-green
+PASS wordring glyphs: 28 five-by-seven glyphs decoded to valid spans
+PASS wordring verdict: green/yellow/grey + input immutability
+PASS wordring duplicate letters: two-pass count, no over-awarding
+PASS wordring new game + rotation: wrap 0..25 both directions
+PASS wordring confirm/backspace: lowercase slots, full guard
+PASS wordring submit guards: short + duplicate rejected, no attempt spent
+PASS wordring win: verdict all green, streak + best persisted
+PASS wordring loss: 6 tries, streak reset, board fully locked
+PASS wordring best: fewer overwrites / worse and equal keep
+PASS wordring KV: keys <= 15 chars, storage failures non-fatal
+PASS wordring canvas budget: 206400/230400 px, grid/ring/buttons in safe square
+PASS wordring prelude boot: full paint, HUD attrs, span draw stream
+PASS wordring tap pipeline: rotate/confirm, DEL/ENTER/NEW, KV write
+PASS wordring ~60 s smoke (taps=120, submits=39, restarts=14, draws=91564, paints=187)
+ALL tests/wordring.js PASSED
+WebSocket host prelude: PASS

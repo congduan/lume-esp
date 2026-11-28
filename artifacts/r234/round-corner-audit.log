@@ -1,0 +1,13 @@
+PASS round catalog has 37 apps
+PASS watchface labels use explicit __A_SX/__A_SY once
+  LUME / DIGITAL@(78,82) near=143 far=216
+  LUME / ANALOG@(78,70) near=157 far=225
+  LUME / ACTIVITY@(78,70) near=152 far=225
+  LUME / GOALS@(78,76) near=154 far=221
+  LUME / MODULAR@(78,76) near=149 far=221
+PASS watchface labels inside native 466 visible circle (host geometry)
+RISK watchface/face4 PARTIAL_CLIP/CORNER "周六" box=(48,371 48x28) near=194 far=249
+RISK watchface/face4 PARTIAL_CLIP/CORNER "11月28日" box=(48,408 64x16) near=213 far=266
+PASS browser audit visited all 37 round apps
+PASS watchface corner labels/status clear of the arc
+AUDIT round_apps=37 risks=2 watchface=2 accepted=2

@@ -3697,3 +3697,37 @@ covering the lower half of the text at `y=84`.
   and PSRAM peak remain deferred to board bring-up; browser screenshots and
   host assertions are not hardware verification. Full record:
   `docs/r231-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r231).
+
+### r234 result — round app DESIGN-TOKENS 红线审计 + 修复刀（app + test + docs，无真机验收）
+
+Added a deterministic, host-runnable `DESIGN-TOKENS.md` section-0 audit harness
+(`tests/design_token_audit.js`) covering all 74 playground apps (37 round at
+native 466×466, 37 square at native 480×480) against four rules: touch target
+`>=48x48`, no single-ASCII-letter placeholder icons, font size `>=12px`, and
+non-pill/non-circle card `borderRadius <=12px` (with synthetic bad/good
+self-checks proving all four rules are load-bearing).
+
+- **Baseline -> post-fix**: zero-exception baseline found 247 violations (131
+  round, 116 square). Fixed all 62 actionable round-app violations across 14
+  apps (`settings`, `weather`, `music_player`, `files`, `image_gallery`,
+  `adc_meter`, `crypto_check`, `archive_view`, `img_view`, `control_center`,
+  `launcher_grid`, `clock`, `game_of_life`, `compass`): clamped 48px touch
+  floors in the 11 r230 native-466 adaptive shims (exact 480 no-op), upgraded
+  `settings` subpage buttons/rows/keyboard height to 48px and replaced its `'X'`
+  forget button with `'DEL'`, replaced `weather`'s `'R'` fallback with `'SYNC'`,
+  lifted 11px body/caption text to 12px (widening `compass` subtitle to avoid
+  2-line wrap over `N`), and lowered `clockTheme.radius` from 14 to 12.
+- **Documented exceptions**: `watchface` (`card-radius` 16, off-limits while
+  r232 is in flight), `settings` 10-col QWERTY key width/letter keys (row height
+  locked `>=48px`), and the 37 square apps (registered-only in r234: 8 apps /
+  116 entries queued for the square token round).
+- **Host/browser gates**: `design_token_audit.js` `violations=0` (`accepted=185`),
+  `round_corner_audit.js` unchanged at `risks=2 watchface=2 accepted=2`,
+  `verify.mjs` 18/18 PASS, `npm test --prefix tools/lume` 87/87 PASS, all 114
+  `tests/*.js` 0 FAIL, `build.mjs` / `check_website.py` (four `none`) /
+  `gen_examples_gallery.py --check` PASS, `git diff origin/main -- firmware/
+  runtime/ tools/` empty, 0 non-ASCII added lines, 32 Playwright before/after
+  screenshots inspected in `artifacts/r234/shots/`.
+- **Not on-device acceptance**: CO5300/CST9220 touch feel, readability, frame
+  time, and PSRAM peak remain deferred to board bring-up. Full record:
+  `docs/r234-report.md`.
