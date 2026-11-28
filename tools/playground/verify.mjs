@@ -53,6 +53,64 @@ try {
     console.log(`  border-radius: ${radius}`);
     if (radius === '50%' || radius === '0px') throw Error(`unexpected border radius: ${radius}`);
   });
+  await check('round app auto-switches frame, manual override holds on restart, and safe-area guide toggles cleanly', async () => {
+    await page.locator('[data-app="watchface"]').click();
+    const isRound = await page.locator('.device-wrap').evaluate(el => el.classList.contains('round'));
+    const roundPressed = await page.locator('[data-screen-shape="round"]').getAttribute('aria-pressed');
+    const roundRadius = await page.locator('.device-wrap').evaluate(el => getComputedStyle(el).borderRadius);
+    if (!isRound || roundPressed !== 'true' || roundRadius !== '50%') {
+      throw Error(`watchface did not auto-switch to round: class=${isRound} pressed=${roundPressed} radius=${roundRadius}`);
+    }
+    if (await page.locator('#error').isVisible()) throw Error(await page.locator('#error').textContent());
+    // Safe-area guide toggle is visible in round mode, off by default, and non-blocking when on.
+    const safeBtn = page.locator('#safe-area-toggle');
+    if (await safeBtn.isHidden()) throw Error('safe-area toggle hidden in round mode');
+    if (await safeBtn.getAttribute('aria-pressed') !== 'false') throw Error('safe-area toggle should default off');
+    await safeBtn.click();
+    const safeStyle = await page.locator('.device-wrap').evaluate(el => {
+      const s = getComputedStyle(el, '::after');
+      return { hasClass: el.classList.contains('show-safe'), opacity: parseFloat(s.opacity), pe: s.pointerEvents };
+    });
+    if (!safeStyle.hasClass || !(safeStyle.opacity > 0 && safeStyle.opacity <= 0.15) || safeStyle.pe !== 'none') {
+      throw Error('unexpected safe-area overlay style: ' + JSON.stringify(safeStyle));
+    }
+    await safeBtn.click();
+    // Manual override to square survives restart, then switching apps auto-aligns again.
+    await page.locator('[data-screen-shape="square"]').click();
+    if (await page.locator('.device-wrap').evaluate(el => el.classList.contains('round'))) {
+      throw Error('manual switch to square failed');
+    }
+    await page.locator('#restart').click();
+    if (await page.locator('.device-wrap').evaluate(el => el.classList.contains('round'))) {
+      throw Error('restart clobbered manual square override');
+    }
+    await page.locator('[data-app="clock_round"]').click();
+    if (!(await page.locator('.device-wrap').evaluate(el => el.classList.contains('round')))) {
+      throw Error('clock_round did not auto-switch back to round');
+    }
+    await page.locator('[data-app="counter"]').click();
+    if (await page.locator('.device-wrap').evaluate(el => el.classList.contains('round'))) {
+      throw Error('counter did not auto-switch back to square');
+    }
+    if (errors.length || await page.locator('#error').isVisible()) throw Error(errors.join('\n') || await page.locator('#error').textContent());
+    console.log('  watchface -> round (50%), safe-area opacity=' + safeStyle.opacity + ', manual square + restart held, clock_round -> round, counter -> square');
+  });
+  await check('runtime.js honors custom 466x466 __lumeScreen option', async () => {
+    const probed = await page.evaluate(() => {
+      const seen = [];
+      const sess = window.LumePlaygroundSession(
+        "Text({ text: 'SCREEN:' + __lumeScreen.w + 'x' + __lumeScreen.h });",
+        { screen: { w: 466, h: 466 }, onMessage: m => seen.push(m) }
+      );
+      const out = { screen: sess.screen, texts: seen.filter(m => m[0] === 'attr' && m[2] === 0).map(m => m[3]) };
+      sess.destroy();
+      return out;
+    });
+    if (probed.screen.w !== 466 || probed.screen.h !== 466 || !probed.texts.includes('SCREEN:466x466')) {
+      throw Error('466x466 __lumeScreen injection failed: ' + JSON.stringify(probed));
+    }
+    console.log('  __lumeScreen injected: ' + probed.texts.join(', '));
+  });
   await check('editor compiles default and changed source, then reports syntax errors', async () => {
     await page.locator('#editor-tab').click();
     await page.locator('#run').click();
