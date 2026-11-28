@@ -21,13 +21,21 @@ assert.equal(h.messages.filter(m => m[0] === 'attr' && m[2] === 5).at(-1)[3], 1)
 console.log('PASS watchface five-page swipe cycle');
 
 const canvases = h.messages.filter(m => m[0] === 'create' && m[2] === 3);
-const canvasPixels = canvases.reduce((sum, m) => sum + m[4] * m[5], 0);
+/* r225: createNode flags bit 0 marks a 1x singleBuffer canvas; the prelude
+ * charges half the 2x pool cost for those. */
+const isSingle = m => ((m[6] || 0) & 1) === 1;
+const canvasPixels = canvases.reduce((sum, m) => sum + m[4] * m[5] * (isSingle(m) ? 0.5 : 1), 0);
 assert.equal(canvases.length, 4);
-assert.equal(canvasPixels, 228544);
+assert.equal(canvasPixels, 183472);
 assert.ok(canvasPixels <= 230400);
-assert.ok(h.messages.filter(m => m[0] === 'create' && m[2] === 3)
-  .every(m => m[3] !== evalJs('modular')));
-console.log(`PASS watchface canvas budget ${canvasPixels}/230400 px; modular uses zero canvas`);
+assert.ok(canvases.every(m => m[3] !== evalJs('modular')));
+/* Only the two repaint-safe faces are 1x: static digital + full-frame analog.
+ * rings (async IMU repaint) and goals (dirty rect) stay double-buffered. */
+const singleCanvases = canvases.filter(isSingle);
+assert.deepEqual(singleCanvases.map(m => [m[4], m[5]]), [[12, 12], [300, 300]]);
+assert.equal(singleCanvases.reduce((s, m) => s + m[4] * m[5], 0), 90144);
+assert.equal(canvases.filter(m => !isSingle(m)).reduce((s, m) => s + m[4] * m[5], 0), 138400);
+console.log(`PASS watchface canvas budget ${canvasPixels}/230400 px (1x: digital 12x12 + analog 300x300); modular uses zero canvas`);
 
 assert.equal(evalJs('faceTheme.spacing'), 12);
 assert.equal(evalJs('modularBatteryCard.card') !== evalJs('modularWeatherCard.card'), true);
