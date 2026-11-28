@@ -1,0 +1,498 @@
+{
+  "faces": [
+    {
+      "name": "digital",
+      "id": 6,
+      "w": 12,
+      "h": 12,
+      "flags": 0,
+      "single": false
+    },
+    {
+      "name": "analog",
+      "id": 10,
+      "w": 300,
+      "h": 300,
+      "flags": 0,
+      "single": false
+    },
+    {
+      "name": "rings",
+      "id": 14,
+      "w": 300,
+      "h": 300,
+      "flags": 0,
+      "single": false
+    },
+    {
+      "name": "goals",
+      "id": 19,
+      "w": 220,
+      "h": 220,
+      "flags": 0,
+      "single": false
+    }
+  ],
+  "streamHash": "0a038b987c55e7e58001c6f4692e7fe1d0324ebd998d8d4dcad9ae2f3d50fc75",
+  "frames": [
+    {
+      "frame": 0,
+      "hashes": {
+        "digital": "2d5565fb483d8ea4",
+        "analog": "1e8267c1d4ea0a0a",
+        "rings": "eae8ec6424eb2c5a",
+        "goals": "d0306a2defcf3cfc"
+      },
+      "perFace": {
+        "digital": {
+          "draws": 0,
+          "ops": [],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [],
+          "messages": 0
+        },
+        "analog": {
+          "draws": 4,
+          "ops": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "batches": 1,
+          "pathDefines": 0,
+          "pathDraws": 2,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 8
+        },
+        "rings": {
+          "draws": 2,
+          "ops": [
+            1,
+            1
+          ],
+          "batches": 8,
+          "pathDefines": 0,
+          "pathDraws": 6,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL",
+            "FULL"
+          ],
+          "messages": 18
+        },
+        "goals": {
+          "draws": 7,
+          "ops": [
+            1,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "RECT(2,2,216,216)=46656px"
+          ],
+          "messages": 8
+        }
+      }
+    },
+    {
+      "frame": 1,
+      "hashes": {
+        "digital": "2d5565fb483d8ea4",
+        "analog": "1d73e4d5e643ca14",
+        "rings": "0e6d4b6702236b31",
+        "goals": "d0306a2defcf3cfc"
+      },
+      "perFace": {
+        "digital": {
+          "draws": 0,
+          "ops": [],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [],
+          "messages": 0
+        },
+        "analog": {
+          "draws": 4,
+          "ops": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "batches": 1,
+          "pathDefines": 0,
+          "pathDraws": 2,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 8
+        },
+        "rings": {
+          "draws": 1,
+          "ops": [
+            1
+          ],
+          "batches": 4,
+          "pathDefines": 0,
+          "pathDraws": 3,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 9
+        },
+        "goals": {
+          "draws": 7,
+          "ops": [
+            1,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "RECT(2,2,216,216)=46656px"
+          ],
+          "messages": 8
+        }
+      }
+    },
+    {
+      "frame": 2,
+      "hashes": {
+        "digital": "2d5565fb483d8ea4",
+        "analog": "c16ba4cbb565fd35",
+        "rings": "2c4ac9b7c09798f1",
+        "goals": "d0306a2defcf3cfc"
+      },
+      "perFace": {
+        "digital": {
+          "draws": 0,
+          "ops": [],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [],
+          "messages": 0
+        },
+        "analog": {
+          "draws": 4,
+          "ops": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "batches": 1,
+          "pathDefines": 0,
+          "pathDraws": 2,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 8
+        },
+        "rings": {
+          "draws": 1,
+          "ops": [
+            1
+          ],
+          "batches": 4,
+          "pathDefines": 0,
+          "pathDraws": 3,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 9
+        },
+        "goals": {
+          "draws": 7,
+          "ops": [
+            1,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "RECT(2,2,216,216)=46656px"
+          ],
+          "messages": 8
+        }
+      }
+    },
+    {
+      "frame": 3,
+      "hashes": {
+        "digital": "2d5565fb483d8ea4",
+        "analog": "f79cfad4f3f1b0a0",
+        "rings": "690eda3709b4cc3c",
+        "goals": "d0306a2defcf3cfc"
+      },
+      "perFace": {
+        "digital": {
+          "draws": 0,
+          "ops": [],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [],
+          "messages": 0
+        },
+        "analog": {
+          "draws": 4,
+          "ops": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "batches": 1,
+          "pathDefines": 0,
+          "pathDraws": 2,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 8
+        },
+        "rings": {
+          "draws": 1,
+          "ops": [
+            1
+          ],
+          "batches": 4,
+          "pathDefines": 0,
+          "pathDraws": 3,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 9
+        },
+        "goals": {
+          "draws": 7,
+          "ops": [
+            1,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "RECT(2,2,216,216)=46656px"
+          ],
+          "messages": 8
+        }
+      }
+    },
+    {
+      "frame": 4,
+      "hashes": {
+        "digital": "2d5565fb483d8ea4",
+        "analog": "c61209451e9c8b3b",
+        "rings": "9723165032e0e4f1",
+        "goals": "d0306a2defcf3cfc"
+      },
+      "perFace": {
+        "digital": {
+          "draws": 0,
+          "ops": [],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [],
+          "messages": 0
+        },
+        "analog": {
+          "draws": 4,
+          "ops": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "batches": 1,
+          "pathDefines": 0,
+          "pathDraws": 2,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 8
+        },
+        "rings": {
+          "draws": 1,
+          "ops": [
+            1
+          ],
+          "batches": 4,
+          "pathDefines": 0,
+          "pathDraws": 3,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 9
+        },
+        "goals": {
+          "draws": 7,
+          "ops": [
+            1,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "RECT(2,2,216,216)=46656px"
+          ],
+          "messages": 8
+        }
+      }
+    },
+    {
+      "frame": 5,
+      "hashes": {
+        "digital": "2d5565fb483d8ea4",
+        "analog": "9ae681df507ce667",
+        "rings": "4b16068ef1cd2964",
+        "goals": "d0306a2defcf3cfc"
+      },
+      "perFace": {
+        "digital": {
+          "draws": 0,
+          "ops": [],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [],
+          "messages": 0
+        },
+        "analog": {
+          "draws": 4,
+          "ops": [
+            1,
+            3,
+            3,
+            3
+          ],
+          "batches": 1,
+          "pathDefines": 0,
+          "pathDraws": 2,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 8
+        },
+        "rings": {
+          "draws": 1,
+          "ops": [
+            1
+          ],
+          "batches": 4,
+          "pathDefines": 0,
+          "pathDraws": 3,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "FULL"
+          ],
+          "messages": 9
+        },
+        "goals": {
+          "draws": 7,
+          "ops": [
+            1,
+            5,
+            5,
+            5,
+            5,
+            5,
+            5
+          ],
+          "batches": 0,
+          "pathDefines": 0,
+          "pathDraws": 0,
+          "spriteDefines": 0,
+          "spriteDraws": 0,
+          "invalidates": [
+            "RECT(2,2,216,216)=46656px"
+          ],
+          "messages": 8
+        }
+      }
+    }
+  ],
+  "fullStreamHash": "b47a270814b12ffaa60fa547f7a925305d2bdac58b37e455cdd901e044d84feb"
+}

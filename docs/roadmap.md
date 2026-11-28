@@ -201,8 +201,17 @@ Next, in the order I would take it:
    faces (dial, rings) keep double buffering. Alternatives rejected: raw single
    buffer reopens the mid-frame blit bug r48 closed; a lock trades frame-rate
    determinism; a ready-handshake window (r46 crossfade pattern) downgrades the
-   hard guarantee to statistical. Not scheduled: the pool is only exhausted by
-   watchface; implement when a real app hits the wall and needs the extra half.
+   hard guarantee to statistical. **LANDED in r225 (first app consumer; the
+   r221 cut was mechanism-only)**: frame dumps (`artifacts/r225/frames-before.txt`)
+   show analog FULL-invalidates once per 1 Hz `faceNow` tick and digital never
+   repaints (0 messages / 6 ticks) -- both moved to `singleBuffer: true`. rings
+   also FULL-invalidates but is driven by asynchronous `faceSteps` IMU updates
+   (100 ms) outside the tick; goals publishes a 46,656 px dirty rect; both keep
+   double buffering. Budget 228,544 -> **183,472/230,400 px** (1x faces charged
+   at half); 45,072 px / 180,288 B refund registered as future expansion margin
+   (no sixth face added). Host RGB565 before/after: 0/1,371,264 px diff across
+   24 face-frames. See `docs/r225-report.md`; on-device tearing/PSRAM acceptance
+   still deferred to board bring-up.
 8. **Productise the half-frame check** — the statistical harness used here (take
    N screenshots, assert every frame has all expected layers and that each dirty
    rect stays inside its static region) is what caught the mid-frame blit and the
