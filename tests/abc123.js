@@ -54,15 +54,15 @@ assert.equal(creates.filter(m => m[2] === 3).length, 0, 'no auxiliary Canvas');
 const textIds = creates.filter(m => m[2] === 1).map(m => m[1]);
 assert.equal(textIds.length, 2, 'top and bottom Text nodes');
 const yOf = id => ui.messages.find(m => m[0] === 'attr' && m[1] === id && m[2] === 19)[3];
-// r202 layout cascade: both text lines moved below the glyph, inside the round safe square.
-assert.deepEqual(textIds.map(yOf), [368, 386], 'safe-area text margins');
+// r233 square layout: both text lines sit below the 360x360 glyph inside [44,436].
+assert.deepEqual(textIds.map(yOf), [402, 424], 'square-screen text margins');
 const rootId = creates[0][1];
 assert.ok(ui.messages.some(m => m[0] === 'attr' && m[1] === rootId && m[2] === 1 && m[3] === 0),
   'root background is static black');
 assert.equal(a.__imageSources.length, 1);
 const glyphId = a.__imageSources[0].id;
-assert.equal(a.__imageSources[0].width, 320);
-assert.equal(a.__imageSources[0].height, 320);
+assert.equal(a.__imageSources[0].width, 360);
+assert.equal(a.__imageSources[0].height, 360);
 assert.ok(decode(a.__imageSources[0].bytes).includes('viewBox="0 0 100 100"'));
 console.log('PASS static black root and single Image glyph node');
 tap(ui, 240, 300, 1000);

@@ -299,12 +299,12 @@ function plain(v) { return JSON.parse(JSON.stringify(v)); } // vm-realm arrays -
   assert.ok(iw, 'layout constants found');
   const IW = +iw[1], IH = +iw[2], CELL = +iw[3], GAP = +iw[4], GX = +iw[5], GY = +iw[6];
   assert.equal(IW * IH, 230400, 'single full-screen canvas is the whole budget');
-  assert.equal(CELL * s.COLS + GAP * (s.COLS - 1), 268, 'grid width 10x25 + 9x2');
-  const gridR = GX + s.COLS * (CELL + GAP) - GAP;   // 106 + 270 - 2 = 374
-  const gridB = GY + s.ROWS * (CELL + GAP) - GAP;   // 132 + 270 - 2 = 400
-  assert.ok(GX >= 75 && gridR <= 405, 'grid x inside round safe square [75,405]');
-  assert.ok(GY >= 132 && gridB <= 405, 'grid y clears HUD/RESTART and stays inside [75,405]');
-  console.log('PASS minesweeper canvas budget: 230400 px single canvas, grid in safe square');
+  assert.equal(CELL * s.COLS + GAP * (s.COLS - 1), 387, 'grid width 10x36 + 9x3');
+  const gridR = GX + s.COLS * (CELL + GAP) - GAP;   // 46 + 390 - 3 = 433
+  const gridB = GY + s.ROWS * (CELL + GAP) - GAP;   // 76 + 390 - 3 = 463
+  assert.ok(GX >= 44 && gridR <= 436, 'grid x inside square margin [44,436]');
+  assert.ok(GY >= 76 && gridB <= 468, 'grid y clears header RESTART and fits 480');
+  console.log('PASS minesweeper canvas budget: 230400 px single canvas, grid in square margin');
 }
 
 // 15. every board is complete: 15 mines + 85 safe cells, and fully diggable

@@ -289,8 +289,8 @@ check('KV keys <= 15 chars, storage failures non-fatal', () => {
 // r153 removed the self-drawn 26-letter bar: letter verdicts now tint the
 // shell keyboard keys via keyStates, so the grid only has to fit the canvas
 // and the canvas must clear the keyboard.
-check('canvas budget 40960/230400 px, grid in bounds', () => {
-  assert.equal(s.IW * s.CANVAS_H, 40960);
+check('canvas budget 58016/230400 px, grid in bounds', () => {
+  assert.equal(s.IW * s.CANVAS_H, 58016);
   assert.ok(s.IW * s.CANVAS_H <= 230400);
   const gridRight = s.GX + 5 * (s.CELL + s.GAP) - s.GAP;
   const gridBottom = s.GY + 6 * (s.CELL + s.GAP) - s.GAP;
@@ -403,14 +403,14 @@ check('prelude boot: paint + HUD + 4 keyboard rows / 29 keys', () => {
   assert.ok(ui.s.messages.filter(m => m[0] === 'attr').length > 0, 'HUD text attrs');
   const invs = ui.s.messages.filter(m => m[0] === 'invalidate');
   assert.ok(invs.length >= 1, 'first paint');
-  assert.deepEqual(invs[0].slice(2), [0, 0, 320, 128], 'first paint covers the canvas');
+  assert.deepEqual(invs[0].slice(2), [0, 0, 392, 148], 'first paint covers the canvas');
   const firstCalls = ui.s.messages.filter(m => m[0] === 'draw').length;
   assert.ok(firstCalls > 100 && firstCalls <= 1000, 'first-paint call budget ' + firstCalls);
   assert.equal(vm.runInContext('painted', ui.s.ctx), true, 'first paint latches painted');
   const before = ui.s.messages.length;
   vm.runInContext('__lume_tick()', ui.s.ctx);
   assert.equal(ui.s.messages.slice(before).filter(m => m[0] === 'invalidate').length, 0, 'idle tick skips paint');
-  console.log('EVIDENCE wordle idle 0 paints/tick; first paint ' + firstCalls + ' calls on 320x128 canvas');
+  console.log('EVIDENCE wordle idle 0 paints/tick; first paint ' + firstCalls + ' calls on 392x148 canvas');
 });
 
 // 15. keyboard callback injection: onKey / BKSP / SPACE / ENTER routing
@@ -507,8 +507,8 @@ check('~60 s smoke: bounded state, draws and invalidates in canvas', () => {
   assert.ok(draws.length > 1000, 'draw traffic ' + draws.length);
   for (const m of invs) {
     const [, , x, y, w, h] = m;
-    assert.ok(x + w <= 320 && y + h <= 128, 'invalidate inside canvas');
-    assert.ok(w * h <= 320 * 128, 'invalidate within budget');
+    assert.ok(x + w <= 392 && y + h <= 148, 'invalidate inside canvas');
+    assert.ok(w * h <= 392 * 148, 'invalidate within budget');
   }
   const st = vm.runInContext('wdGetGame()', p.s.ctx);
   assert.ok(st.current.length <= 5, 'slot bounded');

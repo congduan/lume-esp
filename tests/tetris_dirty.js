@@ -13,12 +13,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { runApp } = require('./lib/prelude_runner');
 
-const CELL = 16;
+const CELL = 20;
 const source = fs.readFileSync('examples/games_tetris/app.js', 'utf8');
 const logs = [];
 const ui = runApp(source, { onLog: s => logs.push(s) });
-const sceneId = ui.messages.find(m => m[0] === 'create' && m[2] === 3 && m[4] === 160)?.[1];
-assert.ok(sceneId, 'tetris scene canvas (160px wide) not found');
+const sceneId = ui.messages.find(m => m[0] === 'create' && m[2] === 3 && m[4] === 200)?.[1];
+assert.ok(sceneId, 'tetris scene canvas (200px wide) not found');
 
 const cellKey = (x, y) => x + ',' + y;
 

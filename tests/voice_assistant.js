@@ -25,7 +25,7 @@ assert.equal(c.vaState(), 'IDLE');
 assert.equal(c.vaMode, 'DEMO');
 assert.equal(c.vaModeLabel(), 'DEMO');
 assert.ok(logs.includes('VA MODE DEMO'), logs.join('\n'));
-assert.ok(logs.some(l => /^VA READY mode=DEMO canned=4 canvas=51200$/.test(l)), logs.join('\n'));
+assert.ok(logs.some(l => /^VA READY mode=DEMO canned=4 canvas=70560$/.test(l)), logs.join('\n'));
 console.log('PASS boot IDLE + honest DEMO badge (no key / no IP)');
 
 /* 2. transition table: every legal edge, explicit illegal rejection */
@@ -115,7 +115,7 @@ console.log(`PASS typewriter advances 1 char/tick, clamps at ${full.length} (no 
 const canvases = ui.messages.filter(m => m[0] === 'create' && m[4] > 0 && m[5] > 0);
 assert.equal(canvases.length, 1, 'exactly one canvas');
 const px = canvases[0][4] * canvases[0][5];
-assert.equal(px, 320 * 160);
+assert.equal(px, 392 * 180);
 assert.ok(px <= 230400, `canvas ${px} <= 230400 px app budget`);
 const beforeDraw = ui.messages.length;
 c.vaRev.set(c.vaRev() + 1);

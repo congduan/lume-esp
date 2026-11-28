@@ -26,13 +26,13 @@ const a = logic();
 // 1. formation direction flips at the right edge
 {
   const s = a.invaderState();
-  s.fx = 400 - ((11 - 1) * 26 + 24) - 1; // one pixel from the right safe-area wall
+  s.fx = 436 - ((11 - 1) * 30 + 24) - 1; // one pixel from the right square wall
   s.fdir = 1;
   const y = s.fy;
   const ev = a.invaderStep(s, NEVER);
   assert.equal(s.fdir, -1);
   assert.equal(ev, 'descend');
-  assert.equal(s.fy, y + 26);
+  assert.equal(s.fy, y + 30);
   assert.equal(s.descents, 1);
   console.log('PASS invaders formation direction flip at right edge');
 }
@@ -40,12 +40,12 @@ const a = logic();
 // 2. touching the left edge descends exactly one row and flips back
 {
   const s = a.invaderState();
-  s.fx = 81; s.fdir = -1;
+  s.fx = 45; s.fdir = -1;
   const y = s.fy;
   a.invaderStep(s, NEVER);
   assert.equal(s.fdir, 1);
-  assert.equal(s.fx, 80);
-  assert.equal(s.fy, y + 26);
+  assert.equal(s.fx, 44);
+  assert.equal(s.fy, y + 30);
   assert.ok(s.events.some(e => e.startsWith('DESCEND row=')));
   console.log('PASS invaders edge contact descends one row');
 }
@@ -69,7 +69,7 @@ const a = logic();
 {
   const s = a.invaderState();
   for (let n = 2; n >= 0; n--) {
-    s.enemyBullets.push({ x: s.cannonX + 16, y: 372 });
+    s.enemyBullets.push({ x: s.cannonX + 16, y: 410 });
     a.invaderStep(s, NEVER);
     if (n > 0) assert.equal(s.lives, n);
   }
@@ -82,8 +82,8 @@ const a = logic();
 // 5. UFO bonus
 {
   const s = a.invaderState();
-  s.ufo = { x: 200, y: 124 };
-  s.bullet = { x: 210, y: 132 }; // rises 7px -> y=125, inside the UFO band
+  s.ufo = { x: 200, y: 86 };
+  s.bullet = { x: 210, y: 94 }; // rises 7px -> y=87, inside the UFO band
   const ev = a.invaderStep(s, NEVER);
   assert.equal(s.score, 100);
   assert.equal(s.ufo, null);

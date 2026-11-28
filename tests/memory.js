@@ -235,16 +235,16 @@ function deckFaces(st) { return st.deck.map((f) => f); }
 }
 
 // 11. canvas budget: 480x480 single canvas = exactly the 230,400 px cap.
-// r210 safe-area anchors: the board and the DEAL row must both fit the
-// 480-round 329px safe square [75,405], not merely the 480px full screen.
+// r233 square-screen anchors: 4x4 board (384x384) fits [44,436] horizontally
+// and clears the top header DEAL button (y=20..68).
 {
   assert.equal(s.IW * s.IH, 230400, 'single full-screen canvas is the whole budget');
-  assert.equal(s.CELL, 52); assert.equal(s.GAP, 4);
-  const gridW = s.GX + s.COLS * (s.CELL + s.GAP) - s.GAP; // 130 + 4*56 - 4 = 350
-  const gridH = s.GY + s.ROWS * (s.CELL + s.GAP) - s.GAP; // 132 + 4*56 - 4 = 352
-  assert.ok(gridW <= 405, 'grid right edge (' + gridW + ') inside safe square x<=405');
-  assert.ok(gridH <= 356, 'grid bottom (' + gridH + ') must clear the DEAL row (y=356)');
-  console.log('PASS memory canvas budget: 230400 px single canvas, grid in safe square');
+  assert.equal(s.CELL, 90); assert.equal(s.GAP, 8);
+  const gridW = s.GX + s.COLS * (s.CELL + s.GAP) - s.GAP; // 48 + 4*98 - 8 = 432
+  const gridH = s.GY + s.ROWS * (s.CELL + s.GAP) - s.GAP; // 78 + 4*98 - 8 = 462
+  assert.ok(s.GX >= 44 && gridW <= 436, 'grid x (' + s.GX + '..' + gridW + ') inside square margin [44,436]');
+  assert.ok(s.GY >= 76 && gridH <= 468, 'grid y (' + s.GY + '..' + gridH + ') clears header DEAL and fits 480');
+  console.log('PASS memory canvas budget: 230400 px single canvas, grid in square margin');
 }
 
 // 12. every dealt board is fully solvable (trivially true by construction: 8 pairs)
