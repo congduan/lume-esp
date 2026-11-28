@@ -1,0 +1,2 @@
+SQUARE {"shape":"square","wrapWidth":480,"deviceWidth":"480px","deviceHeight":"480px","transform":"matrix(1, 0, 0, 1, 0, 0)","safeInset":"auto","appCount":74}
+ROUND  {"shape":"round","wrapWidth":466,"deviceWidth":"466px","deviceHeight":"466px","transform":"matrix(1, 0, 0, 1, 0, 0)","safeInset":"auto","appCount":74}

@@ -1,0 +1,4 @@
+PASS shot watchface {"round":true,"wrap":466,"device":"466px","transform":"matrix(1, 0, 0, 1, 0, 0)","error":""} -> /tmp/lume-r229-wt/artifacts/r229/shots/watchface-round-466.png
+PASS shot clock_round {"round":true,"wrap":466,"device":"466px","transform":"matrix(1, 0, 0, 1, 0, 0)","error":""} -> /tmp/lume-r229-wt/artifacts/r229/shots/clock_round-round-466.png
+PASS shot safe-guide inset=72.8125px -> /tmp/lume-r229-wt/artifacts/r229/shots/clock-round-safe-466.png
+PASS shot files {"round":true,"wrap":466,"device":"466px","transform":"matrix(1, 0, 0, 1, 0, 0)","error":""} -> /tmp/lume-r229-wt/artifacts/r229/shots/files-round-466.png

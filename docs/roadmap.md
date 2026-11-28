@@ -3603,3 +3603,31 @@ change). goals 220x220 and rings 300x300 stay double-buffered.
 - **Not on-device acceptance**: PSRAM peak, singleBuffer tearing feel and
   asynchronous IMU trigger behaviour remain deferred to board bring-up.
   Full record: `docs/r228-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r228).
+
+### r229 result — playground round mode runs native 466x466 `__lumeScreen` (website/tools only, no board acceptance)
+
+- **r226 §2.2 prerequisite fulfilled** by r227 (29 apps migrated to `__A_*`
+  adaptive shims; 466 and 480 audits both `ok=74 fail=0`) and r228 (watchface
+  budget convergence). `page.js` now derives `logicalScreen` from the shape:
+  round = `{w:466,h:466}`, square = `{w:480,h:480}`; `resize()`, `dispatch()`
+  and `startScript()` keep reading that single state. Before/after geometry is
+  recorded: `#device 480px / scale 0.970833` -> `#device 466px / scale 1.0`.
+  No `runtime.js` API change and no fabricated `__lumeScreen`.
+- **Scale semantics**: the remaining `wrap.clientWidth / logicalScreen.w`
+  factor is exactly 1 at the native 466 viewport and only provides responsive
+  fitting on narrower viewports; shape-switch restart is unchanged. The
+  `inset:15.625%` safe guide is `72.8125px` on 466, preserving the 68.75%
+  ratio of the 480 `[75,405]` convention; 11 un-migrated round apps keep their
+  ~7px hard-coded 480 anchor offset, registered rather than papered over.
+- **Verification**: `verify.mjs` 18/18 PASS with two new guards (live app
+  session receives `{466,466}` and emits `__lumeScreen.w === 466`; all 74 apps
+  load in forced round mode) while the original 16 guards stay verbatim;
+  build idempotent (no tracked drift after two builds); 112 `tests/*.js` 0 FAIL;
+  `npm test` 87 pass / 0 fail; `check_website.py` four `none`;
+  `git diff origin/main -- firmware/ runtime/ tools/lume/` empty, no
+  `idf.py build`. Playwright shots: `watchface`, `clock_round`, safe-guide and
+  `files` in `artifacts/r229/shots/`.
+- **Not on-device acceptance**: native 466 CO5300 visuals, touch hit accuracy,
+  frame time and PSRAM peak stay deferred to board bring-up; the pre-existing
+  `watchface` label clipping (r226 §3) is unchanged and registered, not fixed.
+  Full record: `docs/r229-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r229).
