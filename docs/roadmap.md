@@ -3540,3 +3540,30 @@ background/ticks/needle and its dirty-rect strategy.
 - **Not on-device acceptance**: host/esp32sim evidence only. AMOLED colour,
   touch, frame time, sleep current and radio remain deferred to board bring-up.
   Full record: `docs/r224-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r224).
+
+### r227 result — 466×466 圆屏自适应迁移第一批（29/29 崩溃 app 收口，纯 app 层，无真机验收）
+
+Closes the r226 §2.2 prerequisite: all 29 apps that crashed under a native
+466×466 `__lumeScreen` now load and tick. Implemented as an inlined per-app
+adaptive shim (identity at 480, proportional `SW/480` / `SH/480` scale at 466)
+across 13 `'round'` flagships (incl. `watchface`'s PSRAM budget) and 16 square
+games. `firmware/`, `runtime/`, `tools/lume/`, the prelude and vendored sources
+are untouched; no `idf.py build`.
+
+- **Audit**: 466 before `ok=45 fail=29` (exact r226 reproduction) -> after
+  `ok=74 fail=0`; 480 stays `ok=74 fail=0`. Raw logs `artifacts/r227/audit-466*.log`
+  and `audit-480.log`.
+- **480 regression**: all 29 changed apps have byte-identical native message
+  streams before/after (frozen wall clock), `TOTAL=29 IDENTICAL=29 DIFFERENT=0`
+  (`artifacts/r227/stream-equivalence-480.txt`), including 5 sampled games
+  (`invaders`, `frogger`, `sokoban`, `mario`, `flapdot`). No esp32sim/host RGB565
+  rasterizer available, so stream identity is the stated equivalence evidence.
+- **watchface**: 466 canvas budget `861,208/868,624 B`; harness gained a new 466
+  assertion while keeping the original 480 `228544 px` assertion unchanged.
+- **Verification**: full `tests/*.js` loop 0 FAIL; `npm test --prefix tools/lume`
+  87 pass / 0 fail; `npm run build:playground` PASS and idempotent on second
+  build; `lume check examples/counter --no-emu` PASS; `check_website.py` four
+  `none`; 0 added non-ASCII lines (37 pre-existing unchanged).
+- **Not on-device acceptance**: 466 CO5300 round visuals, touch, frame time,
+  PSRAM peak and double-buffer behaviour remain deferred to board bring-up.
+  Full record: `docs/r227-report.md`, `docs/KNOWN-SIMPLIFICATIONS.md` (r227).

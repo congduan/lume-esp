@@ -2617,3 +2617,15 @@ Ten example apps have 480×480 simulator screenshots and four have before/after 
 - **静态色带口径**：`value:100` 让三段成为静态量程标记，速度仍由 needle（`dialValue` 信号）表达，与 canvas 版语义一致；未顺手把色带改成随速度动态填充，避免扩大 scope 并破坏 A/B 角度一致性。
 - **A/B 诚实口径**：before 已是 r48 的 AA `ctx.arc`，故本轮是 AA vs AA——边缘阶梯数相当（270 角平均 2.422 -> 2.269，轴边两版均 2 色硬阶，斜边两版均 2 过渡色），**不宣称画质提升**；收益是把静态几何从 canvas 绘制调用挪到原生 widget。3177 变化像素全部在表盘 bbox 内，r<130 的变化来自 demo needle 相位差，ticks/labels 无缺失。
 - **验证与待验收**：`idf.py build && idf.py size` `BUILD_SIZE_EXIT=0`，Flash Code / Data / DIRAM / IRAM / Total 对 r223 全部 **+0 B**（本轮 app JS only，固件 C 零 diff，IRAM 16384 红线未破）；112 份 `tests/*.js` 0 FAIL，`npm test --prefix tools/lume` 87 tests / 86 pass / 0 fail，`bridge_protocol.c` + `apps_protocol.c` 52/52，`lume check examples/speedometer --no-emu` PASS，`ADDED_NON_ASCII=0`；emu 两份 tft.png 与像素扫描见 `artifacts/r224/`。**真机 AMOLED 色带观感、touch、帧时间与功耗全部 deferred 至 board bring-up，host/emu 证据不等于硬件验收。**
+
+## r227 — 29 个 466 审计崩溃 app 的自适应迁移（纯 app 层；无真机验收）
+
+- **取舍：内联 app 层 shim 而非逐坐标字面量改写**。29 份 app 约 400 KB 源码，逐字面量改写既不可控也无法证明 480 像素零差异；改为每 app 内联同一段 shim（约 100 行），从 `__lumeScreen` 推导 `SW/SH`（`typeof` 守卫 + fallback 480），把 480 逻辑坐标按 `SW/480`、`SH/480` 等比缩放。`__A_ADAPT === false` 时所有 wrapper 原样转发，因此 480 恒等；代价是 466 下每层 Canvas 绘制多一次 JS 函数调用，**性能 A/B 未在 esp32sim/真机做**。
+- **不 shadow 全局构造函数**：浏览器 playground 用 `new Function('lume','Fs','__lumeScreen',...)` 执行 prelude + app，构造函数不在 `globalThis` 上，无法用全局捕获；改为源码级把 `View/Text/Button/Canvas/Image(` 改名为 `__A_*(` 再调用原全局。wrapper 只按白名单缩放几何 style 键，颜色/枚举/百分比/`flexGrow`/`opacity` 原样透传。
+- **watchface 预算靠自适应而非硬缩源码**：480 保持原 300/300/220 画布（480 观感零变化），466 由 shim 缩到 291/291/214，实测 `861,208 B ≤ 868,624 B`；harness 新增 466 断言而非修改 480 的 `228544 px` 断言。余量仅 7,416 B，后续若向 watchface 增画布需重新核算。
+- **精灵降采样**：`scroller` 的 480 宽天空带在 466 下触发 `sprite size out of range`；shim 用最近邻裁到 SW×SH。480 走快路径，字节不变。
+- **RGB565 像素 diff 的替代证据**：worktree 无 `esp32sim` 缓存、无宿主 RGB565 光栅化 harness。以「29/29 app 在 480 下 before/after 原生消息流逐字节相同（冻结时钟）」作为等价且更强的证据；不声称做过像素采样或真机比对。
+- **生成物陈旧刷新**：`build:playground` 重建同时刷新了 28 份未改动 app 的 HEAD 陈旧 bundle（如 `app_manager` 的 `n=40` → `n=84`）。这是「二次构建 git status 空」的必要条件，非本轮 app 改动。`sources/<name>.js` 与 `examples/<name>/app.js` 74/74 字节一致。
+- **ASCII 口径**：本轮新增非 ASCII 行 0；29 份改动 app 中 7 份共有 37 行改前已存在的非 ASCII（注释/中文 UI 文案）逐字未动。未为凑 NONE 而改动存量文案。
+- **未动清单**：简报点名「本轮不动」的 11 个未崩溃圆屏 app（`files`、`settings`、`weather`、`music_player`、`control_center`、`launcher_grid`、`image_gallery`、`adc_meter`、`crypto_check`、`archive_view`、`img_view`）的 `(240,240)` 锚点仍在原生 466 下偏移，留后续专刀。
+- **验证与待验收**：466/480 全量审计均 `ok=74 fail=0`（before 466 为 45/29），全量 `tests/*.js` 0 FAIL，`npm test` 87/87 PASS，构建幂等，哨兵/`check_website.py` 四类 none 全绿；`firmware/`/`runtime/`/`tools/lume/`/prelude/vendored 零改动，未跑 `idf.py build`。真机 CO5300 圆屏观感、触控、帧率、PSRAM 峰值与多画布双缓冲行为 deferred to board bring-up。详见 `docs/r227-report.md` 与 `artifacts/r227/`。
