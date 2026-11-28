@@ -111,6 +111,48 @@ try {
     }
     console.log('  __lumeScreen injected: ' + probed.texts.join(', '));
   });
+  await check('round mode runs the live app at native 466x466 (no 466/480 mapping)', async () => {
+    // Intercept the *page's* own session creation (not a detached probe) so the
+    // assertion covers what page.js actually passes for the selected app.
+    await page.evaluate(() => {
+      const original = window.LumePlaygroundSession;
+      window.__lumeOriginalSession = original;
+      window.__lumeCaptured = null;
+      window.LumePlaygroundSession = function (script, options) {
+        const sess = original(script, options);
+        window.__lumeCaptured = {
+          screen: options?.screen ? { ...options.screen } : null,
+          sessionScreen: sess.screen ? { ...sess.screen } : null,
+        };
+        return sess;
+      };
+    });
+    try {
+      await page.locator('[data-app="watchface"]').click();
+      const probe = await page.evaluate(() => {
+        const captured = window.__lumeCaptured;
+        if (!captured) return { screen: null };
+        const texts = [];
+        const p = window.__lumeOriginalSession(
+          "Text({ text: 'LIVE:' + __lumeScreen.w + 'x' + __lumeScreen.h });",
+          { screen: captured.screen, onMessage: m => { if (m[0] === 'attr' && m[2] === 0) texts.push(m[3]); } }
+        );
+        p.destroy();
+        const device = document.querySelector('#device');
+        const s = getComputedStyle(device);
+        return { ...captured, texts, deviceWidth: s.width, deviceHeight: s.height, transform: s.transform };
+      });
+      if (!probe.screen) throw Error('page.js did not create an app session: ' + JSON.stringify(probe));
+      const same = (a, w, h) => a && a.w === w && a.h === h;
+      if (!same(probe.screen, 466, 466)) throw Error('page.js passed non-native screen: ' + JSON.stringify(probe.screen));
+      if (!same(probe.sessionScreen, 466, 466)) throw Error('live session screen is not 466x466: ' + JSON.stringify(probe.sessionScreen));
+      if (!probe.texts.includes('LIVE:466x466')) throw Error('__lumeScreen was not injected as 466: ' + JSON.stringify(probe.texts));
+      if (probe.deviceWidth !== '466px' || probe.deviceHeight !== '466px' || probe.transform !== 'matrix(1, 0, 0, 1, 0, 0)') {
+        throw Error('round viewport still maps 480 into 466: ' + JSON.stringify(probe));
+      }
+      console.log('  live session screen=' + JSON.stringify(probe.screen) + ', __lumeScreen=' + probe.texts.join(', ') + ', device=466px transform=' + probe.transform);
+    } finally { await page.evaluate(() => { window.LumePlaygroundSession = window.__lumeOriginalSession; }); }
+  });
   await check('editor compiles default and changed source, then reports syntax errors', async () => {
     await page.locator('#editor-tab').click();
     await page.locator('#run').click();
@@ -230,6 +272,23 @@ try {
       if (!count) throw Error(`${name}: empty screen`);
       if (await page.locator('#error').isVisible()) throw Error(`${name}: ${await page.locator('#error').textContent()}`);
       console.log(`  ${name}: ${count} nodes`);
+    }
+    if (errors.length) throw Error(errors.join('\n'));
+  });
+  // r229: keep the auto-shape 74/74 guard above intact; add an independent
+  // native-466 pass so both 480 (auto) and 466 (forced round) are covered.
+  await check('all 74 examples load at native 466 without runtime errors', async () => {
+    const names = await page.locator('.app-item').evaluateAll(items => items.map(item => item.dataset.app));
+    const expected = await page.evaluate(() => Object.keys(window.LUME_SOURCES).length);
+    if (names.length !== expected) throw Error(`expected ${expected} examples, got ${names.length}`);
+    for (const name of names) {
+      await page.locator(`[data-app="${name}"]`).click();
+      await page.locator('[data-screen-shape="round"]').click();
+      if (!(await page.locator('.device-wrap').evaluate(el => el.classList.contains('round')))) throw Error(`${name}: round mode not active`);
+      const count = await page.locator('#device .lume-node').count();
+      if (!count) throw Error(`${name}: empty screen at native 466`);
+      if (await page.locator('#error').isVisible()) throw Error(`${name}: ${await page.locator('#error').textContent()}`);
+      console.log(`  ${name}: ${count} nodes (466)`);
     }
     if (errors.length) throw Error(errors.join('\n'));
   });
