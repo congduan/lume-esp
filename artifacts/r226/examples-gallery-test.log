@@ -1,0 +1,13 @@
+PASS examples_gallery: gallery card count equals manifest app count
+PASS examples_gallery: one card per app, in manifest order
+PASS examples_gallery: every card title / description / link comes from page.js metadata
+PASS examples_gallery: every card description keeps bilingual data-en / data-zh attributes
+PASS examples_gallery: no stale "Seven" headline or meta description remains
+PASS examples_gallery: hardware badge appears exactly where metadata states a board dependency
+PASS examples_gallery mutation: one card disappears -> FAIL as expected
+PASS examples_gallery mutation: a card drifts out of manifest order -> FAIL as expected
+PASS examples_gallery mutation: a card invents a title -> FAIL as expected
+PASS examples_gallery mutation: a card loses its bilingual attributes -> FAIL as expected
+PASS examples_gallery mutation: the old Seven headline returns -> FAIL as expected
+PASS examples_gallery mutation: a hardware badge is dropped from a dependency card -> FAIL as expected
+ALL EXAMPLES GALLERY CASES PASSED (74 apps / 74 cards)

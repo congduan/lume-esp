@@ -1,0 +1,5 @@
+01-counter-square {"round":false,"safe":false,"wrapW":480,"wrapH":480,"radius":"36px","transform":"scale(1)","title":"Counter","err":false}
+02-watchface-round {"round":true,"safe":false,"wrapW":466,"wrapH":466,"radius":"50%","transform":"scale(0.970833)","title":"Watchface","err":false}
+03-watchface-manual-square {"round":false,"safe":false,"wrapW":480,"wrapH":480,"radius":"36px","transform":"scale(1)","title":"Watchface","err":false}
+04-clock-round-safe-guide {"round":true,"safe":true,"wrapW":466,"wrapH":466,"radius":"50%","transform":"scale(0.970833)","title":"Round clock","err":false}
+05-files-round {"round":true,"safe":false,"wrapW":466,"wrapH":466,"radius":"50%","transform":"scale(0.970833)","title":"File Manager","err":false}

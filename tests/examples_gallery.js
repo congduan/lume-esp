@@ -28,8 +28,8 @@ const apps = readManifest();
 
 const metaBlock = (read('website/playground/page.js').match(/const examples = \[([\s\S]*?)\];/) || [])[1];
 const meta = new Map([...metaBlock.matchAll(
-  /\['([^']+)','([^']*)','([^']+)','([^']*)','([^']*)','([^']*)'\]/g)]
-  .map(m => [m[1], { icon: m[2], en: m[3], cn: m[4], descEn: m[5], descZh: m[6] }]));
+  /\['([^']+)','([^']*)','([^']+)','([^']*)','([^']*)','([^']*)','(round|square)'\]/g)]
+  .map(m => [m[1], { icon: m[2], en: m[3], cn: m[4], descEn: m[5], descZh: m[6], shape: m[7] }]));
 
 const decode = s => s.replace(/&quot;/g, '"').replace(/&#x27;/g, "'")
   .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');

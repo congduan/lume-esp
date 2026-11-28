@@ -10,7 +10,7 @@
  *   - the real `examples/` directory listing (what exists on disk)
  *
  * Output shape (one JSON object per line, NDJSON):
- *   { name, icon, en, cn, descriptionEn, descriptionZh, registered,
+ *   { name, icon, en, cn, descriptionEn, descriptionZh, shape, registered,
  *     metaSource }  per app; final line { summary: { total, registered,
  *     unregistered, missingMeta, missingOnDisk } }
  *
@@ -30,12 +30,13 @@ const PAGE_JS = join(ROOT, 'website/playground/page.js');
 /** Extract the `examples` array literal from page.js and parse it as data.
  *  r208 (Codex review fix #4): the previous implementation evaluated the
  *  captured text with `Function(...)`, which executes arbitrary expressions
- *  embedded in page.js. The array is specified as plain 6-string tuples, so we
- *  parse it structurally: every element must be `[ 'str','str',... ]` with
- *  single-quoted simple strings, separated by commas/newlines. Anything else
- *  (an identifier, a call, a template literal) is a pointed parse error, not
- *  executable code. Duplicate or unmatched entries are rejected so page shape
- *  drift cannot silently change the catalog. */
+ *  embedded in page.js. The array is specified as plain 7-string tuples
+ *  (r226 added shape: 'round' | 'square'), so we parse it structurally: every
+ *  element must be `[ 'str','str',... ]` with single-quoted simple strings,
+ *  separated by commas/newlines. Anything else (an identifier, a call, a
+ *  template literal) is a pointed parse error, not executable code. Duplicate
+ *  or unmatched entries are rejected so page shape drift cannot silently
+ *  change the catalog. */
 export async function parsePageExamples(pageSource = null) {
   const src = pageSource ?? await readFile(PAGE_JS, 'utf8');
   const m = src.match(/const examples = \[([\s\S]*?)\n  \];/);
@@ -85,7 +86,7 @@ function parseStringTuples(body) {
     while (i < n && /[\s,]/.test(body[i])) i++;
     if (i >= n) break;
     if (body[i] !== '[') {
-      throw new Error('lume examples: page.js entry is not a 6-string tuple (expected "[", got ' +
+      throw new Error('lume examples: page.js entry is not a 7-string tuple (expected "[", got ' +
         JSON.stringify(body.slice(i, i + 20)) + ') - non-literal content is not allowed');
     }
     i++;
@@ -95,7 +96,7 @@ function parseStringTuples(body) {
       if (i >= n) throw new Error('lume examples: unterminated tuple in page.js examples array');
       if (body[i] === ']') { i++; break; }
       if (body[i] !== "'") {
-        throw new Error('lume examples: page.js entry is not a 6-string tuple (non-string field) - non-literal content is not allowed');
+        throw new Error('lume examples: page.js entry is not a 7-string tuple (non-string field) - non-literal content is not allowed');
       }
       fields.push(str());
       while (i < n && /\s/.test(body[i])) i++;
@@ -103,8 +104,9 @@ function parseStringTuples(body) {
       if (body[i] === ']') { i++; break; }
       throw new Error('lume examples: malformed tuple separator in page.js examples array');
     }
-    if (fields.length !== 6 || fields.some(v => typeof v !== 'string'))
-      throw new Error('lume examples: page.js entry is not a 6-string tuple: ' + JSON.stringify(fields));
+    if (fields.length !== 7 || fields.some(v => typeof v !== 'string') ||
+        (fields[6] !== 'round' && fields[6] !== 'square'))
+      throw new Error('lume examples: page.js entry is not a 7-string tuple: ' + JSON.stringify(fields));
     entries.push(fields);
   }
   return entries;
@@ -142,6 +144,7 @@ async function catalogImpl(entries, manifest, deps) {
       cn: e ? e[3] : name,
       descriptionEn: e ? e[4] : name,
       descriptionZh: e ? e[5] : name,
+      shape: e && (e[6] === 'round' || e[6] === 'square') ? e[6] : 'square',
       registered: manifestSet.has(name),
       metaSource: e ? 'page.js' : 'fallback',
     });

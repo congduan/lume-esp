@@ -1,0 +1,30 @@
+FAIL_466 clock_round        shape=round  err=lume: canvas coordinate out of range
+FAIL_466 dashboard_round    shape=round  err=lume: canvas coordinate out of range
+FAIL_466 mario              shape=square err=lume: canvas coordinate out of range
+FAIL_466 gravity_ball       shape=square err=lume: canvas coordinate out of range
+FAIL_466 watchface          shape=round  err=lume: canvas PSRAM budget exceeded
+FAIL_466 pet                shape=square err=lume: canvas coordinate out of range
+FAIL_466 skyfire            shape=square err=lume: canvas coordinate out of range
+FAIL_466 skycombat          shape=square err=lume: canvas coordinate out of range
+FAIL_466 luna               shape=round  err=lume: canvas coordinate out of range
+FAIL_466 invaders           shape=square err=lume: canvas coordinate out of range
+FAIL_466 frogger            shape=square err=lume: canvas coordinate out of range
+FAIL_466 sokoban            shape=square err=lume: canvas coordinate out of range
+FAIL_466 lcd_dual           shape=round  err=lume: canvas coordinate out of range
+FAIL_466 memory             shape=square err=lume: canvas coordinate out of range
+FAIL_466 minesweeper        shape=square err=lume: canvas coordinate out of range
+FAIL_466 golf               shape=round  err=lume: canvas coordinate out of range
+FAIL_466 scroller           shape=square err=lume: canvas coordinate out of range
+FAIL_466 raycast            shape=square err=Cannot read properties of undefined (reading 'setMap')
+FAIL_466 fishtank           shape=square err=lume: canvas coordinate out of range
+FAIL_466 particles          shape=square err=lume: canvas coordinate out of range
+FAIL_466 plasma             shape=round  err=lume: canvas coordinate out of range
+FAIL_466 spectrum_music     shape=round  err=lume: canvas coordinate out of range
+FAIL_466 aurora_clock       shape=round  err=lume: canvas coordinate out of range
+FAIL_466 flapdot            shape=square err=lume: canvas coordinate out of range
+FAIL_466 wordring           shape=round  err=lume: canvas coordinate out of range
+FAIL_466 timer_kit          shape=round  err=lume: canvas coordinate out of range
+FAIL_466 minigolf           shape=round  err=lume: canvas coordinate out of range
+FAIL_466 mochi              shape=square err=lume: canvas coordinate out of range
+FAIL_466 fitness            shape=round  err=lume: canvas coordinate out of range
+SUMMARY_466 total=74 ok=45 fail=29

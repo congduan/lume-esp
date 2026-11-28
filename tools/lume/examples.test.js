@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parsePageExamples, catalog, renderCatalog } from './examples.js';
 
-test('parsePageExamples: real page.js yields 6-string tuples, counter present', async () => {
+test('parsePageExamples: real page.js yields 7-string tuples with shape, counter present', async () => {
   const entries = await parsePageExamples();
   assert.ok(entries.length >= 60, 'expected >=60 entries, got ' + entries.length);
   const counter = entries.find(e => e[0] === 'counter');
@@ -10,9 +10,11 @@ test('parsePageExamples: real page.js yields 6-string tuples, counter present', 
   assert.equal(counter[1].length >= 1, true, 'icon field present');
   assert.equal(counter[2], 'Counter');
   assert.equal(counter[4], 'Tap-driven counter');
+  assert.equal(counter[6], 'square');
   assert.ok(counter[3].length > 0 && counter[5].length > 0, 'zh fields non-empty');
   for (const e of entries)
-    assert.ok(e.length === 6 && e.every(v => typeof v === 'string'), 'bad tuple: ' + JSON.stringify(e));
+    assert.ok(e.length === 7 && e.every(v => typeof v === 'string') &&
+      (e[6] === 'round' || e[6] === 'square'), 'bad tuple: ' + JSON.stringify(e));
 });
 
 test('parsePageExamples: throws pointed error on shape drift', async () => {
@@ -21,8 +23,12 @@ test('parsePageExamples: throws pointed error on shape drift', async () => {
     /cannot locate|malformed/
   );
   await assert.rejects(
-    () => parsePageExamples('const examples = [\n    [1,2,3,4,5,6],\n  ];'),
-    /6-string tuple/
+    () => parsePageExamples('const examples = [\n    [1,2,3,4,5,6,7],\n  ];'),
+    /7-string tuple/
+  );
+  await assert.rejects(
+    () => parsePageExamples("const examples = [\n    ['a','A','A','A','A','A','oval'],\n  ];"),
+    /7-string tuple/
   );
 });
 
@@ -43,8 +49,8 @@ test('catalog: manifest and disk union, registration flags grounded', async () =
 
 test('catalog with injected deps: no disk access, deterministic', async () => {
   const fakeEntries = [
-    ['alpha', 'A', 'Alpha', 'Jia', 'First', 'Di Yi'],
-    ['beta', 'B', 'Beta', 'Yi', 'Second', 'Di Er'],
+    ['alpha', 'A', 'Alpha', 'Jia', 'First', 'Di Yi', 'round'],
+    ['beta', 'B', 'Beta', 'Yi', 'Second', 'Di Er', 'square'],
   ];
   const calls = { parse: 0 };
   const { rows, summary } = await catalog({
@@ -53,17 +59,20 @@ test('catalog with injected deps: no disk access, deterministic', async () => {
     examplesDir: ['alpha'],
   });
   assert.equal(rows.length, 3);
+  const alpha = rows.find(r => r.name === 'alpha');
+  assert.equal(alpha.shape, 'round');
   const ghost = rows.find(r => r.name === 'ghost');
   assert.equal(ghost.registered, true);
   assert.equal(ghost.metaSource, 'fallback');
   assert.equal(ghost.icon, '?');
+  assert.equal(ghost.shape, 'square');
   assert.deepEqual(summary, { total: 3, registered: 3, unregistered: 0, missingMeta: 1, missingOnDisk: 2 });
   assert.equal(calls.parse, 1);
 });
 
 test('renderCatalog: text lines + final summary JSON; json mode is NDJSON', async () => {
   const data = await catalog({
-    parseExamples: async () => [['solo', 'S', 'Solo', 'Du', 'Only one', 'Zhi You Yi Ge']],
+    parseExamples: async () => [['solo', 'S', 'Solo', 'Du', 'Only one', 'Zhi You Yi Ge', 'square']],
     manifestApps: () => ['solo'],
     examplesDir: ['solo'],
   });

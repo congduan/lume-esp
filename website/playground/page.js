@@ -1,84 +1,85 @@
 /* Static app picker and in-process input loop for the Lume playground. */
 (() => {
   const examples = [
-    ['counter','＋','Counter','计数器','Tap-driven counter','点击计数'],
-    ['clock','◷','Clock','时钟','Time and alarms','时间与闹钟'],
-    ['clock_round','12','Round clock','圆屏时钟','Round analog clock','圆屏模拟表盘'],
-    ['dashboard_round','N','Round dashboard','圆屏仪表','Relative heading and level','相对方位和水平仪'],
-    ['games_snake','▦','Snake','贪吃蛇','Swipe to steer','滑动控制方向'],
-    ['games_2048','▣','2048','2048','Merge the tiles','合并方块'],
-    ['games_breakout','◉','Breakout','打砖块','Arcade paddle game','街机挡板游戏'],
-    ['mario','★','Mario','马里奥','Platform demo','平台游戏演示'],
-    ['calculator','＝','Calculator','计算器','Everyday arithmetic','日常运算'],
-    ['weather','☁','Weather','天气','Forecast with sample data','模拟天气数据'],
-    ['music_player','♫','Music player','音乐播放器','Playback with sample tracks','模拟曲目播放'],
-    ['storybook','★','StoryBook','儿童绘本','Three-page sample story or TF story pack','三页示例故事或 TF 故事包'],
-    ['ipod_music','◉','Wheel Music','转盘音乐','ClickWheel UI demo, no audio','转盘界面演示，无音频'],
-    ['dashboard','▥','Dashboard','仪表盘','Live-style gauges','动态仪表'],
-    ['gravity_ball','●','Gravity ball','重力球','Motion experiment','运动实验'],
-    ['typewriter','⌨','Typewriter','打字机','Animated text','文字动画'],
-    ['heart_curve','♥','Heart curve','心形曲线','Canvas drawing','画布绘图'],
-    ['speedometer','⌁','Speedometer','速度表','Motion display','运动显示'],
-    ['power_demo','⚡','Power demo','电源演示','Power state UI','电源状态界面'],
-    ['watchface','◴','Watchface','表盘','Five faces','五种表盘'],
-    ['games_tetris','▚','Tetris','俄罗斯方块','Pan, rotate, drop','拖动旋转降落'],
-    ['game_of_life','◦','Game of Life','生命游戏','Cellular automata','细胞自动机'],
-    ['pet','ᵔ','Desktop pet','桌面宠物','Feed and pet it','喂养与抚摸'],
-    ['async_demo','↻','Async demo','异步演示','async / await','异步Await'],
-    ['piano','♬','Piano','钢琴','Two-octave touch piano','双八度触屏钢琴'],
-    ['compass','⊙','Heading dial','方位仪表','Inertial heading, no magnetometer','惯性方位，无磁力计'],
-    ['skyfire','✈','Skyfire','打飞机','Vertical shooter','纵向弹幕射击'],
-    ['skycombat','3D','SkyCombat 3D','体感空战','Tilt and fire in 3D','倾斜瞄准，点击开火'],
-    ['luna','◐','Luna','月球','Explore the real lunar surface','浏览真实月面'],
-    ['invaders','▴','Invaders','太空侵略者','Arcade-style shooter','街机风格射击'],
-    ['frogger','✦','Frogger','过河青蛙','Road and river crossing','公路河道穿越'],
-    ['abc123','A','ABC 123','字母数字卡','Tap-to-learn alphabet cards','点击学习字母数字'],
-    ['sokoban','▣','Sokoban','推箱子','10 puzzles, swipe to push','十关推箱子'],
-    ['lcd_dual','◫','LCD dual','双屏 LCD','Segment-LCD catch & dodge','幽灵段接面包与闪避'],
-    ['memory','▸','Memory Match','记忆翻牌','4x4 pair-matching card game','4x4 配对翻牌'],
-    ['minesweeper','✸','Minesweeper','扫雷','10x10 grid, tap dig + long-press flag','10x10 扫雷：点开 + 长按插旗'],
-    ['golf','◉','Golf','迷你高尔夫','Swing golf, 10 procedural holes','体感挥杆，10 个程序化球洞'],
-    ['scroller','▤','Scroller','横向卷轴','Retained-sprite side scroller','精灵 blit 横向卷轴'],
-    ['raycast','◈','Raycast 3D','射线迷宫','Raycast maze shooter','第一人称射线迷宫射击'],
-    ['fishtank','◉','Fishtank','电子鱼缸','Procedural aquarium with feeding','程序化鱼群 + 投喂互动'],
-    ['particles','o','Fluid Particles','流体粒子','IMU gravity + touch velocity field','IMU 重力 + 触摸速度场'],
-    ['plasma','◉','Plasma','等离子屏保','Tilt the lava; tap to change theme','倾斜熔岩，点击切换主题'],
-    ['voice_assistant','◎','Voice Assistant','语音助手','Push-to-talk walkie-talkie demo','按住说话对讲机演示'],
-    ['spectrum_music','♫','Spectrum Music','频谱音乐盒','Radial live and demo spectrum','麦克风与演示径向频谱'],
-    ['ble_uart','B','BLE UART','蓝牙串口','BLE link lifecycle with stub radio','模拟蓝牙连接流程'],
-    ['spectrum','▥','Spectrum','音频频谱','Microphone spectrum with browser stub','模拟麦克风频谱'],
-    ['svg_icon','◇','SVG icon','SVG 图标','Vector icon rendering','矢量图标渲染'],
-    ['gestures','↗','Gestures','手势','Tap, swipe, hold and pan','点击、滑动、长按与拖动'],
-    ['aurora_clock','o','Aurora Clock','极光时钟','Flowing ribbons and time','流动极光与时间'],
-    ['flapdot','b','Flapdot','拍拍鸟','One-tap arcade flyer','一键街机飞行'],
-    ['wordring','WR','Word Ring','字母环','Tap-only 5-letter word game','点选字母的 5 字母猜词'],
-    ['image_gallery','IM','Image Gallery','图片画廊','TF-card photos with Fs fallback','TF 卡图片，回退到 Fs'],
-    ['files','FS','File Manager','文件管理器','Browse directories and preview text','浏览目录并预览文本'],
-    ['adc_meter','AD','ADC Meter','电压表','ADC1 pin and attenuation voltage readout','ADC1 引脚与衰减档位电压读数'],
-    ['crypto_check','CR','Crypto Check','加密校验','SHA-256, HMAC, CRC32 and AES loopback','SHA-256、HMAC、CRC32 与 AES 回环'],
-    ['archive_view','AR','Archive Viewer','压缩包查看','DEFLATE inflate of embedded payloads','内置 DEFLATE 数据解压展示'],
-    ['img_view','SC','Image Scaler','图像缩放','RGB565 nearest / bilinear zoom demo','RGB565 最近邻与双线性缩放'],
-    ['vec_demo','V2','Vector Physics','向量物理','lume.math integrate and dot particles','lume.math 积分与点积粒子'],
-    ['settings','ST','Settings','系统设置','WiFi, BLE, volume and power settings','WiFi、蓝牙、音量与电源设置'],
-    ['hr_monitor','HR','HR Monitor','心率广播','BLE peripheral streams simulated heart rate','BLE 外设广播模拟心率'],
-    ['keyboard_demo','KB','Keyboard Demo','键盘演示','QWERTY soft keyboard input demo','QWERTY 软键盘输入演示'],
-    ['wordle','WD','Wordle','猜词游戏','Five letters, six tries, on-screen keyboard','5 字母 6 次机会的屏幕键盘猜词'],
-    ['controls_demo','UI','Controls Demo','控件演示','Switch, Slider and Progress shell controls','开关、滑块与进度条控件'],
-    ['timer_kit','TM','Timer Kit','计时工具','Countdown and stopwatch via shell controls','基于 shell 控件的倒计时与秒表'],
-    ['control_center','CC','Control Center','控制中心','Quick settings cards in a safe area','安全区内的快捷设置卡片'],
-    ['launcher_grid','LG','Launcher Grid','应用宫格','3x3 app grid built with shell.Launcher','shell.Launcher 的 3x3 应用宫格'],
-    ['minigolf','GF','Mini Golf','迷你高尔夫','Drag or IMU swing putting demo','拖拽或体感挥杆推杆演示'],
-    ['color_demo','CL','Color Studio','调色台','ColorPicker tint saved to KV','ColorPicker 调色并存入 KV'],
-    ['mochi','MC','Mochi','吉祥物','Programmatic Canvas mascot expressions','Canvas 绘制的吉祥物表情演示'],
-    ['shell_demo','SB','Shell Demo','外壳组件','StatusBar and EdgeNavigation demo','状态栏与边缘导航演示'],
-    ['sparkline_demo','SP','Sparkline','迷你折线图','Canvas mini line charts with shell.Sparkline','shell.Sparkline 迷你折线图'],
-    ['app_manager','AM','App Manager','应用管理','Two-tap uninstall from the installed app list via browser stub','浏览器桩应用列表：双击确认卸载'],
-    ['imu_poll','IM','IMU Poll','惯性采样','Poll raw X/Y/Z axes at 1 Hz; browser stub reports unavailable','1 Hz 轮询 X/Y/Z 原始轴；浏览器桩显示不可用'],
-    ['fitness','◎','Fitness','运动环','Triple activity rings with IMU step estimation and simulated HR','三环运动仪表：IMU 计步近似与模拟心率']
+    ['counter','＋','Counter','计数器','Tap-driven counter','点击计数','square'],
+    ['clock','◷','Clock','时钟','Time and alarms','时间与闹钟','round'],
+    ['clock_round','12','Round clock','圆屏时钟','Round analog clock','圆屏模拟表盘','round'],
+    ['dashboard_round','N','Round dashboard','圆屏仪表','Relative heading and level','相对方位和水平仪','round'],
+    ['games_snake','▦','Snake','贪吃蛇','Swipe to steer','滑动控制方向','square'],
+    ['games_2048','▣','2048','2048','Merge the tiles','合并方块','square'],
+    ['games_breakout','◉','Breakout','打砖块','Arcade paddle game','街机挡板游戏','square'],
+    ['mario','★','Mario','马里奥','Platform demo','平台游戏演示','square'],
+    ['calculator','＝','Calculator','计算器','Everyday arithmetic','日常运算','square'],
+    ['weather','☁','Weather','天气','Forecast with sample data','模拟天气数据','round'],
+    ['music_player','♫','Music player','音乐播放器','Playback with sample tracks','模拟曲目播放','round'],
+    ['storybook','★','StoryBook','儿童绘本','Three-page sample story or TF story pack','三页示例故事或 TF 故事包','square'],
+    ['ipod_music','◉','Wheel Music','转盘音乐','ClickWheel UI demo, no audio','转盘界面演示，无音频','round'],
+    ['dashboard','▥','Dashboard','仪表盘','Live-style gauges','动态仪表','round'],
+    ['gravity_ball','●','Gravity ball','重力球','Motion experiment','运动实验','square'],
+    ['typewriter','⌨','Typewriter','打字机','Animated text','文字动画','square'],
+    ['heart_curve','♥','Heart curve','心形曲线','Canvas drawing','画布绘图','round'],
+    ['speedometer','⌁','Speedometer','速度表','Motion display','运动显示','round'],
+    ['power_demo','⚡','Power demo','电源演示','Power state UI','电源状态界面','square'],
+    ['watchface','◴','Watchface','表盘','Five faces','五种表盘','round'],
+    ['games_tetris','▚','Tetris','俄罗斯方块','Pan, rotate, drop','拖动旋转降落','square'],
+    ['game_of_life','◦','Game of Life','生命游戏','Cellular automata','细胞自动机','round'],
+    ['pet','ᵔ','Desktop pet','桌面宠物','Feed and pet it','喂养与抚摸','square'],
+    ['async_demo','↻','Async demo','异步演示','async / await','异步Await','square'],
+    ['piano','♬','Piano','钢琴','Two-octave touch piano','双八度触屏钢琴','square'],
+    ['compass','⊙','Heading dial','方位仪表','Inertial heading, no magnetometer','惯性方位，无磁力计','round'],
+    ['skyfire','✈','Skyfire','打飞机','Vertical shooter','纵向弹幕射击','square'],
+    ['skycombat','3D','SkyCombat 3D','体感空战','Tilt and fire in 3D','倾斜瞄准，点击开火','square'],
+    ['luna','◐','Luna','月球','Explore the real lunar surface','浏览真实月面','round'],
+    ['invaders','▴','Invaders','太空侵略者','Arcade-style shooter','街机风格射击','square'],
+    ['frogger','✦','Frogger','过河青蛙','Road and river crossing','公路河道穿越','square'],
+    ['abc123','A','ABC 123','字母数字卡','Tap-to-learn alphabet cards','点击学习字母数字','square'],
+    ['sokoban','▣','Sokoban','推箱子','10 puzzles, swipe to push','十关推箱子','square'],
+    ['lcd_dual','◫','LCD dual','双屏 LCD','Segment-LCD catch & dodge','幽灵段接面包与闪避','round'],
+    ['memory','▸','Memory Match','记忆翻牌','4x4 pair-matching card game','4x4 配对翻牌','square'],
+    ['minesweeper','✸','Minesweeper','扫雷','10x10 grid, tap dig + long-press flag','10x10 扫雷：点开 + 长按插旗','square'],
+    ['golf','◉','Golf','迷你高尔夫','Swing golf, 10 procedural holes','体感挥杆，10 个程序化球洞','round'],
+    ['scroller','▤','Scroller','横向卷轴','Retained-sprite side scroller','精灵 blit 横向卷轴','square'],
+    ['raycast','◈','Raycast 3D','射线迷宫','Raycast maze shooter','第一人称射线迷宫射击','square'],
+    ['fishtank','◉','Fishtank','电子鱼缸','Procedural aquarium with feeding','程序化鱼群 + 投喂互动','square'],
+    ['particles','o','Fluid Particles','流体粒子','IMU gravity + touch velocity field','IMU 重力 + 触摸速度场','square'],
+    ['plasma','◉','Plasma','等离子屏保','Tilt the lava; tap to change theme','倾斜熔岩，点击切换主题','round'],
+    ['voice_assistant','◎','Voice Assistant','语音助手','Push-to-talk walkie-talkie demo','按住说话对讲机演示','square'],
+    ['spectrum_music','♫','Spectrum Music','频谱音乐盒','Radial live and demo spectrum','麦克风与演示径向频谱','round'],
+    ['ble_uart','B','BLE UART','蓝牙串口','BLE link lifecycle with stub radio','模拟蓝牙连接流程','square'],
+    ['spectrum','▥','Spectrum','音频频谱','Microphone spectrum with browser stub','模拟麦克风频谱','round'],
+    ['svg_icon','◇','SVG icon','SVG 图标','Vector icon rendering','矢量图标渲染','square'],
+    ['gestures','↗','Gestures','手势','Tap, swipe, hold and pan','点击、滑动、长按与拖动','square'],
+    ['aurora_clock','o','Aurora Clock','极光时钟','Flowing ribbons and time','流动极光与时间','round'],
+    ['flapdot','b','Flapdot','拍拍鸟','One-tap arcade flyer','一键街机飞行','square'],
+    ['wordring','WR','Word Ring','字母环','Tap-only 5-letter word game','点选字母的 5 字母猜词','round'],
+    ['image_gallery','IM','Image Gallery','图片画廊','TF-card photos with Fs fallback','TF 卡图片，回退到 Fs','round'],
+    ['files','FS','File Manager','文件管理器','Browse directories and preview text','浏览目录并预览文本','round'],
+    ['adc_meter','AD','ADC Meter','电压表','ADC1 pin and attenuation voltage readout','ADC1 引脚与衰减档位电压读数','round'],
+    ['crypto_check','CR','Crypto Check','加密校验','SHA-256, HMAC, CRC32 and AES loopback','SHA-256、HMAC、CRC32 与 AES 回环','round'],
+    ['archive_view','AR','Archive Viewer','压缩包查看','DEFLATE inflate of embedded payloads','内置 DEFLATE 数据解压展示','round'],
+    ['img_view','SC','Image Scaler','图像缩放','RGB565 nearest / bilinear zoom demo','RGB565 最近邻与双线性缩放','round'],
+    ['vec_demo','V2','Vector Physics','向量物理','lume.math integrate and dot particles','lume.math 积分与点积粒子','round'],
+    ['settings','ST','Settings','系统设置','WiFi, BLE, volume and power settings','WiFi、蓝牙、音量与电源设置','round'],
+    ['hr_monitor','HR','HR Monitor','心率广播','BLE peripheral streams simulated heart rate','BLE 外设广播模拟心率','round'],
+    ['keyboard_demo','KB','Keyboard Demo','键盘演示','QWERTY soft keyboard input demo','QWERTY 软键盘输入演示','square'],
+    ['wordle','WD','Wordle','猜词游戏','Five letters, six tries, on-screen keyboard','5 字母 6 次机会的屏幕键盘猜词','square'],
+    ['controls_demo','UI','Controls Demo','控件演示','Switch, Slider and Progress shell controls','开关、滑块与进度条控件','round'],
+    ['timer_kit','TM','Timer Kit','计时工具','Countdown and stopwatch via shell controls','基于 shell 控件的倒计时与秒表','round'],
+    ['control_center','CC','Control Center','控制中心','Quick settings cards in a safe area','安全区内的快捷设置卡片','round'],
+    ['launcher_grid','LG','Launcher Grid','应用宫格','3x3 app grid built with shell.Launcher','shell.Launcher 的 3x3 应用宫格','round'],
+    ['minigolf','GF','Mini Golf','迷你高尔夫','Drag or IMU swing putting demo','拖拽或体感挥杆推杆演示','round'],
+    ['color_demo','CL','Color Studio','调色台','ColorPicker tint saved to KV','ColorPicker 调色并存入 KV','round'],
+    ['mochi','MC','Mochi','吉祥物','Programmatic Canvas mascot expressions','Canvas 绘制的吉祥物表情演示','square'],
+    ['shell_demo','SB','Shell Demo','外壳组件','StatusBar and EdgeNavigation demo','状态栏与边缘导航演示','round'],
+    ['sparkline_demo','SP','Sparkline','迷你折线图','Canvas mini line charts with shell.Sparkline','shell.Sparkline 迷你折线图','square'],
+    ['app_manager','AM','App Manager','应用管理','Two-tap uninstall from the installed app list via browser stub','浏览器桩应用列表：双击确认卸载','square'],
+    ['imu_poll','IM','IMU Poll','惯性采样','Poll raw X/Y/Z axes at 1 Hz; browser stub reports unavailable','1 Hz 轮询 X/Y/Z 原始轴；浏览器桩显示不可用','square'],
+    ['fitness','◎','Fitness','运动环','Triple activity rings with IMU step estimation and simulated HR','三环运动仪表：IMU 计步近似与模拟心率','round']
   ];
   // r169: LUME_SOURCES is the authoritative catalog; `examples` holds display
-  // metadata only. Both the picker and the editor dropdown derive from the
-  // catalog, so the rendered list can no longer drift from the manifest.
+  // metadata only (7-tuple: id, icon, en, zh, descEn, descZh, shape). Both the
+  // picker and the editor dropdown derive from the catalog, so the rendered
+  // list can no longer drift from the manifest.
   function catalogNames() {
     const names = examples.map(entry => entry[0]).filter(name => Object.hasOwn(LUME_SOURCES, name));
     const seen = new Set(names);
@@ -88,22 +89,58 @@
     return names;
   }
   function meta(name) {
-    return examples.find(entry => entry[0] === name) || [name, '?', name, name, name, name];
+    return examples.find(entry => entry[0] === name) || [name, '?', name, name, name, name, 'square'];
   }
   const device = document.querySelector('#device');
   const wrap = document.querySelector('.device-wrap');
   const shapeButtons = [...document.querySelectorAll('[data-screen-shape]')];
-  function setShape(shape) {
-    const round = shape === 'round';
-    wrap.classList.toggle('round', round);
-    shapeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.screenShape === shape)));
-    device.setAttribute('aria-label', round ? 'Lume round screen' : 'Lume rounded square screen');
-    try { localStorage.setItem('lume-screen-shape', shape); } catch (error) { /* storage disabled */ }
-    resize();
-  }
-  shapeButtons.forEach(button => button.addEventListener('click', () => setShape(button.dataset.screenShape)));
+  const safeToggle = document.querySelector('#safe-area-toggle');
+  // r226: All 74 built-in apps author coordinates in a 480x480 logical space
+  // (29/74 create 480px canvases or exceed 466*466*4 canvas budget); round mode
+  // scales the 480x480 logical viewport cleanly into the 466px circular frame.
+  const logicalScreen = { w: 480, h: 480 };
   let savedShape = 'square';
   try { savedShape = localStorage.getItem('lume-screen-shape') === 'round' ? 'round' : 'square'; } catch (error) { /* storage disabled */ }
+  let currentShape = savedShape;
+  function appShape(name) {
+    const entry = examples.find(item => item[0] === name);
+    const s = entry && entry[6];
+    if (s === 'round' || s === 'square') return s;
+    return savedShape || 'square';
+  }
+  function setShape(shape, opts = {}) {
+    const next = shape === 'round' ? 'round' : 'square';
+    const changed = next !== currentShape;
+    currentShape = next;
+    const round = next === 'round';
+    wrap.classList.toggle('round', round);
+    shapeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.screenShape === next)));
+    device.setAttribute('aria-label', round ? 'Lume round screen' : 'Lume rounded square screen');
+    if (safeToggle) {
+      safeToggle.hidden = !round;
+      if (!round) {
+        wrap.classList.remove('show-safe');
+        safeToggle.setAttribute('aria-pressed', 'false');
+      }
+    }
+    if (opts.persist) {
+      savedShape = next;
+      try { localStorage.setItem('lume-screen-shape', next); } catch (error) { /* storage disabled */ }
+    }
+    resize();
+    if (opts.restart && changed && session) {
+      if (mode === 'editor') runEditor();
+      else if (Object.hasOwn(LUME_APPS, current)) startScript(LUME_APPS[current]);
+    }
+  }
+  shapeButtons.forEach(button => button.addEventListener('click', () => setShape(button.dataset.screenShape, { persist: true, restart: true })));
+  if (safeToggle) {
+    safeToggle.addEventListener('click', () => {
+      const on = !wrap.classList.contains('show-safe');
+      wrap.classList.toggle('show-safe', on);
+      safeToggle.setAttribute('aria-pressed', String(on));
+    });
+  }
   const list = document.querySelector('#app-list');
   const errorBox = document.querySelector('#error');
   const title = document.querySelector('#app-title');
@@ -160,8 +197,8 @@
   }
   const gestures = new Set();
   function showError(error) { errorBox.hidden = false; errorBox.textContent = error?.stack || String(error); }
-  function resize() { device.style.transform = `scale(${wrap.clientWidth / 480})`; }
-  new ResizeObserver(resize).observe(wrap); setShape(savedShape);
+  function resize() { device.style.transform = `scale(${wrap.clientWidth / logicalScreen.w})`; }
+  new ResizeObserver(resize).observe(wrap); setShape(savedShape, { persist: false, restart: false });
   function startScript(script) {
     generation++;
     session?.destroy(); session = null;
@@ -170,6 +207,7 @@
     const mine = generation;
     try {
       session = LumePlaygroundSession(script, {
+        screen: { w: logicalScreen.w, h: logicalScreen.h },
         onMessage: message => {
           if (mine !== generation) return;
           if (message[0] === 'gesture') gestures.add(message[1]);
@@ -183,6 +221,7 @@
   function select(name) {
     if (!Object.hasOwn(LUME_APPS, name)) { showError(new Error(`Missing bundle: ${name}`)); return; }
     current = name; setMode('examples');
+    setShape(appShape(name), { persist: false, restart: false });
     list.querySelectorAll('button').forEach(button => button.setAttribute('aria-current', String(button.dataset.app === name)));
     startScript(LUME_APPS[name]);
   }
@@ -231,7 +270,7 @@
   let pointer = null;
   function dispatch(kind, e) {
     if (!pointer || !session) return;
-    const box = wrap.getBoundingClientRect(), scale = box.width / 480;
+    const box = wrap.getBoundingClientRect(), scale = box.width / logicalScreen.w;
     const x = (e.clientX - box.left) / scale, y = (e.clientY - box.top) / scale;
     try { session.gesture(pointer.id, kind, x, y, performance.now(), 0, 0); }
     catch (error) { showError(error); }
@@ -270,10 +309,10 @@
     } catch (error) { showError(error); }
   });
   sourceCode.addEventListener('keydown', event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); runEditor(); } });
-  document.querySelector('#restart').addEventListener('click', () => mode === 'editor' ? runEditor() : select(current));
+  document.querySelector('#restart').addEventListener('click', () => mode === 'editor' ? runEditor() : startScript(LUME_APPS[current]));
   renderList(); select(current);
   if (location.hash.startsWith('#code=' ) || location.hash.startsWith('#code0=')) {
     if (location.hash.length > maxHashLength) showError(new Error('Share link is too long'));
-    else decodeSource(location.hash).then(source => { sourceCode.value = source; setMode('editor'); return runEditor(); }).catch(showError);
+    else decodeSource(location.hash).then(source => { sourceCode.value = source; setMode('editor'); setShape(savedShape, { persist: false, restart: false }); return runEditor(); }).catch(showError);
   }
 })();
